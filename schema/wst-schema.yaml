@@ -1,0 +1,128 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$type: object
+$defs:
+  expectations:
+    type: object
+    properties:
+      prefix:
+        type: string
+      variables:
+        type: object
+        patternProperties:
+          "^[a-z][a-z0-9-_]+$":
+            type: string
+      items:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            output:
+              type: object
+              properties:
+                order:
+                  type: string
+                  enum: ["fixed", "random"]
+                messages:
+                  type: array
+                  items:
+                    type: string
+
+  environment:
+    type: object
+    properties:
+      variables:
+        type: object
+        patternProperties:
+          "^[a-zA-Z_][a-z0-9_]+$":
+            type: string
+
+  sandboxAction:
+    type: object
+    oneOf:
+      - properties:
+          command:
+            type: object
+            oneOf:
+              - properties:
+                  executable:
+                    type: string
+                  args:
+                    type: string
+              - properties:
+                  path:
+                    type: string
+      - properties:
+          signal:
+            type: string
+
+  commonSandbox:
+    type: object
+    properties:
+      actions:
+        type: object
+        properties:
+          start:
+            $ref: '#/$defs/sandboxAction'
+          stop:
+            $ref: '#/$defs/sandboxAction'
+          reload:
+            $ref: '#/$defs/sandboxAction'
+
+  sandboxes:
+    type: [object, string]
+    properties:
+      common:
+        $ref: '#/$defs/commonSandbox'
+      local:
+        $ref: '#/$defs/commonSandbox'
+      docker:
+        allOf:
+          - $ref: '#/$defs/commonSandbox'
+          - type: object
+            properties:
+              registry:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  password:
+                    type: string
+      kubernetes:
+        allOf:
+          - $ref: '#/$defs/commonSandbox'
+          - type: object
+            properties:
+              auth:
+                type: object
+                properties:
+                  kubeconfig:
+                    type: string
+
+  server:
+    type: [object, string]
+    properties:
+      default:
+        type: string
+      expectations:
+        $ref: '#/$defs/expectations'
+      sandboxes:
+        $ref: '#/$defs/sandboxes'
+
+  servers:
+    type: [object, string]
+    patternProperties:
+      "^[a-z][a-z0-9-_]+$":
+        $ref: '#/$defs/server'
+
+  tests:
+    type: object
+
+properties:
+  default:
+    type: string
+  sandboxes:
+    $ref: '#/$defs/sandboxes'
+  servers:
+    $ref: '#/$defs/servers'
+  tests:
+    $ref: '#/$defs/tests'
