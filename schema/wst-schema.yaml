@@ -1,6 +1,20 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
 $type: object
 $defs:
+  expectation:
+    type: object
+    properties:
+      output:
+        type: object
+        properties:
+          order:
+            type: string
+            enum: ["fixed", "random"]
+          messages:
+            type: array
+            items:
+              type: string
+
   expectations:
     type: object
     properties:
@@ -14,18 +28,7 @@ $defs:
       items:
         type: object
         additionalProperties:
-          type: object
-          properties:
-            output:
-              type: object
-              properties:
-                order:
-                  type: string
-                  enum: ["fixed", "random"]
-                messages:
-                  type: array
-                  items:
-                    type: string
+          $ref: '#/$defs/expectation'
 
   environment:
     type: object
@@ -116,10 +119,65 @@ $defs:
 
   tests:
     type: object
+    properties:
+      scripts:
+        type: "object"
+        additionalProperties:
+          type: "string"
+      services:
+        type: "object"
+        additionalProperties:
+          type: "object"
+          properties:
+            server:
+              type: "string"
+            scripts:
+              type: "boolean"
+            sandbox:
+              type: "string"
+              enum: ["local", "docker", "kubernetes"]
+            configs:
+              type: "object"
+              additionalProperties:
+                type: "object"
+                properties:
+                  parameters_overwrite:
+                    type: "boolean"
+                  parameters:
+                    type: "object"
+                    additionalProperties:
+                      type: "string"
+      actions:
+        type: "array"
+        items:
+          type: ["object", "string"]
+          patternProperties:
+            "^expect/.*":
+              $ref: '#/$defs/expectation'
+            "^request/.*":
+              type: "object"
+              properties:
+                path:
+                  type: "string"
+                method:
+                  type: "string"
+                headers:
+                  type: "object"
+                  additionalProperties:
+                    type: "string"
+                response:
+                  type: "object"
+                  properties:
+                    headers:
+                      type: "object"
+                      additionalProperties:
+                        type: "string"
+                    body:
+                      type: "string"
 
 properties:
   default:
-    type: string
+    type: "string"
   sandboxes:
     $ref: '#/$defs/sandboxes'
   servers:
