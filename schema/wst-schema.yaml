@@ -1,45 +1,85 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$type: object
+title: JsonSchema for WST configuration
+type: object
+properties:
+  version:
+    title: WST configuration version
+    description: The current version is 1.0. Internally the value is converted to string but number is accepted.
+    type: [ string, number ]
+  name:
+    title: WST project name
+    description: The name should be short as it might be used in some messages produced by WST.
+    type: string
+  description:
+    title: WST project description
+    description: The description should describe project purpose.
+    type: string
+  sandboxes:
+    $ref: '#/$defs/sandboxes'
+  servers:
+    $ref: '#/$defs/servers'
+  spec:
+    $ref: '#/$defs/spec'
+
 $defs:
+  parameters:
+    type: object
+    patternProperties:
+      "^[a-zA-Z_][a-z0-9_]+$":
+        oneOf:
+          - type: string
+          - '#/$defs/parameters'
+
   expectation:
     type: object
-    properties:
-      output:
-        type: object
-        properties:
-          order:
-            type: string
-            enum: [fixed, random]
-          messages:
-            type: array
-            items:
-              type: string
+    allOf:
+      - properties:
+          parameters:
+            '#/$defs/parameters'
+      - oneOf:
+          - properties:
+              output:
+                type: object
+                properties:
+                  order:
+                    type: string
+                    enum: [ fixed, random ]
+                  match:
+                    type: string
+                    enum: [ exact, regexp ]
+                  messages:
+                    type: array
+                    items:
+                      type: string
+                  template:
+                    type: boolean
+          - properties:
+              response:
+                type: object
+                properties:
+                  request:
+                    type: string
+                  headers:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  body:
+                    type: [ object, string ]
+                    properties:
+                      content:
+                        type: string
+                      match:
+                        type: string
+                        enum: [ exact, regexp ]
 
   expectations:
-    type: object
-    properties:
-      prefix:
-        type: string
-      variables:
-        type: object
-        patternProperties:
-          "^[a-z][a-z0-9-_]+$":
-            type: string
-      items:
-        type: object
-        additionalProperties:
-          $ref: '#/$defs/expectation'
+    type: array
+    items:
+      type: object
+      additionalProperties:
+        $ref: '#/$defs/expectation'
 
-  environment:
-    type: object
-    properties:
-      variables:
-        type: object
-        patternProperties:
-          "^[a-zA-Z_][a-z0-9_]+$":
-            type: string
-
-  sandboxAction:
+  sandboxEvent:
     type: object
     oneOf:
       - properties:
@@ -61,38 +101,43 @@ $defs:
   commonSandbox:
     type: object
     properties:
-      actions:
+      events:
         type: object
         properties:
           start:
-            $ref: '#/$defs/sandboxAction'
+            $ref: '#/$defs/sandboxEvent'
           stop:
-            $ref: '#/$defs/sandboxAction'
+            $ref: '#/$defs/sandboxEvent'
           reload:
-            $ref: '#/$defs/sandboxAction'
+            $ref: '#/$defs/sandboxEvent'
+
+  containerSandbox:
+    allOf:
+      - $ref: '#/$defs/commonSandbox'
+      - type: object
+        properties:
+          image:
+            type: string
+          registry:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
 
   sandboxes:
-    type: [object, string]
+    type: [ object, string ]
     properties:
       common:
         $ref: '#/$defs/commonSandbox'
       local:
         $ref: '#/$defs/commonSandbox'
       docker:
-        allOf:
-          - $ref: '#/$defs/commonSandbox'
-          - type: object
-            properties:
-              registry:
-                type: object
-                properties:
-                  username:
-                    type: string
-                  password:
-                    type: string
+        $ref: '#/$defs/containerSandbox'
       kubernetes:
         allOf:
-          - $ref: '#/$defs/commonSandbox'
+          - $ref: '#/$defs/containerSandbox'
           - type: object
             properties:
               auth:
@@ -102,92 +147,144 @@ $defs:
                     type: string
 
   server:
-    type: [object, string]
+    type: [ object, string ]
     properties:
-      default:
+      extends:
         type: string
+      name:
+        type: string
+      configs:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            file:
+              type: string
+            parameters:
+              $ref: '#/$defs/parameters'
+      parameters:
+        $ref: '#/$defs/parameters'
       expectations:
         $ref: '#/$defs/expectations'
       sandboxes:
         $ref: '#/$defs/sandboxes'
 
   servers:
-    type: [object, string]
+    type: [ object, string ]
     patternProperties:
       "^[a-z][a-z0-9-_]+$":
         $ref: '#/$defs/server'
 
+  instance:
+    title: Instance object
+    description: |
+      The instance defines scripts, services and action used on them. This can be used for defining tests and other
+      things.
+    type: object
+    properties:
+      scripts:
+        title: Scripts for inclusion to services
+        description: |
+          Scripts represent set of files where name is an object key and the actual content is the value. Those scripts
+          can be linked to services.
+        type: object
+        additionalProperties:
+          type: string
+      services:
+        title: Set of instance specific services
+        description: The services represent object of services where key is its name and value is a service object.
+        type: object
+        additionalProperties:
+          title: Service to run
+          description: The service is a combination of server and sandbox with supplied configuration.
+          type: object
+          properties:
+            server:
+              title: Server to use.
+              description: |
+                Server points to the server used by service. As server defines the configuration, it is important to
+                make sure that a compatible server is used. The service name is used if the value is not specified.
+              type: string
+            sandbox:
+              title: Sandbox to use.
+              description: |
+                Sandbox should define server sandbox to run service in.
+              default: local
+              type: string
+              enum: [ local, docker, kubernetes ]
+            scripts:
+              title: Scripts included to the service
+              description: |
+                The scripts can have either boolean or array value. If boolean is provided, then true means that all
+                scripts are included to the service and false means that no script are be included. If array is
+                provided, then only the listed scripts are included to the service.
+              default: true
+              type: [ array, boolean ]
+              items:
+                type: string
+            configs:
+              title: Configuration files to include.
+              description: |
+                This object defines configuration files that will be included from server. The key is configuration file
+                name as defined in server and value is configuration object.
+              type: object
+              additionalProperties:
+                type: [ boolean, object ]
+                properties:
+                  parameters_overwrite:
+                    title: Parameters overwriting
+                    description: Specifies whether parameters should be overwritten or just merged.
+                    type: boolean
+                  parameters:
+                    '#/$defs/parameters'
+      actions:
+        title: Array of actions to run
+        description: |
+          Actions are core of the execution. It defines the full workflow that is being done. It uses services to do
+          the actual work. Actions define the specific actions that are being done like sending request and checking
+          the expectations.
+        type: array
+        items:
+          title: Action item
+          description: |
+            Each item can be either string if there are no action parameters or object if parameters need to be
+            supplied. Action name can contain pointers to to predefined actions like expectation. This is separated
+            by slashes.
+          type: [ object, string ]
+          patternProperties:
+            "^expect/.*":
+              $ref: '#/$defs/expectation'
+            "^request/.*":
+              type: object
+              properties:
+                path:
+                  type: string
+                method:
+                  type: string
+                headers:
+                  type: object
+                  additionalProperties:
+                    type: string
+
   spec:
+    title: Specification container
+    description: |
+      The specification contains configuration including set of instances that specify the actual work that is going
+      to be executed.
     type: object
     properties:
       workspace:
+        title: Workspace location
+        description: |
+          The workspace is a place where all the configuration and scripts are rendered from templates. It should be
+          directory and this directory should be ignored by version control system (e.g. git).
         type: string
       instances:
-        type: [array, string]
+        title: Spec instances
+        description: |
+          If array is provided, the it contains array of instance objects describing the work that is going to be done.
+          If string is provided, the it is a directory or wildcard path containing set of instances where each file
+          represent a single instance with the same structure as an instance object.
+        type: [ array, string ]
         items:
-          type: object
-          properties:
-            scripts:
-              type: object
-              additionalProperties:
-                type: string
-            services:
-              type: object
-              additionalProperties:
-                type: object
-                properties:
-                  server:
-                    type: string
-                  scripts:
-                    type: boolean
-                  sandbox:
-                    type: string
-                    enum: [local, docker, kubernetes]
-                  configs:
-                    type: object
-                    additionalProperties:
-                      type: object
-                      properties:
-                        parameters_overwrite:
-                          type: boolean
-                        parameters:
-                          type: object
-                          additionalProperties:
-                            type: string
-            actions:
-              type: array
-              items:
-                type: [object, string]
-                patternProperties:
-                  "^expect/.*":
-                    $ref: '#/$defs/expectation'
-                  "^request/.*":
-                    type: object
-                    properties:
-                      path:
-                        type: string
-                      method:
-                        type: string
-                      headers:
-                        type: object
-                        additionalProperties:
-                          type: string
-                      response:
-                        type: object
-                        properties:
-                          headers:
-                            type: object
-                            additionalProperties:
-                              type: string
-                          body:
-                            type: string
-
-properties:
-  default:
-    type: string
-  sandboxes:
-    $ref: '#/$defs/sandboxes'
-  servers:
-    $ref: '#/$defs/servers'
-  tests:
-    $ref: '#/$defs/tests'
+          $ref: '#/$defs/instance'
