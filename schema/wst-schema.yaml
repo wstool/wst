@@ -327,6 +327,112 @@ $defs:
       "^[a-z][a-z0-9-_]+$":
         $ref: '#/$defs/server'
 
+  scripts:
+    title: Scripts for inclusion in services
+    description: |
+      Scripts represent a set of files where the filename is an object key and its actual content is the value.
+      These scripts can be linked to services.
+    type: object
+    additionalProperties:
+      type: string
+
+  services:
+    title: Set of instance-specific services
+    description: |
+      The services represent an object of services where the key is its name and the value is a service object.
+    type: object
+    additionalProperties:
+      title: Service to run
+      description: |
+        The service is a combination of a server and a sandbox with a supplied configuration.
+      type: object
+      properties:
+        server:
+          title: Server to use
+          description: |
+            Server points to the server used by the service. As the server defines the configuration, it's
+            important to ensure that a compatible server is used. The service name is used if the value isn't
+            specified.
+          type: string
+        sandbox:
+          title: Sandbox to use
+          description: |
+            Sandbox should define the server sandbox in which to run the service.
+          default: local
+          type: string
+          enum: [ local, docker, kubernetes ]
+        scripts:
+          title: Scripts included in the service
+          description: |
+            The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
+            all scripts are included in the service and 'false' means that no scripts will be included. If an array
+            is provided, then only the listed scripts are included in the service.
+          default: true
+          type: [ array, boolean ]
+          items:
+            type: string
+        configs:
+          title: Configuration files to include
+          description: |
+            This object defines the configuration files that will be included from the server. The key is the
+            configuration filename as defined in the server, and the value is the configuration object.
+          type: object
+          additionalProperties:
+            type: [ boolean, object ]
+            properties:
+              overwrite_parameters:
+                title: Parameters overwriting
+                description: Specifies whether parameters should be overwritten or just merged.
+                type: boolean
+              parameters:
+                '#/$defs/parameters'
+
+  request:
+    title: Request object
+    description: |
+      The request object defines the details of the request to be sent.
+    type: object
+    properties:
+      id:
+        title: Request ID
+        type: string
+      path:
+        title: Request path
+        type: string
+      method:
+        title: Request method
+        type: string
+      headers:
+        '#/$defs/headers'
+
+  actionItem:
+    title: Action item
+    description: |
+      Each item can either be a string, if there are no action parameters, or an object when parameters need to be
+      supplied. The action name can contain pointers to predefined actions like expectations, which are separated
+      by slashes.
+    type: [ object, string ]
+    properties:
+      not:
+        $ref: '#/$defs/actionItem'
+      parallel:
+        $ref: '#/$defs/actions'
+    patternProperties:
+      "^expect/.*":
+        $ref: '#/$defs/expectation'
+      "^request/.*":
+        $ref: '#/$defs/request'
+
+  actions:
+    title: Array of actions to run
+    description: |
+      Actions form the core of the execution. They define the full workflow that's being executed and utilize
+      services to carry out the actual work. Actions specify the particular activities that occur, such as sending
+      a request or verifying expectations.
+    type: array
+    items:
+      $ref: '#/$defs/actionItem'
+
   instance:
     title: Instance object
     description: |
@@ -335,91 +441,11 @@ $defs:
     type: object
     properties:
       scripts:
-        title: Scripts for inclusion in services
-        description: |
-          Scripts represent a set of files where the filename is an object key and its actual content is the value.
-          These scripts can be linked to services.
-        type: object
-        additionalProperties:
-          type: string
+        $ref: '#/$defs/scripts'
       services:
-        title: Set of instance-specific services
-        description: |
-          The services represent an object of services where the key is its name and the value is a service object.
-        type: object
-        additionalProperties:
-          title: Service to run
-          description: |
-            The service is a combination of a server and a sandbox with a supplied configuration.
-          type: object
-          properties:
-            server:
-              title: Server to use
-              description: |
-                Server points to the server used by the service. As the server defines the configuration, it's
-                important to ensure that a compatible server is used. The service name is used if the value isn't
-                specified.
-              type: string
-            sandbox:
-              title: Sandbox to use
-              description: |
-                Sandbox should define the server sandbox in which to run the service.
-              default: local
-              type: string
-              enum: [ local, docker, kubernetes ]
-            scripts:
-              title: Scripts included in the service
-              description: |
-                The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
-                all scripts are included in the service and 'false' means that no scripts will be included. If an array
-                is provided, then only the listed scripts are included in the service.
-              default: true
-              type: [ array, boolean ]
-              items:
-                type: string
-            configs:
-              title: Configuration files to include
-              description: |
-                This object defines the configuration files that will be included from the server. The key is the
-                configuration filename as defined in the server, and the value is the configuration object.
-              type: object
-              additionalProperties:
-                type: [ boolean, object ]
-                properties:
-                  overwrite_parameters:
-                    title: Parameters overwriting
-                    description: Specifies whether parameters should be overwritten or just merged.
-                    type: boolean
-                  parameters:
-                    '#/$defs/parameters'
+        $ref: '#/$defs/services'
       actions:
-        title: Array of actions to run
-        description: |
-          Actions form the core of the execution, defining the full workflow that's being carried out. They utilize
-          services to conduct the actual work. Actions define the specific activities that take place, such as sending
-          a request and checking the expectations.
-        type: array
-        items:
-          title: Action item
-          description: |
-            Each item can either be a string, when there are no action parameters, or an object when parameters need to
-            be supplied. The action name can contain pointers to predefined actions like expectations; these are
-            separated by slashes.
-          type: [ object, string ]
-          patternProperties:
-            "^expect/.*":
-              $ref: '#/$defs/expectation'
-            "^request/.*":
-              type: object
-              properties:
-                path:
-                  type: string
-                method:
-                  type: string
-                headers:
-                  type: object
-                  additionalProperties:
-                    type: string
+        $ref: '#/$defs/actions'
 
   spec:
     title: Specification container
