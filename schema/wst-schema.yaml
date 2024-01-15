@@ -46,15 +46,15 @@ $defs:
   outputExpectation:
     title: Output expectation action
     description: |
-      The output expectation checks service output usually containing the service logs. In that way it is possible to
-      check expected service behavior.
+      The output expectation checks the service's output, which usually contains the service logs. This allows
+      for the verification of the expected service behavior.
     type: object
     properties:
       order:
         title: Expected order of messages
         description: |
-          The order defines order of messages if there are more messages in the array. It sets whether those messages
-          need to be in specified order (fixed) or it can be in any order (random).
+          This defines the expected order of messages when there are multiple messages in an array. It specifies
+          whether these messages need to be in a fixed sequence or can appear in any order.
         type: string
         enum: [ fixed, random ]
         default: fixed
@@ -69,12 +69,13 @@ $defs:
         items:
           title: Message item
           description: |
-            The message item is a string which should be either exact string to or a regular expression that needs to
-            match the actual string.
+            Each message item should be either an exact string or a regular expression that matches the actual
+            string.
           type: string
       render_template:
         title: Template rendering switch
-        description: The switch selects whether the template rendering is used for messages.
+        description: |
+          This switch selects whether template rendering is used for messages.
         type: boolean
         default: true
 
@@ -88,7 +89,7 @@ $defs:
         title: Request ID
         description: |
           The request ID identifies the request whose response is checked in this expectation. The default last value
-          is matches the default request ID of the request action which means that if there is just one request being
+          matches the default request ID of the request action which means that if there is just one request being
           done and its ID is unchanged, then there is no need to specify this property.
         type: string
         default: last
@@ -97,13 +98,13 @@ $defs:
       body:
         title: Response body to match
         description: |
-          The response body is the expected body for the response
+          The response body is the expected body for the response of the selected request.
         type: [ object, string ]
         properties:
           content:
             title: Response body content to match
             description: |
-              The content represent the content or pattern that needs to match the actual request response. It should
+              The content represents the content or pattern that needs to match the actual request response. It should
               be a string but number is also allowed for easier configuration if only number is returned.
             type: [ string, number ]
           match:
@@ -113,15 +114,16 @@ $defs:
             default: exact
           render_template:
             title: Template rendering switch
-            description: The switch selects whether the template rendering is used for body content.
+            description: |
+              The switch selects whether the template rendering is used for body content.
             type: boolean
             default: true
 
   expectation:
     title: Expectation action
     description: |
-      The expectation is an action type that checks whether the supplied expectation type is expected. It is usually
-      used for pattern matching of response data or matching output of the logs.
+      The expectation is an action type that checks whether the provided expectation type aligns with what's expected.
+      It's usually used for pattern matching of response data or output from the logs.
     type: object
     allOf:
       - properties:
@@ -138,14 +140,14 @@ $defs:
   expectations:
     title: Expectations mapping
     description: |
-      The expectation mapping object allows defining custom expectation that can be executed by actions. As noted in
-      the actions description, the action name can be composed from various parts. In the case of expectation, it is
-      in the following format:
-      
+      The expectations mapping object allows for the definition of custom expectations that can be executed by actions.
+      As noted in the actions' descriptions, the action name can be composed of various parts. In the case of
+      expectations, it's formatted as follows:
+
       expect[/<server_name>/<expectation_name>]
-      
-      The service_name is the name of the server where the expectation is defined and expectation_name is the name
-      matching key of this object.
+
+      Here, <server_name> is the name of the server where the expectation is defined, and <expectation_name>
+      corresponds to the name matching the key of this object.
     type: object
     additionalProperties:
       $ref: '#/$defs/expectation'
@@ -153,58 +155,61 @@ $defs:
   sandboxEvent:
     title: Sandbox event
     description: |
-      The sandbox event defines how to action specific sandbox event on the service. Currently it allows definition of
-      command, signal or native event.
+      The sandbox event defines an action for a specific sandbox event on the service. It allows for the definition of
+      a command, a signal, or a native event.
     type: object
     oneOf:
       - properties:
           native:
             title: Native sandbox event
             description: |
-              The native event is sandbox provided method for specific event. For example it is used for containers
-              to natively restart the application.
+              The native event is a method provided by the sandbox itself for a specific event. For instance, it's used
+              for containers to natively restart the application.
             type: object
             properties:
               event:
                 title: 'Native sandbox event type'
                 type: string
-                enum: ['start', 'restart', 'stop']
+                enum: [ 'start', 'restart', 'stop' ]
       - properties:
           command:
             title: Command sandbox event
-            description: The shell command that is executed.
+            description: |
+              This property represents the shell command that gets executed.
             type: object
             oneOf:
               - properties:
                   executable:
                     title: Program path to execute
-                    description: The executable is a single program to execute
+                    description: |
+                      The executable is a single program to execute.
                     type: string
                   args:
-                    title: Program arguments.
+                    title: Program arguments
                     description: |
-                      The arguments can be either string in which case shell is used or array or string which executes
-                      the program directly without using the shell.
-                    type: [string, array]
+                      The arguments can be either a string, in which case a shell is used, or an array of strings, which
+                      executes the program directly without using the shell.
+                    type: [ string, array ]
                     items:
                       type: string
               - properties:
                   shell:
                     title: Full shell command
-                    description: It is stringified executable and args.
+                    description: |
+                      This property represents the stringified version of the executable and its arguments.
                     type: string
       - properties:
           signal:
             title: Signal sandbox event
             description: |
-              The signal to send to the sandbox service. It uses service PID to do the signal on. Note that the service
-              needs to be running so it cannot be used for start event.
+              The signal sent to the sandbox service. It uses the service PID to send the signal. Note that the service
+              needs to be running; hence, it can't be used for the start event.
             type: string
 
   commonSandbox:
     title: Common sandbox events
     description: |
-      This defines set of common sandbox events to do. Those are start, stop and reload which are called actions.
+      This object defines a set of common sandbox events. These are start, stop, and reload actions.
     type: object
     properties:
       events:
@@ -219,7 +224,8 @@ $defs:
 
   containerSandbox:
     title: Container sandbox events
-    description: The container sandbox is a parent sandbox for all sandboxes that run OCI containers.
+    description: |
+      The container sandbox serves as a base sandbox for all sandboxes that run OCI containers.
     allOf:
       - $ref: '#/$defs/commonSandbox'
       - title: Container specific properties
@@ -239,7 +245,8 @@ $defs:
                     type: string
           registry:
             title: Container registry
-            description: This is used to pull and push images to.
+            description: |
+              This property is used to pull and push images from and to the registry.
             type: object
             properties:
               auth:
@@ -254,10 +261,10 @@ $defs:
                     type: string
 
   sandboxes:
-    title: Sandboxes defitions
-    description:
-      Sandboxes can be specified either as an object defining the used sandboxes or as a string which is a path to
-      fetch sandboxes definitions from.
+    title: Sandboxes definitions
+    description: |
+      Sandboxes can be specified either as an object defining the used sandboxes or as a string representing a path to
+      fetch sandbox definitions from.
     type: [ object, string ]
     properties:
       common:
@@ -282,12 +289,13 @@ $defs:
   server:
     title: Server
     description: |
-      The server can be specified either as an object defining the server properties or as a server name only.
+      A server can be specified either as an object defining the server properties or as a server name string.
     type: [ object, string ]
     properties:
       extends:
         title: Parent server name
-        description: This selects the server to select server from
+        description: |
+          This property selects the parent server to inherit properties from.
         type: string
       name:
         title: Server name
@@ -310,10 +318,10 @@ $defs:
         $ref: '#/$defs/sandboxes'
 
   servers:
-    title: Server
+    title: Servers
     description: |
-      The servers can be specified either as an object defining each server or as a string which is a path to
-      fetch server servers from.
+      Servers can be specified either as an object defining each server or as a string, which is a path to fetch
+      server definitions from.
     type: [ object, string ]
     patternProperties:
       "^[a-z][a-z0-9-_]+$":
@@ -322,60 +330,63 @@ $defs:
   instance:
     title: Instance object
     description: |
-      The instance defines scripts, services and action used on them. This can be used for defining tests and other
-      things.
+      The instance defines the scripts, services, and actions used on them. It can be used for defining tests and
+      other tasks.
     type: object
     properties:
       scripts:
-        title: Scripts for inclusion to services
+        title: Scripts for inclusion in services
         description: |
-          Scripts represent set of files where name is an object key and the actual content is the value. Those scripts
-          can be linked to services.
+          Scripts represent a set of files where the filename is an object key and its actual content is the value.
+          These scripts can be linked to services.
         type: object
         additionalProperties:
           type: string
       services:
-        title: Set of instance specific services
-        description: The services represent object of services where key is its name and value is a service object.
+        title: Set of instance-specific services
+        description: |
+          The services represent an object of services where the key is its name and the value is a service object.
         type: object
         additionalProperties:
           title: Service to run
-          description: The service is a combination of server and sandbox with supplied configuration.
+          description: |
+            The service is a combination of a server and a sandbox with a supplied configuration.
           type: object
           properties:
             server:
-              title: Server to use.
+              title: Server to use
               description: |
-                Server points to the server used by service. As server defines the configuration, it is important to
-                make sure that a compatible server is used. The service name is used if the value is not specified.
+                Server points to the server used by the service. As the server defines the configuration, it's
+                important to ensure that a compatible server is used. The service name is used if the value isn't
+                specified.
               type: string
             sandbox:
-              title: Sandbox to use.
+              title: Sandbox to use
               description: |
-                Sandbox should define server sandbox to run service in.
+                Sandbox should define the server sandbox in which to run the service.
               default: local
               type: string
               enum: [ local, docker, kubernetes ]
             scripts:
-              title: Scripts included to the service
+              title: Scripts included in the service
               description: |
-                The scripts can have either boolean or array value. If boolean is provided, then true means that all
-                scripts are included to the service and false means that no script are be included. If array is
-                provided, then only the listed scripts are included to the service.
+                The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
+                all scripts are included in the service and 'false' means that no scripts will be included. If an array
+                is provided, then only the listed scripts are included in the service.
               default: true
               type: [ array, boolean ]
               items:
                 type: string
             configs:
-              title: Configuration files to include.
+              title: Configuration files to include
               description: |
-                This object defines configuration files that will be included from server. The key is configuration file
-                name as defined in server and value is configuration object.
+                This object defines the configuration files that will be included from the server. The key is the
+                configuration filename as defined in the server, and the value is the configuration object.
               type: object
               additionalProperties:
                 type: [ boolean, object ]
                 properties:
-                  parameters_overwrite:
+                  overwrite_parameters:
                     title: Parameters overwriting
                     description: Specifies whether parameters should be overwritten or just merged.
                     type: boolean
@@ -384,16 +395,16 @@ $defs:
       actions:
         title: Array of actions to run
         description: |
-          Actions are core of the execution. It defines the full workflow that is being done. It uses services to do
-          the actual work. Actions define the specific actions that are being done like sending request and checking
-          the expectations.
+          Actions form the core of the execution, defining the full workflow that's being carried out. They utilize
+          services to conduct the actual work. Actions define the specific activities that take place, such as sending
+          a request and checking the expectations.
         type: array
         items:
           title: Action item
           description: |
-            Each item can be either string if there are no action parameters or object if parameters need to be
-            supplied. Action name can contain pointers to to predefined actions like expectation. This is separated
-            by slashes.
+            Each item can either be a string, when there are no action parameters, or an object when parameters need to
+            be supplied. The action name can contain pointers to predefined actions like expectations; these are
+            separated by slashes.
           type: [ object, string ]
           patternProperties:
             "^expect/.*":
@@ -413,22 +424,22 @@ $defs:
   spec:
     title: Specification container
     description: |
-      The specification contains configuration including set of instances that specify the actual work that is going
-      to be executed.
+      The specification contains the configuration, including a set of instances, that specify the actual tasks that
+      are going to be executed.
     type: object
     properties:
       workspace:
         title: Workspace location
         description: |
-          The workspace is a place where all the configuration and scripts are rendered from templates. It should be
-          directory and this directory should be ignored by version control system (e.g. git).
+          The workspace is a location where all the configuration and scripts are rendered from templates. It should
+          be a directory, and this directory should be ignored by the version control system (e.g., git).
         type: string
       instances:
         title: Spec instances
         description: |
-          If array is provided, the it contains array of instance objects describing the work that is going to be done.
-          If string is provided, the it is a directory or wildcard path containing set of instances where each file
-          represent a single instance with the same structure as an instance object.
+          If an array is provided, it contains an array of instance objects that describe the work going to be done.
+          If a string is provided, it's a directory or wildcard path containing a set of instances. In this case,
+          each file represents a single instance, with the same structure as an instance object.
         type: [ array, string ]
         items:
           $ref: '#/$defs/instance'
