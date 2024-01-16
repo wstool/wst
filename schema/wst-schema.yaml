@@ -408,9 +408,19 @@ $defs:
   actionItem:
     title: Action item
     description: |
-      Each item can either be a string, if there are no action parameters, or an object when parameters need to be
-      supplied. The action name can contain pointers to predefined actions like expectations, which are separated
-      by slashes.
+      Each item can either represent a predefined action (as a string) or a custom action (as an object). When using
+      predefined actions like expectations and requests, the action names are given as strings with its constituent
+      parts separated by slashes.
+      
+      When these items are executed, if any failure occurs, the execution is halted and the error is reported. In some
+      cases, an action may generate a result value that can be utilized by subsequent action items.
+      
+      Among these actions, there are two special types. The 'not' action performs a logical negation on the result of
+      the action item it is associated with. This means if the associated action fails, it is treated as a success and
+      the execution of further items continues without reporting an error.
+      The 'parallel' action takes an array of actions and executes them simultaneously. The 'parallel' action only
+      completes when the last of its parallel actions ends. If any action within 'parallel' fails, that particular
+      action is stopped, but others continue their execution.
     type: [ object, string ]
     properties:
       not:
