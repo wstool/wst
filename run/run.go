@@ -8,12 +8,12 @@ import (
 )
 
 type Options struct {
-	ConfigPaths     []string
-	IncludeAll      bool
-	ParameterValues []string
-	NoEnvs          bool
-	DryRun          bool
-	Instances       []string
+	ConfigPaths []string
+	IncludeAll  bool
+	Overwrites  map[string]string
+	NoEnvs      bool
+	DryRun      bool
+	Instances   []string
 }
 
 var DefaultsFs = afero.NewOsFs()
@@ -28,7 +28,7 @@ func Execute(options *Options, fs afero.Fs) {
 	}
 	configPaths = removeDuplicates(configPaths)
 
-	err := conf.ExecuteConfigs(configPaths, options.Instances, options.ParameterValues, options.DryRun, fs)
+	err := conf.ExecuteConfigs(configPaths, options.Overwrites, options.Instances, options.DryRun, fs)
 	if err != nil {
 		return
 	}
