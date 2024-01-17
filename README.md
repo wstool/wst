@@ -23,19 +23,30 @@ the subsequent sections.
 
 ### CLI
 
-The tool provides a rich command line interface offering various commands. This can be executed as
+The WST (Web Services Tool) command-line interface operates based on the following structure:
 
 ```shell
-wst [command] [options]
+wst [global_options] [command] [command_options]
 ```
+
+In the absence of any provided commands or options, a help list is displayed. This list outlines available commands and
+options coupled with relevant descriptions.
+
+Several global options are present:
+
+- `-h` or `--help` - Triggers the display of the help list.
+- `--version` - This option prints the version number of WST. It follows semantic versioning conventions.
+- `--debug` - When this option is set, WST provides a more detailed output by logging additional debugging information. 
+This extensive output aids in troubleshooting by revealing the internal processing steps and any potential issues that 
+arise during the operation. As such, it is especially useful in development or when diagnosing problems with WST setup.
+All subcommands inherit this option, therefore, it remains activated during the entire course of the command execution.
 
 The commands supported are:
 
-- `help` - Provides a comprehensive help list showcasing all available commands and options along with relevant
-descriptions.
+- `help` - Triggers the display of the help list.
 - `run` - Executes the predefined configuration.
 
-Additional details for main commands are provided in the following subsections.
+Additional details for the run command are provided in the following subsection.
 
 #### Run command
 
@@ -66,10 +77,6 @@ variable settings.
 - `--dry-run` - This option activates the dry-run mode. In this mode, WST processes the configuration and performs all
 preliminary setup, but refrains from executing any defined actions. This is particularly useful to verify the setup and
 the operational flow without actually triggering the actions, aiding in debugging and configuration refinement.
-- `--debug` - When this option is enabled, WST provides a more detailed output by logging additional debugging
-information. This extensive output aids in troubleshooting by revealing the internal processing steps and any potential
-issues that arise during the operation. As such, it's especially useful in development or when diagnosing problems with
-WST setup.
 
 ### Configuration
 
