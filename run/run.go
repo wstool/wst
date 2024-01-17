@@ -1,7 +1,8 @@
 package run
 
 import (
-	"log"
+	"github.com/bukka/wst/conf"
+	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
 )
@@ -12,46 +13,41 @@ type Options struct {
 	ParameterValues []string
 	NoEnvs          bool
 	DryRun          bool
+	Instances       []string
 }
 
-func Execute(options *Options) {
+var DefaultsFs = afero.NewOsFs()
+
+func Execute(options *Options, fs afero.Fs) {
+	var configPaths []string
 	if options.IncludeAll {
-		newPaths := GetConfigPaths()
-		options.ConfigPaths = append(options.ConfigPaths, newPaths...)
+		extraPaths := GetConfigPaths(fs)
+		configPaths = append(options.ConfigPaths, extraPaths...)
+	} else {
+		configPaths = options.ConfigPaths
 	}
-	options.ConfigPaths = removeDuplicates(options.ConfigPaths)
+	configPaths = removeDuplicates(configPaths)
+
+	err := conf.ExecuteConfigs(configPaths, options.Instances, options.ParameterValues, options.DryRun, fs)
+	if err != nil {
+		return
+	}
 }
 
-func GetConfigPaths() []string {
+func GetConfigPaths(fs afero.Fs) []string {
 	var paths []string
 	home, _ := os.UserHomeDir()
 
-	validateAndAppendPath("wst.yaml", &paths)
-	validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths)
-	validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths)
+	validateAndAppendPath("wst.yaml", &paths, fs)
+	validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths, fs)
+	validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths, fs)
 
 	return paths
 }
 
-func isPathInPaths(path string, paths []string) bool {
-	for _, p := range paths {
-		if p == path {
-			return true
-		}
-	}
-	return false
-}
-
-func validateAndAppendPath(path string, paths *[]string) {
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		if !isPathInPaths(path, *paths) {
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			*paths = append(*paths, absPath)
-		}
+func validateAndAppendPath(path string, paths *[]string, fs afero.Fs) {
+	if _, err := fs.Stat(path); !os.IsNotExist(err) {
+		*paths = append(*paths, path)
 	}
 }
 

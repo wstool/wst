@@ -10,7 +10,7 @@ import (
 func Run() {
 	var debug bool
 	var runCmd = &cobra.Command{
-		Use:   "run",
+		Use:   "run [instance]...",
 		Short: "Executes the predefined configuration",
 		Long:  "Constructs the final configuration and executes actions in order",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -26,9 +26,10 @@ func Run() {
 				ParameterValues: parameterValues,
 				NoEnvs:          noEnvs,
 				DryRun:          dryRun,
+				Instances:       args,
 			}
 			// Add execution code here.
-			run.Execute(options)
+			run.Execute(&options, run.DefaultsFs)
 		},
 	}
 
