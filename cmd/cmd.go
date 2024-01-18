@@ -2,14 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"os"
 	"strings"
 )
 
 var debug bool
 var overwriteValues []string
+var logger *zap.Logger
 
 func Run() {
 	var runCmd = &cobra.Command{
@@ -22,16 +25,31 @@ func Run() {
 			noEnvs, _ := cmd.Flags().GetBool("no-envs")
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 
-			options := run.Options{
+			var err error
+			if debug {
+				logger, err = zap.NewDevelopment()
+			} else {
+				logger, err = zap.NewProduction()
+			}
+			if err != nil {
+				panic(fmt.Sprintf("Cannot initialize zap logger: %v", err))
+			}
+
+			appEnv := &app.Env{
+				Logger: logger.Sugar(),
+				Fs:     run.DefaultsFs,
+			}
+
+			options := &run.Options{
 				ConfigPaths: configPaths,
 				IncludeAll:  includeAll,
-				Overwrites:  getOverwrites(noEnvs),
+				Overwrites:  getOverwrites(noEnvs, appEnv),
 				NoEnvs:      noEnvs,
 				DryRun:      dryRun,
 				Instances:   args,
 			}
 			// Add execution code here.
-			run.Execute(&options, run.DefaultsFs)
+			run.Execute(options, appEnv)
 		},
 	}
 
@@ -52,14 +70,14 @@ func Run() {
 }
 
 // getOverwrites handles overwrites from both the command-line flag and the environment variable
-func getOverwrites(noEnvs bool) map[string]string {
+func getOverwrites(noEnvs bool, env *app.Env) map[string]string {
 	var overwrites = make(map[string]string)
 
 	// Collect overwrites from flags
 	for _, arg := range overwriteValues {
 		pair := strings.SplitN(arg, "=", 2)
 		if len(pair) != 2 {
-			fmt.Println("Invalid key-value pair:", arg)
+			env.Logger.Warn("Invalid key-value pair: ", arg)
 			continue
 		}
 		overwrites[pair[0]] = pair[1]
@@ -67,12 +85,12 @@ func getOverwrites(noEnvs bool) map[string]string {
 
 	// Overwrite with environment variables if not disable with --no-envs
 	if !noEnvs {
-		if val, ok := os.LookupEnv("WST_OVERWRITE"); ok {
+		if val, ok := env.LookupEnvVar("WST_OVERWRITE"); ok {
 			envVars := strings.Split(val, ",")
 			for _, arg := range envVars {
 				pair := strings.SplitN(arg, "=", 2)
 				if len(pair) != 2 {
-					fmt.Printf("Invalid environment key-value pair: %s\n", arg)
+					env.Logger.Warnf("Invalid environment key-value pair: %s", arg)
 					continue
 				}
 				overwrites[pair[0]] = pair[1]

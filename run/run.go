@@ -1,6 +1,7 @@
 package run
 
 import (
+	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf"
 	"github.com/spf13/afero"
 	"os"
@@ -18,35 +19,40 @@ type Options struct {
 
 var DefaultsFs = afero.NewOsFs()
 
-func Execute(options *Options, fs afero.Fs) {
+func Execute(options *Options, env *app.Env) {
 	var configPaths []string
 	if options.IncludeAll {
-		extraPaths := GetConfigPaths(fs)
+		extraPaths := GetConfigPaths(env)
 		configPaths = append(options.ConfigPaths, extraPaths...)
 	} else {
 		configPaths = options.ConfigPaths
 	}
 	configPaths = removeDuplicates(configPaths)
 
-	err := conf.ExecuteConfigs(configPaths, options.Overwrites, options.Instances, options.DryRun, fs)
+	confOptions := conf.Options{
+		Configs:    configPaths,
+		Overwrites: options.Overwrites,
+		Instances:  options.Instances,
+		DryRun:     options.DryRun,
+	}
+	err := conf.ExecuteConfigs(confOptions, env)
 	if err != nil {
 		return
 	}
 }
 
-func GetConfigPaths(fs afero.Fs) []string {
+func GetConfigPaths(env *app.Env) []string {
 	var paths []string
-	home, _ := os.UserHomeDir()
-
-	validateAndAppendPath("wst.yaml", &paths, fs)
-	validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths, fs)
-	validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths, fs)
+	home, _ := env.GetUserHomeDir()
+	validateAndAppendPath("wst.yaml", &paths, env)
+	validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths, env)
+	validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths, env)
 
 	return paths
 }
 
-func validateAndAppendPath(path string, paths *[]string, fs afero.Fs) {
-	if _, err := fs.Stat(path); !os.IsNotExist(err) {
+func validateAndAppendPath(path string, paths *[]string, env *app.Env) {
+	if _, err := env.Fs.Stat(path); !os.IsNotExist(err) {
 		*paths = append(*paths, path)
 	}
 }
