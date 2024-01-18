@@ -12,7 +12,7 @@ type Options struct {
 	DryRun     bool
 }
 
-func ExecuteConfigs(options Options, env *app.Env) error {
+func ExecuteConfigs(options Options, env app.Env) error {
 	fmt.Println(options)
 	return nil
 }

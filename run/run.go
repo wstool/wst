@@ -19,7 +19,7 @@ type Options struct {
 
 var DefaultsFs = afero.NewOsFs()
 
-func Execute(options *Options, env *app.Env) {
+func Execute(options *Options, env app.Env) {
 	var configPaths []string
 	if options.IncludeAll {
 		extraPaths := GetConfigPaths(env)
@@ -41,7 +41,7 @@ func Execute(options *Options, env *app.Env) {
 	}
 }
 
-func GetConfigPaths(env *app.Env) []string {
+func GetConfigPaths(env app.Env) []string {
 	var paths []string
 	home, _ := env.GetUserHomeDir()
 	validateAndAppendPath("wst.yaml", &paths, env)
@@ -51,8 +51,8 @@ func GetConfigPaths(env *app.Env) []string {
 	return paths
 }
 
-func validateAndAppendPath(path string, paths *[]string, env *app.Env) {
-	if _, err := env.Fs.Stat(path); !os.IsNotExist(err) {
+func validateAndAppendPath(path string, paths *[]string, env app.Env) {
+	if _, err := env.Fs().Stat(path); !os.IsNotExist(err) {
 		*paths = append(*paths, path)
 	}
 }

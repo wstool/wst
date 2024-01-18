@@ -7,14 +7,13 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"os"
-	"strings"
 )
 
-var debug bool
-var overwriteValues []string
-var logger *zap.Logger
-
 func Run() {
+	var debug bool
+	var overwriteValues []string
+	var logger *zap.Logger
+
 	var runCmd = &cobra.Command{
 		Use:   "run [instance]...",
 		Short: "Executes the predefined configuration",
@@ -35,15 +34,12 @@ func Run() {
 				panic(fmt.Sprintf("Cannot initialize zap logger: %v", err))
 			}
 
-			appEnv := &app.Env{
-				Logger: logger.Sugar(),
-				Fs:     run.DefaultsFs,
-			}
+			appEnv := app.CreateEnv(logger.Sugar(), run.DefaultsFs)
 
 			options := &run.Options{
 				ConfigPaths: configPaths,
 				IncludeAll:  includeAll,
-				Overwrites:  getOverwrites(noEnvs, appEnv),
+				Overwrites:  getOverwrites(overwriteValues, noEnvs, appEnv),
 				NoEnvs:      noEnvs,
 				DryRun:      dryRun,
 				Instances:   args,
@@ -67,36 +63,4 @@ func Run() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-// getOverwrites handles overwrites from both the command-line flag and the environment variable
-func getOverwrites(noEnvs bool, env *app.Env) map[string]string {
-	var overwrites = make(map[string]string)
-
-	// Collect overwrites from flags
-	for _, arg := range overwriteValues {
-		pair := strings.SplitN(arg, "=", 2)
-		if len(pair) != 2 {
-			env.Logger.Warn("Invalid key-value pair: ", arg)
-			continue
-		}
-		overwrites[pair[0]] = pair[1]
-	}
-
-	// Overwrite with environment variables if not disable with --no-envs
-	if !noEnvs {
-		if val, ok := env.LookupEnvVar("WST_OVERWRITE"); ok {
-			envVars := strings.Split(val, ",")
-			for _, arg := range envVars {
-				pair := strings.SplitN(arg, "=", 2)
-				if len(pair) != 2 {
-					env.Logger.Warnf("Invalid environment key-value pair: %s", arg)
-					continue
-				}
-				overwrites[pair[0]] = pair[1]
-			}
-		}
-	}
-
-	return overwrites
 }
