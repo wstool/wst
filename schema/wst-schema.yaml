@@ -152,28 +152,28 @@ $defs:
     additionalProperties:
       $ref: '#/$defs/expectation'
 
-  sandboxEvent:
-    title: Sandbox event
+  sandboxHook:
+    title: Sandbox lifecycle hook
     description: |
-      The sandbox event defines an action for a specific sandbox event on the service. It allows for the definition of
-      a command, a signal, or a native event.
+      The sandbox hook defines an action for a specific sandbox lifecycle hook on the service. It allows for the
+      definition of a command, a signal, or a native hook.
     type: object
     oneOf:
       - properties:
           native:
-            title: Native sandbox event
+            title: Native sandbox hook
             description: |
-              The native event is a method provided by the sandbox itself for a specific event. For instance, it's used
-              for containers to natively restart the application.
+              The native hook is a method provided by the sandbox itself for a specific lifecycle hook. For instance,
+              it is used for containers to natively restart the application.
             type: object
             properties:
-              event:
-                title: 'Native sandbox event type'
+              type:
+                title: 'Native sandbox hook type'
                 type: string
                 enum: [ 'start', 'restart', 'stop' ]
       - properties:
           command:
-            title: Command sandbox event
+            title: Command sandbox hook
             description: |
               This property represents the shell command that gets executed.
             type: object
@@ -189,41 +189,49 @@ $defs:
                     description: |
                       The arguments can be either a string, in which case a shell is used, or an array of strings, which
                       executes the program directly without using the shell.
-                    type: [ string, array ]
+                    type: array
                     items:
                       type: string
               - properties:
-                  shell:
-                    title: Full shell command
+                  command:
+                    title: Command to execute in shell environment
                     description: |
-                      This property represents the stringified version of the executable and its arguments.
+                      This property represents the stringified version of the executable and its arguments that is
+                      passed as a parameter the the shell.
+                    type: string
+                  shell:
+                    title: Shell path to use
+                    description: |
+                      This property represents the shell path that is going to be executed with a command. On Linux
+                      and other Unix systems, the /bin/sh is used by default. On Windows cmd.exe is used by default.
                     type: string
       - properties:
           signal:
-            title: Signal sandbox event
+            title: Signal sandbox hook
             description: |
               The signal sent to the sandbox service. It uses the service PID to send the signal. Note that the service
-              needs to be running; hence, it can't be used for the start event.
-            type: string
+              needs to be running; hence, it can't be used for the start hook.
+            type: [string, integer]
 
   commonSandbox:
-    title: Common sandbox events
+    title: Common sandbox
     description: |
-      This object defines a set of common sandbox events. These are start, stop, and reload actions.
+      This object defines a set of common sandbox properties and it is a base sandbox for all sandboxes. Currently
+      a set of hooks is common to all sandboxes.
     type: object
     properties:
-      events:
+      hooks:
         type: object
         properties:
           start:
-            $ref: '#/$defs/sandboxEvent'
+            $ref: '#/$defs/sandboxHook'
           stop:
-            $ref: '#/$defs/sandboxEvent'
+            $ref: '#/$defs/sandboxHook'
           reload:
-            $ref: '#/$defs/sandboxEvent'
+            $ref: '#/$defs/sandboxHook'
 
   containerSandbox:
-    title: Container sandbox events
+    title: Container sandbox
     description: |
       The container sandbox serves as a base sandbox for all sandboxes that run OCI containers.
     allOf:

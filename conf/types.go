@@ -13,3 +13,156 @@
 // limitations under the License.
 
 package conf
+
+import "os"
+
+type Config struct {
+	Version     string             `wst:"version"`
+	Name        string             `wst:"name"`
+	Description string             `wst:"description"`
+	Sandboxes   map[string]Sandbox `wst:"sandboxes,loadable,factory=createSandboxes"`
+	Servers     []Server           `wst:"servers,loadable"`
+	Spec        Spec               `wst:"spec"`
+}
+
+type Parameter interface {
+	GetInt() int
+	GetFloat() float64
+	GetString() string
+	GetParameters() Parameters
+}
+
+type Parameters map[string]Parameter
+
+type SandboxHookNative struct {
+	Type string `wst:type`
+}
+
+type SandboxHookShellCommand struct {
+	Command string `wst:"command"`
+	Shell   string `wst:"shell"`
+}
+
+type SandboxHookCommand struct {
+	Executable string   `wst:"executable"`
+	Args       []string `wst:"args"`
+}
+
+type SandboxHookSignal os.Signal
+
+type SandboxHook interface {
+	Execute(sandbox *Sandbox) error
+}
+
+const (
+	CommonSandboxHook     string = "common"
+	LocalSandboxHook             = "local"
+	ContainerSandboxHook         = "container"
+	DockerSandboxHook            = "docker"
+	KubernetesSandboxHook        = "kubernetes"
+)
+
+const (
+	SandboxHookStartType  string = "start"
+	SandboxHookStopType          = "stop"
+	SandboxHookReloadType        = "reload"
+)
+
+type Sandbox interface {
+	ExecuteCommand(command *SandboxHookCommand) error
+	ExecuteSignal(signal *SandboxHookSignal) error
+}
+
+type CommonSandbox struct {
+	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
+}
+
+type LocalSandbox struct {
+	CommonSandbox
+}
+
+type ContainerImage struct {
+	Name string `wst:"name"`
+	Tag  string `wst:"tag"`
+}
+
+type ContainerRegistryAuth struct {
+	Username string `wst:"username"`
+	Password string `wst:"password"`
+}
+
+type ContainerRegistry struct {
+	Auth ContainerRegistryAuth `wst:"auth"`
+}
+
+type ContainerSandbox struct {
+	CommonSandbox
+	Image    ContainerImage    `wst:"image,factory=createContainerImage"`
+	Registry ContainerRegistry `wst:"registry"`
+}
+
+type DockerSandbox struct {
+	ContainerSandbox
+}
+
+type KubernetesAuth struct {
+	Kubeconfig string `wst:"kubeconfig"`
+}
+
+type KubernetesSandbox struct {
+	ContainerSandbox
+	Auth KubernetesAuth `wst:"auth"`
+}
+
+type ServerConfig struct {
+	File       string     `wst:"file"`
+	Parameters Parameters `wst:"parameters,factory=createParameters"`
+}
+
+type Server struct {
+	Name         string                  `wst:"name"`
+	Extends      string                  `wst:"extends"`
+	Configs      map[string]ServerConfig `wst:"configs"`
+	Parameters   Parameters              `wst:"parameters,factory=createParameters"`
+	Expectations map[string]Expectation  `wst:"expectations,factory=createExpectations"`
+}
+
+type OutputExpectation struct {
+	Order    string   `wst:"order"`
+	Match    string   `wst:"match"`
+	Messages []string `wst:"messages"`
+}
+
+type OutputExpectationWrapper struct {
+	Parameters Parameters        `wst:"parameters,factory=createParameters"`
+	Output     OutputExpectation `wst:"output"`
+}
+
+type Headers map[string]string
+
+type ResponseBody struct {
+	Content        string `wst:"content"`
+	Match          string `wst:"match"`
+	RenderTemplate string `wst:"render_template"`
+}
+
+type ResponseExpectation struct {
+	Request string       `wst:"request"`
+	Headers Headers      `wst:"headers"`
+	Body    ResponseBody `wst:"content,string=Content"`
+}
+
+type ResponseExpectationWrapper struct {
+	Parameters Parameters          `wst:"parameters,factory=createParameters"`
+	Response   ResponseExpectation `wst:"response"`
+}
+
+type Expectation interface {
+	Verify(ctx ActionContext) error
+}
+
+type Spec struct {
+}
+
+type ActionContext interface {
+}
