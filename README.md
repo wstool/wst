@@ -62,21 +62,30 @@ As can be seen configuration and its executor are really core of the runner.
 The command takes following options:
 
 - `-c` or `--config`: This option defines the path to the configuration file. The default value points to `wst.yaml`
-situated in the current working directory. If a directory is specified without a particular file, WST will default to
-using the `wst.yaml` file within the provided directory. This option enables the processing of multiple configuration
-files, granting higher priority to the ones defined later in the order of declaration.
+in the current working directory. If a directory is specified without a file, WST will default to
+using the `wst.yaml` file within the provided directory. It is possible to specify this option multiple times to process
+multiple configuration files, granting higher priority to the ones defined later in the order of declaration.
 - `-a` or `--all` - WST uses this option to include additional configuration files in the processing routine, even if
 the `--config` option has already been specified. Particularly, it processes `wst.yaml` found in the current working
 directory, `~/.wst/wst.yaml`, and `~/.config/wst/wst.yaml` if they exist.
-- `-p` or `--parameter` - This option allows you to define specific parameters that can overwrite the configuration
-values. It provides a way to dynamically adjust the configuration directly from the command line.
-- `--no-envs` - WST, by default, checks the environment variables for any parameters that might need to be overwritten
-in the configuration. Activating this option prevents environment variables from superseding the parameters defined in
-the configuration files. It ensures the integrity of the configuration in environments with potentially conflicting
-variable settings.
+- `-o` or `--overwrite` - This option allows you to define specific values that can overwrite the configuration
+values. It provides a way to dynamically adjust the configuration directly from the command line. The overwrite value
+is composed of `key=value` string where `key` is the config position in dot notation and the `value` is the actual
+value to overwrite it with. For example to overwrite the name of the first instance, it could be done using
+`spec.instances[0].name=new name`.
+- `--no-envs` - WST, by default, checks the environment variables for WST customization. Activating this option
+prevents environment variables from being checked.
 - `--dry-run` - This option activates the dry-run mode. In this mode, WST processes the configuration and performs all
 preliminary setup, but refrains from executing any defined actions. This is particularly useful to verify the setup and
 the operational flow without actually triggering the actions, aiding in debugging and configuration refinement.
+
+As highlighted in the options description, the application also checks the environment variables. Currently only
+`WST_OVERWRITE` is supported, which enables overwriting of the configuration. It supports the same format as in
+`--overwrite` option value, but it also allows providing multiple such values separated by a colon. For example, if one
+wants to change the name and nginx service sandbox of the first instance, it could be done as follows:
+```bash
+WST_OVERWRITE='spec.instances[0].name=new name:spec.instances[0].services.nginx.sandbox=docker'
+```
 
 ### Configuration
 

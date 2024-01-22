@@ -36,7 +36,7 @@ func getOverwrites(overwriteValues []string, noEnvs bool, env app.Env) map[strin
 	// Overwrite with environment variables if not disable with --no-envs
 	if !noEnvs {
 		if val, ok := env.LookupEnvVar("WST_OVERWRITE"); ok {
-			envVars := strings.Split(val, ",")
+			envVars := strings.Split(val, ":")
 			for _, arg := range envVars {
 				pair := strings.SplitN(arg, "=", 2)
 				if len(pair) != 2 {

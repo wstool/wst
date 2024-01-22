@@ -450,6 +450,11 @@ $defs:
       other tasks.
     type: object
     properties:
+      name:
+        title: Instance name
+        description: |
+          The name is used for reporting which is mainly useful when more instances are used. If not specified, the
+          name is generated from instance index and file name.
       scripts:
         $ref: '#/$defs/scripts'
       services:

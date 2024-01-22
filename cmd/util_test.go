@@ -138,7 +138,7 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value"},
 				noEnvs:          false,
 			},
-			envVars:   map[string]string{"WST_OVERWRITE": "key2=value2,key3=value3,key4=value4"},
+			envVars:   map[string]string{"WST_OVERWRITE": "key2=value2:key3=value3:key4=value4"},
 			want:      map[string]string{"key": "value", "key2": "value2", "key3": "value3", "key4": "value4"},
 			wantWarns: nil,
 		},
