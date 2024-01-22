@@ -158,11 +158,24 @@ type ResponseExpectationWrapper struct {
 }
 
 type Expectation interface {
-	Verify(ctx ActionContext) error
+	Verify(runtime *ActionRuntime) error
+}
+
+type Script struct {
+	Content string `wst:"content"`
+	Path    string `wst:"path"`
+	Mode    string `wst:"mode"`
+}
+
+type Instance struct {
+	Name    string            `wst:"name"`
+	Scripts map[string]Script `wst:"scripts,string=Content"`
 }
 
 type Spec struct {
+	Workspace string     `wst:"workspace"`
+	Instances []Instance `wst:"instances,loadable"`
 }
 
-type ActionContext interface {
+type ActionRuntime interface {
 }

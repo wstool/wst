@@ -342,7 +342,24 @@ $defs:
       These scripts can be linked to services.
     type: object
     additionalProperties:
-      type: string
+      title: Script data and settings
+      description: |
+        The script primarily defines the content to be included within the service.
+      type: [ object, string ]
+      properties:
+        content:
+          title: Script content
+          type: string
+        path:
+          title: Path to be stored
+          description: |
+            Denotes the path in the service sandbox where the script will be mounted. If not specified, the script's
+            key will be used. This property is useful for long, complex paths, or paths that require templates.
+        mode:
+          title: File access mode
+          description: Indicates the file's access mode, according to standard Unix permissions.
+          type: [ string, integer ]
+          default: '0644'
 
   services:
     title: Set of instance-specific services
