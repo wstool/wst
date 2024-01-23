@@ -74,6 +74,7 @@ type Sandbox interface {
 }
 
 type CommonSandbox struct {
+	Dirs  map[string]string      `wst:"dirs,keys=conf|run|script"`
 	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
@@ -167,9 +168,22 @@ type Script struct {
 	Mode    string `wst:"mode"`
 }
 
+type ServiceConfig struct {
+	Parameters          Parameters `wst:"parameters,factory=createParameters"`
+	OverwriteParameters bool       `wst:"overwrite_parameters,factory=createParameters"`
+}
+
+type Service struct {
+	Server  string                   `wst:"server"`
+	Sandbox string                   `wst:"sandbox"`
+	Scripts []string                 `wst:"scripts,bool=local|docker|kubernetes,enum=local|docker|kubernetes"`
+	Configs map[string]ServiceConfig `wst:"configs"`
+}
+
 type Instance struct {
-	Name    string            `wst:"name"`
-	Scripts map[string]Script `wst:"scripts,string=Content"`
+	Name     string             `wst:"name"`
+	Scripts  map[string]Script  `wst:"scripts,string=Content"`
+	Services map[string]Service `wst:"services"`
 }
 
 type Spec struct {

@@ -220,7 +220,31 @@ $defs:
       a set of hooks is common to all sandboxes.
     type: object
     properties:
+      dirs:
+        title: Sandbox directories
+        description: |
+          The directories for various servers and service files.
+        type: object
+        properties:
+          conf:
+            title: Configuration directory
+            description: This is used as a base directory for all server configuration files. Usually /etc on Linux.
+            type: string
+          run:
+            title: Runtime directory
+            description: This is used for system runtime files. For example PID files should be stored here.
+            type: string
+          script:
+            title: Script directory
+            description: |
+              This is used as a base directory for all service script files. For example for web server, the web root
+              directory would be used
+            type: string
       hooks:
+        title: Sandbox hooks
+        description: |
+          Those lifecycle hooks are called when even specified in the object key happens. Currently start, stop and
+          reload hooks can be defined.
         type: object
         properties:
           start:
