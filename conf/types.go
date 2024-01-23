@@ -148,6 +148,7 @@ type ResponseBody struct {
 }
 
 type ResponseExpectation struct {
+	Type    string       `wst:"type,enum=stdout,stderr,any"`
 	Request string       `wst:"request"`
 	Headers Headers      `wst:"headers"`
 	Body    ResponseBody `wst:"content,string=Content"`
@@ -159,7 +160,7 @@ type ResponseExpectationWrapper struct {
 }
 
 type Expectation interface {
-	Verify(runtime *ActionRuntime) error
+	Verify(ar ActionRuntime) error
 }
 
 type Script struct {
@@ -170,7 +171,7 @@ type Script struct {
 
 type ServiceConfig struct {
 	Parameters          Parameters `wst:"parameters,factory=createParameters"`
-	OverwriteParameters bool       `wst:"overwrite_parameters,factory=createParameters"`
+	OverwriteParameters bool       `wst:"overwrite_parameters"`
 }
 
 type Service struct {
@@ -180,16 +181,32 @@ type Service struct {
 	Configs map[string]ServiceConfig `wst:"configs"`
 }
 
+type ActionRuntime interface {
+}
+
+type Action interface {
+	Execute(ar ActionRuntime) error
+}
+
+type ExpectAction interface {
+	GetType() string
+}
+
+type RequestAction struct {
+	Id      string  `wst:"id"`
+	Path    string  `wst:"path"`
+	Method  string  `wst:"method"`
+	Headers Headers `wst:"headers"`
+}
+
 type Instance struct {
 	Name     string             `wst:"name"`
 	Scripts  map[string]Script  `wst:"scripts,string=Content"`
 	Services map[string]Service `wst:"services"`
+	Actions  []Action           `wst:"actions,factory=createActions"`
 }
 
 type Spec struct {
 	Workspace string     `wst:"workspace"`
 	Instances []Instance `wst:"instances,loadable"`
-}
-
-type ActionRuntime interface {
 }

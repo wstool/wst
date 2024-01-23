@@ -63,6 +63,11 @@ $defs:
         type: string
         enum: [ exact, regexp ]
         default: exact
+      type:
+        title: Output type
+        type: string
+        enum: [ stdout, stderr, any ]
+        default: any
       messages:
         title: Array of expected messages
         type: array
