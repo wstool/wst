@@ -432,7 +432,7 @@ $defs:
             configuration filename as defined in the server, and the value is the configuration object.
           type: object
           additionalProperties:
-            type: [ boolean, object ]
+            type: [ object ]
             properties:
               overwrite_parameters:
                 title: Parameters overwriting

@@ -17,7 +17,7 @@ package conf
 import "os"
 
 type Config struct {
-	Version     string             `wst:"version"`
+	Version     string             `wst:"version,enum=1.0"`
 	Name        string             `wst:"name"`
 	Description string             `wst:"description"`
 	Sandboxes   map[string]Sandbox `wst:"sandboxes,loadable,factory=createSandboxes"`
@@ -35,7 +35,7 @@ type Parameter interface {
 type Parameters map[string]Parameter
 
 type SandboxHookNative struct {
-	Type string `wst:type`
+	Type string `wst:"type,enum=start|restart|stop"`
 }
 
 type SandboxHookShellCommand struct {
@@ -129,9 +129,11 @@ type Server struct {
 }
 
 type OutputExpectation struct {
-	Order    string   `wst:"order"`
-	Match    string   `wst:"match"`
-	Messages []string `wst:"messages"`
+	Order          string   `wst:"order,enum=fixed|random,default=fixed"`
+	Match          string   `wst:"match,enum=exact|regexp,default=exact"`
+	Type           string   `wst:"type,enum=stdout|stderr|any,default=any"`
+	RenderTemplate bool     `wst:"render_template,default=true"`
+	Messages       []string `wst:"messages"`
 }
 
 type OutputExpectationWrapper struct {
@@ -143,13 +145,12 @@ type Headers map[string]string
 
 type ResponseBody struct {
 	Content        string `wst:"content"`
-	Match          string `wst:"match"`
-	RenderTemplate string `wst:"render_template"`
+	Match          string `wst:"match,enum=exact|regexp,default=exact"`
+	RenderTemplate bool   `wst:"render_template,default=true"`
 }
 
 type ResponseExpectation struct {
-	Type    string       `wst:"type,enum=stdout,stderr,any"`
-	Request string       `wst:"request"`
+	Request string       `wst:"request,default=last"`
 	Headers Headers      `wst:"headers"`
 	Body    ResponseBody `wst:"content,string=Content"`
 }
@@ -176,8 +177,8 @@ type ServiceConfig struct {
 
 type Service struct {
 	Server  string                   `wst:"server"`
-	Sandbox string                   `wst:"sandbox"`
-	Scripts []string                 `wst:"scripts,bool=local|docker|kubernetes,enum=local|docker|kubernetes"`
+	Sandbox string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
+	Scripts []string                 `wst:"scripts,factory=createScripts"`
 	Configs map[string]ServiceConfig `wst:"configs"`
 }
 
@@ -193,7 +194,7 @@ type ExpectAction interface {
 }
 
 type RequestAction struct {
-	Id      string  `wst:"id"`
+	Id      string  `wst:"id,default=last"`
 	Path    string  `wst:"path"`
 	Method  string  `wst:"method"`
 	Headers Headers `wst:"headers"`
