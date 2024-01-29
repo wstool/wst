@@ -449,13 +449,19 @@ $defs:
     properties:
       id:
         title: Request ID
+        description: Identifies request which can be then used in response expectation.
         type: string
+        default: last
       path:
         title: Request path
+        description: Request URL path which can also contain query parameters.
         type: string
+        default: /
       method:
         title: Request method
         type: string
+        enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
+        default: GET
       headers:
         '#/$defs/headers'
 

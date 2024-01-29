@@ -178,8 +178,8 @@ type ServiceConfig struct {
 type Service struct {
 	Server  string                   `wst:"server"`
 	Sandbox string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
-	Scripts []string                 `wst:"scripts,factory=createScripts"`
-	Configs map[string]ServiceConfig `wst:"configs"`
+	Scripts []string                 `wst:"scripts,keymatch=Server.Scripts"`
+	Configs map[string]ServiceConfig `wst:"configs,keymatch=Server.Configs"`
 }
 
 type ActionRuntime interface {
@@ -196,14 +196,14 @@ type ExpectAction interface {
 type RequestAction struct {
 	Id      string  `wst:"id,default=last"`
 	Path    string  `wst:"path"`
-	Method  string  `wst:"method"`
+	Method  string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
 	Headers Headers `wst:"headers"`
 }
 
 type Instance struct {
 	Name     string             `wst:"name"`
 	Scripts  map[string]Script  `wst:"scripts,string=Content"`
-	Services map[string]Service `wst:"services"`
+	Services map[string]Service `wst:"services,loadable"`
 	Actions  []Action           `wst:"actions,factory=createActions"`
 }
 
