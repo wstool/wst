@@ -106,10 +106,10 @@ func (p ConfigParser) parseTag(tag string) map[string]string {
 	return params
 }
 
-func (p ConfigParser) processFactoryParam(factory string, data interface{}, fieldValue reflect.Value) (interface{}, error) {
+func (p ConfigParser) processFactoryParam(factory string, data interface{}, fieldValue reflect.Value) error {
 	factoryFunc, found := p.factories[factory]
 	if !found {
-		return nil, fmt.Errorf("factory function %s not found", factory)
+		return fmt.Errorf("factory function %s not found", factory)
 	}
 	return factoryFunc(data, fieldValue)
 }
@@ -166,44 +166,49 @@ func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName 
 	return fmt.Errorf("keys %v are not valid for field %s", keys, fieldName)
 }
 
-func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValue reflect.Value) (interface{}, error) {
+func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValue reflect.Value) (bool, error) {
 	strData, isString := data.(string)
 	if !isString {
-		return data, nil // If not a string, just ignore.
+		return false, nil // If not a string, mark it as not done and just ignore.
 	}
 
-	// Initialize the field to its zero value (to set default values)
-	fieldValue.Set(reflect.Zero(fieldValue.Type()))
+	elem := reflect.New(fieldValue.Type().Elem())
+
+	// Use an empty map as temporary data to populate the struct
+	err := p.parseStruct(make(map[string]interface{}), elem.Interface())
+	if err != nil {
+		return false, fmt.Errorf("error parsing struct for string param: %v", err)
+	}
 
 	// Set the string value to the appropriate sub-field
-	err := setFieldByName(fieldValue.Addr().Interface(), fieldName, strData)
+	err = setFieldByName(fieldValue.Addr().Interface(), fieldName, strData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set field %s : %v", fieldName, err)
+		return false, fmt.Errorf("failed to set field %s : %v", fieldName, err)
 	}
-	return fieldValue.Addr().Interface(), nil
+	return true, nil
 }
 
 // setFieldByName sets the field of the struct v with the given name to the specified value.
 // The value v must be a pointer to a struct, and the field should be exported and settable.
 func setFieldByName(v interface{}, name string, value string) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
-		// If its not a struct, check if the value is a map
-		if rv.Kind() == reflect.Map {
-			return processMapValue(rv, name, value)
+	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
+		// For struct:
+		fv := rv.Elem().FieldByName(name)
+		if !fv.IsValid() {
+			return fmt.Errorf("not a valid field name: %s", name)
 		}
+		if !fv.CanSet() {
+			return fmt.Errorf("cannot set the field: %s", name)
+		}
+		fv.SetString(value)
+	} else if rv.Kind() == reflect.Map {
+		// For map[string]interface{}:
+		return processMapValue(rv, name, value)
+	} else {
 		return errors.New("v must be a pointer to a struct or a map")
 	}
 
-	fv := rv.Elem().FieldByName(name)
-	if !fv.IsValid() {
-		return fmt.Errorf("not a valid field name: %s", name)
-	}
-	if !fv.CanSet() {
-		return fmt.Errorf("cannot set the field: %s", name)
-	}
-
-	fv.SetString(value)
 	return nil
 }
 
@@ -227,15 +232,68 @@ func processMapValue(rv reflect.Value, fieldName, strVal string) error {
 	return nil
 }
 
+// assignField assigns the provided data to the fieldValue.
+func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fieldName string) error {
+	switch fieldValue.Kind() {
+	case reflect.Struct:
+		dataMap, ok := data.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
+		}
+		return p.parseStruct(dataMap, fieldValue.Addr().Interface())
+	case reflect.Map:
+		dataMap, ok := data.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
+		}
+		for key, val := range dataMap {
+			tempFieldValue := fieldValue.FieldByName(key)
+			if tempFieldValue.IsValid() {
+				return p.assignField(val, tempFieldValue, key)
+			}
+		}
+	case reflect.Slice:
+		dataSlice, ok := data.([]interface{})
+		if !ok {
+			return fmt.Errorf("unable to convert data for field %s to []interface{}", fieldName)
+		}
+		for i, val := range dataSlice {
+			return p.assignField(val, fieldValue.Index(i), fmt.Sprintf("%s[%d]", fieldName, i))
+		}
+	default:
+		v := reflect.ValueOf(data)
+		if v.Type().ConvertibleTo(fieldValue.Type()) {
+			fieldValue.Set(v.Convert(fieldValue.Type()))
+			return nil
+		}
+		return fmt.Errorf("field %s could not be set", fieldName)
+	}
+	return nil
+}
+
 // parseField parses a struct field based on data and params
 func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fieldName string, params map[string]string) error {
 	var err error
 
 	if factory, hasFactory := params[paramFactory]; hasFactory {
-		if data, err = p.processFactoryParam(factory, data, fieldValue); err != nil {
+		if err = p.processFactoryParam(factory, data, fieldValue); err != nil {
 			return err
 		}
-	} else if _, isLoadable := params[paramLoadable]; isLoadable {
+		// factory should set everything so there is no need to continue
+		return nil
+	}
+
+	if stringValue, hasString := params[paramString]; hasString {
+		var done bool
+		if done, err = p.processStringParam(stringValue, data, fieldValue); err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+	}
+
+	if _, isLoadable := params[paramLoadable]; isLoadable {
 		if data, err = p.processLoadableParam(data, fieldValue); err != nil {
 			return err
 		}
@@ -251,6 +309,11 @@ func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fie
 		if err = p.processKeysParam(keys, data, fieldName); err != nil {
 			return err
 		}
+	}
+
+	// assign the processed data to the field
+	if err = p.assignField(data, fieldValue, fieldName); err != nil {
+		return err
 	}
 
 	return nil
