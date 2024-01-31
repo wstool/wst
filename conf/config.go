@@ -27,6 +27,22 @@ type Options struct {
 }
 
 func ExecuteConfigs(options Options, env app.Env) error {
+	loader := CreateLoader(env)
+	loadedConfigs, err := loader.LoadConfigs(options.Configs)
+	if err != nil {
+		return err
+	}
+	// TODO: support other options
+
+	parser := CreateParser(env)
+	for _, loadedConfig := range loadedConfigs {
+		config := &Config{}
+		err = parser.ParseConfig(loadedConfig.Data, config)
+		if err != nil {
+			return err
+		}
+		fmt.Println(config)
+	}
 	fmt.Println(options)
 	return nil
 }
