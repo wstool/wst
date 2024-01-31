@@ -1,0 +1,7 @@
+with-expecter: true
+packages:
+  github.com/bukka/wst/app:
+    config:
+      dir: mocks/app
+    interfaces:
+      Env: {}
