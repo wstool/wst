@@ -408,6 +408,81 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 	}
 }
 
+type AssignFieldTestStruct struct {
+	A string
+	B int
+	C []string
+	D map[string]int
+}
+
+type AssignFieldAnotherStruct struct {
+	E string
+	F bool
+}
+
+type AssignFieldParentStruct struct {
+	Child AssignFieldAnotherStruct
+}
+
+func Test_ConfigParser_assignField(t *testing.T) {
+	p := ConfigParser{env: nil} // Initialize appropriately
+
+	tests := []struct {
+		name      string
+		fieldName string
+		data      interface{}
+		value     interface{}
+		wantErr   bool
+	}{
+		{
+			name:      "assign struct field",
+			fieldName: "A",
+			data:      "TestA",
+			value:     &AssignFieldTestStruct{},
+			wantErr:   false,
+		},
+		{
+			name:      "assign tuple in map field",
+			fieldName: "D",
+			data:      map[string]interface{}{"test": 7},
+			value:     &AssignFieldTestStruct{},
+			wantErr:   false,
+		},
+		{
+			name:      "assign array field",
+			fieldName: "C",
+			data:      []interface{}{"TestA", "TestB"},
+			value:     &AssignFieldTestStruct{},
+			wantErr:   false,
+		},
+		{
+			name:      "assign struct field with mismatched type should error",
+			fieldName: "A",
+			data:      5,
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+		},
+		{
+			name:      "assign to nested struct field",
+			fieldName: "Child",
+			data:      map[string]interface{}{"E": "NestedTest", "F": true},
+			value:     &AssignFieldParentStruct{},
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fieldValue := reflect.ValueOf(tt.value).Elem().FieldByName(tt.fieldName)
+			err := p.assignField(tt.data, fieldValue, tt.fieldName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("assignField() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
 func TestConfigParser_ParseConfig(t *testing.T) {
 	type fields struct {
 		env       app.Env
@@ -434,37 +509,6 @@ func TestConfigParser_ParseConfig(t *testing.T) {
 				factories: tt.fields.factories,
 			}
 			tt.wantErr(t, p.ParseConfig(tt.args.data, tt.args.config), fmt.Sprintf("ParseConfig(%v, %v)", tt.args.data, tt.args.config))
-		})
-	}
-}
-
-func TestConfigParser_assignField(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    loader.Loader
-		factories map[string]factoryFunc
-	}
-	type args struct {
-		data       interface{}
-		fieldValue reflect.Value
-		fieldName  string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr assert.ErrorAssertionFunc
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
-			}
-			tt.wantErr(t, p.assignField(tt.args.data, tt.args.fieldValue, tt.args.fieldName), fmt.Sprintf("assignField(%v, %v, %v)", tt.args.data, tt.args.fieldValue, tt.args.fieldName))
 		})
 	}
 }

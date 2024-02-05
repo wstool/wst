@@ -275,27 +275,42 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 		if !ok {
 			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
 		}
+		if fieldValue.IsNil() {
+			// Initialize a new map
+			fieldValue.Set(reflect.MakeMap(fieldValue.Type()))
+		}
 		for key, val := range dataMap {
-			tempFieldValue := fieldValue.FieldByName(key)
-			if tempFieldValue.IsValid() {
-				return p.assignField(val, tempFieldValue, key)
+			newVal := reflect.New(fieldValue.Type().Elem())
+			err := p.assignField(val, newVal.Elem(), fieldName)
+			if err != nil {
+				return err
 			}
+			fieldValue.SetMapIndex(reflect.ValueOf(key), newVal.Elem())
 		}
 	case reflect.Slice:
 		dataSlice, ok := data.([]interface{})
 		if !ok {
 			return fmt.Errorf("unable to convert data for field %s to []interface{}", fieldName)
 		}
+		if fieldValue.IsNil() || fieldValue.Len() < len(dataSlice) {
+			// Make a new slice to accommodate all elements
+			fieldValue.Set(reflect.MakeSlice(fieldValue.Type(), len(dataSlice), len(dataSlice)))
+		}
 		for i, val := range dataSlice {
-			return p.assignField(val, fieldValue.Index(i), fmt.Sprintf("%s[%d]", fieldName, i))
+			err := p.assignField(val, fieldValue.Index(i), fmt.Sprintf("%s[%d]", fieldName, i))
+			if err != nil {
+				return err
+			}
 		}
 	default:
 		v := reflect.ValueOf(data)
-		if v.Type().ConvertibleTo(fieldValue.Type()) {
-			fieldValue.Set(v.Convert(fieldValue.Type()))
-			return nil
+		if fieldValue.Type().Kind() != v.Type().Kind() {
+			return fmt.Errorf("field %s could not be set due to type mismatch", fieldName)
 		}
-		return fmt.Errorf("field %s could not be set", fieldName)
+		if !v.Type().ConvertibleTo(fieldValue.Type()) {
+			return fmt.Errorf("field %s could not be set", fieldName)
+		}
+		fieldValue.Set(v.Convert(fieldValue.Type()))
 	}
 	return nil
 }
