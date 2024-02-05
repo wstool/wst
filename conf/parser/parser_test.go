@@ -335,38 +335,75 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 	}
 }
 
-func TestConfigParser_processStringParam(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    loader.Loader
-		factories map[string]factoryFunc
+type TestStruct struct {
+	StringField string
+}
+
+type ParentStruct struct {
+	Child TestStruct
+}
+
+type TestMapStruct struct {
+	MapField map[string]TestStruct
+}
+
+func Test_ConfigParser_processStringParam(t *testing.T) {
+	// Prepare ConfigParser
+	p := ConfigParser{env: nil} // you may need to initialize this with suitable fields based on your implementation
+
+	// Testing data setup
+	dataVal := "stringValue"
+
+	var structVal ParentStruct
+
+	// Testing data setup for map
+	mapDataVal := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
 	}
-	type args struct {
+
+	var mapStructVal TestMapStruct
+
+	tests := []struct {
+		name       string
 		fieldName  string
 		data       interface{}
 		fieldValue reflect.Value
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    bool
-		wantErr assert.ErrorAssertionFunc
+		wantErr    bool
+		want       interface{}
 	}{
-		// TODO: Add test cases.
+		{
+			name:       "process string param in struct field",
+			fieldName:  "StringField",
+			data:       dataVal,
+			fieldValue: reflect.ValueOf(&structVal.Child),
+			wantErr:    false,
+			want:       TestStruct{StringField: dataVal},
+		},
+		{
+			name:       "process map param",
+			fieldName:  "StringField",
+			data:       mapDataVal,
+			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			wantErr:    false,
+			want: map[string]TestStruct{
+				"key1": TestStruct{StringField: "value1"},
+				"key2": TestStruct{StringField: "value2"},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
-			}
-			got, err := p.processStringParam(tt.args.fieldName, tt.args.data, tt.args.fieldValue)
-			if !tt.wantErr(t, err, fmt.Sprintf("processStringParam(%v, %v, %v)", tt.args.fieldName, tt.args.data, tt.args.fieldValue)) {
+			_, err := p.processStringParam(tt.fieldName, tt.data, tt.fieldValue)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("processStringParam() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equalf(t, tt.want, got, "processStringParam(%v, %v, %v)", tt.args.fieldName, tt.args.data, tt.args.fieldValue)
+
+			if got := tt.fieldValue.Elem().Interface(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("processStringParam() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
@@ -509,46 +546,6 @@ func TestCreateParser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, CreateParser(tt.args.env, tt.args.loader), "CreateParser(%v, %v)", tt.args.env, tt.args.loader)
-		})
-	}
-}
-
-func Test_processMapValue(t *testing.T) {
-	type args struct {
-		rv        reflect.Value
-		fieldName string
-		strVal    string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr assert.ErrorAssertionFunc
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.wantErr(t, processMapValue(tt.args.rv, tt.args.fieldName, tt.args.strVal), fmt.Sprintf("processMapValue(%v, %v, %v)", tt.args.rv, tt.args.fieldName, tt.args.strVal))
-		})
-	}
-}
-
-func Test_setFieldByName(t *testing.T) {
-	type args struct {
-		v     interface{}
-		name  string
-		value string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr assert.ErrorAssertionFunc
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.wantErr(t, setFieldByName(tt.args.v, tt.args.name, tt.args.value), fmt.Sprintf("setFieldByName(%v, %v, %v)", tt.args.v, tt.args.name, tt.args.value))
 		})
 	}
 }
