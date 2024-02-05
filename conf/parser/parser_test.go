@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
@@ -10,6 +11,7 @@ import (
 	"github.com/bukka/wst/mocks/externalMocks"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
@@ -266,19 +268,13 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 	mockLoadedConfig.On("Path").Return("/configs/test.json")
 	mockLoadedConfig.On("Data").Return(map[string]interface{}{"key": "value"})
 
-	mockLoader := &confMocks.MockLoader{}
-
-	p := ConfigParser{
-		env:    nil, // replace with necessary mock if necessary
-		loader: mockLoader,
-	}
-
 	tests := []struct {
 		name       string
 		data       interface{}
 		fieldValue reflect.Value
 		want       interface{}
 		wantErr    bool
+		errMsg     string
 	}{
 		{
 			name:       "Field value kind is map",
@@ -300,19 +296,40 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			fieldValue: reflect.ValueOf("string"), // unsupported kind
 			want:       nil,
 			wantErr:    true,
+			errMsg:     "type of field is neither map nor slice (kind=string)",
+		},
+		{
+			name:       "Error from GlobConfigs",
+			data:       "*.json",
+			fieldValue: reflect.ValueOf(map[string]map[string]interface{}{}),
+			want:       nil,
+			wantErr:    true,
+			errMsg:     "loading configs: forced GlobConfigs error",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
-			got, err := p.processLoadableParam(tt.data, tt.fieldValue)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("processLoadableParam() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			mockLoader := &confMocks.MockLoader{}
+			if tt.name != "Error from GlobConfigs" {
+				mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+			} else {
+				mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("processLoadableParam() got = %v, want %v", got, tt.want)
+
+			p := ConfigParser{
+				env:    nil, // replace with necessary mock if necessary
+				loader: mockLoader,
+			}
+			got, err := p.processLoadableParam(tt.data, tt.fieldValue)
+
+			// if an error is expected
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg) // check that the error message is as expected
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}
