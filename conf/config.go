@@ -34,7 +34,7 @@ func ExecuteConfigs(options Options, env app.Env) error {
 	}
 	// TODO: support other options
 
-	parser := CreateParser(env)
+	parser := CreateParser(env, loader)
 	for _, loadedConfig := range loadedConfigs {
 		config := &Config{}
 		err = parser.ParseConfig(loadedConfig.Data, config)

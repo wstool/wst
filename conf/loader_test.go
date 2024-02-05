@@ -16,7 +16,7 @@ package conf
 
 import (
 	"github.com/bukka/wst/app"
-	mocks "github.com/bukka/wst/mocks/app"
+	appMocks "github.com/bukka/wst/mocks/app"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// mock app.Env
-	mockEnv := &mocks.MockEnv{}
+	mockEnv := &appMocks.MockEnv{}
 	mockEnv.On("Fs").Return(mockFs)
 
 	type args struct {
@@ -110,7 +110,7 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 	assert.NoError(t, err)
 
 	// mock app.Env
-	mockEnv := &mocks.MockEnv{}
+	mockEnv := &appMocks.MockEnv{}
 	mockEnv.On("Fs").Return(mockFs)
 
 	type args struct {
@@ -171,7 +171,7 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 	assert.NoError(t, err)
 
 	// mock app.Env
-	mockEnv := &mocks.MockEnv{}
+	mockEnv := &appMocks.MockEnv{}
 	mockEnv.On("Fs").Return(mockFs)
 
 	type args struct {
@@ -228,7 +228,7 @@ func TestCreateLoader(t *testing.T) {
 	mockFs := afero.NewMemMapFs()
 
 	// mock app.Env
-	mockEnv := &mocks.MockEnv{}
+	mockEnv := &appMocks.MockEnv{}
 	mockEnv.On("Fs").Return(mockFs)
 
 	tests := []struct {

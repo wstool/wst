@@ -16,58 +16,11 @@ package cmd
 
 import (
 	"github.com/bukka/wst/app"
-	"github.com/spf13/afero"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
+	appMocks "github.com/bukka/wst/mocks/app"
+	externalMocks "github.com/bukka/wst/mocks/external"
 	"reflect"
 	"testing"
 )
-
-type MockEnv struct {
-	MockLogger  *MockLogger
-	EnvVars     map[string]string
-	MemFs       afero.Fs
-	UserHomeDir string
-}
-
-func (e *MockEnv) Logger() *zap.SugaredLogger {
-	return e.MockLogger.SugaredLogger
-}
-
-func (e *MockEnv) LookupEnvVar(key string) (string, bool) {
-	val, ok := e.EnvVars[key]
-	return val, ok
-}
-
-func (e *MockEnv) Fs() afero.Fs {
-	return e.MemFs
-}
-
-func (e *MockEnv) GetUserHomeDir() (string, error) {
-	return e.UserHomeDir, nil
-}
-
-type MockLogger struct {
-	SugaredLogger *zap.SugaredLogger
-	ObservedLogs  *observer.ObservedLogs
-}
-
-func NewMockLogger() *MockLogger {
-	core, observedLogs := observer.New(zap.InfoLevel)
-	logger := zap.New(core)
-	return &MockLogger{
-		SugaredLogger: logger.Sugar(),
-		ObservedLogs:  observedLogs,
-	}
-}
-
-func (l *MockLogger) Messages() []string {
-	var messages []string
-	for _, log := range l.ObservedLogs.All() {
-		messages = append(messages, log.Message)
-	}
-	return messages
-}
 
 func Test_getOverwrites(t *testing.T) {
 	type args struct {
@@ -76,11 +29,12 @@ func Test_getOverwrites(t *testing.T) {
 		env             app.Env
 	}
 	tests := []struct {
-		name      string
-		args      args
-		envVars   map[string]string
-		want      map[string]string
-		wantWarns []string
+		name           string
+		args           args
+		overwrite      string
+		overwriteFound bool
+		want           map[string]string
+		wantWarns      []string
 	}{
 		{
 			name: "no overwrite values, no environment variables",
@@ -88,9 +42,10 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{},
 				noEnvs:          true,
 			},
-			envVars:   map[string]string{},
-			want:      map[string]string{},
-			wantWarns: nil,
+			overwrite:      "",
+			overwriteFound: false,
+			want:           map[string]string{},
+			wantWarns:      nil,
 		},
 		{
 			name: "one valid overwrite value, no environment variables",
@@ -98,9 +53,10 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value"},
 				noEnvs:          true,
 			},
-			envVars:   map[string]string{},
-			want:      map[string]string{"key": "value"},
-			wantWarns: nil,
+			overwrite:      "",
+			overwriteFound: false,
+			want:           map[string]string{"key": "value"},
+			wantWarns:      nil,
 		},
 		{
 			name: "one invalid overwrite value, no environment variables",
@@ -108,7 +64,7 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"keyvalue"},
 				noEnvs:          true,
 			},
-			envVars:   map[string]string{},
+			overwrite: "",
 			want:      map[string]string{},
 			wantWarns: []string{"Invalid key-value pair: keyvalue"},
 		},
@@ -118,9 +74,10 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value", "keyvalue"},
 				noEnvs:          true,
 			},
-			envVars:   map[string]string{},
-			want:      map[string]string{"key": "value"},
-			wantWarns: []string{"Invalid key-value pair: keyvalue"},
+			overwrite:      "",
+			overwriteFound: false,
+			want:           map[string]string{"key": "value"},
+			wantWarns:      []string{"Invalid key-value pair: keyvalue"},
 		},
 		{
 			name: "environment variables considered",
@@ -128,9 +85,10 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value"},
 				noEnvs:          false,
 			},
-			envVars:   map[string]string{"WST_OVERWRITE": "key2=value2"},
-			want:      map[string]string{"key": "value", "key2": "value2"},
-			wantWarns: nil,
+			overwrite:      "key2=value2",
+			overwriteFound: true,
+			want:           map[string]string{"key": "value", "key2": "value2"},
+			wantWarns:      nil,
 		},
 		{
 			name: "environment variables with multiple key values",
@@ -138,9 +96,10 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value"},
 				noEnvs:          false,
 			},
-			envVars:   map[string]string{"WST_OVERWRITE": "key2=value2:key3=value3:key4=value4"},
-			want:      map[string]string{"key": "value", "key2": "value2", "key3": "value3", "key4": "value4"},
-			wantWarns: nil,
+			overwrite:      "key2=value2:key3=value3:key4=value4",
+			overwriteFound: true,
+			want:           map[string]string{"key": "value", "key2": "value2", "key3": "value3", "key4": "value4"},
+			wantWarns:      nil,
 		},
 		{
 			name: "environment variables with invalid pairs considered",
@@ -148,23 +107,21 @@ func Test_getOverwrites(t *testing.T) {
 				overwriteValues: []string{"key=value"},
 				noEnvs:          false,
 			},
-			envVars:   map[string]string{"WST_OVERWRITE": "key2value2"},
-			want:      map[string]string{"key": "value"},
-			wantWarns: []string{"Invalid environment key-value pair: key2value2"},
+			overwrite:      "key2value2",
+			overwriteFound: true,
+			want:           map[string]string{"key": "value"},
+			wantWarns:      []string{"Invalid environment key-value pair: key2value2"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup mocks
-			mockLogger := NewMockLogger()
+			mockLogger := externalMocks.NewMockLogger()
 
-			mockEnv := &MockEnv{
-				MockLogger:  mockLogger,
-				EnvVars:     tt.envVars,
-				MemFs:       afero.NewMemMapFs(),
-				UserHomeDir: "/home/mockuser",
-			}
+			mockEnv := &appMocks.MockEnv{}
+			mockEnv.On("Logger").Return(mockLogger.SugaredLogger)
+			mockEnv.On("LookupEnvVar", "WST_OVERWRITE").Return(tt.overwrite, tt.overwriteFound)
 
 			tt.args.env = mockEnv // Assign mockEnv to your test case
 

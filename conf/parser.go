@@ -58,7 +58,7 @@ func isValidParam(param string) bool {
 	case paramKeys:
 		fallthrough
 	case paramString:
-		fallthrough
+		return true
 	default:
 		return false
 	}
@@ -114,6 +114,28 @@ func (p ConfigParser) processFactoryParam(factory string, data interface{}, fiel
 	return factoryFunc(data, fieldValue)
 }
 
+func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
+	enumList := strings.Split(enums, "|")
+	for _, enum := range enumList {
+		if enum == data {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("values %v are not valid for field %s", enums, fieldName)
+}
+
+func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
+	keysList := strings.Split(keys, "|")
+	for _, key := range keysList {
+		if _, ok := data.(map[string]interface{})[key]; ok {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("keys %v are not valid for field %s", keys, fieldName)
+}
+
 func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value) (interface{}, error) {
 	loadableData, isString := data.(string)
 	if isString {
@@ -142,28 +164,6 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 		}
 	}
 	return data, nil
-}
-
-func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
-	enumList := strings.Split(enums, "|")
-	for _, enum := range enumList {
-		if enum != data {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("values %v are not valid for field %s", enums, fieldName)
-}
-
-func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
-	keysList := strings.Split(keys, "|")
-	for _, key := range keysList {
-		if _, ok := data.(map[string]interface{})[key]; ok {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("keys %v are not valid for field %s", keys, fieldName)
 }
 
 func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValue reflect.Value) (bool, error) {
