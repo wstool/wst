@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conf
+package parser
 
 import (
 	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/loader"
+	"github.com/bukka/wst/conf/types"
 	"reflect"
 	"strings"
 )
@@ -33,12 +35,12 @@ const (
 )
 
 type Parser interface {
-	ParseConfig(data map[string]interface{}, config *Config) error
+	ParseConfig(data map[string]interface{}, config *types.Config) error
 }
 
 type ConfigParser struct {
 	env       app.Env
-	loader    Loader
+	loader    loader.Loader
 	factories map[string]factoryFunc
 }
 
@@ -148,14 +150,14 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 		case reflect.Map:
 			loadedData := make(map[string]map[string]interface{})
 			for _, config := range configs {
-				loadedData[config.Path] = config.Data
+				loadedData[config.Path()] = config.Data()
 			}
 			return loadedData, nil
 
 		case reflect.Slice:
 			loadedData := make([]map[string]interface{}, len(configs))
 			for i, config := range configs {
-				loadedData[i] = config.Data
+				loadedData[i] = config.Data()
 			}
 			return loadedData, nil
 
@@ -356,11 +358,11 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, s interface{}) er
 	return nil
 }
 
-func (p ConfigParser) ParseConfig(data map[string]interface{}, config *Config) error {
+func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config) error {
 	return p.parseStruct(data, config)
 }
 
-func CreateParser(env app.Env, loader Loader) Parser {
+func CreateParser(env app.Env, loader loader.Loader) Parser {
 	return &ConfigParser{
 		env:       env,
 		loader:    loader,

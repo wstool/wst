@@ -1,4 +1,4 @@
-package conf
+package parser
 
 import "reflect"
 

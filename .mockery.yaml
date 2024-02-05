@@ -2,6 +2,14 @@ with-expecter: true
 packages:
   github.com/bukka/wst/app:
     config:
-      dir: mocks/app
+      dir: mocks/appMocks
+      outpkg: appMocks
     interfaces:
       Env: {}
+  github.com/bukka/wst/conf/loader:
+    config:
+      dir: mocks/confMocks
+      outpkg: confMocks
+    interfaces:
+      LoadedConfig: {}
+      Loader: {}

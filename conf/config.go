@@ -17,6 +17,9 @@ package conf
 import (
 	"fmt"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/loader"
+	"github.com/bukka/wst/conf/parser"
+	"github.com/bukka/wst/conf/types"
 )
 
 type Options struct {
@@ -27,17 +30,17 @@ type Options struct {
 }
 
 func ExecuteConfigs(options Options, env app.Env) error {
-	loader := CreateLoader(env)
+	loader := loader.CreateLoader(env)
 	loadedConfigs, err := loader.LoadConfigs(options.Configs)
 	if err != nil {
 		return err
 	}
 	// TODO: support other options
 
-	parser := CreateParser(env, loader)
+	parser := parser.CreateParser(env, loader)
 	for _, loadedConfig := range loadedConfigs {
-		config := &Config{}
-		err = parser.ParseConfig(loadedConfig.Data, config)
+		config := &types.Config{}
+		err = parser.ParseConfig(loadedConfig.Data(), config)
 		if err != nil {
 			return err
 		}

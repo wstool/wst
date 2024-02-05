@@ -1,10 +1,13 @@
-package conf
+package parser
 
 import (
 	"fmt"
 	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/app"
-	externalMocks "github.com/bukka/wst/mocks/external"
+	"github.com/bukka/wst/conf/loader"
+	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/mocks/appMocks"
+	"github.com/bukka/wst/mocks/confMocks"
+	"github.com/bukka/wst/mocks/externalMocks"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"reflect"
@@ -258,38 +261,59 @@ func Test_ConfigParser_processKeysParam(t *testing.T) {
 		})
 	}
 }
+func Test_ConfigParser_processLoadableParam(t *testing.T) {
+	mockLoadedConfig := &confMocks.MockLoadedConfig{}
+	mockLoadedConfig.On("Path").Return("/configs/test.json")
+	mockLoadedConfig.On("Data").Return(map[string]interface{}{"key": "value"})
 
-func TestConfigParser_processLoadableParam(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    Loader
-		factories map[string]factoryFunc
+	mockLoader := &confMocks.MockLoader{}
+
+	p := ConfigParser{
+		env:    nil, // replace with necessary mock if necessary
+		loader: mockLoader,
 	}
-	type args struct {
+
+	tests := []struct {
+		name       string
 		data       interface{}
 		fieldValue reflect.Value
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    interface{}
-		wantErr assert.ErrorAssertionFunc
+		want       interface{}
+		wantErr    bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:       "Field value kind is map",
+			data:       "*.json",
+			fieldValue: reflect.ValueOf(map[string]map[string]interface{}{}),
+			want:       map[string]map[string]interface{}{"/configs/test.json": {"key": "value"}},
+			wantErr:    false,
+		},
+		{
+			name:       "Field value kind is slice",
+			data:       "*.json",
+			fieldValue: reflect.ValueOf([]map[string]interface{}{}),
+			want:       []map[string]interface{}{{"key": "value"}},
+			wantErr:    false,
+		},
+		{
+			name:       "Field value kind is string (unsupported kind) - should trigger error",
+			data:       "*.json",
+			fieldValue: reflect.ValueOf("string"), // unsupported kind
+			want:       nil,
+			wantErr:    true,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
-			}
-			got, err := p.processLoadableParam(tt.args.data, tt.args.fieldValue)
-			if !tt.wantErr(t, err, fmt.Sprintf("processLoadableParam(%v, %v)", tt.args.data, tt.args.fieldValue)) {
+			mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+			got, err := p.processLoadableParam(tt.data, tt.fieldValue)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("processLoadableParam() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equalf(t, tt.want, got, "processLoadableParam(%v, %v)", tt.args.data, tt.args.fieldValue)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("processLoadableParam() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
@@ -297,7 +321,7 @@ func TestConfigParser_processLoadableParam(t *testing.T) {
 func TestConfigParser_processStringParam(t *testing.T) {
 	type fields struct {
 		env       app.Env
-		loader    Loader
+		loader    loader.Loader
 		factories map[string]factoryFunc
 	}
 	type args struct {
@@ -333,12 +357,12 @@ func TestConfigParser_processStringParam(t *testing.T) {
 func TestConfigParser_ParseConfig(t *testing.T) {
 	type fields struct {
 		env       app.Env
-		loader    Loader
+		loader    loader.Loader
 		factories map[string]factoryFunc
 	}
 	type args struct {
 		data   map[string]interface{}
-		config *Config
+		config *types.Config
 	}
 	tests := []struct {
 		name    string
@@ -363,7 +387,7 @@ func TestConfigParser_ParseConfig(t *testing.T) {
 func TestConfigParser_assignField(t *testing.T) {
 	type fields struct {
 		env       app.Env
-		loader    Loader
+		loader    loader.Loader
 		factories map[string]factoryFunc
 	}
 	type args struct {
@@ -394,7 +418,7 @@ func TestConfigParser_assignField(t *testing.T) {
 func TestConfigParser_parseField(t *testing.T) {
 	type fields struct {
 		env       app.Env
-		loader    Loader
+		loader    loader.Loader
 		factories map[string]factoryFunc
 	}
 	type args struct {
@@ -426,7 +450,7 @@ func TestConfigParser_parseField(t *testing.T) {
 func TestConfigParser_parseStruct(t *testing.T) {
 	type fields struct {
 		env       app.Env
-		loader    Loader
+		loader    loader.Loader
 		factories map[string]factoryFunc
 	}
 	type args struct {
@@ -456,7 +480,7 @@ func TestConfigParser_parseStruct(t *testing.T) {
 func TestCreateParser(t *testing.T) {
 	type args struct {
 		env    app.Env
-		loader Loader
+		loader loader.Loader
 	}
 	tests := []struct {
 		name string

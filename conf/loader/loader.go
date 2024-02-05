@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conf
+package loader
 
 import (
 	"encoding/json"
@@ -24,15 +24,28 @@ import (
 	"path/filepath"
 )
 
-type LoadedConfig struct {
-	Path string
-	Data map[string]interface{}
+type LoadedConfig interface {
+	Path() string
+	Data() map[string]interface{}
 }
 
 type Loader interface {
 	LoadConfig(path string) (LoadedConfig, error)
 	LoadConfigs(paths []string) ([]LoadedConfig, error)
 	GlobConfigs(pattern string) ([]LoadedConfig, error)
+}
+
+type LoadedConfigData struct {
+	path string
+	data map[string]interface{}
+}
+
+func (d LoadedConfigData) Path() string {
+	return d.path
+}
+
+func (d LoadedConfigData) Data() map[string]interface{} {
+	return d.data
 }
 
 type ConfigLoader struct {
@@ -44,7 +57,7 @@ func (l ConfigLoader) LoadConfig(path string) (LoadedConfig, error) {
 
 	rawData, err := afero.ReadFile(fs, path)
 	if err != nil {
-		return LoadedConfig{}, err
+		return nil, err
 	}
 	var data map[string]interface{}
 
@@ -58,16 +71,16 @@ func (l ConfigLoader) LoadConfig(path string) (LoadedConfig, error) {
 	case ".toml":
 		err = toml.Unmarshal(rawData, &data)
 	default:
-		return LoadedConfig{}, fmt.Errorf("unsupported extension: %s", extension)
+		return nil, fmt.Errorf("unsupported extension: %s", extension)
 	}
 
 	if err != nil {
-		return LoadedConfig{}, err
+		return nil, err
 	}
 
-	loadedConfig := LoadedConfig{
-		Path: path,
-		Data: data,
+	loadedConfig := LoadedConfigData{
+		path: path,
+		data: data,
 	}
 
 	return loadedConfig, nil

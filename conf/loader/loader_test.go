@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conf
+package loader
 
 import (
 	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/app"
+	"github.com/bukka/wst/mocks/appMocks"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
