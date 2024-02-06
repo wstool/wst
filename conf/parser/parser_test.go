@@ -525,7 +525,6 @@ type ParseFieldTestStruct struct {
 }
 
 func Test_ConfigParser_parseField(t *testing.T) {
-	commonFieldValue := &ParseFieldTestStruct{}
 
 	mockLoadedConfig := &confMocks.MockLoadedConfig{}
 	mockLoadedConfig.On("Path").Return("/configs/test.json")
@@ -581,10 +580,24 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
+		{
+			name:      "parse field with string param that is set",
+			fieldName: "C",
+			data:      "data",
+			params: map[string]string{
+				"string": "Value",
+			},
+			configsCalled:      false,
+			configsFound:       false,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data"}},
+			wantErr:            false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			commonFieldValue := &ParseFieldTestStruct{}
 			fieldValue := reflect.ValueOf(commonFieldValue).Elem().FieldByName(tt.fieldName)
 
 			mockLoader := &confMocks.MockLoader{}

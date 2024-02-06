@@ -167,12 +167,19 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 	return data, nil
 }
 
-func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValuePtr reflect.Value) (bool, error) {
-	fieldValue := fieldValuePtr.Elem()
-	var isMap = fieldValue.Kind() == reflect.Map
-	var isStruct = fieldValue.Kind() == reflect.Struct
+func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValue reflect.Value) (bool, error) {
+	kind := fieldValue.Kind()
 
-	if isMap {
+	if kind != reflect.Struct && kind != reflect.Interface && kind != reflect.Ptr {
+		return false, fmt.Errorf("field %s must be a struct or interface type or a pointer to such", fieldName)
+	}
+
+	if kind == reflect.Ptr || kind == reflect.Interface {
+		fieldValue = fieldValue.Elem()
+	}
+	fieldValueKind := fieldValue.Kind()
+
+	if fieldValueKind == reflect.Map {
 		mapData, ok := data.(map[string]string)
 		if !ok {
 			// Data is not a map
@@ -183,22 +190,21 @@ func (p ConfigParser) processStringParam(fieldName string, data interface{}, fie
 		if err != nil {
 			return false, err
 		}
-	} else if isStruct {
+	} else if fieldValueKind == reflect.Struct {
 		strData, isString := data.(string)
 		if !isString {
 			return false, nil // If not a string, mark it as not done and just ignore.
 		}
 
-		elem := reflect.New(fieldValuePtr.Type().Elem())
-
+		fieldValuePtrInterface := fieldValue.Addr().Interface()
 		// Use an empty map as temporary data to populate the struct
-		err := p.parseStruct(make(map[string]interface{}), elem.Interface())
+		err := p.parseStruct(make(map[string]interface{}), fieldValuePtrInterface)
 		if err != nil {
 			return false, fmt.Errorf("error parsing struct for string param: %v", err)
 		}
 
 		// Set the string value to the appropriate sub-field
-		err = p.setFieldByName(fieldValuePtr.Interface(), fieldName, strData)
+		err = p.setFieldByName(fieldValuePtrInterface, fieldName, strData)
 		if err != nil {
 			return false, fmt.Errorf("failed to set field %s : %v", fieldName, err)
 		}
