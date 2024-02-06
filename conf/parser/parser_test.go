@@ -581,7 +581,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			wantErr:            true,
 		},
 		{
-			name:      "parse field with string param that is set",
+			name:      "parse field with string param and value that is string",
 			fieldName: "C",
 			data:      "data",
 			params: map[string]string{
@@ -592,6 +592,34 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data"}},
 			wantErr:            false,
+		},
+		{
+			name:      "parse field with string param and value that is not string",
+			fieldName: "C",
+			data: map[string]interface{}{
+				"val": "data2",
+			},
+			params: map[string]string{
+				"string": "Value",
+			},
+			configsCalled:      false,
+			configsFound:       false,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data2"}},
+			wantErr:            false,
+		},
+		{
+			name:      "parse field with string param that points to invalid filed",
+			fieldName: "C",
+			data:      "data",
+			params: map[string]string{
+				"string": "NotFound",
+			},
+			configsCalled:      false,
+			configsFound:       false,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
 		},
 	}
 
