@@ -15,7 +15,6 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
@@ -204,7 +203,7 @@ func (p ConfigParser) processStringParam(fieldName string, data interface{}, fie
 			return false, fmt.Errorf("failed to set field %s : %v", fieldName, err)
 		}
 	} else {
-		return false, errors.New("v must be a pointer to a struct or a map")
+		return false, fmt.Errorf("field %s value must be a pointer to a struct or a map", fieldName)
 	}
 	return true, nil
 }
@@ -316,16 +315,8 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 }
 
 // parseField parses a struct field based on data and params
-func (p ConfigParser) parseField(data interface{}, s interface{}, fieldName string, params map[string]string) error {
+func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fieldName string, params map[string]string) error {
 	var err error
-	valueOfS := reflect.Indirect(reflect.ValueOf(s))
-	if !valueOfS.IsValid() {
-		return fmt.Errorf("invalid parameter s: cannot be accessed")
-	}
-	if !valueOfS.Type().ConvertibleTo(reflect.TypeOf(s)) {
-		return fmt.Errorf("type %T cannot be converted to the same type as s (%T)", valueOfS, s)
-	}
-	fieldValue := valueOfS.FieldByName(fieldName)
 
 	if factory, hasFactory := params[paramFactory]; hasFactory {
 		if err = p.processFactoryParam(factory, data, fieldValue); err != nil {
@@ -372,15 +363,16 @@ func (p ConfigParser) parseField(data interface{}, s interface{}, fieldName stri
 }
 
 // parseStruct parses a struct into a map of Fields
-func (p ConfigParser) parseStruct(data map[string]interface{}, s interface{}) error {
-	v := reflect.ValueOf(s)
-	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("expected a pointer to a struct, got %T", s)
+func (p ConfigParser) parseStruct(data map[string]interface{}, structure interface{}) error {
+	structValuePtr := reflect.ValueOf(structure)
+	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("expected a pointer to a struct, got %T", structure)
 	}
-	t := v.Elem().Type()
+	structValue := structValuePtr.Elem()
+	structType := structValue.Type()
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
 		tag := field.Tag.Get("wst")
 		if tag == "" {
 			continue
@@ -390,12 +382,12 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, s interface{}) er
 		if !ok {
 			fieldName = field.Name
 		}
+		fieldValue := structValue.FieldByName(field.Name)
 		if fieldData, ok := data[fieldName]; ok {
-			if err := p.parseField(fieldData, s, fieldName, params); err != nil {
+			if err := p.parseField(fieldData, fieldValue, fieldName, params); err != nil {
 				return err
 			}
 		} else {
-			fieldValue := reflect.ValueOf(s).Elem().FieldByName(field.Name)
 			if defaultValue, found := params[paramDefault]; found {
 				fieldType := fieldValue.Type()
 				defaultValueValue := reflect.ValueOf(defaultValue)
@@ -403,8 +395,7 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, s interface{}) er
 					return fmt.Errorf("default value %v for field %s cannot be converted to type %v",
 						defaultValueValue, fieldName, fieldType)
 				}
-				defaultValueConverted := defaultValueValue.Convert(fieldType)
-				fieldValue.Set(defaultValueConverted)
+				fieldValue.Set(defaultValueValue.Convert(fieldType))
 			} else {
 				fieldValue.SetZero()
 			}

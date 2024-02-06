@@ -335,16 +335,16 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 	}
 }
 
-type TestStruct struct {
+type StringParamTestStruct struct {
 	StringField string
 }
 
-type ParentStruct struct {
-	Child TestStruct
+type StringParamParentStruct struct {
+	Child StringParamTestStruct
 }
 
-type TestMapStruct struct {
-	MapField map[string]TestStruct
+type StringParamTestMapStruct struct {
+	MapField map[string]StringParamTestStruct
 }
 
 func Test_ConfigParser_processStringParam(t *testing.T) {
@@ -354,7 +354,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 	// Testing data setup
 	dataVal := "stringValue"
 
-	var structVal ParentStruct
+	var structVal StringParamParentStruct
 
 	// Testing data setup for map
 	mapDataVal := map[string]string{
@@ -362,7 +362,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 		"key2": "value2",
 	}
 
-	var mapStructVal TestMapStruct
+	var mapStructVal StringParamTestMapStruct
 
 	tests := []struct {
 		name       string
@@ -378,7 +378,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       dataVal,
 			fieldValue: reflect.ValueOf(&structVal.Child),
 			wantErr:    false,
-			want:       TestStruct{StringField: dataVal},
+			want:       StringParamTestStruct{StringField: dataVal},
 		},
 		{
 			name:       "process map param",
@@ -386,9 +386,9 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       mapDataVal,
 			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
 			wantErr:    false,
-			want: map[string]TestStruct{
-				"key1": TestStruct{StringField: "value1"},
-				"key2": TestStruct{StringField: "value2"},
+			want: map[string]StringParamTestStruct{
+				"key1": StringParamTestStruct{StringField: "value1"},
+				"key2": StringParamTestStruct{StringField: "value2"},
 			},
 		},
 	}
@@ -416,8 +416,8 @@ type AssignFieldTestStruct struct {
 }
 
 type AssignFieldAnotherStruct struct {
-	E string
-	F bool
+	E string `wst:"e"`
+	F bool   `wst:"f"`
 }
 
 type AssignFieldParentStruct struct {
@@ -428,25 +428,32 @@ func Test_ConfigParser_assignField(t *testing.T) {
 	p := ConfigParser{env: nil} // Initialize appropriately
 
 	tests := []struct {
-		name      string
-		fieldName string
-		data      interface{}
-		value     interface{}
-		wantErr   bool
+		name          string
+		fieldName     string
+		data          interface{}
+		value         interface{}
+		wantErr       bool
+		expectedValue interface{}
 	}{
 		{
-			name:      "assign struct field",
+			name:      "assign struct string field",
 			fieldName: "A",
 			data:      "TestA",
 			value:     &AssignFieldTestStruct{},
 			wantErr:   false,
+			expectedValue: &AssignFieldTestStruct{
+				A: "TestA",
+			},
 		},
 		{
-			name:      "assign tuple in map field",
-			fieldName: "D",
-			data:      map[string]interface{}{"test": 7},
+			name:      "assign struct int field",
+			fieldName: "B",
+			data:      12,
 			value:     &AssignFieldTestStruct{},
 			wantErr:   false,
+			expectedValue: &AssignFieldTestStruct{
+				B: 12,
+			},
 		},
 		{
 			name:      "assign array field",
@@ -454,20 +461,40 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      []interface{}{"TestA", "TestB"},
 			value:     &AssignFieldTestStruct{},
 			wantErr:   false,
+			expectedValue: &AssignFieldTestStruct{
+				C: []string{"TestA", "TestB"},
+			},
 		},
 		{
-			name:      "assign struct field with mismatched type should error",
-			fieldName: "A",
-			data:      5,
+			name:      "assign tuple in map field",
+			fieldName: "D",
+			data:      map[string]interface{}{"test": 7},
 			value:     &AssignFieldTestStruct{},
-			wantErr:   true,
+			wantErr:   false,
+			expectedValue: &AssignFieldTestStruct{
+				D: map[string]int{"test": 7},
+			},
+		},
+		{
+			name:          "assign struct field with mismatched type should error",
+			fieldName:     "A",
+			data:          5,
+			value:         &AssignFieldTestStruct{},
+			wantErr:       true,
+			expectedValue: &AssignFieldTestStruct{},
 		},
 		{
 			name:      "assign to nested struct field",
 			fieldName: "Child",
-			data:      map[string]interface{}{"E": "NestedTest", "F": true},
+			data:      map[string]interface{}{"e": "NestedTest", "f": true},
 			value:     &AssignFieldParentStruct{},
 			wantErr:   false,
+			expectedValue: &AssignFieldParentStruct{
+				Child: AssignFieldAnotherStruct{
+					E: "NestedTest",
+					F: true,
+				},
+			},
 		},
 	}
 
@@ -478,6 +505,11 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("assignField() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+
+			// Add a check to make sure value got updated to what was expected.
+			if !reflect.DeepEqual(tt.value, tt.expectedValue) {
+				t.Errorf("expected updated struct value to be %v, got %v", tt.expectedValue, tt.value)
 			}
 		})
 	}
