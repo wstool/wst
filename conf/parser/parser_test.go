@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/appMocks"
 	"github.com/bukka/wst/mocks/confMocks"
 	"github.com/bukka/wst/mocks/externalMocks"
@@ -515,64 +514,105 @@ func Test_ConfigParser_assignField(t *testing.T) {
 	}
 }
 
-func TestConfigParser_ParseConfig(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    loader.Loader
-		factories map[string]factoryFunc
-	}
-	type args struct {
-		data   map[string]interface{}
-		config *types.Config
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr assert.ErrorAssertionFunc
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
-			}
-			tt.wantErr(t, p.ParseConfig(tt.args.data, tt.args.config), fmt.Sprintf("ParseConfig(%v, %v)", tt.args.data, tt.args.config))
-		})
-	}
+type ParseFieldInnerTestStruct struct {
+	Value string `wst:"val"`
 }
 
-func TestConfigParser_parseField(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    loader.Loader
-		factories map[string]factoryFunc
-	}
-	type args struct {
-		data       interface{}
-		fieldValue reflect.Value
-		fieldName  string
-		params     map[string]string
-	}
+type ParseFieldTestStruct struct {
+	A string                    `wst:"a"`
+	B int                       `wst:"b"`
+	C ParseFieldInnerTestStruct `wst:"c"`
+}
+
+func Test_ConfigParser_parseField(t *testing.T) {
+	commonFieldValue := &ParseFieldTestStruct{}
+
+	mockLoadedConfig := &confMocks.MockLoadedConfig{}
+	mockLoadedConfig.On("Path").Return("/configs/test.json")
+	mockLoadedConfig.On("Data").Return(map[string]interface{}{"key": "value"})
+
+	// Insert your test cases here, I'm providing one sample case
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr assert.ErrorAssertionFunc
+		name               string
+		fieldName          string
+		data               interface{}
+		params             map[string]string
+		expectedFieldValue interface{}
+		configsCalled      bool
+		configsFound       bool
+		factories          map[string]factoryFunc
+		wantErr            bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:      "parse field with factory param found",
+			fieldName: "A",
+			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
+			params: map[string]string{
+				"factory": "test",
+			},
+			configsCalled: false,
+			configsFound:  false,
+			factories: map[string]factoryFunc{
+				"test": func(_ interface{}, fieldValue reflect.Value) error {
+					// Mimic factory behavior here
+					fieldValue.SetString("test_data")
+					return nil
+				},
+			},
+			expectedFieldValue: &ParseFieldTestStruct{A: "test_data"},
+			wantErr:            false,
+		},
+		{
+			name:      "parse field with factory param not found",
+			fieldName: "A",
+			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
+			params: map[string]string{
+				"factory": "invalid",
+			},
+			configsCalled: false,
+			configsFound:  false,
+			factories: map[string]factoryFunc{
+				"test": func(_ interface{}, fieldValue reflect.Value) error {
+					// Mimic factory behavior here
+					fieldValue.SetString("test_data")
+					return nil
+				},
+			},
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
+			fieldValue := reflect.ValueOf(commonFieldValue).Elem().FieldByName(tt.fieldName)
+
+			mockLoader := &confMocks.MockLoader{}
+			if tt.configsCalled {
+				if tt.configsFound {
+					mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+				} else {
+					mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
+				}
 			}
-			tt.wantErr(t, p.parseField(tt.args.data, tt.args.fieldValue, tt.args.fieldName, tt.args.params), fmt.Sprintf("parseField(%v, %v, %v, %v)", tt.args.data, tt.args.fieldValue, tt.args.fieldName, tt.args.params))
+
+			// Create a new ConfigParser for each test case
+			p := &ConfigParser{
+				env:       nil,
+				loader:    mockLoader,
+				factories: tt.factories,
+			}
+
+			err := p.parseField(tt.data, fieldValue, tt.name, tt.params)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseField() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if err == nil && !reflect.DeepEqual(commonFieldValue, tt.expectedFieldValue) {
+				t.Errorf("unexpected value: got %v, want %v", commonFieldValue, tt.expectedFieldValue)
+			}
 		})
 	}
 }
