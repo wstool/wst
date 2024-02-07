@@ -847,7 +847,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 }
 
 func Test_ConfigParser_parseStruct(t *testing.T) {
-	type parseTestStruct struct {
+	type parseValidTestStruct struct {
 		A           int    `wst:"name=a,default=5"`
 		B           string `wst:"name=b,default=default_str"`
 		C           int    `wst:""`
@@ -855,41 +855,79 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 		F           string
 		UnexportedE bool `wst:"name=e"`
 	}
+	type parseInvalidTagTestStruct struct {
+		A int `wst:"a,unknown=1"`
+	}
+	type parseInvalidFactoryTestStruct struct {
+		A parseValidTestStruct `wst:"a,factory=incorrect"`
+	}
+	type parseInvalidDefaultTestStruct struct {
+		A parseValidTestStruct `wst:"a,default=data"`
+	}
 
 	mockLoader := &confMocks.MockLoader{}
 	p := &ConfigParser{
-		env:    nil,
-		loader: mockLoader,
+		env:       nil,
+		loader:    mockLoader,
+		factories: map[string]factoryFunc{},
 	}
 
 	tests := []struct {
 		name           string
 		data           map[string]interface{}
-		testStruct     *parseTestStruct
-		expectedStruct *parseTestStruct
-		wantErr        bool
+		testStruct     interface{}
+		expectedStruct *parseValidTestStruct
+		errMsg         string
 	}{
 		{
 			name:           "Test valid default data",
 			data:           map[string]interface{}{},
-			testStruct:     &parseTestStruct{},
-			expectedStruct: &parseTestStruct{A: 5, B: "default_str", C: 0, D: false},
-			wantErr:        false,
+			testStruct:     &parseValidTestStruct{},
+			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false},
+			errMsg:         "",
 		},
-		// more cases here...
+		{
+			name:           "Test invalid data",
+			data:           map[string]interface{}{},
+			testStruct:     "data",
+			expectedStruct: nil,
+			errMsg:         "expected a pointer to a struct, got string",
+		},
+		{
+			name:           "Test invalid tag",
+			data:           map[string]interface{}{},
+			testStruct:     &parseInvalidTagTestStruct{},
+			expectedStruct: nil,
+			errMsg:         "invalid parameter key: unknown",
+		},
+		{
+			name:           "Test failing field due to invalid factory",
+			data:           map[string]interface{}{"a": "data"},
+			testStruct:     &parseInvalidFactoryTestStruct{},
+			expectedStruct: nil,
+			errMsg:         "factory function incorrect not found",
+		},
+		{
+			name:           "Test invalid default",
+			data:           map[string]interface{}{},
+			testStruct:     &parseInvalidDefaultTestStruct{},
+			expectedStruct: nil,
+			errMsg:         "default value data for field a cannot be converted to type parser.parseValidTestStruct",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := p.parseStruct(tt.data, tt.testStruct)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseStruct() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if err == nil && !reflect.DeepEqual(tt.testStruct, tt.expectedStruct) {
-				t.Errorf("unexpected structure content: got %v, want %v", tt.testStruct, tt.expectedStruct)
+			if tt.errMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+				if !reflect.DeepEqual(tt.testStruct, tt.expectedStruct) {
+					t.Errorf("unexpected structure content: got %v, want %v", tt.testStruct, tt.expectedStruct)
+				}
 			}
 		})
 	}
