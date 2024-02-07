@@ -689,6 +689,32 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
+		{
+			name:      "parse map field with enum when found",
+			fieldName: "A",
+			data:      "value2",
+			params: map[string]string{
+				"enum": "value1|value2|value3",
+			},
+			configsCalled:      true,
+			configsData:        nil,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{A: "value2"},
+			wantErr:            false,
+		},
+		{
+			name:      "parse map field with enum when not found",
+			fieldName: "A",
+			data:      "value5",
+			params: map[string]string{
+				"enum": "value1|value2|value3",
+			},
+			configsCalled:      true,
+			configsData:        nil,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
+		},
 	}
 
 	for _, tt := range tests {
