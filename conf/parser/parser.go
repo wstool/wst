@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/types"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -66,7 +67,7 @@ func isValidParam(param string) bool {
 }
 
 // parseTag parses the 'wst' struct tag into a Field
-func (p ConfigParser) parseTag(tag string) map[string]string {
+func (p ConfigParser) parseTag(tag string) (map[string]string, error) {
 	// split the tag into parts
 	parts := strings.Split(tag, ",")
 
@@ -100,11 +101,36 @@ func (p ConfigParser) parseTag(tag string) map[string]string {
 			}
 			params[key] = value
 		} else {
-			p.env.Logger().Errorf("Invalid parameter key: %s", key)
+			return nil, fmt.Errorf("invalid parameter key: %s", key)
 		}
 	}
 
-	return params
+	return params, nil
+}
+
+func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string, fieldValue reflect.Value) error {
+	switch fieldValue.Kind() {
+	case reflect.Int, reflect.Int32, reflect.Int64:
+		intValue, err := strconv.Atoi(defaultValue)
+		if err != nil {
+			return fmt.Errorf("default value %q for field %s can't be converted to int: %w",
+				defaultValue, fieldName, err)
+		}
+		fieldValue.SetInt(int64(intValue))
+	case reflect.Bool:
+		boolValue, err := strconv.ParseBool(defaultValue)
+		if err != nil {
+			return fmt.Errorf("default value %q for field %s can't be converted to bool: %w",
+				defaultValue, fieldName, err)
+		}
+		fieldValue.SetBool(boolValue)
+	case reflect.String:
+		fieldValue.SetString(defaultValue)
+	default:
+		return fmt.Errorf("default value %v for field %s cannot be converted to type %v",
+			defaultValue, fieldName, fieldValue.Type())
+	}
+	return nil
 }
 
 func (p ConfigParser) processFactoryParam(factory string, data interface{}, fieldValue reflect.Value) error {
@@ -392,7 +418,11 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 		if tag == "" {
 			continue
 		}
-		params := p.parseTag(tag)
+		params, err := p.parseTag(tag)
+		if err != nil {
+			return err
+		}
+
 		fieldName, ok := params[paramName]
 		if !ok {
 			fieldName = field.Name
@@ -404,13 +434,9 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 			}
 		} else {
 			if defaultValue, found := params[paramDefault]; found {
-				fieldType := fieldValue.Type()
-				defaultValueValue := reflect.ValueOf(defaultValue)
-				if !defaultValueValue.CanConvert(fieldType) {
-					return fmt.Errorf("default value %v for field %s cannot be converted to type %v",
-						defaultValueValue, fieldName, fieldType)
+				if err := p.processDefaultParam(fieldName, defaultValue, fieldValue); err != nil {
+					return err
 				}
-				fieldValue.Set(defaultValueValue.Convert(fieldType))
 			} else {
 				fieldValue.SetZero()
 			}

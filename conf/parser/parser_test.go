@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/mocks/appMocks"
 	"github.com/bukka/wst/mocks/confMocks"
-	"github.com/bukka/wst/mocks/externalMocks"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -76,10 +73,10 @@ func Test_isValidParam(t *testing.T) {
 
 func TestConfigParser_ParseTag(t *testing.T) {
 	tests := []struct {
-		name       string
-		tag        string
-		want       map[string]string
-		wantErrors []string
+		name   string
+		tag    string
+		want   map[string]string
+		errMsg string
 	}{
 		{
 			name: "Testing ParseTag - With all valid params and implicit name",
@@ -89,7 +86,7 @@ func TestConfigParser_ParseTag(t *testing.T) {
 				"default": "value1",
 				"enum":    "true",
 			},
-			wantErrors: nil,
+			errMsg: "",
 		},
 		{
 			name: "Testing ParseTag - With all valid params and explicit name",
@@ -99,34 +96,97 @@ func TestConfigParser_ParseTag(t *testing.T) {
 				"default": "value1",
 				"enum":    "true",
 			},
-			wantErrors: nil,
+			errMsg: "",
 		},
 		{
-			name:       "Testing ParseTag - invalid parameter key",
-			tag:        "invalid=key",
-			want:       map[string]string{},
-			wantErrors: []string{"Invalid parameter key: invalid"},
+			name:   "Testing ParseTag - invalid parameter key",
+			tag:    "invalid=key",
+			want:   map[string]string{},
+			errMsg: "invalid parameter key: invalid",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// create the logger
-			mockLogger := externalMocks.NewMockLogger()
+			parser := ConfigParser{}
+			got, err := parser.parseTag(tt.tag)
 
-			// create and setup a mocked environment
-			mockEnv := &appMocks.MockEnv{}
-			mockEnv.On("Logger").Return(mockLogger.SugaredLogger)
-			mockEnv.On("Fs").Return(afero.NewMemMapFs())
+			// if an error is expected
+			if tt.errMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg) // check that the error message is as expected
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
 
-			parser := ConfigParser{env: mockEnv}
-			got := parser.parseTag(tt.tag)
-			assert.Equal(t, tt.want, got)
+func Test_ConfigParser_processDefaultParam(t *testing.T) {
+	type defaultTestStruct struct {
+		A int    `wst:"name:a"`
+		B bool   `wst:"name:b"`
+		C string `wst:"name:c"`
+	}
 
-			// Validate log messages
-			messages := mockLogger.Messages()
-			if !reflect.DeepEqual(messages, tt.wantErrors) {
-				t.Errorf("logger.Warn() calls = %v, want %v", mockLogger.Messages(), tt.wantErrors)
+	p := &ConfigParser{}
+	testCase := defaultTestStruct{}
+
+	tests := []struct {
+		name        string
+		defaultVal  string
+		fieldVal    reflect.Value
+		expectedVal interface{}
+		wantErr     bool
+	}{
+		{
+			name:        "successfully process integer default value",
+			defaultVal:  "5",
+			fieldVal:    reflect.ValueOf(&testCase.A).Elem(),
+			expectedVal: 5,
+			wantErr:     false,
+		},
+		{
+			name:        "successfully process boolean default value",
+			defaultVal:  "true",
+			fieldVal:    reflect.ValueOf(&testCase.B).Elem(),
+			expectedVal: true,
+			wantErr:     false,
+		},
+		{
+			name:        "successfully process string default value",
+			defaultVal:  "hello",
+			fieldVal:    reflect.ValueOf(&testCase.C).Elem(),
+			expectedVal: "hello",
+			wantErr:     false,
+		},
+		{
+			name:        "error on invalid integer default value",
+			defaultVal:  "not_integer",
+			fieldVal:    reflect.ValueOf(&testCase.A).Elem(),
+			expectedVal: 0,
+			wantErr:     true,
+		},
+		{
+			name:        "error on invalid boolean default value",
+			defaultVal:  "not_boolean",
+			fieldVal:    reflect.ValueOf(&testCase.B).Elem(),
+			expectedVal: false,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := p.processDefaultParam(tt.name, tt.defaultVal, tt.fieldVal)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("processDefaultParam() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && !reflect.DeepEqual(tt.fieldVal.Interface(), tt.expectedVal) {
+				t.Errorf("processDefaultParam() value = %v, want %v", tt.fieldVal.Interface(), tt.expectedVal)
 			}
 		})
 	}
@@ -786,32 +846,51 @@ func Test_ConfigParser_parseField(t *testing.T) {
 	}
 }
 
-func TestConfigParser_parseStruct(t *testing.T) {
-	type fields struct {
-		env       app.Env
-		loader    loader.Loader
-		factories map[string]factoryFunc
+func Test_ConfigParser_parseStruct(t *testing.T) {
+	type parseTestStruct struct {
+		A           int    `wst:"name=a,default=5"`
+		B           string `wst:"name=b,default=default_str"`
+		C           int    `wst:""`
+		D           bool   `wst:"d"`
+		F           string
+		UnexportedE bool `wst:"name=e"`
 	}
-	type args struct {
-		data map[string]interface{}
-		s    interface{}
+
+	mockLoader := &confMocks.MockLoader{}
+	p := &ConfigParser{
+		env:    nil,
+		loader: mockLoader,
 	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr assert.ErrorAssertionFunc
+		name           string
+		data           map[string]interface{}
+		testStruct     *parseTestStruct
+		expectedStruct *parseTestStruct
+		wantErr        bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:           "Test valid default data",
+			data:           map[string]interface{}{},
+			testStruct:     &parseTestStruct{},
+			expectedStruct: &parseTestStruct{A: 5, B: "default_str", C: 0, D: false},
+			wantErr:        false,
+		},
+		// more cases here...
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := ConfigParser{
-				env:       tt.fields.env,
-				loader:    tt.fields.loader,
-				factories: tt.fields.factories,
+			err := p.parseStruct(tt.data, tt.testStruct)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseStruct() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
-			tt.wantErr(t, p.parseStruct(tt.args.data, tt.args.s), fmt.Sprintf("parseStruct(%v, %v)", tt.args.data, tt.args.s))
+
+			if err == nil && !reflect.DeepEqual(tt.testStruct, tt.expectedStruct) {
+				t.Errorf("unexpected structure content: got %v, want %v", tt.testStruct, tt.expectedStruct)
+			}
 		})
 	}
 }
