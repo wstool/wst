@@ -524,6 +524,7 @@ type ParseFieldTestStruct struct {
 	C ParseFieldInnerTestStruct            `wst:"c"`
 	D []ParseFieldInnerTestStruct          `wst:"d"`
 	E map[string]ParseFieldInnerTestStruct `wst:"e"`
+	F map[string]int                       `wst:"f"`
 }
 
 type ParseFieldConfigData struct {
@@ -696,7 +697,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			params: map[string]string{
 				"enum": "value1|value2|value3",
 			},
-			configsCalled:      true,
+			configsCalled:      false,
 			configsData:        nil,
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{A: "value2"},
@@ -709,7 +710,33 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			params: map[string]string{
 				"enum": "value1|value2|value3",
 			},
-			configsCalled:      true,
+			configsCalled:      false,
+			configsData:        nil,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
+		},
+		{
+			name:      "parse map field with keys when found",
+			fieldName: "F",
+			data:      map[string]interface{}{"key0": 1, "key1": 2},
+			params: map[string]string{
+				"keys": "key1|key2",
+			},
+			configsCalled:      false,
+			configsData:        nil,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{F: map[string]int{"key0": 1, "key1": 2}},
+			wantErr:            false,
+		},
+		{
+			name:      "parse map field with keys when not found",
+			fieldName: "F",
+			data:      map[string]interface{}{"key0": 1},
+			params: map[string]string{
+				"keys": "key1|key2",
+			},
+			configsCalled:      false,
 			configsData:        nil,
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{},
