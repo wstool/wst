@@ -519,17 +519,19 @@ type ParseFieldInnerTestStruct struct {
 }
 
 type ParseFieldTestStruct struct {
-	A string                    `wst:"a"`
-	B int                       `wst:"b"`
-	C ParseFieldInnerTestStruct `wst:"c"`
+	A string                               `wst:"a"`
+	B int                                  `wst:"b"`
+	C ParseFieldInnerTestStruct            `wst:"c"`
+	D []ParseFieldInnerTestStruct          `wst:"d"`
+	E map[string]ParseFieldInnerTestStruct `wst:"e"`
+}
+
+type ParseFieldConfigData struct {
+	Path string
+	Data map[string]interface{}
 }
 
 func Test_ConfigParser_parseField(t *testing.T) {
-
-	mockLoadedConfig := &confMocks.MockLoadedConfig{}
-	mockLoadedConfig.On("Path").Return("/configs/test.json")
-	mockLoadedConfig.On("Data").Return(map[string]interface{}{"key": "value"})
-
 	// Insert your test cases here, I'm providing one sample case
 	tests := []struct {
 		name               string
@@ -538,7 +540,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 		params             map[string]string
 		expectedFieldValue interface{}
 		configsCalled      bool
-		configsFound       bool
+		configsData        []ParseFieldConfigData
 		factories          map[string]factoryFunc
 		wantErr            bool
 	}{
@@ -550,7 +552,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				"factory": "test",
 			},
 			configsCalled: false,
-			configsFound:  false,
+			configsData:   nil,
 			factories: map[string]factoryFunc{
 				"test": func(_ interface{}, fieldValue reflect.Value) error {
 					// Mimic factory behavior here
@@ -569,7 +571,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				"factory": "invalid",
 			},
 			configsCalled: false,
-			configsFound:  false,
+			configsData:   nil,
 			factories: map[string]factoryFunc{
 				"test": func(_ interface{}, fieldValue reflect.Value) error {
 					// Mimic factory behavior here
@@ -588,7 +590,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				"string": "Value",
 			},
 			configsCalled:      false,
-			configsFound:       false,
+			configsData:        nil,
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data"}},
 			wantErr:            false,
@@ -603,7 +605,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				"string": "Value",
 			},
 			configsCalled:      false,
-			configsFound:       false,
+			configsData:        nil,
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data2"}},
 			wantErr:            false,
@@ -615,8 +617,74 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			params: map[string]string{
 				"string": "NotFound",
 			},
-			configsCalled:      false,
-			configsFound:       false,
+			configsCalled:      true,
+			configsData:        nil,
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
+		},
+		{
+			name:      "parse array field with loadable param and single path string data",
+			fieldName: "D",
+			data:      "services/test.yaml",
+			params: map[string]string{
+				"loadable": "true",
+			},
+			configsCalled: true,
+			configsData: []ParseFieldConfigData{
+				{Path: "services/test.yaml", Data: map[string]interface{}{"val": "test"}},
+			},
+			factories:          nil,
+			expectedFieldValue: &ParseFieldTestStruct{D: []ParseFieldInnerTestStruct{{Value: "test"}}},
+			wantErr:            false,
+		},
+		{
+			name:      "parse array field with loadable param and multiple paths string data",
+			fieldName: "D",
+			data:      "services/test*.yaml",
+			params: map[string]string{
+				"loadable": "true",
+			},
+			configsCalled: true,
+			configsData: []ParseFieldConfigData{
+				{Path: "services/test1.yaml", Data: map[string]interface{}{"val": "test1"}},
+				{Path: "services/test2.yaml", Data: map[string]interface{}{"val": "test2"}},
+			},
+			factories: nil,
+			expectedFieldValue: &ParseFieldTestStruct{D: []ParseFieldInnerTestStruct{
+				{Value: "test1"},
+				{Value: "test2"},
+			}},
+			wantErr: false,
+		},
+		{
+			name:      "parse map field with loadable param and multiple paths string data",
+			fieldName: "E",
+			data:      "services/test*.yaml",
+			params: map[string]string{
+				"loadable": "true",
+			},
+			configsCalled: true,
+			configsData: []ParseFieldConfigData{
+				{Path: "services/test1.yaml", Data: map[string]interface{}{"val": "test1"}},
+				{Path: "services/test2.yaml", Data: map[string]interface{}{"val": "test2"}},
+			},
+			factories: nil,
+			expectedFieldValue: &ParseFieldTestStruct{E: map[string]ParseFieldInnerTestStruct{
+				"services/test1.yaml": {Value: "test1"},
+				"services/test2.yaml": {Value: "test2"},
+			}},
+			wantErr: false,
+		},
+		{
+			name:      "parse map field with loadable param and failed loading",
+			fieldName: "E",
+			data:      "services/test*.yaml",
+			params: map[string]string{
+				"loadable": "true",
+			},
+			configsCalled:      true,
+			configsData:        nil,
 			factories:          nil,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
@@ -630,8 +698,15 @@ func Test_ConfigParser_parseField(t *testing.T) {
 
 			mockLoader := &confMocks.MockLoader{}
 			if tt.configsCalled {
-				if tt.configsFound {
-					mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+				if tt.configsData != nil {
+					var mockConfigs []loader.LoadedConfig
+					for _, configData := range tt.configsData {
+						mockLoadedConfig := &confMocks.MockLoadedConfig{}
+						mockLoadedConfig.On("Path").Return(configData.Path)
+						mockLoadedConfig.On("Data").Return(configData.Data)
+						mockConfigs = append(mockConfigs, mockLoadedConfig)
+					}
+					mockLoader.On("GlobConfigs", tt.data.(string)).Return(mockConfigs, nil)
 				} else {
 					mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
 				}
@@ -644,7 +719,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				factories: tt.factories,
 			}
 
-			err := p.parseField(tt.data, fieldValue, tt.name, tt.params)
+			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseField() error = %v, wantErr %v", err, tt.wantErr)

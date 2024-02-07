@@ -147,7 +147,7 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 
 		switch fieldValue.Kind() {
 		case reflect.Map:
-			loadedData := make(map[string]map[string]interface{})
+			loadedData := make(map[string]interface{})
 			for _, config := range configs {
 				loadedData[config.Path()] = config.Data()
 			}
@@ -293,8 +293,17 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 			fieldValue.SetMapIndex(reflect.ValueOf(key), newVal.Elem())
 		}
 	case reflect.Slice:
-		dataSlice, ok := data.([]interface{})
-		if !ok {
+		var dataSlice []interface{}
+		// check if data is a []interface{}
+		if intermediate, ok := data.([]interface{}); ok {
+			dataSlice = intermediate
+		} else if intermediate, ok := data.([]map[string]interface{}); ok {
+			// if data is a  []map[string]interface{} (e.g. returned by config loader), convert it to []interface{}
+			dataSlice = make([]interface{}, len(intermediate))
+			for i, v := range intermediate {
+				dataSlice[i] = v
+			}
+		} else {
 			return fmt.Errorf("unable to convert data for field %s to []interface{}", fieldName)
 		}
 		if fieldValue.IsNil() || fieldValue.Len() < len(dataSlice) {
