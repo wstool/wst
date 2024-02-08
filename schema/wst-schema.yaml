@@ -347,10 +347,18 @@ $defs:
               type: string
             parameters:
               $ref: '#/$defs/parameters'
+      actions:
+        title: Custom actions
+        description: |
+          This property defines customized actions of the server that can be used by instances.
+        type: object
+        properties:
+          expect:
+            type: object
+            additionalProperties:
+              $ref: '#/$defs/expectations'
       parameters:
         $ref: '#/$defs/parameters'
-      expectations:
-        $ref: '#/$defs/expectations'
       sandboxes:
         $ref: '#/$defs/sandboxes'
 

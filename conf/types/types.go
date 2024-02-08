@@ -125,7 +125,12 @@ type Server struct {
 	Extends      string                  `wst:"extends"`
 	Configs      map[string]ServerConfig `wst:"configs"`
 	Parameters   Parameters              `wst:"parameters,factory=createParameters"`
+	Actions      ActionDefs              `wst:"actions"`
 	Expectations map[string]Expectation  `wst:"expectations,factory=createExpectations"`
+}
+
+type ActionDefs struct {
+	Expect map[string]Expectation `wst:"expect"`
 }
 
 type OutputExpectation struct {
