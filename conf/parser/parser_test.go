@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/mocks/confMocks"
+	"github.com/bukka/wst/conf/parser/factory"
+	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
+	factoryMocks "github.com/bukka/wst/mocks/conf/parser/factory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -195,22 +197,22 @@ func Test_ConfigParser_processDefaultParam(t *testing.T) {
 type MockFactoryFunc func(data interface{}, fieldValue reflect.Value) error
 
 func TestConfigParser_processFactoryParam(t *testing.T) {
-	// Mock Factory Function
-	mockFactoryFunc := func(data interface{}, fieldValue reflect.Value) error {
-		return nil
-	}
+	factories := &factoryMocks.MockFunctions{}
 
-	// Error Mock Factory Function
-	errorMockFactoryFunc := func(data interface{}, fieldValue reflect.Value) error {
-		return fmt.Errorf("forced factory function error")
-	}
+	// Set up mock expectations
+	factories.On("GetFactoryFunc", "mockFactory").Return(
+		factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+			return nil
+		}))
+	factories.On("GetFactoryFunc", "invalidFactory").Return(nil)
+	factories.On("GetFactoryFunc", "errorMockFactory").Return(
+		factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+			return fmt.Errorf("forced error")
+		}))
 
 	p := ConfigParser{
-		env: nil, // replace with necessary mock if necessary
-		factories: map[string]factoryFunc{
-			"mockFactory":      mockFactoryFunc,
-			"errorMockFactory": errorMockFactoryFunc,
-		},
+		env:       nil, // replace with necessary mock if necessary
+		factories: factories,
 	}
 
 	fieldValue := reflect.ValueOf("fieldValue")
@@ -323,7 +325,7 @@ func Test_ConfigParser_processKeysParam(t *testing.T) {
 	}
 }
 func Test_ConfigParser_processLoadableParam(t *testing.T) {
-	mockLoadedConfig := &confMocks.MockLoadedConfig{}
+	mockLoadedConfig := &loaderMocks.MockLoadedConfig{}
 	mockLoadedConfig.On("Path").Return("/configs/test.json")
 	mockLoadedConfig.On("Data").Return(map[string]interface{}{"key": "value"})
 
@@ -369,7 +371,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockLoader := &confMocks.MockLoader{}
+			mockLoader := &loaderMocks.MockLoader{}
 			if tt.name != "Error from GlobConfigs" {
 				mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
 			} else {
@@ -602,7 +604,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 		expectedFieldValue interface{}
 		configsCalled      bool
 		configsData        []ParseFieldConfigData
-		factories          map[string]factoryFunc
+		factoryFound       bool
 		wantErr            bool
 	}{
 		{
@@ -612,15 +614,9 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			params: map[string]string{
 				"factory": "test",
 			},
-			configsCalled: false,
-			configsData:   nil,
-			factories: map[string]factoryFunc{
-				"test": func(_ interface{}, fieldValue reflect.Value) error {
-					// Mimic factory behavior here
-					fieldValue.SetString("test_data")
-					return nil
-				},
-			},
+			configsCalled:      false,
+			configsData:        nil,
+			factoryFound:       true,
 			expectedFieldValue: &ParseFieldTestStruct{A: "test_data"},
 			wantErr:            false,
 		},
@@ -629,17 +625,11 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			fieldName: "A",
 			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
 			params: map[string]string{
-				"factory": "invalid",
+				"factory": "test",
 			},
-			configsCalled: false,
-			configsData:   nil,
-			factories: map[string]factoryFunc{
-				"test": func(_ interface{}, fieldValue reflect.Value) error {
-					// Mimic factory behavior here
-					fieldValue.SetString("test_data")
-					return nil
-				},
-			},
+			configsCalled:      false,
+			configsData:        nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
@@ -652,7 +642,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data"}},
 			wantErr:            false,
 		},
@@ -667,7 +657,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{C: ParseFieldInnerTestStruct{Value: "data2"}},
 			wantErr:            false,
 		},
@@ -680,7 +670,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      true,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
@@ -695,7 +685,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			configsData: []ParseFieldConfigData{
 				{Path: "services/test.yaml", Data: map[string]interface{}{"val": "test"}},
 			},
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{D: []ParseFieldInnerTestStruct{{Value: "test"}}},
 			wantErr:            false,
 		},
@@ -711,7 +701,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				{Path: "services/test1.yaml", Data: map[string]interface{}{"val": "test1"}},
 				{Path: "services/test2.yaml", Data: map[string]interface{}{"val": "test2"}},
 			},
-			factories: nil,
+			factoryFound: false,
 			expectedFieldValue: &ParseFieldTestStruct{D: []ParseFieldInnerTestStruct{
 				{Value: "test1"},
 				{Value: "test2"},
@@ -730,7 +720,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				{Path: "services/test1.yaml", Data: map[string]interface{}{"val": "test1"}},
 				{Path: "services/test2.yaml", Data: map[string]interface{}{"val": "test2"}},
 			},
-			factories: nil,
+			factoryFound: false,
 			expectedFieldValue: &ParseFieldTestStruct{E: map[string]ParseFieldInnerTestStruct{
 				"services/test1.yaml": {Value: "test1"},
 				"services/test2.yaml": {Value: "test2"},
@@ -746,7 +736,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      true,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
@@ -759,7 +749,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{A: "value2"},
 			wantErr:            false,
 		},
@@ -772,7 +762,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
@@ -785,7 +775,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{F: map[string]int{"key0": 1, "key1": 2}},
 			wantErr:            false,
 		},
@@ -798,7 +788,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled:      false,
 			configsData:        nil,
-			factories:          nil,
+			factoryFound:       false,
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
@@ -809,27 +799,39 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			commonFieldValue := &ParseFieldTestStruct{}
 			fieldValue := reflect.ValueOf(commonFieldValue).Elem().FieldByName(tt.fieldName)
 
-			mockLoader := &confMocks.MockLoader{}
+			mockLoader := &loaderMocks.MockLoader{}
 			if tt.configsCalled {
 				if tt.configsData != nil {
 					var mockConfigs []loader.LoadedConfig
 					for _, configData := range tt.configsData {
-						mockLoadedConfig := &confMocks.MockLoadedConfig{}
+						mockLoadedConfig := &loaderMocks.MockLoadedConfig{}
 						mockLoadedConfig.On("Path").Return(configData.Path)
 						mockLoadedConfig.On("Data").Return(configData.Data)
 						mockConfigs = append(mockConfigs, mockLoadedConfig)
 					}
 					mockLoader.On("GlobConfigs", tt.data.(string)).Return(mockConfigs, nil)
 				} else {
-					mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
+					mockLoader.On("GlobConfigs", tt.data.(string)).Return(
+						nil, errors.New("forced GlobConfigs error"))
 				}
+			}
+
+			mockFactories := &factoryMocks.MockFunctions{}
+			if tt.factoryFound {
+				mockFactories.On("GetFactoryFunc", "test").Return(
+					factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+						fieldValue.SetString("test_data")
+						return nil
+					}))
+			} else {
+				mockFactories.On("GetFactoryFunc", "test").Return(nil)
 			}
 
 			// Create a new ConfigParser for each test case
 			p := &ConfigParser{
 				env:       nil,
 				loader:    mockLoader,
-				factories: tt.factories,
+				factories: mockFactories,
 			}
 
 			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params)
@@ -859,17 +861,21 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 		A int `wst:"a,unknown=1"`
 	}
 	type parseInvalidFactoryTestStruct struct {
-		A parseValidTestStruct `wst:"a,factory=incorrect"`
+		A parseValidTestStruct `wst:"a,factory=test"`
 	}
 	type parseInvalidDefaultTestStruct struct {
 		A parseValidTestStruct `wst:"a,default=data"`
 	}
 
-	mockLoader := &confMocks.MockLoader{}
+	mockLoader := &loaderMocks.MockLoader{}
+
+	mockFactories := &factoryMocks.MockFunctions{}
+	mockFactories.On("GetFactoryFunc", "test").Return(nil)
+
 	p := &ConfigParser{
 		env:       nil,
 		loader:    mockLoader,
-		factories: map[string]factoryFunc{},
+		factories: mockFactories,
 	}
 
 	tests := []struct {
@@ -905,7 +911,7 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 			data:           map[string]interface{}{"a": "data"},
 			testStruct:     &parseInvalidFactoryTestStruct{},
 			expectedStruct: nil,
-			errMsg:         "factory function incorrect not found",
+			errMsg:         "factory function test not found",
 		},
 		{
 			name:           "Test invalid default",

@@ -1,4 +1,4 @@
-package externalMocks
+package external
 
 import (
 	"go.uber.org/zap"

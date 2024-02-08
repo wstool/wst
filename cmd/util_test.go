@@ -16,8 +16,8 @@ package cmd
 
 import (
 	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/mocks/appMocks"
-	"github.com/bukka/wst/mocks/externalMocks"
+	appMocks "github.com/bukka/wst/mocks/app"
+	"github.com/bukka/wst/mocks/external"
 	"reflect"
 	"testing"
 )
@@ -117,7 +117,7 @@ func Test_getOverwrites(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup mocks
-			mockLogger := externalMocks.NewMockLogger()
+			mockLogger := external.NewMockLogger()
 
 			mockEnv := &appMocks.MockEnv{}
 			mockEnv.On("Logger").Return(mockLogger.SugaredLogger)

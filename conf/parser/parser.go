@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
+	"github.com/bukka/wst/conf/parser/factory"
 	"github.com/bukka/wst/conf/types"
 	"reflect"
 	"strconv"
@@ -41,7 +42,7 @@ type Parser interface {
 type ConfigParser struct {
 	env       app.Env
 	loader    loader.Loader
-	factories map[string]factoryFunc
+	factories factory.Functions
 }
 
 // check if param is a valid param (one of param* constants)
@@ -134,8 +135,8 @@ func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string,
 }
 
 func (p ConfigParser) processFactoryParam(factory string, data interface{}, fieldValue reflect.Value) error {
-	factoryFunc, found := p.factories[factory]
-	if !found {
+	factoryFunc := p.factories.GetFactoryFunc(factory)
+	if factoryFunc == nil {
 		return fmt.Errorf("factory function %s not found", factory)
 	}
 	return factoryFunc(data, fieldValue)
@@ -454,6 +455,6 @@ func CreateParser(env app.Env, loader loader.Loader) Parser {
 	return &ConfigParser{
 		env:       env,
 		loader:    loader,
-		factories: getFactories(),
+		factories: factory.CreateFactories(env),
 	}
 }

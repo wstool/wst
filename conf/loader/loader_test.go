@@ -16,7 +16,7 @@ package loader
 
 import (
 	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/mocks/appMocks"
+	appMocks "github.com/bukka/wst/mocks/app"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,35 +53,35 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			name:    "Testing LoadConfig - JSON",
 			env:     mockEnv,
 			args:    args{path: "/test.json"},
-			want:    LoadedConfig{Path: "/test.json", Data: map[string]interface{}{"key": "value"}},
+			want:    LoadedConfigData{path: "/test.json", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - YAML",
 			env:     mockEnv,
 			args:    args{path: "/test.yaml"},
-			want:    LoadedConfig{Path: "/test.yaml", Data: map[string]interface{}{"key": "value"}},
+			want:    LoadedConfigData{path: "/test.yaml", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - TOML",
 			env:     mockEnv,
 			args:    args{path: "/test.toml"},
-			want:    LoadedConfig{Path: "/test.toml", Data: map[string]interface{}{"key": "value"}},
+			want:    LoadedConfigData{path: "/test.toml", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - Unsupported file type",
 			env:     mockEnv,
 			args:    args{path: "/test.unknown"},
-			want:    LoadedConfig{},
+			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "Testing LoadConfig - Invalid JSON",
 			env:     mockEnv,
 			args:    args{path: "/test-invalid.json"},
-			want:    LoadedConfig{},
+			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -128,13 +128,13 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 			env:  mockEnv,
 			args: args{paths: []string{"/test.json", "/test2.json"}},
 			want: []LoadedConfig{
-				{
-					Path: "/test.json",
-					Data: map[string]interface{}{"key": "value"},
+				LoadedConfigData{
+					path: "/test.json",
+					data: map[string]interface{}{"key": "value"},
 				},
-				{
-					Path: "/test2.json",
-					Data: map[string]interface{}{"key": "value2"},
+				LoadedConfigData{
+					path: "/test2.json",
+					data: map[string]interface{}{"key": "value2"},
 				},
 			},
 			wantErr: false,
@@ -189,13 +189,13 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 			env:  mockEnv,
 			args: args{path: "/dir/*.json"},
 			want: []LoadedConfig{
-				{
-					Path: "/dir/test.json",
-					Data: map[string]interface{}{"key": "value"},
+				LoadedConfigData{
+					path: "/dir/test.json",
+					data: map[string]interface{}{"key": "value"},
 				},
-				{
-					Path: "/dir/test2.json",
-					Data: map[string]interface{}{"key": "value2"},
+				LoadedConfigData{
+					path: "/dir/test2.json",
+					data: map[string]interface{}{"key": "value2"},
 				},
 			},
 			wantErr: false,
