@@ -34,34 +34,52 @@ type Options struct {
 	Instances   []string
 }
 
+type Runner struct {
+	env            app.Env
+	configMaker    *conf.ConfigMaker
+	sandboxesMaker *sandboxes.Maker
+	serversMaker   *servers.Maker
+	specMaker      *spec.Maker
+}
+
 var DefaultsFs = afero.NewOsFs()
 
-func Execute(options *Options, env app.Env) error {
+func CreateRunner(env app.Env) *Runner {
+	return &Runner{
+		env:            env,
+		configMaker:    conf.CreateConfigMaker(env),
+		sandboxesMaker: sandboxes.CreateMaker(env),
+		serversMaker:   servers.CreateMaker(env),
+		specMaker:      spec.CreateMaker(env),
+	}
+}
+
+func (r *Runner) Execute(options *Options) error {
 	var configPaths []string
 	if options.IncludeAll {
-		extraPaths := GetConfigPaths(env)
+		extraPaths := r.getConfigPaths()
 		configPaths = append(options.ConfigPaths, extraPaths...)
 	} else {
 		configPaths = options.ConfigPaths
 	}
-	configPaths = removeDuplicates(configPaths)
+	configPaths = r.removeDuplicates(configPaths)
 
-	config, err := conf.MakeConfig(configPaths, options.Overwrites, env)
+	config, err := r.configMaker.Make(configPaths, options.Overwrites)
 	if err != nil {
 		return err
 	}
 
-	sbs, err := sandboxes.MakeSandboxes(config)
+	sandboxesMap, err := r.sandboxesMaker.Make(config)
 	if err != nil {
 		return err
 	}
 
-	srvs, err := servers.MakeServers(config, sbs)
+	serversMap, err := r.serversMaker.Make(config, sandboxesMap)
 	if err != nil {
 		return err
 	}
 
-	specification, err := spec.MakeSpec(config, srvs)
+	specification, err := r.specMaker.Make(config, serversMap)
 	if err != nil {
 		return err
 	}
@@ -69,23 +87,23 @@ func Execute(options *Options, env app.Env) error {
 	return specification.ExecuteInstances(options.Instances, options.DryRun)
 }
 
-func GetConfigPaths(env app.Env) []string {
+func (r *Runner) getConfigPaths() []string {
 	var paths []string
-	home, _ := env.GetUserHomeDir()
-	validateAndAppendPath("wst.yaml", &paths, env)
-	validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths, env)
-	validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths, env)
+	home, _ := r.env.GetUserHomeDir()
+	r.validateAndAppendPath("wst.yaml", &paths)
+	r.validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths)
+	r.validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths)
 
 	return paths
 }
 
-func validateAndAppendPath(path string, paths *[]string, env app.Env) {
-	if _, err := env.Fs().Stat(path); !os.IsNotExist(err) {
+func (r *Runner) validateAndAppendPath(path string, paths *[]string) {
+	if _, err := r.env.Fs().Stat(path); !os.IsNotExist(err) {
 		*paths = append(*paths, path)
 	}
 }
 
-func removeDuplicates(elements []string) []string {
+func (r *Runner) removeDuplicates(elements []string) []string {
 	encountered := map[string]bool{}
 	var result []string
 

@@ -59,7 +59,7 @@ func Run() {
 				Instances:   args,
 			}
 			// Add execution code here.
-			if err = run.Execute(options, appEnv); err != nil {
+			if err = run.CreateRunner(appEnv).Execute(options); err != nil {
 				logger.Error("Unable to execute run operation: ", zap.Error(err))
 			}
 			return err

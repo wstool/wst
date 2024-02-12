@@ -23,30 +23,47 @@ import (
 	"github.com/bukka/wst/conf/types"
 )
 
-func MakeConfig(configPaths []string, overwrites map[string]string, env app.Env) (*types.Config, error) {
-	loader := loader.CreateLoader(env)
-	loadedConfigs, err := loader.LoadConfigs(configPaths)
+type ConfigMaker struct {
+	env       app.Env
+	loader    loader.Loader
+	parser    parser.Parser
+	merger    merger.Merger
+	processor processor.Processor
+}
+
+func CreateConfigMaker(env app.Env) *ConfigMaker {
+	ld := loader.CreateLoader(env)
+	return &ConfigMaker{
+		env:       env,
+		loader:    ld,
+		parser:    parser.CreateParser(env, ld),
+		merger:    merger.CreateMerger(env),
+		processor: processor.CreateProcessor(env),
+	}
+}
+
+func (m *ConfigMaker) Make(configPaths []string, overwrites map[string]string) (*types.Config, error) {
+	loadedConfigs, err := m.loader.LoadConfigs(configPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	parser := parser.CreateParser(env, loader)
 	var configs []*types.Config
 	for _, loadedConfig := range loadedConfigs {
 		config := &types.Config{}
-		err = parser.ParseConfig(loadedConfig.Data(), config)
+		err = m.parser.ParseConfig(loadedConfig.Data(), config)
 		if err != nil {
 			return nil, err
 		}
 		configs = append(configs, config)
 	}
 
-	config, err := merger.CreateMerger(env).MergeConfigs(configs, overwrites)
+	config, err := m.merger.MergeConfigs(configs, overwrites)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = processor.CreateProcessor(env).ProcessConfig(config); err != nil {
+	if err = m.processor.ProcessConfig(config); err != nil {
 		return nil, err
 	}
 
