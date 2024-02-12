@@ -8,17 +8,21 @@ type Data interface {
 	Load(key string) (interface{}, bool)
 }
 
+func CreateData() Data {
+	return &syncData{}
+}
+
 // runtimeDataImpl is an implementation of the RuntimeData interface.
-type dataImpl struct {
+type syncData struct {
 	data sync.Map
 }
 
 // Store stores the value for a key.
-func (rt *dataImpl) Store(key string, value interface{}) {
+func (rt *syncData) Store(key string, value interface{}) {
 	rt.data.Store(key, value)
 }
 
 // Load loads the value for a key.
-func (rt *dataImpl) Load(key string) (interface{}, bool) {
+func (rt *syncData) Load(key string) (interface{}, bool) {
 	return rt.data.Load(key)
 }

@@ -17,6 +17,9 @@ package run
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf"
+	"github.com/bukka/wst/sandboxes"
+	"github.com/bukka/wst/servers"
+	"github.com/bukka/wst/spec"
 	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
@@ -33,7 +36,7 @@ type Options struct {
 
 var DefaultsFs = afero.NewOsFs()
 
-func Execute(options *Options, env app.Env) {
+func Execute(options *Options, env app.Env) error {
 	var configPaths []string
 	if options.IncludeAll {
 		extraPaths := GetConfigPaths(env)
@@ -43,16 +46,27 @@ func Execute(options *Options, env app.Env) {
 	}
 	configPaths = removeDuplicates(configPaths)
 
-	confOptions := conf.Options{
-		Configs:    configPaths,
-		Overwrites: options.Overwrites,
-		Instances:  options.Instances,
-		DryRun:     options.DryRun,
-	}
-	err := conf.ExecuteConfigs(confOptions, env)
+	config, err := conf.MakeConfig(configPaths, options.Overwrites, env)
 	if err != nil {
-		return
+		return err
 	}
+
+	sbs, err := sandboxes.MakeSandboxes(config)
+	if err != nil {
+		return err
+	}
+
+	srvs, err := servers.MakeServers(config, sbs)
+	if err != nil {
+		return err
+	}
+
+	specification, err := spec.MakeSpec(config, srvs)
+	if err != nil {
+		return err
+	}
+
+	return specification.ExecuteInstances(options.Instances, options.DryRun)
 }
 
 func GetConfigPaths(env app.Env) []string {

@@ -32,7 +32,7 @@ func Run() {
 		Use:   "run [instance]...",
 		Short: "Executes the predefined configuration",
 		Long:  "Constructs the final configuration and executes actions in order",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			configPaths, _ := cmd.Flags().GetStringSlice("config")
 			includeAll, _ := cmd.Flags().GetBool("all")
 			noEnvs, _ := cmd.Flags().GetBool("no-envs")
@@ -59,7 +59,10 @@ func Run() {
 				Instances:   args,
 			}
 			// Add execution code here.
-			run.Execute(options, appEnv)
+			if err = run.Execute(options, appEnv); err != nil {
+				logger.Error("Unable to execute run operation: ", zap.Error(err))
+			}
+			return err
 		},
 	}
 

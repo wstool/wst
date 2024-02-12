@@ -15,37 +15,40 @@
 package conf
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
+	"github.com/bukka/wst/conf/merger"
 	"github.com/bukka/wst/conf/parser"
+	"github.com/bukka/wst/conf/processor"
 	"github.com/bukka/wst/conf/types"
 )
 
-type Options struct {
-	Configs    []string
-	Overwrites map[string]string
-	Instances  []string
-	DryRun     bool
-}
-
-func ExecuteConfigs(options Options, env app.Env) error {
+func MakeConfig(configPaths []string, overwrites map[string]string, env app.Env) (*types.Config, error) {
 	loader := loader.CreateLoader(env)
-	loadedConfigs, err := loader.LoadConfigs(options.Configs)
+	loadedConfigs, err := loader.LoadConfigs(configPaths)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// TODO: support other options
 
 	parser := parser.CreateParser(env, loader)
+	var configs []*types.Config
 	for _, loadedConfig := range loadedConfigs {
 		config := &types.Config{}
 		err = parser.ParseConfig(loadedConfig.Data(), config)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		fmt.Println(config)
+		configs = append(configs, config)
 	}
-	fmt.Println(options)
-	return nil
+
+	config, err := merger.CreateMerger(env).MergeConfigs(configs, overwrites)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = processor.CreateProcessor(env).ProcessConfig(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
