@@ -178,16 +178,29 @@ type Script struct {
 	Mode    string `wst:"mode"`
 }
 
+type Resources struct {
+	Scripts map[string]Script `wst:"scripts,string=Content"`
+}
+
 type ServiceConfig struct {
 	Parameters          Parameters `wst:"parameters,factory=createParameters"`
 	OverwriteParameters bool       `wst:"overwrite_parameters"`
 }
 
+type ServiceScripts struct {
+	IncludeAll  bool
+	IncludeList []string
+}
+
+type ServiceResources struct {
+	Scripts ServiceScripts `wst:"scripts,factory=createServiceScripts"`
+}
+
 type Service struct {
-	Server  string                   `wst:"server"`
-	Sandbox string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
-	Scripts []string                 `wst:"scripts"`
-	Configs map[string]ServiceConfig `wst:"configs"`
+	Server    string                   `wst:"server"`
+	Sandbox   string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
+	Resources ServiceResources         `wst:"resources"`
+	Configs   map[string]ServiceConfig `wst:"configs"`
 }
 
 type Action interface {
@@ -202,10 +215,10 @@ type RequestAction struct {
 }
 
 type Instance struct {
-	Name     string             `wst:"name"`
-	Scripts  map[string]Script  `wst:"scripts,string=Content"`
-	Services map[string]Service `wst:"services,loadable"`
-	Actions  []Action           `wst:"actions,factory=createActions"`
+	Name      string             `wst:"name"`
+	Resources Resources          `wst:"resources"`
+	Services  map[string]Service `wst:"services,loadable"`
+	Actions   []Action           `wst:"actions,factory=createActions"`
 }
 
 type Spec struct {

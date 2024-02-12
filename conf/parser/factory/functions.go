@@ -40,6 +40,8 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 		return f.createParameters
 	case "createSandboxes":
 		return f.createSandboxes
+	case "createServiceScripts":
+		return f.createServiceScripts
 	default:
 		return nil
 	}
@@ -80,5 +82,9 @@ func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Val
 }
 
 func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value) error {
+	return nil
+}
+
+func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value) error {
 	return nil
 }

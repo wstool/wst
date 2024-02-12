@@ -423,16 +423,21 @@ $defs:
           default: local
           type: string
           enum: [ local, docker, kubernetes ]
-        scripts:
-          title: Scripts included in the service
-          description: |
-            The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
-            all scripts are included in the service and 'false' means that no scripts will be included. If an array
-            is provided, then only the listed scripts are included in the service.
-          default: true
-          type: [ array, boolean ]
-          items:
-            type: string
+        resources:
+          title: Resource included in the service
+          description: It is container for scripts and other resources defined in the future.
+          type: object
+          properties:
+            scripts:
+              title: Scripts included in the service
+              description: |
+                The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
+                all scripts are included in the service and 'false' means that no scripts will be included. If an array
+                is provided, then only the listed scripts are included in the service.
+              default: true
+              type: [ array, boolean ]
+              items:
+                type: string
         configs:
           title: Configuration files to include
           description: |
@@ -523,8 +528,14 @@ $defs:
         description: |
           The name is used for reporting which is mainly useful when more instances are used. If not specified, the
           name is generated from instance index and file name.
-      scripts:
-        $ref: '#/$defs/scripts'
+      resources:
+        title: Resource data
+        description: |
+          The resources are data mounted to the service.
+        type: object
+        properties:
+          scripts:
+            $ref: '#/$defs/scripts'
       services:
         $ref: '#/$defs/services'
       actions:
