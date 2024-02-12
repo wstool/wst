@@ -14,7 +14,10 @@
 
 package types
 
-import "os"
+import (
+	"github.com/bukka/wst/actions"
+	"os"
+)
 
 type Config struct {
 	Version     string             `wst:"version,enum=1.0"`
@@ -166,7 +169,7 @@ type ResponseExpectationWrapper struct {
 }
 
 type Expectation interface {
-	Verify(ar ActionRuntime) error
+	Action
 }
 
 type Script struct {
@@ -183,19 +186,12 @@ type ServiceConfig struct {
 type Service struct {
 	Server  string                   `wst:"server"`
 	Sandbox string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
-	Scripts []string                 `wst:"scripts,keymatch=Server.Scripts"`
-	Configs map[string]ServiceConfig `wst:"configs,keymatch=Server.Configs"`
-}
-
-type ActionRuntime interface {
+	Scripts []string                 `wst:"scripts"`
+	Configs map[string]ServiceConfig `wst:"configs"`
 }
 
 type Action interface {
-	Execute(ar ActionRuntime) error
-}
-
-type ExpectAction interface {
-	GetType() string
+	Transform() (actions.Action, error)
 }
 
 type RequestAction struct {
