@@ -3,6 +3,7 @@ package spec
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/instances"
 	"github.com/bukka/wst/servers"
 )
 
@@ -23,4 +24,9 @@ func CreateMaker(env app.Env) *Maker {
 func (m *Maker) Make(config *types.Config, servers servers.Servers) (Spec, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+type nativeSpec struct {
+	workspace string
+	instances []instances.Instance
 }

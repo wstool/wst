@@ -124,8 +124,8 @@ $defs:
             type: boolean
             default: true
 
-  expectation:
-    title: Expectation action
+  serverExpectation:
+    title: Server expectation action definition
     description: |
       The expectation is an action type that checks whether the provided expectation type aligns with what's expected.
       It's usually used for pattern matching of response data or output from the logs.
@@ -142,8 +142,8 @@ $defs:
               response:
                 $ref: '#/$defs/responseExpectation'
 
-  expectations:
-    title: Expectations mapping
+  serverExpectations:
+    title: Server expectations mapping
     description: |
       The expectations mapping object allows for the definition of custom expectations that can be executed by actions.
       As noted in the actions' descriptions, the action name can be composed of various parts. In the case of
@@ -155,7 +155,7 @@ $defs:
       corresponds to the name matching the key of this object.
     type: object
     additionalProperties:
-      $ref: '#/$defs/expectation'
+      $ref: '#/$defs/serverExpectation'
 
   sandboxHook:
     title: Sandbox lifecycle hook
@@ -356,7 +356,7 @@ $defs:
           expect:
             type: object
             additionalProperties:
-              $ref: '#/$defs/expectations'
+              $ref: '#/$defs/serverExpectations'
       parameters:
         $ref: '#/$defs/parameters'
       sandboxes:
@@ -454,12 +454,51 @@ $defs:
               parameters:
                 '#/$defs/parameters'
 
+  customExpectation:
+    title: Custom expectation
+    description: |
+      The custom expectation that is taken from the service defined server.
+    type: object
+    properties:
+      name:
+        title: Custom expectation name
+        description: The name is used for selecting the expectation from the server expectations.
+      parameters:
+        '#/$defs/parameters'
+
+  actionExpectation:
+    title: Expectation action
+    description: |
+      The expectation is an action type that checks whether the provided expectation type aligns with what's expected.
+      It's usually used for pattern matching of response data or output from the logs.
+    type: object
+    allOf:
+      - properties:
+          service:
+            title: Service name
+            description: The service that the expectation is executed on.
+            type: string
+      - oneOf:
+          - properties:
+              custom:
+                $ref: '#/$defs/customExpectation'
+          - properties:
+              output:
+                $ref: '#/$defs/outputExpectation'
+          - properties:
+              response:
+                $ref: '#/$defs/responseExpectation'
+
   request:
     title: Request object
     description: |
       The request object defines the details of the request to be sent.
     type: object
     properties:
+      service:
+        title: Service name
+        description: The service that the request is executed on.
+        type: string
       id:
         title: Request ID
         description: Identifies request which can be then used in response expectation.
@@ -502,7 +541,7 @@ $defs:
         $ref: '#/$defs/actions'
     patternProperties:
       "^expect/.*":
-        $ref: '#/$defs/expectation'
+        $ref: '#/$defs/actionExpectation'
       "^request/.*":
         $ref: '#/$defs/request'
 
