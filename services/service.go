@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/sandboxes"
@@ -11,6 +12,14 @@ type Service interface {
 }
 
 type Services map[string]Service
+
+func (s Services) GetService(name string) (Service, error) {
+	svc, ok := s[name]
+	if !ok {
+		return svc, fmt.Errorf("service %s not found", name)
+	}
+	return svc, nil
+}
 
 type Maker struct {
 	env app.Env

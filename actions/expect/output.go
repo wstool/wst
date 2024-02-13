@@ -17,28 +17,6 @@ type OutputAction struct {
 	RenderTemplate bool
 }
 
-type OrderType string
-
-const (
-	OrderTypeFixed  OrderType = "fixed"
-	OrderTypeRandom OrderType = "random"
-)
-
-type MatchType string
-
-const (
-	MatchTypeExact  MatchType = "exact"
-	MatchTypeRegexp MatchType = "regexp"
-)
-
-type OutputType string
-
-const (
-	OutputTypeStdout OutputType = "stdout"
-	OutputTypeStderr OutputType = "stderr"
-	OutputTypeAny    OutputType = "any"
-)
-
 type OutputExpectationActionMaker struct {
 	env app.Env
 }
@@ -50,7 +28,7 @@ func CreateOutputExpectationActionMaker(env app.Env) *OutputExpectationActionMak
 }
 
 func (m *OutputExpectationActionMaker) MakeAction(
-	config types.OutputExpectationAction,
+	config *types.OutputExpectationAction,
 	svcs services.Services,
 ) (*OutputAction, error) {
 	order := OrderType(config.Output.Order)
@@ -68,7 +46,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 		return nil, fmt.Errorf("invalid OutputType: %v", config.Output.Type)
 	}
 
-	svc, err := getService(svcs, config.Service)
+	svc, err := svcs.GetService(config.Service)
 	if err != nil {
 		return nil, err
 	}
