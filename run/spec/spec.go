@@ -3,8 +3,8 @@ package spec
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/instances"
-	"github.com/bukka/wst/servers"
+	"github.com/bukka/wst/run/instances"
+	"github.com/bukka/wst/run/servers"
 )
 
 type Spec interface {

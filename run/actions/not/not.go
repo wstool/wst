@@ -1,18 +1,15 @@
-package request
+package not
 
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/instances/runtime"
-	"github.com/bukka/wst/services"
+	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/services"
 )
 
 type Action struct {
-	Service services.Service
-	Id      string
-	Path    string
-	Method  string
-	Headers types.Headers
+	Action actions.Action
 }
 
 type ActionMaker struct {
@@ -26,24 +23,20 @@ func CreateActionMaker(env app.Env) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.RequestAction,
+	config *types.NotAction,
 	svcs services.Services,
+	actionMaker *actions.ActionMaker,
 ) (*Action, error) {
-	svc, err := svcs.GetService(config.Service)
+	action, err := actionMaker.MakeAction(config.Action, svcs)
 	if err != nil {
 		return nil, err
 	}
-
 	return &Action{
-		Service: svc,
-		Id:      config.Id,
-		Path:    config.Path,
-		Method:  config.Method,
-		Headers: config.Headers,
+		Action: action,
 	}, nil
 }
 
-func (a Action) Execute(runData *runtime.Data) error {
+func (a Action) Execute(runData runtime.Data) error {
 	// implementation here
 	// use runData.Store(key, value) to store data.
 	// and value, ok := runData.Load(key) to retrieve data.

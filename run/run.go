@@ -17,9 +17,9 @@ package run
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf"
-	"github.com/bukka/wst/sandboxes"
-	"github.com/bukka/wst/servers"
-	"github.com/bukka/wst/spec"
+	"github.com/bukka/wst/run/sandboxes"
+	"github.com/bukka/wst/run/servers"
+	"github.com/bukka/wst/run/spec"
 	"github.com/spf13/afero"
 	"os"
 	"path/filepath"

@@ -1,11 +1,11 @@
 package parallel
 
 import (
-	"github.com/bukka/wst/actions"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/instances/runtime"
-	"github.com/bukka/wst/services"
+	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/services"
 )
 
 type Action struct {
@@ -40,7 +40,7 @@ func (m *ActionMaker) Make(
 	}, nil
 }
 
-func (a Action) Execute(runData *runtime.Data) error {
+func (a Action) Execute(runData runtime.Data) error {
 	// implementation here
 	// use runData.Store(key, value) to store data.
 	// and value, ok := runData.Load(key) to retrieve data.

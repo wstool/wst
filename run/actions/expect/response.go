@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/instances/runtime"
-	"github.com/bukka/wst/services"
+	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/services"
 )
 
 type ResponseAction struct {
@@ -53,7 +53,7 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 	}, nil
 }
 
-func (a ResponseAction) Execute(runData *runtime.Data) error {
+func (a ResponseAction) Execute(runData runtime.Data) error {
 	// implementation here
 	// use runData.Store(key, value) to store data.
 	// and value, ok := runData.Load(key) to retrieve data.

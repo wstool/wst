@@ -1,7 +1,7 @@
 package expect
 
 import (
-	"github.com/bukka/wst/services"
+	"github.com/bukka/wst/run/services"
 )
 
 type ExpectationAction struct {

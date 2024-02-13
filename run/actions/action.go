@@ -2,24 +2,24 @@ package actions
 
 import (
 	"fmt"
-	"github.com/bukka/wst/actions/expect"
-	"github.com/bukka/wst/actions/not"
-	"github.com/bukka/wst/actions/parallel"
-	"github.com/bukka/wst/actions/request"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/instances/runtime"
-	"github.com/bukka/wst/services"
+	expect2 "github.com/bukka/wst/run/actions/expect"
+	"github.com/bukka/wst/run/actions/not"
+	"github.com/bukka/wst/run/actions/parallel"
+	"github.com/bukka/wst/run/actions/request"
+	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/services"
 )
 
 type Action interface {
-	Execute(runData *runtime.Data) error
+	Execute(runData runtime.Data) error
 }
 
 type ActionMaker struct {
 	env                 app.Env
-	expectOutputMaker   *expect.OutputExpectationActionMaker
-	expectResponseMaker *expect.ResponseExpectationActionMaker
+	expectOutputMaker   *expect2.OutputExpectationActionMaker
+	expectResponseMaker *expect2.ResponseExpectationActionMaker
 	notMaker            *not.ActionMaker
 	parallelMaker       *parallel.ActionMaker
 	requestMaker        *request.ActionMaker
@@ -28,8 +28,8 @@ type ActionMaker struct {
 func CreateActionMaker(env app.Env) *ActionMaker {
 	return &ActionMaker{
 		env:                 env,
-		expectOutputMaker:   expect.CreateOutputExpectationActionMaker(env),
-		expectResponseMaker: expect.CreateResponseExpectationActionMaker(env),
+		expectOutputMaker:   expect2.CreateOutputExpectationActionMaker(env),
+		expectResponseMaker: expect2.CreateResponseExpectationActionMaker(env),
 		notMaker:            not.CreateActionMaker(env),
 		parallelMaker:       parallel.CreateActionMaker(env),
 		requestMaker:        request.CreateActionMaker(env),

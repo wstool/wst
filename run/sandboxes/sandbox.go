@@ -34,7 +34,7 @@ type Sandbox interface {
 type Sandboxes map[string]Sandbox
 
 const (
-	CommonSandboxHook     string = "common"
+	CommonSandboxType     string = "common"
 	LocalSandboxHook             = "local"
 	ContainerSandboxHook         = "container"
 	DockerSandboxHook            = "docker"
@@ -57,7 +57,7 @@ func CreateMaker(env app.Env) *Maker {
 	}
 }
 
-func (m *Maker) Make(config *types.Config) (Sandboxes, error) {
+func (m *Maker) Make(config *types.Sandbox) (Sandboxes, error) {
 	//TODO implement me
 	panic("implement me")
 }
