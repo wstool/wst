@@ -69,12 +69,7 @@ func (r *Runner) Execute(options *Options) error {
 		return err
 	}
 
-	sandboxesMap, err := r.sandboxesMaker.Make(config)
-	if err != nil {
-		return err
-	}
-
-	serversMap, err := r.serversMaker.Make(config, sandboxesMap)
+	serversMap, err := r.serversMaker.Make(config)
 	if err != nil {
 		return err
 	}
