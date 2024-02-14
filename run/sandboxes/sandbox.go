@@ -57,7 +57,10 @@ func CreateMaker(env app.Env) *Maker {
 	}
 }
 
-func (m *Maker) Make(config *types.Sandbox) (Sandboxes, error) {
+func (m *Maker) MakeSandboxes(
+	rootSandboxes map[string]types.Sandbox,
+	serverSandboxes map[string]types.Sandbox,
+) (Sandboxes, error) {
 	//TODO implement me
 	panic("implement me")
 }

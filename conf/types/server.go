@@ -19,10 +19,16 @@ type ServerActions struct {
 	Expect map[string]ExpectationAction `wst:"expect,factory=createServerExpectation"`
 }
 
+type ServerTemplate struct {
+	File string `wst:"file,path"`
+}
+
 type Server struct {
-	Name       string                  `wst:"name"`
-	Extends    string                  `wst:"extends"`
-	Configs    map[string]ServerConfig `wst:"configs"`
-	Parameters Parameters              `wst:"parameters,factory=createParameters"`
-	Actions    ServerActions           `wst:"actions"`
+	Name       string                    `wst:"name"`
+	Extends    string                    `wst:"extends"`
+	Configs    map[string]ServerConfig   `wst:"configs"`
+	Templates  map[string]ServerTemplate `wst:"templates"`
+	Sandboxes  map[string]Sandbox        `wst:"sandboxes"`
+	Parameters Parameters                `wst:"parameters,factory=createParameters"`
+	Actions    ServerActions             `wst:"actions"`
 }
