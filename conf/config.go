@@ -51,7 +51,7 @@ func (m *ConfigMaker) Make(configPaths []string, overwrites map[string]string) (
 	var configs []*types.Config
 	for _, loadedConfig := range loadedConfigs {
 		config := &types.Config{}
-		err = m.parser.ParseConfig(loadedConfig.Data(), config)
+		err = m.parser.ParseConfig(loadedConfig.Data(), config, loadedConfig.Path())
 		if err != nil {
 			return nil, err
 		}

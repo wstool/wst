@@ -6,8 +6,10 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
+	appMocks "github.com/bukka/wst/mocks/app"
 	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
 	factoryMocks "github.com/bukka/wst/mocks/conf/parser/factory"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -17,7 +19,7 @@ import (
 func Test_isValidParam(t *testing.T) {
 	tests := []struct {
 		name  string
-		param string
+		param ConfigParam
 		want  bool
 	}{
 		{
@@ -51,6 +53,11 @@ func Test_isValidParam(t *testing.T) {
 			want:  true,
 		},
 		{
+			name:  "valid parameter - path",
+			param: paramPath,
+			want:  true,
+		},
+		{
 			name:  "valid parameter - string",
 			param: paramString,
 			want:  true,
@@ -68,7 +75,7 @@ func Test_isValidParam(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, isValidParam(tt.param), "isValidParam(%v)", tt.param)
+			assert.Equalf(t, tt.want, isValidParam(string(tt.param)), "isValidParam(%v)", tt.param)
 		})
 	}
 }
@@ -77,13 +84,13 @@ func TestConfigParser_ParseTag(t *testing.T) {
 	tests := []struct {
 		name   string
 		tag    string
-		want   map[string]string
+		want   map[ConfigParam]string
 		errMsg string
 	}{
 		{
 			name: "Testing ParseTag - With all valid params and implicit name",
 			tag:  "tagname,default=value1,enum",
-			want: map[string]string{
+			want: map[ConfigParam]string{
 				"name":    "tagname",
 				"default": "value1",
 				"enum":    "true",
@@ -93,7 +100,7 @@ func TestConfigParser_ParseTag(t *testing.T) {
 		{
 			name: "Testing ParseTag - With all valid params and explicit name",
 			tag:  "name=tagname,default=value1,enum",
-			want: map[string]string{
+			want: map[ConfigParam]string{
 				"name":    "tagname",
 				"default": "value1",
 				"enum":    "true",
@@ -103,7 +110,7 @@ func TestConfigParser_ParseTag(t *testing.T) {
 		{
 			name:   "Testing ParseTag - invalid parameter key",
 			tag:    "invalid=key",
-			want:   map[string]string{},
+			want:   map[ConfigParam]string{},
 			errMsg: "invalid parameter key: invalid",
 		},
 	}
@@ -324,6 +331,7 @@ func Test_ConfigParser_processKeysParam(t *testing.T) {
 		})
 	}
 }
+
 func Test_ConfigParser_processLoadableParam(t *testing.T) {
 	mockLoadedConfig := &loaderMocks.MockLoadedConfig{}
 	mockLoadedConfig.On("Path").Return("/configs/test.json")
@@ -340,16 +348,22 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 		{
 			name:       "Field value kind is map",
 			data:       "*.json",
-			fieldValue: reflect.ValueOf(map[string]map[string]interface{}{}),
-			want:       map[string]map[string]interface{}{"/configs/test.json": {"key": "value"}},
-			wantErr:    false,
+			fieldValue: reflect.ValueOf(map[string]interface{}{}),
+			want: map[string]interface{}{"/configs/test.json": map[string]interface{}{
+				"key":      "value",
+				"wst/path": "/configs/test.json",
+			}},
+			wantErr: false,
 		},
 		{
 			name:       "Field value kind is slice",
 			data:       "*.json",
 			fieldValue: reflect.ValueOf([]map[string]interface{}{}),
-			want:       []map[string]interface{}{{"key": "value"}},
-			wantErr:    false,
+			want: []map[string]interface{}{{
+				"key":      "value",
+				"wst/path": "/configs/test.json",
+			}},
+			wantErr: false,
 		},
 		{
 			name:       "Field value kind is string (unsupported kind) - should trigger error",
@@ -362,7 +376,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 		{
 			name:       "Error from GlobConfigs",
 			data:       "*.json",
-			fieldValue: reflect.ValueOf(map[string]map[string]interface{}{}),
+			fieldValue: reflect.ValueOf(map[string]interface{}{}),
 			want:       nil,
 			wantErr:    true,
 			errMsg:     "loading configs: forced GlobConfigs error",
@@ -391,6 +405,120 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestProcessPathParam(t *testing.T) {
+	mockFs := afero.NewMemMapFs()
+
+	// mock app.Env
+	mockEnv := &appMocks.MockEnv{}
+	mockEnv.On("Fs").Return(mockFs)
+
+	fieldName := "file"
+
+	tests := []struct {
+		name          string
+		fieldValue    reflect.Value
+		data          interface{}
+		configPath    string
+		wantErr       bool
+		expectedErr   string
+		expectedValue string
+	}{
+		{
+			name:          "Valid relative path",
+			fieldValue:    reflect.Indirect(reflect.ValueOf(new(string))),
+			data:          "test/path",
+			configPath:    "/opt/config/wst.yaml",
+			wantErr:       false,
+			expectedValue: "/opt/config/test/path",
+		},
+		{
+			name:          "Valid absolute path",
+			fieldValue:    reflect.Indirect(reflect.ValueOf(new(string))),
+			data:          "/test/path",
+			configPath:    "/opt/config/wst.yaml",
+			wantErr:       false,
+			expectedValue: "/test/path",
+		},
+		{
+			name:        "Non-existent path",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(string))),
+			data:        "test/non-existent",
+			configPath:  "config/",
+			wantErr:     true,
+			expectedErr: "file path config/test/non-existent does not exist",
+		},
+		{
+			name:        "Data is not a string",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(string))),
+			data:        123,
+			configPath:  "config/",
+			wantErr:     true,
+			expectedErr: "unexpected type int for data, expected string",
+		},
+		{
+			name:          "Empty path",
+			fieldValue:    reflect.Indirect(reflect.ValueOf(new(string))),
+			data:          "",
+			configPath:    "/opt/config/wst.yam",
+			wantErr:       false,
+			expectedValue: "/opt/config",
+		},
+		{
+			name:        "Null data",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(string))),
+			data:        nil,
+			configPath:  "config/",
+			wantErr:     true,
+			expectedErr: "unexpected type <nil> for data, expected string",
+		},
+		{
+			name:        "Invalid configPath",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(string))),
+			data:        "test/path",
+			configPath:  "invalid/config/path",
+			wantErr:     true,
+			expectedErr: "file path invalid/config/test/path does not exist",
+		},
+		{
+			name:        "Field value cannot be set",
+			fieldValue:  reflect.ValueOf(new(string)),
+			data:        "test/path",
+			configPath:  "/opt/config/wst.yaml",
+			wantErr:     true,
+			expectedErr: "field file is not settable",
+		},
+		{
+			name:        "Invalid field value type",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(int))),
+			data:        "test/path",
+			configPath:  "/opt/config/wst.yaml",
+			wantErr:     true,
+			expectedErr: "field file is not of type string",
+		},
+	}
+
+	// Create test files
+	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/test/path", []byte(`{"key": "value2"}`), 0644)
+	assert.NoError(t, err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := ConfigParser{env: mockEnv}
+			err := parser.processPathParam(tt.data, tt.fieldValue, fieldName, tt.configPath)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedValue, tt.fieldValue.String())
 			}
 		})
 	}
@@ -456,7 +584,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := p.processStringParam(tt.fieldName, tt.data, tt.fieldValue)
+			_, err := p.processStringParam(tt.fieldName, tt.data, tt.fieldValue, "/var/www/config.yaml")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processStringParam() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -562,7 +690,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fieldValue := reflect.ValueOf(tt.value).Elem().FieldByName(tt.fieldName)
-			err := p.assignField(tt.data, fieldValue, tt.fieldName)
+			err := p.assignField(tt.data, fieldValue, tt.fieldName, "/var/www/config.yaml")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("assignField() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -595,12 +723,11 @@ type ParseFieldConfigData struct {
 }
 
 func Test_ConfigParser_parseField(t *testing.T) {
-	// Insert your test cases here, I'm providing one sample case
 	tests := []struct {
 		name               string
 		fieldName          string
 		data               interface{}
-		params             map[string]string
+		params             map[ConfigParam]string
 		expectedFieldValue interface{}
 		configsCalled      bool
 		configsData        []ParseFieldConfigData
@@ -611,7 +738,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse field with factory param found",
 			fieldName: "A",
 			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"factory": "test",
 			},
 			configsCalled:      false,
@@ -624,7 +751,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse field with factory param not found",
 			fieldName: "A",
 			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"factory": "test",
 			},
 			configsCalled:      false,
@@ -637,7 +764,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse field with string param and value that is string",
 			fieldName: "C",
 			data:      "data",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"string": "Value",
 			},
 			configsCalled:      false,
@@ -652,7 +779,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			data: map[string]interface{}{
 				"val": "data2",
 			},
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"string": "Value",
 			},
 			configsCalled:      false,
@@ -665,7 +792,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse field with string param that points to invalid filed",
 			fieldName: "C",
 			data:      "data",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"string": "NotFound",
 			},
 			configsCalled:      true,
@@ -678,7 +805,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse array field with loadable param and single path string data",
 			fieldName: "D",
 			data:      "services/test.yaml",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"loadable": "true",
 			},
 			configsCalled: true,
@@ -693,7 +820,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse array field with loadable param and multiple paths string data",
 			fieldName: "D",
 			data:      "services/test*.yaml",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"loadable": "true",
 			},
 			configsCalled: true,
@@ -712,7 +839,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with loadable param and multiple paths string data",
 			fieldName: "E",
 			data:      "services/test*.yaml",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"loadable": "true",
 			},
 			configsCalled: true,
@@ -731,7 +858,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with loadable param and failed loading",
 			fieldName: "E",
 			data:      "services/test*.yaml",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"loadable": "true",
 			},
 			configsCalled:      true,
@@ -744,7 +871,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with enum when found",
 			fieldName: "A",
 			data:      "value2",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"enum": "value1|value2|value3",
 			},
 			configsCalled:      false,
@@ -757,7 +884,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with enum when not found",
 			fieldName: "A",
 			data:      "value5",
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"enum": "value1|value2|value3",
 			},
 			configsCalled:      false,
@@ -770,7 +897,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with keys when found",
 			fieldName: "F",
 			data:      map[string]interface{}{"key0": 1, "key1": 2},
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"keys": "key1|key2",
 			},
 			configsCalled:      false,
@@ -783,7 +910,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			name:      "parse map field with keys when not found",
 			fieldName: "F",
 			data:      map[string]interface{}{"key0": 1},
-			params: map[string]string{
+			params: map[ConfigParam]string{
 				"keys": "key1|key2",
 			},
 			configsCalled:      false,
@@ -792,7 +919,41 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
+		{
+			name:      "parse map field with keys when not found",
+			fieldName: "A",
+			data:      "test/path",
+			params: map[ConfigParam]string{
+				"path": "true",
+			},
+			configsCalled:      false,
+			configsData:        nil,
+			factoryFound:       false,
+			expectedFieldValue: &ParseFieldTestStruct{A: "/opt/config/test/path"},
+			wantErr:            false,
+		},
+		{
+			name:      "parse map field with keys when not found",
+			fieldName: "A",
+			data:      "test/invalid",
+			params: map[ConfigParam]string{
+				"path": "true",
+			},
+			configsCalled:      false,
+			configsData:        nil,
+			factoryFound:       false,
+			expectedFieldValue: &ParseFieldTestStruct{},
+			wantErr:            true,
+		},
 	}
+
+	mockFs := afero.NewMemMapFs()
+	// mock app.Env
+	mockEnv := &appMocks.MockEnv{}
+	mockEnv.On("Fs").Return(mockFs)
+
+	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
+	assert.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -829,12 +990,12 @@ func Test_ConfigParser_parseField(t *testing.T) {
 
 			// Create a new ConfigParser for each test case
 			p := &ConfigParser{
-				env:       nil,
+				env:       mockEnv,
 				loader:    mockLoader,
 				factories: mockFactories,
 			}
 
-			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params)
+			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params, "/opt/config/wst.yaml")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseField() error = %v, wantErr %v", err, tt.wantErr)
@@ -855,7 +1016,8 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 		C           int    `wst:""`
 		D           bool   `wst:"d"`
 		F           string
-		UnexportedE bool `wst:"name=e"`
+		P           string `wst:"p,path"`
+		UnexportedE bool   `wst:"name=e"`
 	}
 	type parseInvalidTagTestStruct struct {
 		A int `wst:"a,unknown=1"`
@@ -872,8 +1034,16 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 	mockFactories := &factoryMocks.MockFunctions{}
 	mockFactories.On("GetFactoryFunc", "test").Return(nil)
 
+	mockFs := afero.NewMemMapFs()
+	// mock app.Env
+	mockEnv := &appMocks.MockEnv{}
+	mockEnv.On("Fs").Return(mockFs)
+
+	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
+	assert.NoError(t, err)
+
 	p := &ConfigParser{
-		env:       nil,
+		env:       mockEnv,
 		loader:    mockLoader,
 		factories: mockFactories,
 	}
@@ -891,6 +1061,20 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 			testStruct:     &parseValidTestStruct{},
 			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false},
 			errMsg:         "",
+		},
+		{
+			name:           "Test path setting with new path",
+			data:           map[string]interface{}{"p": "test/path", "wst/path": "/opt/config/wst.yaml"},
+			testStruct:     &parseValidTestStruct{},
+			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false, P: "/opt/config/test/path"},
+			errMsg:         "",
+		},
+		{
+			name:           "Test path setting with invalid new path type",
+			data:           map[string]interface{}{"p": "test/path", "wst/path": 12},
+			testStruct:     &parseValidTestStruct{},
+			expectedStruct: &parseValidTestStruct{},
+			errMsg:         "unexpected type int for path",
 		},
 		{
 			name:           "Test invalid data",
@@ -924,7 +1108,7 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := p.parseStruct(tt.data, tt.testStruct)
+			err := p.parseStruct(tt.data, tt.testStruct, "/var/www/config.yaml")
 
 			if tt.errMsg != "" {
 				require.Error(t, err)

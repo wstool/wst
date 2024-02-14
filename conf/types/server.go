@@ -1,7 +1,7 @@
 package types
 
 type ServerConfig struct {
-	File       string     `wst:"file"`
+	File       string     `wst:"file,path"`
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 

@@ -20,23 +20,30 @@ import (
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
 	"github.com/bukka/wst/conf/types"
+	"github.com/spf13/afero"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
+type ConfigParam string
+
 const (
-	paramName     = "name"
-	paramLoadable = "loadable"
-	paramDefault  = "default"
-	paramFactory  = "factory"
-	paramEnum     = "enum"
-	paramKeys     = "keys"
-	paramString   = "string"
+	paramName     ConfigParam = "name"
+	paramLoadable             = "loadable"
+	paramDefault              = "default"
+	paramFactory              = "factory"
+	paramEnum                 = "enum"
+	paramKeys                 = "keys"
+	paramPath                 = "path"
+	paramString               = "string"
 )
 
+const pathKey = "wst/path"
+
 type Parser interface {
-	ParseConfig(data map[string]interface{}, config *types.Config) error
+	ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error
 }
 
 type ConfigParser struct {
@@ -47,7 +54,7 @@ type ConfigParser struct {
 
 // check if param is a valid param (one of param* constants)
 func isValidParam(param string) bool {
-	switch param {
+	switch ConfigParam(param) {
 	case paramName:
 		fallthrough
 	case paramLoadable:
@@ -60,6 +67,8 @@ func isValidParam(param string) bool {
 		fallthrough
 	case paramKeys:
 		fallthrough
+	case paramPath:
+		fallthrough
 	case paramString:
 		return true
 	default:
@@ -68,12 +77,12 @@ func isValidParam(param string) bool {
 }
 
 // parseTag parses the 'wst' struct tag into a Field
-func (p ConfigParser) parseTag(tag string) (map[string]string, error) {
+func (p ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
 	// split the tag into parts
 	parts := strings.Split(tag, ",")
 
 	// create a map to store parameters
-	params := make(map[string]string)
+	params := make(map[ConfigParam]string)
 
 	// the name is the first part
 	firstPart := parts[0]
@@ -100,7 +109,7 @@ func (p ConfigParser) parseTag(tag string) (map[string]string, error) {
 				// this is a boolean parameter
 				value = "true"
 			}
-			params[key] = value
+			params[ConfigParam(key)] = value
 		} else {
 			return nil, fmt.Errorf("invalid parameter key: %s", key)
 		}
@@ -164,6 +173,45 @@ func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName 
 	return fmt.Errorf("keys %v are not valid for field %s", keys, fieldName)
 }
 
+func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
+	// Assert data is a string
+	path, ok := data.(string)
+	if !ok {
+		return fmt.Errorf("unexpected type %T for data, expected string", data)
+	}
+
+	fs := p.env.Fs()
+
+	// If it's not an absolute path, prepend the path variable to it
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(filepath.Dir(configPath), path)
+	}
+
+	// Check if the constructed path exists using Afero's fs.Exists
+	exists, err := afero.Exists(fs, path)
+	if err != nil {
+		return err
+	} else if !exists {
+		return fmt.Errorf("file path %s does not exist", path)
+	}
+
+	// Check that fieldValue is settable (it is addressable and was not obtained by
+	// the use of unexported struct fields)
+	if !fieldValue.CanSet() {
+		return fmt.Errorf("field %s is not settable", fieldName)
+	}
+
+	// Check if fieldValue is of type string
+	if fieldValue.Kind() != reflect.String {
+		return fmt.Errorf("field %s is not of type string", fieldName)
+	}
+
+	// If no errors so far, set the fieldValue to the resolved file path
+	fieldValue.SetString(path)
+
+	return nil
+}
+
 func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value) (interface{}, error) {
 	loadableData, isString := data.(string)
 	if isString {
@@ -176,14 +224,18 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 		case reflect.Map:
 			loadedData := make(map[string]interface{})
 			for _, config := range configs {
-				loadedData[config.Path()] = config.Data()
+				data := config.Data()
+				data[pathKey] = config.Path()
+				loadedData[config.Path()] = data
 			}
 			return loadedData, nil
 
 		case reflect.Slice:
 			loadedData := make([]map[string]interface{}, len(configs))
 			for i, config := range configs {
-				loadedData[i] = config.Data()
+				data := config.Data()
+				data[pathKey] = config.Path()
+				loadedData[i] = data
 			}
 			return loadedData, nil
 
@@ -194,7 +246,12 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 	return data, nil
 }
 
-func (p ConfigParser) processStringParam(fieldName string, data interface{}, fieldValue reflect.Value) (bool, error) {
+func (p ConfigParser) processStringParam(
+	fieldName string,
+	data interface{},
+	fieldValue reflect.Value,
+	path string,
+) (bool, error) {
 	kind := fieldValue.Kind()
 
 	if kind != reflect.Struct && kind != reflect.Interface && kind != reflect.Ptr {
@@ -213,7 +270,7 @@ func (p ConfigParser) processStringParam(fieldName string, data interface{}, fie
 			return false, nil
 		}
 		// Process map values
-		err := p.processMapValue(mapData, fieldValue, fieldName)
+		err := p.processMapValue(mapData, fieldValue, fieldName, path)
 		if err != nil {
 			return false, err
 		}
@@ -225,7 +282,7 @@ func (p ConfigParser) processStringParam(fieldName string, data interface{}, fie
 
 		fieldValuePtrInterface := fieldValue.Addr().Interface()
 		// Use an empty map as temporary data to populate the struct
-		err := p.parseStruct(make(map[string]interface{}), fieldValuePtrInterface)
+		err := p.parseStruct(make(map[string]interface{}), fieldValuePtrInterface, path)
 		if err != nil {
 			return false, fmt.Errorf("error parsing struct for string param: %v", err)
 		}
@@ -262,7 +319,12 @@ func (p ConfigParser) setFieldByName(v interface{}, name string, value string) e
 
 // processMapValue processes a map[string]interface{} where value is a string
 // It goes through each value in map and if it's a string, sets it to a specified field.
-func (p ConfigParser) processMapValue(mapData map[string]string, rv reflect.Value, fieldName string) error {
+func (p ConfigParser) processMapValue(
+	mapData map[string]string,
+	rv reflect.Value,
+	fieldName string,
+	path string,
+) error {
 	keyType := rv.Type().Key()
 	elemType := rv.Type().Elem()
 
@@ -274,7 +336,7 @@ func (p ConfigParser) processMapValue(mapData map[string]string, rv reflect.Valu
 		newElem := reflect.New(elemType)
 
 		// Use an empty map as temporary data to populate the struct
-		err := p.parseStruct(make(map[string]interface{}), newElem.Interface())
+		err := p.parseStruct(make(map[string]interface{}), newElem.Interface(), path)
 		if err != nil {
 			return fmt.Errorf("error parsing struct for string param: %v", err)
 		}
@@ -294,14 +356,14 @@ func (p ConfigParser) processMapValue(mapData map[string]string, rv reflect.Valu
 }
 
 // assignField assigns the provided data to the fieldValue.
-func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fieldName string) error {
+func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fieldName string, path string) error {
 	switch fieldValue.Kind() {
 	case reflect.Struct:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
 			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
 		}
-		return p.parseStruct(dataMap, fieldValue.Addr().Interface())
+		return p.parseStruct(dataMap, fieldValue.Addr().Interface(), path)
 	case reflect.Map:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
@@ -313,7 +375,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 		}
 		for key, val := range dataMap {
 			newVal := reflect.New(fieldValue.Type().Elem())
-			err := p.assignField(val, newVal.Elem(), fieldName)
+			err := p.assignField(val, newVal.Elem(), fieldName, path)
 			if err != nil {
 				return err
 			}
@@ -338,7 +400,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 			fieldValue.Set(reflect.MakeSlice(fieldValue.Type(), len(dataSlice), len(dataSlice)))
 		}
 		for i, val := range dataSlice {
-			err := p.assignField(val, fieldValue.Index(i), fmt.Sprintf("%s[%d]", fieldName, i))
+			err := p.assignField(val, fieldValue.Index(i), fmt.Sprintf("%s[%d]", fieldName, i), path)
 			if err != nil {
 				return err
 			}
@@ -357,7 +419,13 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 }
 
 // parseField parses a struct field based on data and params
-func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fieldName string, params map[string]string) error {
+func (p ConfigParser) parseField(
+	data interface{},
+	fieldValue reflect.Value,
+	fieldName string,
+	params map[ConfigParam]string,
+	path string,
+) error {
 	var err error
 
 	if factory, hasFactory := params[paramFactory]; hasFactory {
@@ -370,7 +438,7 @@ func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fie
 
 	if stringValue, hasString := params[paramString]; hasString {
 		var done bool
-		if done, err = p.processStringParam(stringValue, data, fieldValue); err != nil {
+		if done, err = p.processStringParam(stringValue, data, fieldValue, path); err != nil {
 			return err
 		}
 		if done {
@@ -396,8 +464,11 @@ func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fie
 		}
 	}
 
-	// assign the processed data to the field
-	if err = p.assignField(data, fieldValue, fieldName); err != nil {
+	if _, hasPath := params[paramPath]; hasPath {
+		if err = p.processPathParam(data, fieldValue, fieldName, path); err != nil {
+			return err
+		}
+	} else if err = p.assignField(data, fieldValue, fieldName, path); err != nil {
 		return err
 	}
 
@@ -405,13 +476,21 @@ func (p ConfigParser) parseField(data interface{}, fieldValue reflect.Value, fie
 }
 
 // parseStruct parses a struct into a map of Fields
-func (p ConfigParser) parseStruct(data map[string]interface{}, structure interface{}) error {
+func (p ConfigParser) parseStruct(data map[string]interface{}, structure interface{}, path string) error {
 	structValuePtr := reflect.ValueOf(structure)
 	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("expected a pointer to a struct, got %T", structure)
 	}
 	structValue := structValuePtr.Elem()
 	structType := structValue.Type()
+
+	if newPathInterface, newPathFound := data[pathKey]; newPathFound {
+		newPath, ok := newPathInterface.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for path", newPathInterface)
+		}
+		path = newPath
+	}
 
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -430,7 +509,7 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 		}
 		fieldValue := structValue.FieldByName(field.Name)
 		if fieldData, ok := data[fieldName]; ok {
-			if err := p.parseField(fieldData, fieldValue, fieldName, params); err != nil {
+			if err := p.parseField(fieldData, fieldValue, fieldName, params, path); err != nil {
 				return err
 			}
 		} else {
@@ -447,8 +526,8 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 	return nil
 }
 
-func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config) error {
-	return p.parseStruct(data, config)
+func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
+	return p.parseStruct(data, config, configPath)
 }
 
 func CreateParser(env app.Env, loader loader.Loader) Parser {

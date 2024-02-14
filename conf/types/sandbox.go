@@ -17,9 +17,6 @@ type SandboxHookCommand struct {
 type SandboxHook interface {
 }
 
-type Sandbox interface {
-}
-
 type CommonSandbox struct {
 	Dirs  map[string]string      `wst:"dirs,keys=conf|run|script"`
 	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
@@ -60,4 +57,7 @@ type KubernetesAuth struct {
 type KubernetesSandbox struct {
 	ContainerSandbox
 	Auth KubernetesAuth `wst:"auth"`
+}
+
+type Sandbox interface {
 }
