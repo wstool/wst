@@ -1,5 +1,23 @@
 package types
 
+type SandboxType string
+
+const (
+	CommonSandboxType     SandboxType = "common"
+	LocalSandboxType                  = "local"
+	ContainerSandboxType              = "container"
+	DockerSandboxType                 = "docker"
+	KubernetesSandboxType             = "kubernetes"
+)
+
+type SandboxHookType string
+
+const (
+	StartSandboxHookType  SandboxHookType = "start"
+	StopSandboxHookType                   = "stop"
+	ReloadSandboxHookType                 = "reload"
+)
+
 type SandboxHookNative struct {
 	Type string `wst:"type,enum=start|restart|stop"`
 }
@@ -14,6 +32,12 @@ type SandboxHookCommand struct {
 	Args       []string `wst:"args"`
 }
 
+type SandboxHookSignal struct {
+	IsString    bool
+	StringValue string
+	IntValue    int
+}
+
 type SandboxHook interface {
 }
 
@@ -22,8 +46,16 @@ type CommonSandbox struct {
 	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
+func (s *CommonSandbox) GetType() SandboxType {
+	return CommonSandboxType
+}
+
 type LocalSandbox struct {
 	CommonSandbox
+}
+
+func (s *LocalSandbox) GetType() SandboxType {
+	return KubernetesSandboxType
 }
 
 type ContainerImage struct {
@@ -46,12 +78,20 @@ type ContainerSandbox struct {
 	Registry ContainerRegistry `wst:"registry"`
 }
 
+func (s *ContainerSandbox) GetType() SandboxType {
+	return KubernetesSandboxType
+}
+
 type DockerSandbox struct {
 	ContainerSandbox
 }
 
+func (s *DockerSandbox) GetType() SandboxType {
+	return KubernetesSandboxType
+}
+
 type KubernetesAuth struct {
-	Kubeconfig string `wst:"kubeconfig"`
+	Kubeconfig string `wst:"kubeconfig,path"`
 }
 
 type KubernetesSandbox struct {
@@ -59,5 +99,10 @@ type KubernetesSandbox struct {
 	Auth KubernetesAuth `wst:"auth"`
 }
 
+func (s *KubernetesSandbox) GetType() SandboxType {
+	return KubernetesSandboxType
+}
+
 type Sandbox interface {
+	GetType() SandboxType
 }
