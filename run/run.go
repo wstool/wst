@@ -74,7 +74,7 @@ func (r *Runner) Execute(options *Options) error {
 		return err
 	}
 
-	specification, err := r.specMaker.Make(config, serversMap)
+	specification, err := r.specMaker.Make(&config.Spec, serversMap)
 	if err != nil {
 		return err
 	}
