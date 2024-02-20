@@ -15,10 +15,10 @@
 package types
 
 type Config struct {
-	Version     string             `wst:"version,enum=1.0"`
-	Name        string             `wst:"name"`
-	Description string             `wst:"description"`
-	Sandboxes   map[string]Sandbox `wst:"sandboxes,loadable,factory=createSandboxes"`
-	Servers     []Server           `wst:"servers,loadable"`
-	Spec        Spec               `wst:"spec"`
+	Version     string                  `wst:"version,enum=1.0"`
+	Name        string                  `wst:"name"`
+	Description string                  `wst:"description"`
+	Sandboxes   map[SandboxType]Sandbox `wst:"sandboxes,loadable,factory=createSandboxes"`
+	Servers     []Server                `wst:"servers,loadable"`
+	Spec        Spec                    `wst:"spec"`
 }

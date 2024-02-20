@@ -1,6 +1,7 @@
 package instances
 
 import (
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
@@ -11,7 +12,8 @@ import (
 )
 
 type Instance interface {
-	ExecuteActions() error
+	ExecuteActions(dryRun bool) error
+	GetName() string
 }
 
 type InstanceMaker struct {
@@ -51,21 +53,30 @@ func (m *InstanceMaker) Make(config types.Instance, srvs servers.Servers) (Insta
 	}
 	runData := runtime.CreateData()
 	return &nativeInstance{
+		name:    config.Name,
 		actions: actions,
 		runData: runData,
 	}, nil
 }
 
 type nativeInstance struct {
+	name    string
 	actions []actions.Action
 	runData runtime.Data
 }
 
-func (i *nativeInstance) ExecuteActions() error {
+func (i *nativeInstance) GetName() string {
+	return i.name
+}
+
+func (i *nativeInstance) ExecuteActions(dryRun bool) error {
 	for _, action := range i.actions {
-		err := action.Execute(i.runData)
+		success, err := action.Execute(i.runData, dryRun)
 		if err != nil {
 			return err
+		}
+		if !success {
+			return fmt.Errorf("action execution failed")
 		}
 	}
 	return nil

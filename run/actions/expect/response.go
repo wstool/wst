@@ -56,7 +56,7 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 	}, nil
 }
 
-func (a *ResponseAction) Execute(runData runtime.Data) (bool, error) { // Retrieve ResponseData from runData using the Request string as the key.
+func (a *ResponseAction) Execute(runData runtime.Data, dryRun bool) (bool, error) { // Retrieve ResponseData from runData using the Request string as the key.
 	data, ok := runData.Load(a.Request)
 	if !ok {
 		return false, errors.New("response data not found")

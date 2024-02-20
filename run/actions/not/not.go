@@ -36,8 +36,8 @@ func (m *ActionMaker) Make(
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data) (bool, error) {
-	success, err := a.Action.Execute(runData)
+func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
+	success, err := a.Action.Execute(runData, dryRun)
 	if err != nil {
 		return false, err
 	}

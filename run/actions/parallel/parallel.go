@@ -41,7 +41,7 @@ func (m *ActionMaker) Make(
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data) (bool, error) {
+func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
 	wg.Add(len(a.Actions))
@@ -54,7 +54,7 @@ func (a Action) Execute(runData runtime.Data) (bool, error) {
 			defer wg.Done()
 
 			// Execute the action, passing the context.
-			success, err := act.Execute(runData)
+			success, err := act.Execute(runData, dryRun)
 			if err != nil || !success {
 				errs <- err
 			}

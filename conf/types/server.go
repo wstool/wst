@@ -28,7 +28,7 @@ type Server struct {
 	Extends    string                    `wst:"extends"`
 	Configs    map[string]ServerConfig   `wst:"configs"`
 	Templates  map[string]ServerTemplate `wst:"templates"`
-	Sandboxes  map[string]Sandbox        `wst:"sandboxes"`
+	Sandboxes  map[SandboxType]Sandbox   `wst:"sandboxes"`
 	Parameters Parameters                `wst:"parameters,factory=createParameters"`
 	Actions    ServerActions             `wst:"actions"`
 }

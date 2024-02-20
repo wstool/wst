@@ -5,6 +5,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/sandboxes"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/servers/templates"
 	"strings"
@@ -12,7 +13,7 @@ import (
 
 type Server interface {
 	GetConfig(name string) (configs.Config, bool)
-	GetSandbox(name string) (sandboxes.Sandbox, bool)
+	GetSandbox(name sandbox.Type) (sandbox.Sandbox, bool)
 }
 
 type Servers map[string]map[string]Server
@@ -121,7 +122,7 @@ func (s nativeServer) GetConfig(name string) (configs.Config, bool) {
 	return config, ok
 }
 
-func (s nativeServer) GetSandbox(name string) (sandboxes.Sandbox, bool) {
+func (s nativeServer) GetSandbox(name sandbox.Type) (sandbox.Sandbox, bool) {
 	sandbox, ok := s.sandboxes[name]
 	return sandbox, ok
 }

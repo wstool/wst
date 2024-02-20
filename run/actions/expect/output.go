@@ -65,7 +65,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	}, nil
 }
 
-func (a *OutputAction) Execute(runData runtime.Data) (bool, error) {
+func (a *OutputAction) Execute(runData runtime.Data, dryRun bool) (bool, error) {
 	sandbox := a.Service.GetSandbox()
 	outputType, err := a.getSandboxOutputType(a.Type)
 	if err != nil {

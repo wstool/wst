@@ -51,13 +51,7 @@ type ResponseData struct {
 	Headers http.Header
 }
 
-func (a Action) Execute(runData runtime.Data) (bool, error) {
-	// Determine the key to use for storing the response in runData.
-	key := a.Id
-	if key == "" {
-		key = "last"
-	}
-
+func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
 	// Construct the request URL from the Service and Path.
 	url := a.Service.GetBaseUrl() + a.Path
 
@@ -93,7 +87,7 @@ func (a Action) Execute(runData runtime.Data) (bool, error) {
 	}
 
 	// Store the ResponseData in runData.
-	if err := runData.Store(key, responseData); err != nil {
+	if err := runData.Store(a.Id, responseData); err != nil {
 		return false, err
 	}
 
