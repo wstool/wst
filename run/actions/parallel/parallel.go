@@ -6,6 +6,7 @@ import (
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
+	"sync"
 )
 
 type Action struct {
@@ -41,8 +42,35 @@ func (m *ActionMaker) Make(
 }
 
 func (a Action) Execute(runData runtime.Data) (bool, error) {
-	// implementation here
-	// use runData.Store(key, value) to store data.
-	// and value, ok := runData.Load(key) to retrieve data.
+	// Use a WaitGroup to wait for all goroutines to finish.
+	var wg sync.WaitGroup
+	wg.Add(len(a.Actions))
+
+	// Use an error channel to collect potential errors from actions.
+	errs := make(chan error, len(a.Actions))
+
+	for _, action := range a.Actions {
+		go func(act actions.Action) {
+			defer wg.Done()
+
+			// Execute the action, passing the context.
+			success, err := act.Execute(runData)
+			if err != nil || !success {
+				errs <- err
+			}
+		}(action)
+	}
+
+	// Wait for all actions to complete.
+	wg.Wait()
+	close(errs)
+
+	// Check if there were any errors.
+	for err := range errs {
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return true, nil
 }
