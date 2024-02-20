@@ -77,7 +77,7 @@ func (m *Maker) Make(
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
-		sandbox, ok := server.GetSandbox(serviceConfig.Sandbox)
+		sandbox, ok := server.GetSandbox(sandbox.Type(serviceConfig.Sandbox))
 		if !ok {
 			return nil, fmt.Errorf("sandbox %s not found for service %s", serviceConfig.Sandbox, serviceName)
 		}
