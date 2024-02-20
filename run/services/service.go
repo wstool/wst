@@ -5,12 +5,14 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/resources/scripts"
-	"github.com/bukka/wst/run/sandboxes"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 )
 
 type Service interface {
+	GetSandbox() sandbox.Sandbox
+	RenderTemplate(text string) (string, error)
 }
 
 type Services map[string]Service
@@ -100,6 +102,15 @@ type nativeServiceConfig struct {
 type nativeService struct {
 	scripts scripts.Scripts
 	server  servers.Server
-	sandbox sandboxes.Sandbox
+	sandbox sandbox.Sandbox
 	configs map[string]nativeServiceConfig
+}
+
+func (s *nativeService) RenderTemplate(text string) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *nativeService) GetSandbox() sandbox.Sandbox {
+	return s.sandbox
 }

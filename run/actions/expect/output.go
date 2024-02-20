@@ -5,7 +5,9 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/services"
+	"regexp"
 )
 
 type OutputAction struct {
@@ -42,7 +44,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	}
 
 	outputType := OutputType(config.Output.Type)
-	if outputType != OutputTypeStdout && outputType != OutputTypeStderr && outputType != OutputTypeAny {
+	if outputType != OutputTypeStdout && outputType != OutputTypeStderr {
 		return nil, fmt.Errorf("invalid OutputType: %v", config.Output.Type)
 	}
 
@@ -63,9 +65,94 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	}, nil
 }
 
-func (a OutputAction) Execute(runData runtime.Data) error {
-	// implementation here
-	// use runData.Store(key, value) to store data.
-	// and value, ok := runData.Load(key) to retrieve data.
-	return nil
+func (a *OutputAction) Execute(runData runtime.Data) error {
+	sandbox := a.Service.GetSandbox()
+	outputType, err := a.getSandboxOutputType(a.Type)
+	if err != nil {
+		return err
+	}
+	messages, err := a.renderMessages(a.Messages)
+	if err != nil {
+		return err
+	}
+	scanner := sandbox.GetOutputScanner(outputType)
+	for scanner.Scan() {
+		line := scanner.Text()
+		messages, err = a.matchMessages(line, messages)
+		if err != nil {
+			return err
+		}
+		if len(messages) == 0 {
+			return nil
+		}
+	}
+	if scanner.Err() != nil {
+		return scanner.Err()
+	}
+
+	return fmt.Errorf("unmatched messages: %v", messages)
+}
+
+func (a *OutputAction) getSandboxOutputType(outputType OutputType) (sandbox.OutputType, error) {
+	switch outputType {
+	case OutputTypeStdout:
+		return sandbox.StdoutOutputType, nil
+	case OutputTypeStderr:
+		return sandbox.StderrOutputType, nil
+	default:
+		return sandbox.StderrOutputType, fmt.Errorf("unknow output type %s", string(outputType))
+	}
+}
+
+func (a *OutputAction) renderMessages(messages []string) ([]string, error) {
+	if !a.RenderTemplate {
+		return messages, nil
+	}
+	var renderedMessages []string
+	for _, message := range messages {
+		renderedMessage, err := a.Service.RenderTemplate(message)
+		if err != nil {
+			return nil, err
+		}
+		renderedMessages = append(renderedMessages, renderedMessage)
+	}
+
+	return renderedMessages, nil
+}
+
+func (a *OutputAction) matchMessages(line string, messages []string) ([]string, error) {
+	if a.Order == OrderTypeFixed {
+		if len(messages) > 0 {
+			matched, err := a.matchMessage(line, messages[0])
+			if err != nil {
+				return nil, err
+			}
+			if matched {
+				return messages[1:], nil
+			}
+		}
+	} else if a.Order == OrderTypeRandom {
+		for index, message := range messages {
+			matched, err := a.matchMessage(line, message)
+			if err != nil {
+				return nil, err
+			}
+			if matched {
+				return append(messages[:index], messages[index+1:]...), nil
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("unknown order %s", string(a.Order))
+	}
+	return messages, nil
+}
+
+func (a *OutputAction) matchMessage(line, message string) (bool, error) {
+	if a.Match == MatchTypeExact {
+		return line == message, nil
+	} else if a.Match == MatchTypeRegexp {
+		return regexp.MatchString(message, line)
+	} else {
+		return false, fmt.Errorf("unknown match type %s", string(a.Match))
+	}
 }
