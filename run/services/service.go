@@ -11,6 +11,7 @@ import (
 )
 
 type Service interface {
+	GetBaseUrl() string
 	GetSandbox() sandbox.Sandbox
 	RenderTemplate(text string) (string, error)
 }
@@ -104,6 +105,11 @@ type nativeService struct {
 	server  servers.Server
 	sandbox sandbox.Sandbox
 	configs map[string]nativeServiceConfig
+}
+
+func (s *nativeService) GetBaseUrl() string {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *nativeService) RenderTemplate(text string) (string, error) {

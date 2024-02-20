@@ -54,8 +54,6 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 }
 
 func (a ResponseAction) Execute(runData runtime.Data) (bool, error) {
-	// implementation here
-	// use runData.Store(key, value) to store data.
-	// and value, ok := runData.Load(key) to retrieve data.
+
 	return true, nil
 }
