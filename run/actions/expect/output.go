@@ -65,32 +65,32 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	}, nil
 }
 
-func (a *OutputAction) Execute(runData runtime.Data) error {
+func (a *OutputAction) Execute(runData runtime.Data) (bool, error) {
 	sandbox := a.Service.GetSandbox()
 	outputType, err := a.getSandboxOutputType(a.Type)
 	if err != nil {
-		return err
+		return false, err
 	}
 	messages, err := a.renderMessages(a.Messages)
 	if err != nil {
-		return err
+		return false, err
 	}
 	scanner := sandbox.GetOutputScanner(outputType)
 	for scanner.Scan() {
 		line := scanner.Text()
 		messages, err = a.matchMessages(line, messages)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if len(messages) == 0 {
-			return nil
+			return true, nil
 		}
 	}
 	if scanner.Err() != nil {
-		return scanner.Err()
+		return false, scanner.Err()
 	}
 
-	return fmt.Errorf("unmatched messages: %v", messages)
+	return false, nil
 }
 
 func (a *OutputAction) getSandboxOutputType(outputType OutputType) (sandbox.OutputType, error) {

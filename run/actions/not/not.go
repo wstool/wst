@@ -36,9 +36,10 @@ func (m *ActionMaker) Make(
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data) error {
-	// implementation here
-	// use runData.Store(key, value) to store data.
-	// and value, ok := runData.Load(key) to retrieve data.
-	return nil
+func (a Action) Execute(runData runtime.Data) (bool, error) {
+	success, err := a.Action.Execute(runData)
+	if err != nil {
+		return false, err
+	}
+	return !success, nil
 }

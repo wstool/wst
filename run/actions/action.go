@@ -13,7 +13,7 @@ import (
 )
 
 type Action interface {
-	Execute(runData runtime.Data) error
+	Execute(runData runtime.Data) (bool, error)
 }
 
 type ActionMaker struct {
