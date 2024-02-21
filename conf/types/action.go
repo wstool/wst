@@ -29,6 +29,7 @@ type OutputExpectation struct {
 
 type OutputExpectationAction struct {
 	Service string            `wst:"service"`
+	Timeout int               `wst:"timeout"`
 	Output  OutputExpectation `wst:"output"`
 }
 
@@ -48,6 +49,7 @@ type ResponseExpectation struct {
 
 type ResponseExpectationAction struct {
 	Service  string              `wst:"service"`
+	Timeout  int                 `wst:"timeout"`
 	Response ResponseExpectation `wst:"response"`
 }
 
@@ -57,6 +59,7 @@ type ExpectationAction interface {
 
 type RequestAction struct {
 	Service string  `wst:"service"`
+	Timeout int     `wst:"timeout"`
 	Id      string  `wst:"id,default=last"`
 	Path    string  `wst:"path"`
 	Method  string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
@@ -64,11 +67,32 @@ type RequestAction struct {
 }
 
 type ParallelAction struct {
-	Actions []Action
+	Actions []Action `wst:"actions"`
+	Timeout int      `wst:"timeout"`
 }
 
 type NotAction struct {
-	Action Action
+	Action  Action `wst:"action"`
+	Timeout int    `wst:"timeout"`
+}
+
+type StartAction struct {
+	Service  string   `wst:"service"`
+	Services []string `wst:"service"`
+	Timeout  int      `wst:"timeout"`
+}
+
+type RestartAction struct {
+	Service  string   `wst:"service"`
+	Services []string `wst:"service"`
+	Reload   bool     `wst:"reload"`
+	Timeout  int      `wst:"timeout"`
+}
+
+type StopAction struct {
+	Service  string   `wst:"service"`
+	Services []string `wst:"service"`
+	Timeout  int      `wst:"timeout"`
 }
 
 type Action interface {

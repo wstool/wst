@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package not
+package stop
 
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 )
 
 type Action struct {
-	Action  actions.Action
-	Timeout int
+	Services services.Services
+	Timeout  int
 }
 
 type ActionMaker struct {
@@ -38,30 +37,48 @@ func CreateActionMaker(env app.Env) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.NotAction,
+	config *types.StopAction,
 	svcs services.Services,
 	defaultTimeout int,
-	actionMaker *actions.ActionMaker,
 ) (*Action, error) {
+	var stopServices services.Services
+
+	if config.Service != "" {
+		config.Services = append(config.Services, config.Service)
+	}
+
+	if len(config.Services) > 0 {
+		for _, configService := range config.Services {
+			svc, err := svcs.FindService(configService)
+			if err != nil {
+				return nil, err
+			}
+			err = stopServices.AddService(svc)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		stopServices = svcs
+	}
+
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	action, err := actionMaker.MakeAction(config.Action, svcs, config.Timeout)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Action{
-		Action:  action,
-		Timeout: config.Timeout,
+		Services: stopServices,
+		Timeout:  config.Timeout,
 	}, nil
 }
 
 func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	success, err := a.Action.Execute(runData, dryRun)
-	if err != nil {
-		return false, err
+	for _, svc := range a.Services {
+		err := svc.Stop()
+		if err != nil {
+			return false, err
+		}
 	}
-	return !success, nil
+
+	return true, nil
 }

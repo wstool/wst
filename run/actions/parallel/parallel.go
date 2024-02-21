@@ -25,6 +25,7 @@ import (
 
 type Action struct {
 	Actions []actions.Action
+	Timeout int
 }
 
 type ActionMaker struct {
@@ -40,11 +41,16 @@ func CreateActionMaker(env app.Env) *ActionMaker {
 func (m *ActionMaker) Make(
 	config *types.ParallelAction,
 	svcs services.Services,
+	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
 ) (*Action, error) {
+	if config.Timeout == 0 {
+		config.Timeout = defaultTimeout
+	}
+
 	var actions []actions.Action
 	for _, configAction := range config.Actions {
-		action, err := actionMaker.MakeAction(configAction, svcs)
+		action, err := actionMaker.MakeAction(configAction, svcs, config.Timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -52,6 +58,7 @@ func (m *ActionMaker) Make(
 	}
 	return &Action{
 		Actions: actions,
+		Timeout: config.Timeout,
 	}, nil
 }
 

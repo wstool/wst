@@ -47,20 +47,26 @@ func CreateResponseExpectationActionMaker(env app.Env) *ResponseExpectationActio
 func (m *ResponseExpectationActionMaker) MakeAction(
 	config *types.ResponseExpectationAction,
 	svcs services.Services,
+	defaultTimeout int,
 ) (*ResponseAction, error) {
 	match := MatchType(config.Response.Body.Match)
 	if match != MatchTypeExact && match != MatchTypeRegexp {
 		return nil, fmt.Errorf("invalid MatchType: %v", config.Response.Body.Match)
 	}
 
-	svc, err := svcs.GetService(config.Service)
+	svc, err := svcs.FindService(config.Service)
 	if err != nil {
 		return nil, err
+	}
+
+	if config.Timeout == 0 {
+		config.Timeout = defaultTimeout
 	}
 
 	return &ResponseAction{
 		ExpectationAction: ExpectationAction{
 			Service: svc,
+			Timeout: config.Timeout,
 		},
 		Request:            config.Response.Request,
 		Headers:            config.Response.Headers,

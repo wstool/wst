@@ -46,6 +46,7 @@ func CreateOutputExpectationActionMaker(env app.Env) *OutputExpectationActionMak
 func (m *OutputExpectationActionMaker) MakeAction(
 	config *types.OutputExpectationAction,
 	svcs services.Services,
+	defaultTimeout int,
 ) (*OutputAction, error) {
 	order := OrderType(config.Output.Order)
 	if order != OrderTypeFixed && order != OrderTypeRandom {
@@ -62,14 +63,19 @@ func (m *OutputExpectationActionMaker) MakeAction(
 		return nil, fmt.Errorf("invalid OutputType: %v", config.Output.Type)
 	}
 
-	svc, err := svcs.GetService(config.Service)
+	svc, err := svcs.FindService(config.Service)
 	if err != nil {
 		return nil, err
+	}
+
+	if config.Timeout == 0 {
+		config.Timeout = defaultTimeout
 	}
 
 	return &OutputAction{
 		ExpectationAction: ExpectationAction{
 			Service: svc,
+			Timeout: config.Timeout,
 		},
 		Order:          order,
 		Match:          match,

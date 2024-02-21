@@ -25,6 +25,7 @@ import (
 
 type Action struct {
 	Service services.Service
+	Timeout int
 	Id      string
 	Path    string
 	Method  string
@@ -44,14 +45,20 @@ func CreateActionMaker(env app.Env) *ActionMaker {
 func (m *ActionMaker) Make(
 	config *types.RequestAction,
 	svcs services.Services,
+	defaultTimeout int,
 ) (*Action, error) {
-	svc, err := svcs.GetService(config.Service)
+	svc, err := svcs.FindService(config.Service)
 	if err != nil {
 		return nil, err
 	}
 
+	if config.Timeout == 0 {
+		config.Timeout = defaultTimeout
+	}
+
 	return &Action{
 		Service: svc,
+		Timeout: config.Timeout,
 		Id:      config.Id,
 		Path:    config.Path,
 		Method:  config.Method,

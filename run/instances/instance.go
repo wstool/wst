@@ -59,7 +59,7 @@ func (m *InstanceMaker) Make(config types.Instance, srvs servers.Servers) (Insta
 
 	actions := make([]actions.Action, len(config.Actions))
 	for i, actionConfig := range config.Actions {
-		action, err := m.actionMaker.MakeAction(actionConfig, svcs)
+		action, err := m.actionMaker.MakeAction(actionConfig, svcs, config.Timeouts.Action)
 		if err != nil {
 			return nil, err
 		}
@@ -68,6 +68,7 @@ func (m *InstanceMaker) Make(config types.Instance, srvs servers.Servers) (Insta
 	runData := runtime.CreateData()
 	return &nativeInstance{
 		name:    config.Name,
+		timeout: config.Timeouts.Actions,
 		actions: actions,
 		runData: runData,
 	}, nil
@@ -77,6 +78,7 @@ type nativeInstance struct {
 	name    string
 	actions []actions.Action
 	runData runtime.Data
+	timeout int
 }
 
 func (i *nativeInstance) Name() string {

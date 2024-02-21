@@ -22,6 +22,9 @@ import (
 	"github.com/bukka/wst/run/actions/not"
 	"github.com/bukka/wst/run/actions/parallel"
 	"github.com/bukka/wst/run/actions/request"
+	"github.com/bukka/wst/run/actions/restart"
+	"github.com/bukka/wst/run/actions/start"
+	"github.com/bukka/wst/run/actions/stop"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 )
@@ -37,6 +40,9 @@ type ActionMaker struct {
 	notMaker            *not.ActionMaker
 	parallelMaker       *parallel.ActionMaker
 	requestMaker        *request.ActionMaker
+	restartMaker        *restart.ActionMaker
+	startMaker          *start.ActionMaker
+	stopMaker           *stop.ActionMaker
 }
 
 func CreateActionMaker(env app.Env) *ActionMaker {
@@ -47,21 +53,30 @@ func CreateActionMaker(env app.Env) *ActionMaker {
 		notMaker:            not.CreateActionMaker(env),
 		parallelMaker:       parallel.CreateActionMaker(env),
 		requestMaker:        request.CreateActionMaker(env),
+		restartMaker:        restart.CreateActionMaker(env),
+		startMaker:          start.CreateActionMaker(env),
+		stopMaker:           stop.CreateActionMaker(env),
 	}
 }
 
-func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services) (Action, error) {
+func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services, defaultTimeout int) (Action, error) {
 	switch action := config.(type) {
 	case *types.OutputExpectationAction:
-		return m.expectOutputMaker.MakeAction(action, svcs)
+		return m.expectOutputMaker.MakeAction(action, svcs, defaultTimeout)
 	case *types.ResponseExpectationAction:
-		return m.expectResponseMaker.MakeAction(action, svcs)
+		return m.expectResponseMaker.MakeAction(action, svcs, defaultTimeout)
 	case *types.NotAction:
-		return m.notMaker.Make(action, svcs, m)
+		return m.notMaker.Make(action, svcs, defaultTimeout, m)
 	case *types.ParallelAction:
-		return m.parallelMaker.Make(action, svcs, m)
+		return m.parallelMaker.Make(action, svcs, defaultTimeout, m)
 	case *types.RequestAction:
-		return m.requestMaker.Make(action, svcs)
+		return m.requestMaker.Make(action, svcs, defaultTimeout)
+	case *types.RestartAction:
+		return m.restartMaker.Make(action, svcs, defaultTimeout)
+	case *types.StartAction:
+		return m.startMaker.Make(action, svcs, defaultTimeout)
+	case *types.StopAction:
+		return m.stopMaker.Make(action, svcs, defaultTimeout)
 	default:
 		return nil, fmt.Errorf("unsupported action type: %T", config)
 	}

@@ -26,18 +26,27 @@ import (
 
 type Service interface {
 	BaseUrl() string
-	Sandbox() sandbox.Sandbox
+	Name() string
 	RenderTemplate(text string) (string, error)
+	Sandbox() sandbox.Sandbox
+	Restart(reload bool) error
+	Start() error
+	Stop() error
 }
 
 type Services map[string]Service
 
-func (s Services) GetService(name string) (Service, error) {
+func (s Services) FindService(name string) (Service, error) {
 	svc, ok := s[name]
 	if !ok {
 		return svc, fmt.Errorf("service %s not found", name)
 	}
 	return svc, nil
+}
+
+func (s Services) AddService(service Service) error {
+	s[service.Name()] = service
+	return nil
 }
 
 type Maker struct {
@@ -97,6 +106,7 @@ func (m *Maker) Make(
 		}
 
 		service := &nativeService{
+			name:    serviceName,
 			scripts: includedScripts,
 			server:  server,
 			sandbox: sandbox,
@@ -115,10 +125,30 @@ type nativeServiceConfig struct {
 }
 
 type nativeService struct {
+	name    string
 	scripts scripts.Scripts
 	server  servers.Server
 	sandbox sandbox.Sandbox
 	configs map[string]nativeServiceConfig
+}
+
+func (s *nativeService) Restart(reload bool) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *nativeService) Start() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *nativeService) Stop() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *nativeService) Name() string {
+	return s.name
 }
 
 func (s *nativeService) BaseUrl() string {

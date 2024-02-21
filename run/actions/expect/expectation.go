@@ -20,4 +20,5 @@ import (
 
 type ExpectationAction struct {
 	Service services.Service
+	Timeout int
 }

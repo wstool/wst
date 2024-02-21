@@ -478,6 +478,12 @@ $defs:
             title: Service name
             description: The service that the expectation is executed on.
             type: string
+          timeout:
+            title: Action timeout
+            description: |
+              This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+            type: integer
       - oneOf:
           - properties:
               custom:
@@ -489,16 +495,22 @@ $defs:
               response:
                 $ref: '#/$defs/responseExpectation'
 
-  request:
-    title: Request object
+  actionRequest:
+    title: Request action
     description: |
-      The request object defines the details of the request to be sent.
+      The request action defines the details of the request to be sent to the service.
     type: object
     properties:
       service:
         title: Service name
         description: The service that the request is executed on.
         type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
       id:
         title: Request ID
         description: Identifies request which can be then used in response expectation.
@@ -516,6 +528,94 @@ $defs:
         default: GET
       headers:
         '#/$defs/headers'
+
+  actionRestart:
+    title: Restart services
+    description: |
+      The restart action starts the selected or all services.
+    type: object
+    properties:
+      service:
+        title: Service name to restart
+        description: |
+          The service that is going to be restarted. If neither service nor services is specified, then all services are
+          going to be restarted.
+        type: string
+      services:
+        title: List of service names to restart
+        description: |
+          The services that are going to be restarted. If neither service nor services is specified, then all services
+          are going to be restarted.
+        type: array
+        items:
+          type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      reload:
+        title: Reload services
+        description: |
+          The reload flag indicates to service to use reload method rather than a complete restart if possible. This is
+          supported only by some sandboxes (usually not supported by container services).
+        type: boolean
+        default: false
+
+  actionStart:
+    title: Start action
+    description: |
+      The start action starts the selected or all services.
+    type: object
+    properties:
+      service:
+        title: Service name to start
+        description: |
+          The service that is going to be started. If neither service nor services is specified, then all services are
+          going to be started.
+        type: string
+      services:
+        title: List of service names to start
+        description: |
+          The services that are going to be started. If neither service nor services is specified, then all services are
+          started.
+        type: array
+        items:
+          type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+
+  actionStop:
+    title: Stop action
+    description: |
+      The stop action stops the selected or all services.
+    type: object
+    properties:
+      service:
+        title: Service name to stop
+        description: |
+          The service that is going to be stopped. If neither service nor services is specified, then all services are
+          going to be stopped.
+        type: string
+      services:
+        title: List of service names to stop
+        description: |
+          The services that are going to be stopped. If neither service nor services is specified, then all services are
+          going to be stopped.
+        type: array
+        items:
+          type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
 
   actionItem:
     title: Action item
@@ -543,7 +643,13 @@ $defs:
       "^expect/.*":
         $ref: '#/$defs/actionExpectation'
       "^request/.*":
-        $ref: '#/$defs/request'
+        $ref: '#/$defs/actionRequest'
+      "^restart/?.*":
+        $ref: '#/$defs/actionRestart'
+      "^start/?.*":
+        $ref: '#/$defs/actionStart'
+      "^stop/?.*":
+        $ref: '#/$defs/actionStop'
 
   actions:
     title: Array of actions to run
@@ -577,6 +683,24 @@ $defs:
             $ref: '#/$defs/scripts'
       services:
         $ref: '#/$defs/services'
+      timeouts:
+        title: Timeouts
+        type: object
+        properties:
+          action:
+            title: Action timeout
+            description: |
+              This sets the default action timeout in milliseconds. It can be overwritten in each action. Negative value
+              and 0 means unlimited.
+            type: integer
+            default: 30000
+          actions:
+            title: Actions total timeout
+            description: |
+              This sets the total timeout on running all actions. Default is 0 which means unlimited
+            type: integer
+            default: 0
+
       actions:
         $ref: '#/$defs/actions'
 
