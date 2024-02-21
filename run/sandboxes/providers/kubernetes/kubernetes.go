@@ -43,7 +43,7 @@ type Sandbox struct {
 	container.Sandbox
 }
 
-func (s Sandbox) GetOutputScanner(outputType sandbox.OutputType) *bufio.Scanner {
+func (s Sandbox) OutputScanner(outputType sandbox.OutputType) *bufio.Scanner {
 	//TODO implement me
 	panic("implement me")
 }

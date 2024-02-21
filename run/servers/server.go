@@ -26,8 +26,8 @@ import (
 )
 
 type Server interface {
-	GetConfig(name string) (configs.Config, bool)
-	GetSandbox(name sandbox.Type) (sandbox.Sandbox, bool)
+	Config(name string) (configs.Config, bool)
+	Sandbox(name sandbox.Type) (sandbox.Sandbox, bool)
 }
 
 type Servers map[string]map[string]Server
@@ -131,12 +131,12 @@ type nativeServer struct {
 	sandboxes  sandboxes.Sandboxes
 }
 
-func (s nativeServer) GetConfig(name string) (configs.Config, bool) {
+func (s nativeServer) Config(name string) (configs.Config, bool) {
 	config, ok := s.configs[name]
 	return config, ok
 }
 
-func (s nativeServer) GetSandbox(name sandbox.Type) (sandbox.Sandbox, bool) {
+func (s nativeServer) Sandbox(name sandbox.Type) (sandbox.Sandbox, bool) {
 	sandbox, ok := s.sandboxes[name]
 	return sandbox, ok
 }

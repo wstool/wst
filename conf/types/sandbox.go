@@ -60,7 +60,7 @@ type CommonSandbox struct {
 	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
-func (s *CommonSandbox) GetType() SandboxType {
+func (s *CommonSandbox) Type() SandboxType {
 	return CommonSandboxType
 }
 
@@ -68,7 +68,7 @@ type LocalSandbox struct {
 	CommonSandbox
 }
 
-func (s *LocalSandbox) GetType() SandboxType {
+func (s *LocalSandbox) Type() SandboxType {
 	return KubernetesSandboxType
 }
 
@@ -92,7 +92,7 @@ type ContainerSandbox struct {
 	Registry ContainerRegistry `wst:"registry"`
 }
 
-func (s *ContainerSandbox) GetType() SandboxType {
+func (s *ContainerSandbox) Type() SandboxType {
 	return KubernetesSandboxType
 }
 
@@ -100,7 +100,7 @@ type DockerSandbox struct {
 	ContainerSandbox
 }
 
-func (s *DockerSandbox) GetType() SandboxType {
+func (s *DockerSandbox) Type() SandboxType {
 	return KubernetesSandboxType
 }
 
@@ -113,10 +113,10 @@ type KubernetesSandbox struct {
 	Auth KubernetesAuth `wst:"auth"`
 }
 
-func (s *KubernetesSandbox) GetType() SandboxType {
+func (s *KubernetesSandbox) Type() SandboxType {
 	return KubernetesSandboxType
 }
 
 type Sandbox interface {
-	GetType() SandboxType
+	Type() SandboxType
 }

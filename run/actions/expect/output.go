@@ -80,7 +80,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 }
 
 func (a *OutputAction) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	sandbox := a.Service.GetSandbox()
+	sandbox := a.Service.Sandbox()
 	outputType, err := a.getSandboxOutputType(a.Type)
 	if err != nil {
 		return false, err
@@ -89,7 +89,7 @@ func (a *OutputAction) Execute(runData runtime.Data, dryRun bool) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	scanner := sandbox.GetOutputScanner(outputType)
+	scanner := sandbox.OutputScanner(outputType)
 	for scanner.Scan() {
 		line := scanner.Text()
 		messages, err = a.matchMessages(line, messages)

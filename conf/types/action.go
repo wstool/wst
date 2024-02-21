@@ -19,10 +19,6 @@ type CustomExpectationAction struct {
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 
-func (a *CustomExpectationAction) GetService() string {
-	return a.Service
-}
-
 type OutputExpectation struct {
 	Order          string   `wst:"order,enum=fixed|random,default=fixed"`
 	Match          string   `wst:"match,enum=exact|regexp,default=exact"`
@@ -34,10 +30,6 @@ type OutputExpectation struct {
 type OutputExpectationAction struct {
 	Service string            `wst:"service"`
 	Output  OutputExpectation `wst:"output"`
-}
-
-func (a *OutputExpectationAction) GetService() string {
-	return a.Service
 }
 
 type Headers map[string]string
@@ -59,10 +51,6 @@ type ResponseExpectationAction struct {
 	Response ResponseExpectation `wst:"response"`
 }
 
-func (a *ResponseExpectationAction) GetService() string {
-	return a.Service
-}
-
 type ExpectationAction interface {
 	Action
 }
@@ -75,26 +63,13 @@ type RequestAction struct {
 	Headers Headers `wst:"headers"`
 }
 
-func (a *RequestAction) GetService() string {
-	return a.Service
-}
-
 type ParallelAction struct {
 	Actions []Action
-}
-
-func (a *ParallelAction) GetService() string {
-	return ""
 }
 
 type NotAction struct {
 	Action Action
 }
 
-func (a *NotAction) GetService() string {
-	return ""
-}
-
 type Action interface {
-	GetService() string
 }

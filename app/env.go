@@ -23,7 +23,7 @@ import (
 type Env interface {
 	Logger() *zap.SugaredLogger
 	Fs() afero.Fs
-	GetUserHomeDir() (string, error)
+	UserHomeDir() (string, error)
 	LookupEnvVar(key string) (string, bool)
 }
 
@@ -47,7 +47,7 @@ func (e *DefaultEnv) Fs() afero.Fs {
 	return e.fs
 }
 
-func (e *DefaultEnv) GetUserHomeDir() (string, error) {
+func (e *DefaultEnv) UserHomeDir() (string, error) {
 	return os.UserHomeDir()
 }
 

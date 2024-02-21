@@ -63,7 +63,7 @@ func (n nativeSpec) ExecuteInstances(filteredInstances []string, dryRun bool) er
 	// Loop through the instances.
 	for _, instance := range n.instances {
 		// Determine the instance identifier or name.
-		instanceName := instance.GetName()
+		instanceName := instance.Name()
 
 		// Execute if filteredInstances is empty or nil, meaning execute all instances.
 		if len(filteredInstances) == 0 {

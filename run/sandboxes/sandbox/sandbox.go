@@ -27,7 +27,7 @@ const (
 )
 
 type Sandbox interface {
-	GetOutputScanner(outputType OutputType) *bufio.Scanner
+	OutputScanner(outputType OutputType) *bufio.Scanner
 	ExecuteCommand(command *hooks.HookCommand) error
 	ExecuteSignal(signal *hooks.HookSignal) error
 }

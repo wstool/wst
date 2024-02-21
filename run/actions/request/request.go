@@ -67,7 +67,7 @@ type ResponseData struct {
 
 func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
 	// Construct the request URL from the Service and Path.
-	url := a.Service.GetBaseUrl() + a.Path
+	url := a.Service.BaseUrl() + a.Path
 
 	// Create the HTTP request.
 	req, err := http.NewRequest(a.Method, url, nil)

@@ -71,11 +71,11 @@ func (_c *MockEnv_Fs_Call) RunAndReturn(run func() afero.Fs) *MockEnv_Fs_Call {
 }
 
 // GetUserHomeDir provides a mock function with given fields:
-func (_m *MockEnv) GetUserHomeDir() (string, error) {
+func (_m *MockEnv) UserHomeDir() (string, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetUserHomeDir")
+		panic("no return value specified for UserHomeDir")
 	}
 
 	var r0 string
@@ -98,14 +98,14 @@ func (_m *MockEnv) GetUserHomeDir() (string, error) {
 	return r0, r1
 }
 
-// MockEnv_GetUserHomeDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserHomeDir'
+// MockEnv_GetUserHomeDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UserHomeDir'
 type MockEnv_GetUserHomeDir_Call struct {
 	*mock.Call
 }
 
 // GetUserHomeDir is a helper method to define mock.On call
 func (_e *MockEnv_Expecter) GetUserHomeDir() *MockEnv_GetUserHomeDir_Call {
-	return &MockEnv_GetUserHomeDir_Call{Call: _e.mock.On("GetUserHomeDir")}
+	return &MockEnv_GetUserHomeDir_Call{Call: _e.mock.On("UserHomeDir")}
 }
 
 func (_c *MockEnv_GetUserHomeDir_Call) Run(run func()) *MockEnv_GetUserHomeDir_Call {

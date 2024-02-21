@@ -25,8 +25,8 @@ import (
 )
 
 type Service interface {
-	GetBaseUrl() string
-	GetSandbox() sandbox.Sandbox
+	BaseUrl() string
+	Sandbox() sandbox.Sandbox
 	RenderTemplate(text string) (string, error)
 }
 
@@ -77,7 +77,7 @@ func (m *Maker) Make(
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
-		sandbox, ok := server.GetSandbox(sandbox.Type(serviceConfig.Sandbox))
+		sandbox, ok := server.Sandbox(sandbox.Type(serviceConfig.Sandbox))
 		if !ok {
 			return nil, fmt.Errorf("sandbox %s not found for service %s", serviceConfig.Sandbox, serviceName)
 		}
@@ -85,7 +85,7 @@ func (m *Maker) Make(
 		nativeConfigs := make(map[string]nativeServiceConfig)
 
 		for configName, serviceConfig := range serviceConfig.Configs {
-			config, found := server.GetConfig(configName)
+			config, found := server.Config(configName)
 			if !found {
 				return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
 			}
@@ -121,7 +121,7 @@ type nativeService struct {
 	configs map[string]nativeServiceConfig
 }
 
-func (s *nativeService) GetBaseUrl() string {
+func (s *nativeService) BaseUrl() string {
 	//TODO implement me
 	panic("implement me")
 }
@@ -131,6 +131,6 @@ func (s *nativeService) RenderTemplate(text string) (string, error) {
 	panic("implement me")
 }
 
-func (s *nativeService) GetSandbox() sandbox.Sandbox {
+func (s *nativeService) Sandbox() sandbox.Sandbox {
 	return s.sandbox
 }

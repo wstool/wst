@@ -27,7 +27,7 @@ import (
 
 type Instance interface {
 	ExecuteActions(dryRun bool) error
-	GetName() string
+	Name() string
 }
 
 type InstanceMaker struct {
@@ -79,7 +79,7 @@ type nativeInstance struct {
 	runData runtime.Data
 }
 
-func (i *nativeInstance) GetName() string {
+func (i *nativeInstance) Name() string {
 	return i.name
 }
 

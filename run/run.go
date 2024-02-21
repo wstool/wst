@@ -84,7 +84,7 @@ func (r *Runner) Execute(options *Options) error {
 
 func (r *Runner) getConfigPaths() []string {
 	var paths []string
-	home, _ := r.env.GetUserHomeDir()
+	home, _ := r.env.UserHomeDir()
 	r.validateAndAppendPath("wst.yaml", &paths)
 	r.validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths)
 	r.validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths)
