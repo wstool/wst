@@ -15,6 +15,7 @@
 package expect
 
 import (
+	"context"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
@@ -22,16 +23,8 @@ import (
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/services"
 	"regexp"
+	"time"
 )
-
-type OutputAction struct {
-	ExpectationAction
-	Order          OrderType
-	Match          MatchType
-	Type           OutputType
-	Messages       []string
-	RenderTemplate bool
-}
 
 type OutputExpectationActionMaker struct {
 	env app.Env
@@ -47,20 +40,20 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	config *types.OutputExpectationAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*OutputAction, error) {
+) (*outputAction, error) {
 	order := OrderType(config.Output.Order)
 	if order != OrderTypeFixed && order != OrderTypeRandom {
-		return nil, fmt.Errorf("invalid OrderType: %v", config.Output.Order)
+		return nil, fmt.Errorf("invalid order type: %v", config.Output.Order)
 	}
 
 	match := MatchType(config.Output.Match)
 	if match != MatchTypeExact && match != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid MatchType: %v", config.Output.Match)
+		return nil, fmt.Errorf("invalid match type: %v", config.Output.Match)
 	}
 
 	outputType := OutputType(config.Output.Type)
 	if outputType != OutputTypeStdout && outputType != OutputTypeStderr {
-		return nil, fmt.Errorf("invalid OutputType: %v", config.Output.Type)
+		return nil, fmt.Errorf("invalid output type: %v", config.Output.Type)
 	}
 
 	svc, err := svcs.FindService(config.Service)
@@ -72,26 +65,39 @@ func (m *OutputExpectationActionMaker) MakeAction(
 		config.Timeout = defaultTimeout
 	}
 
-	return &OutputAction{
-		ExpectationAction: ExpectationAction{
-			Service: svc,
-			Timeout: config.Timeout,
+	return &outputAction{
+		expectationAction: expectationAction{
+			service: svc,
+			timeout: time.Duration(config.Timeout),
 		},
-		Order:          order,
-		Match:          match,
-		Type:           outputType,
-		Messages:       config.Output.Messages,
-		RenderTemplate: config.Output.RenderTemplate,
+		orderType:      order,
+		matchType:      match,
+		outputType:     outputType,
+		messages:       config.Output.Messages,
+		renderTemplate: config.Output.RenderTemplate,
 	}, nil
 }
 
-func (a *OutputAction) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	sandbox := a.Service.Sandbox()
-	outputType, err := a.getSandboxOutputType(a.Type)
+type outputAction struct {
+	expectationAction
+	orderType      OrderType
+	matchType      MatchType
+	outputType     OutputType
+	messages       []string
+	renderTemplate bool
+}
+
+func (a *outputAction) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	sandbox := a.service.Sandbox()
+	outputType, err := a.getSandboxOutputType(a.outputType)
 	if err != nil {
 		return false, err
 	}
-	messages, err := a.renderMessages(a.Messages)
+	messages, err := a.renderMessages(a.messages)
 	if err != nil {
 		return false, err
 	}
@@ -113,7 +119,7 @@ func (a *OutputAction) Execute(runData runtime.Data, dryRun bool) (bool, error) 
 	return false, nil
 }
 
-func (a *OutputAction) getSandboxOutputType(outputType OutputType) (sandbox.OutputType, error) {
+func (a *outputAction) getSandboxOutputType(outputType OutputType) (sandbox.OutputType, error) {
 	switch outputType {
 	case OutputTypeStdout:
 		return sandbox.StdoutOutputType, nil
@@ -124,13 +130,13 @@ func (a *OutputAction) getSandboxOutputType(outputType OutputType) (sandbox.Outp
 	}
 }
 
-func (a *OutputAction) renderMessages(messages []string) ([]string, error) {
-	if !a.RenderTemplate {
+func (a *outputAction) renderMessages(messages []string) ([]string, error) {
+	if !a.renderTemplate {
 		return messages, nil
 	}
 	var renderedMessages []string
 	for _, message := range messages {
-		renderedMessage, err := a.Service.RenderTemplate(message)
+		renderedMessage, err := a.service.RenderTemplate(message)
 		if err != nil {
 			return nil, err
 		}
@@ -140,8 +146,8 @@ func (a *OutputAction) renderMessages(messages []string) ([]string, error) {
 	return renderedMessages, nil
 }
 
-func (a *OutputAction) matchMessages(line string, messages []string) ([]string, error) {
-	if a.Order == OrderTypeFixed {
+func (a *outputAction) matchMessages(line string, messages []string) ([]string, error) {
+	if a.orderType == OrderTypeFixed {
 		if len(messages) > 0 {
 			matched, err := a.matchMessage(line, messages[0])
 			if err != nil {
@@ -151,7 +157,7 @@ func (a *OutputAction) matchMessages(line string, messages []string) ([]string, 
 				return messages[1:], nil
 			}
 		}
-	} else if a.Order == OrderTypeRandom {
+	} else if a.orderType == OrderTypeRandom {
 		for index, message := range messages {
 			matched, err := a.matchMessage(line, message)
 			if err != nil {
@@ -162,17 +168,17 @@ func (a *OutputAction) matchMessages(line string, messages []string) ([]string, 
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("unknown order %s", string(a.Order))
+		return nil, fmt.Errorf("unknown order type %s", string(a.orderType))
 	}
 	return messages, nil
 }
 
-func (a *OutputAction) matchMessage(line, message string) (bool, error) {
-	if a.Match == MatchTypeExact {
+func (a *outputAction) matchMessage(line, message string) (bool, error) {
+	if a.matchType == MatchTypeExact {
 		return line == message, nil
-	} else if a.Match == MatchTypeRegexp {
+	} else if a.matchType == MatchTypeRegexp {
 		return regexp.MatchString(message, line)
 	} else {
-		return false, fmt.Errorf("unknown match type %s", string(a.Match))
+		return false, fmt.Errorf("unknown match type %s", string(a.matchType))
 	}
 }

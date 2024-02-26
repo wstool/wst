@@ -15,16 +15,13 @@
 package start
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
+	"time"
 )
-
-type Action struct {
-	Services services.Services
-	Timeout  int
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -40,7 +37,7 @@ func (m *ActionMaker) Make(
 	config *types.StartAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*Action, error) {
+) (*action, error) {
 	var startServices services.Services
 
 	if config.Service != "" {
@@ -66,15 +63,24 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
-	return &Action{
-		Services: startServices,
-		Timeout:  config.Timeout,
+	return &action{
+		services: startServices,
+		timeout:  time.Duration(config.Timeout),
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	for _, svc := range a.Services {
-		err := svc.Start()
+type action struct {
+	services services.Services
+	timeout  time.Duration
+}
+
+func (a *action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	for _, svc := range a.services {
+		err := svc.Start(ctx)
 		if err != nil {
 			return false, err
 		}

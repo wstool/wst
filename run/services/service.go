@@ -15,6 +15,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
@@ -29,9 +30,9 @@ type Service interface {
 	Name() string
 	RenderTemplate(text string) (string, error)
 	Sandbox() sandbox.Sandbox
-	Restart(reload bool) error
-	Start() error
-	Stop() error
+	Restart(ctx context.Context, reload bool) error
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
 }
 
 type Services map[string]Service
@@ -132,17 +133,17 @@ type nativeService struct {
 	configs map[string]nativeServiceConfig
 }
 
-func (s *nativeService) Restart(reload bool) error {
+func (s *nativeService) Restart(ctx context.Context, reload bool) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *nativeService) Start() error {
+func (s *nativeService) Start(ctx context.Context) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *nativeService) Stop() error {
+func (s *nativeService) Stop(ctx context.Context) error {
 	//TODO implement me
 	panic("implement me")
 }

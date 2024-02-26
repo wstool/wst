@@ -15,18 +15,15 @@
 package parallel
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"sync"
+	"time"
 )
-
-type Action struct {
-	Actions []actions.Action
-	Timeout int
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -43,39 +40,48 @@ func (m *ActionMaker) Make(
 	svcs services.Services,
 	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
-) (*Action, error) {
+) (*action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
 	var actions []actions.Action
 	for _, configAction := range config.Actions {
-		action, err := actionMaker.MakeAction(configAction, svcs, config.Timeout)
+		newAction, err := actionMaker.MakeAction(configAction, svcs, config.Timeout)
 		if err != nil {
 			return nil, err
 		}
-		actions = append(actions, action)
+		actions = append(actions, newAction)
 	}
-	return &Action{
-		Actions: actions,
-		Timeout: config.Timeout,
+	return &action{
+		actions: actions,
+		timeout: time.Duration(config.Timeout),
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
+type action struct {
+	actions []actions.Action
+	timeout time.Duration
+}
+
+func (a *action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
-	wg.Add(len(a.Actions))
+	wg.Add(len(a.actions))
 
 	// Use an error channel to collect potential errors from actions.
-	errs := make(chan error, len(a.Actions))
+	errs := make(chan error, len(a.actions))
 
-	for _, action := range a.Actions {
+	for _, action := range a.actions {
 		go func(act actions.Action) {
 			defer wg.Done()
 
 			// Execute the action, passing the context.
-			success, err := act.Execute(runData, dryRun)
+			success, err := act.Execute(ctx, runData, dryRun)
 			if err != nil || !success {
 				errs <- err
 			}

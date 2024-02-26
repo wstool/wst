@@ -15,6 +15,7 @@
 package expect
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
@@ -23,16 +24,8 @@ import (
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"regexp"
+	"time"
 )
-
-type ResponseAction struct {
-	ExpectationAction
-	Request            string
-	Headers            types.Headers
-	BodyContent        string
-	BodyMatch          MatchType
-	BodyRenderTemplate bool
-}
 
 type ResponseExpectationActionMaker struct {
 	env app.Env
@@ -48,7 +41,7 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 	config *types.ResponseExpectationAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*ResponseAction, error) {
+) (*responseAction, error) {
 	match := MatchType(config.Response.Body.Match)
 	if match != MatchTypeExact && match != MatchTypeRegexp {
 		return nil, fmt.Errorf("invalid MatchType: %v", config.Response.Body.Match)
@@ -63,21 +56,34 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 		config.Timeout = defaultTimeout
 	}
 
-	return &ResponseAction{
-		ExpectationAction: ExpectationAction{
-			Service: svc,
-			Timeout: config.Timeout,
+	return &responseAction{
+		expectationAction: expectationAction{
+			service: svc,
+			timeout: time.Duration(config.Timeout),
 		},
-		Request:            config.Response.Request,
-		Headers:            config.Response.Headers,
-		BodyContent:        config.Response.Body.Content,
-		BodyMatch:          match,
-		BodyRenderTemplate: config.Response.Body.RenderTemplate,
+		request:            config.Response.Request,
+		headers:            config.Response.Headers,
+		bodyContent:        config.Response.Body.Content,
+		bodyMatch:          match,
+		bodyRenderTemplate: config.Response.Body.RenderTemplate,
 	}, nil
 }
 
-func (a *ResponseAction) Execute(runData runtime.Data, dryRun bool) (bool, error) { // Retrieve ResponseData from runData using the Request string as the key.
-	data, ok := runData.Load(a.Request)
+type responseAction struct {
+	expectationAction
+	request            string
+	headers            types.Headers
+	bodyContent        string
+	bodyMatch          MatchType
+	bodyRenderTemplate bool
+}
+
+func (a *responseAction) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *responseAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	data, ok := runData.Load(a.request)
 	if !ok {
 		return false, errors.New("response data not found")
 	}
@@ -88,20 +94,20 @@ func (a *ResponseAction) Execute(runData runtime.Data, dryRun bool) (bool, error
 	}
 
 	// Compare headers.
-	for key, expectedValue := range a.Headers {
+	for key, expectedValue := range a.headers {
 		value, ok := responseData.Headers[key]
 		if !ok || (len(value) > 0 && value[0] != expectedValue) {
 			return false, errors.New("header mismatch")
 		}
 	}
 
-	content, err := a.getBodyContent()
+	content, err := a.renderBodyContent(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	// Compare body content based on BodyMatch.
-	switch a.BodyMatch {
+	// Compare body content based on bodyMatch.
+	switch a.bodyMatch {
 	case MatchTypeExact:
 		if responseData.Body != content {
 			return false, errors.New("body content mismatch")
@@ -112,21 +118,26 @@ func (a *ResponseAction) Execute(runData runtime.Data, dryRun bool) (bool, error
 			return false, err
 		}
 		if !matched {
-			return false, errors.New("body content does not match regexp")
+			return false, errors.New("body content does not match type regexp")
 		}
 	}
 
 	return true, nil
 }
 
-func (a *ResponseAction) getBodyContent() (string, error) {
-	if a.BodyRenderTemplate {
-		content, err := a.Service.RenderTemplate(a.BodyContent)
-		if err != nil {
-			return "", err
+func (a *responseAction) renderBodyContent(ctx context.Context) (string, error) {
+	if a.bodyRenderTemplate {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+			content, err := a.service.RenderTemplate(a.bodyContent)
+			if err != nil {
+				return "", err
+			}
+			return content, nil
 		}
-		return content, nil
 	}
 
-	return a.BodyContent, nil
+	return a.bodyContent, nil
 }

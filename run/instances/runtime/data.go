@@ -16,7 +16,7 @@ package runtime
 
 import "sync"
 
-// Data is the interface type to allow storage and retrieval of data across different Actions.
+// Data is the interface type to allow storage and retrieval of data across different actions.
 type Data interface {
 	Store(key string, value interface{}) error
 	Load(key string) (interface{}, bool)

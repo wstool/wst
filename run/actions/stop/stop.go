@@ -15,16 +15,13 @@
 package stop
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
+	"time"
 )
-
-type Action struct {
-	Services services.Services
-	Timeout  int
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -68,13 +65,22 @@ func (m *ActionMaker) Make(
 
 	return &Action{
 		Services: stopServices,
-		Timeout:  config.Timeout,
+		timeout:  time.Duration(config.Timeout),
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
+type Action struct {
+	Services services.Services
+	timeout  time.Duration
+}
+
+func (a *Action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *Action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
 	for _, svc := range a.Services {
-		err := svc.Stop()
+		err := svc.Stop(ctx)
 		if err != nil {
 			return false, err
 		}

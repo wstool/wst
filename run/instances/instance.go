@@ -15,6 +15,7 @@
 package instances
 
 import (
+	"context"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
@@ -87,13 +88,22 @@ func (i *nativeInstance) Name() string {
 
 func (i *nativeInstance) ExecuteActions(dryRun bool) error {
 	for _, action := range i.actions {
-		success, err := action.Execute(i.runData, dryRun)
-		if err != nil {
+		if err := i.executeAction(action, dryRun); err != nil {
 			return err
 		}
-		if !success {
-			return fmt.Errorf("action execution failed")
-		}
+	}
+	return nil
+}
+
+func (i *nativeInstance) executeAction(action actions.Action, dryRun bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), action.Timeout())
+	defer cancel()
+	success, err := action.Execute(ctx, i.runData, dryRun)
+	if err != nil {
+		return err
+	}
+	if !success {
+		return fmt.Errorf("action execution failed")
 	}
 	return nil
 }

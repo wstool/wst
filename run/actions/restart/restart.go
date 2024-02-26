@@ -15,17 +15,13 @@
 package restart
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
+	"time"
 )
-
-type Action struct {
-	Services services.Services
-	Timeout  int
-	Reload   bool
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -41,7 +37,7 @@ func (m *ActionMaker) Make(
 	config *types.RestartAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*Action, error) {
+) (*action, error) {
 	var restartServices services.Services
 
 	if config.Service != "" {
@@ -67,16 +63,26 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
-	return &Action{
-		Services: restartServices,
-		Timeout:  config.Timeout,
-		Reload:   config.Reload,
+	return &action{
+		services: restartServices,
+		timeout:  time.Duration(config.Timeout),
+		reload:   config.Reload,
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	for _, svc := range a.Services {
-		err := svc.Restart(a.Reload)
+type action struct {
+	services services.Services
+	timeout  time.Duration
+	reload   bool
+}
+
+func (a *action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	for _, svc := range a.services {
+		err := svc.Restart(ctx, a.reload)
 		if err != nil {
 			return false, err
 		}

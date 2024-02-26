@@ -15,22 +15,15 @@
 package request
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"io"
 	"net/http"
+	"time"
 )
-
-type Action struct {
-	Service services.Service
-	Timeout int
-	Id      string
-	Path    string
-	Method  string
-	Headers types.Headers
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -46,7 +39,7 @@ func (m *ActionMaker) Make(
 	config *types.RequestAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*Action, error) {
+) (*action, error) {
 	svc, err := svcs.FindService(config.Service)
 	if err != nil {
 		return nil, err
@@ -56,13 +49,13 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
-	return &Action{
-		Service: svc,
-		Timeout: config.Timeout,
-		Id:      config.Id,
-		Path:    config.Path,
-		Method:  config.Method,
-		Headers: config.Headers,
+	return &action{
+		service: svc,
+		timeout: time.Duration(config.Timeout),
+		id:      config.Id,
+		path:    config.Path,
+		method:  config.Method,
+		headers: config.Headers,
 	}, nil
 }
 
@@ -72,18 +65,31 @@ type ResponseData struct {
 	Headers http.Header
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	// Construct the request URL from the Service and Path.
-	url := a.Service.BaseUrl() + a.Path
+type action struct {
+	service services.Service
+	timeout time.Duration
+	id      string
+	path    string
+	method  string
+	headers types.Headers
+}
+
+func (a *action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	// Construct the request URL from the service and path.
+	url := a.service.BaseUrl() + a.path
 
 	// Create the HTTP request.
-	req, err := http.NewRequest(a.Method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, a.method, url, nil)
 	if err != nil {
 		return false, err
 	}
 
 	// Add headers to the request.
-	for key, value := range a.Headers {
+	for key, value := range a.headers {
 		req.Header.Add(key, value)
 	}
 
@@ -96,21 +102,31 @@ func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
 	defer resp.Body.Close()
 
 	// Read the response body.
-	body, err := io.ReadAll(resp.Body)
+	body, err := readResponse(ctx, resp.Body)
 	if err != nil {
 		return false, err
 	}
 
 	// Create a ResponseData instance to hold both body and headers.
 	responseData := ResponseData{
-		Body:    string(body),
+		Body:    body,
 		Headers: resp.Header,
 	}
 
 	// Store the ResponseData in runData.
-	if err := runData.Store(a.Id, responseData); err != nil {
+	if err := runData.Store(a.id, responseData); err != nil {
 		return false, err
 	}
 
 	return true, nil
+}
+
+func readResponse(ctx context.Context, body io.ReadCloser) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+		content, err := io.ReadAll(body)
+		return string(content), err
+	}
 }

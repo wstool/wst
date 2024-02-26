@@ -16,9 +16,10 @@ package expect
 
 import (
 	"github.com/bukka/wst/run/services"
+	"time"
 )
 
-type ExpectationAction struct {
-	Service services.Service
-	Timeout int
+type expectationAction struct {
+	service services.Service
+	timeout time.Duration
 }

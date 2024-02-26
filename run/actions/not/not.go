@@ -15,17 +15,14 @@
 package not
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
+	"time"
 )
-
-type Action struct {
-	Action  actions.Action
-	Timeout int
-}
 
 type ActionMaker struct {
 	env app.Env
@@ -42,24 +39,33 @@ func (m *ActionMaker) Make(
 	svcs services.Services,
 	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
-) (*Action, error) {
+) (*action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	action, err := actionMaker.MakeAction(config.Action, svcs, config.Timeout)
+	newAction, err := actionMaker.MakeAction(config.Action, svcs, config.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Action{
-		Action:  action,
-		Timeout: config.Timeout,
+	return &action{
+		action:  newAction,
+		timeout: time.Duration(config.Timeout),
 	}, nil
 }
 
-func (a Action) Execute(runData runtime.Data, dryRun bool) (bool, error) {
-	success, err := a.Action.Execute(runData, dryRun)
+type action struct {
+	action  actions.Action
+	timeout time.Duration
+}
+
+func (a *action) Timeout() time.Duration {
+	return a.timeout
+}
+
+func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+	success, err := a.action.Execute(ctx, runData, dryRun)
 	if err != nil {
 		return false, err
 	}
