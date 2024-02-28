@@ -29,19 +29,26 @@ type Spec interface {
 type Maker struct {
 	env           app.Env
 	instanceMaker *instances.InstanceMaker
+	serversMaker  *servers.Maker
 }
 
 func CreateMaker(env app.Env) *Maker {
 	return &Maker{
 		env:           env,
 		instanceMaker: instances.CreateInstanceMaker(env),
+		serversMaker:  servers.CreateMaker(env),
 	}
 }
 
-func (m *Maker) Make(config *types.Spec, servers servers.Servers) (Spec, error) {
+func (m *Maker) Make(config *types.Spec) (Spec, error) {
+	serversMap, err := m.serversMaker.Make(config)
+	if err != nil {
+		return nil, err
+	}
+
 	var instances []instances.Instance
 	for _, instance := range config.Instances {
-		inst, err := m.instanceMaker.Make(instance, servers)
+		inst, err := m.instanceMaker.Make(instance, config.Environments, serversMap)
 		if err != nil {
 			return nil, err
 		}

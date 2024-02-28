@@ -12,33 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is an abstract provider
-
-package common
+package kubernetes
 
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/sandbox/hooks"
+	"github.com/bukka/wst/run/environments/environment"
 )
 
 type Maker struct {
-	env        app.Env
-	hooksMaker *hooks.Maker
+	env app.Env
 }
 
-func CreateMaker(env app.Env, hooksMaker *hooks.Maker) *Maker {
+func CreateMaker(env app.Env) *Maker {
 	return &Maker{
-		env:        env,
-		hooksMaker: hooksMaker,
+		env: env,
 	}
 }
 
-func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
+func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
 	panic("implement")
 }
 
-type Sandbox struct {
-	Dirs  map[string]string
-	Hooks map[string]hooks.Hook
+type kubernetesEnvironment struct {
 }

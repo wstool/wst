@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/sandboxes"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers/configs"
@@ -27,7 +28,7 @@ import (
 
 type Server interface {
 	Config(name string) (configs.Config, bool)
-	Sandbox(name sandbox.Type) (sandbox.Sandbox, bool)
+	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
 }
 
 type Servers map[string]map[string]Server
@@ -62,10 +63,10 @@ func CreateMaker(env app.Env) *Maker {
 	}
 }
 
-func (m *Maker) Make(config *types.Config) (Servers, error) {
+func (m *Maker) Make(config *types.Spec) (Servers, error) {
 	srvs := make(map[string]map[string]Server)
 	for _, server := range config.Servers {
-		name, tag := splitFullName(config.Name)
+		name, tag := splitFullName(server.Name)
 		serverConfigs, err := m.configsMaker.Make(server.Configs)
 		if err != nil {
 			return nil, err
@@ -132,11 +133,11 @@ type nativeServer struct {
 }
 
 func (s nativeServer) Config(name string) (configs.Config, bool) {
-	config, ok := s.configs[name]
-	return config, ok
+	cfg, ok := s.configs[name]
+	return cfg, ok
 }
 
-func (s nativeServer) Sandbox(name sandbox.Type) (sandbox.Sandbox, bool) {
-	sandbox, ok := s.sandboxes[name]
-	return sandbox, ok
+func (s nativeServer) Sandbox(name providers.Type) (sandbox.Sandbox, bool) {
+	sb, ok := s.sandboxes[name]
+	return sb, ok
 }

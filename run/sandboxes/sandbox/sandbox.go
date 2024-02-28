@@ -15,8 +15,7 @@
 package sandbox
 
 import (
-	"bufio"
-	"github.com/bukka/wst/run/sandboxes/sandbox/hooks"
+	"github.com/bukka/wst/run/sandboxes/hooks"
 )
 
 type OutputType int
@@ -27,15 +26,5 @@ const (
 )
 
 type Sandbox interface {
-	OutputScanner(outputType OutputType) *bufio.Scanner
-	ExecuteCommand(command *hooks.HookCommand) error
-	ExecuteSignal(signal *hooks.HookSignal) error
+	Hook(hookType hooks.HookType) hooks.Hook
 }
-
-type Type string
-
-const (
-	LocalType      Type = "local"
-	DockerType          = "docker"
-	KubernetesType      = "kubernetes"
-)

@@ -18,16 +18,17 @@ import (
 	"errors"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/providers/common"
-	"github.com/bukka/wst/run/sandboxes/providers/container"
-	"github.com/bukka/wst/run/sandboxes/providers/docker"
-	"github.com/bukka/wst/run/sandboxes/providers/kubernetes"
-	"github.com/bukka/wst/run/sandboxes/providers/local"
+	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
-	"github.com/bukka/wst/run/sandboxes/sandbox/hooks"
+	"github.com/bukka/wst/run/sandboxes/sandbox/common"
+	"github.com/bukka/wst/run/sandboxes/sandbox/container"
+	"github.com/bukka/wst/run/sandboxes/sandbox/docker"
+	"github.com/bukka/wst/run/sandboxes/sandbox/kubernetes"
+	"github.com/bukka/wst/run/sandboxes/sandbox/local"
 )
 
-type Sandboxes map[sandbox.Type]sandbox.Sandbox
+type Sandboxes map[providers.Type]sandbox.Sandbox
 
 type Maker struct {
 	env             app.Env
@@ -58,20 +59,20 @@ func (m *Maker) MakeSandboxes(
 		return nil, err
 	}
 
-	common, commonFound := mergedSandboxes[types.CommonSandboxType]
-	local, localFound := mergedSandboxes[types.LocalSandboxType]
-	container, containerFound := mergedSandboxes[types.ContainerSandboxType]
-	docker, dockerFound := mergedSandboxes[types.ContainerSandboxType]
-	kubernetes, kubernetesFound := mergedSandboxes[types.ContainerSandboxType]
+	commonSb, commonFound := mergedSandboxes[types.CommonSandboxType]
+	localSb, localFound := mergedSandboxes[types.LocalSandboxType]
+	containerSb, containerFound := mergedSandboxes[types.ContainerSandboxType]
+	dockerSb, dockerFound := mergedSandboxes[types.ContainerSandboxType]
+	kubernetesSb, kubernetesFound := mergedSandboxes[types.ContainerSandboxType]
 	if commonFound {
 		// Local merging
-		local, err = m.mergeLocalAndCommon(local, common)
+		localSb, err = m.mergeLocalAndCommon(localSb, commonSb)
 		if err != nil {
 			return nil, err
 		}
 		localFound = true
 		// Container merging
-		container, err = m.mergeLocalAndCommon(container, common)
+		containerSb, err = m.mergeLocalAndCommon(containerSb, commonSb)
 		if err != nil {
 			return nil, err
 		}
@@ -79,13 +80,13 @@ func (m *Maker) MakeSandboxes(
 	}
 	if containerFound {
 		// Docker merging
-		docker, err = m.mergeDockerAndContainer(docker, container)
+		dockerSb, err = m.mergeDockerAndContainer(dockerSb, containerSb)
 		if err != nil {
 			return nil, err
 		}
 		dockerFound = true
 		// Kubernetes merging
-		kubernetes, err = m.mergeKubernetesAndContainer(kubernetes, container)
+		kubernetesSb, err = m.mergeKubernetesAndContainer(kubernetesSb, containerSb)
 		if err != nil {
 			return nil, err
 		}
@@ -95,19 +96,19 @@ func (m *Maker) MakeSandboxes(
 	sandboxes := make(Sandboxes)
 
 	if localFound {
-		sandboxes[sandbox.LocalType], err = m.localMaker.MakeSandbox(local.(*types.LocalSandbox))
+		sandboxes[providers.LocalType], err = m.localMaker.MakeSandbox(localSb.(*types.LocalSandbox))
 		if err != nil {
 			return nil, err
 		}
 	}
 	if dockerFound {
-		sandboxes[sandbox.DockerType], err = m.dockerMaker.MakeSandbox(docker.(*types.DockerSandbox))
+		sandboxes[providers.DockerType], err = m.dockerMaker.MakeSandbox(dockerSb.(*types.DockerSandbox))
 		if err != nil {
 			return nil, err
 		}
 	}
 	if kubernetesFound {
-		sandboxes[sandbox.KubernetesType], err = m.kubernetesMaker.MakeSandbox(docker.(*types.KubernetesSandbox))
+		sandboxes[providers.KubernetesType], err = m.kubernetesMaker.MakeSandbox(dockerSb.(*types.KubernetesSandbox))
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +242,6 @@ func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, e
 	return mergedCommon, nil
 }
 
-// Similar adjustments for other sandbox sandbox follow.
 func (m *Maker) mergeLocalSandbox(root, server types.Sandbox) (types.Sandbox, error) {
 	// Ensure both root and server are of the correct type, using type assertion to *CommonSandbox.
 	_, rootOk := root.(*types.LocalSandbox)

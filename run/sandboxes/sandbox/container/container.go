@@ -12,11 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package types
+// This is an abstract provider
 
-type Config struct {
-	Version     string `wst:"version,enum=1.0"`
-	Name        string `wst:"name"`
-	Description string `wst:"description"`
-	Spec        Spec   `wst:"spec"`
+package container
+
+import (
+	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox/common"
+)
+
+type Maker struct {
+	env         app.Env
+	commonMaker *common.Maker
+}
+
+func CreateMaker(env app.Env, commonMaker *common.Maker) *Maker {
+	return &Maker{
+		env:         env,
+		commonMaker: commonMaker,
+	}
+}
+
+func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
+	panic("implement")
+}
+
+type Sandbox struct {
+	common.Sandbox
 }

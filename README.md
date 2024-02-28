@@ -94,3 +94,49 @@ predefined actions for execution. The configuration structure, along with descri
 in its [JsonSchema specification](schema/wst-schema.yaml). This schema is written in YAML for superior readability
 and ease of editing.
 
+### Architecture
+
+### Execution Architecture
+
+The execution is designed with flexibility and scalability in mind, accommodating various execution contexts through
+a structured yet adaptable architecture. This architecture is built upon four key entities: Sandboxes, Servers,
+Services, and Environments. Each plays a crucial role in ensuring that our application can be deployed and managed
+effectively across different platforms.
+
+#### Sandboxes
+
+A Sandbox represents the fundamental execution unit within our architecture. It is where individual instances
+of services are executed, isolated from each other to ensure security and stability. Sandboxes can be categorized
+based on their execution context:
+
+- **Local**: Execution as a standalone process within a host operating system.
+- **Docker**: Deployment as a containerized service, utilizing Docker for virtualization.
+- **Kubernetes**: Deployment within a Kubernetes cluster, managed as a deployment.
+
+#### Servers
+
+A Server defines parametrized configurations, definitions, and specific hooks tailored to each Sandbox. It encapsulates
+all necessary information and operations required to manage a service's lifecycle, such as starting, stopping, and
+restarting. For instance, a Server designed for Nginx would include configuration file templates, Docker image
+details, and commands to manage the service across different Sandboxes.
+
+#### Services
+
+A Service represents the actual execution instance of a Server, complete with all required configuration parameters and
+execution information. This design allows a single Server to be instantiated as multiple Services, each with 
+potentially unique configurations. Services are executed within Sandboxes, leveraging the Server's definitions
+to ensure consistent management and operation.
+
+#### Environments
+
+An Environment is a higher-level abstraction that groups together Sandboxes of a specific type, facilitating
+communication and interaction among services deployed within them. It serves as a shared context or domain where:
+
+- For **Local** execution, it might represent a specific filesystem root where configurations are stored.
+- In **Docker**, it could imply a shared network that allows containerized services to communicate.
+- For **Kubernetes**, it generally encompasses a namespace, providing a unified operational scope for deployments.
+
+The concept of an Environment is essential for managing and scaling our application's deployment across different 
+execution contexts. It allows for a cohesive management layer that abstracts the underlying complexities of service 
+interaction and network communication, ensuring that services can seamlessly discover and communicate with each other
+regardless of their deployment context.

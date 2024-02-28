@@ -17,8 +17,6 @@ package run
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf"
-	"github.com/bukka/wst/run/sandboxes"
-	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/spec"
 	"github.com/spf13/afero"
 	"os"
@@ -35,22 +33,18 @@ type Options struct {
 }
 
 type Runner struct {
-	env            app.Env
-	configMaker    *conf.ConfigMaker
-	sandboxesMaker *sandboxes.Maker
-	serversMaker   *servers.Maker
-	specMaker      *spec.Maker
+	env         app.Env
+	configMaker *conf.ConfigMaker
+	specMaker   *spec.Maker
 }
 
 var DefaultsFs = afero.NewOsFs()
 
 func CreateRunner(env app.Env) *Runner {
 	return &Runner{
-		env:            env,
-		configMaker:    conf.CreateConfigMaker(env),
-		sandboxesMaker: sandboxes.CreateMaker(env),
-		serversMaker:   servers.CreateMaker(env),
-		specMaker:      spec.CreateMaker(env),
+		env:         env,
+		configMaker: conf.CreateConfigMaker(env),
+		specMaker:   spec.CreateMaker(env),
 	}
 }
 
@@ -69,12 +63,7 @@ func (r *Runner) Execute(options *Options) error {
 		return err
 	}
 
-	serversMap, err := r.serversMaker.Make(config)
-	if err != nil {
-		return err
-	}
-
-	specification, err := r.specMaker.Make(&config.Spec, serversMap)
+	specification, err := r.specMaker.Make(&config.Spec)
 	if err != nil {
 		return err
 	}

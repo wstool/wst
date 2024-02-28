@@ -15,20 +15,34 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/environments"
+	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/resources/scripts"
+	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
+	"github.com/bukka/wst/run/task"
+)
+
+type OutputType int
+
+const (
+	StdoutOutputType OutputType = 1
+	StderrOutputType            = 2
 )
 
 type Service interface {
-	BaseUrl() string
+	BaseUrl() (string, error)
 	Name() string
 	RenderTemplate(text string) (string, error)
+	OutputScanner(outputType OutputType) *bufio.Scanner
 	Sandbox() sandbox.Sandbox
 	Restart(ctx context.Context, reload bool) error
 	Start(ctx context.Context) error
@@ -64,6 +78,7 @@ func (m *Maker) Make(
 	config map[string]types.Service,
 	scriptResources scripts.Scripts,
 	srvs servers.Servers,
+	environments environments.Environments,
 ) (Services, error) {
 	svcs := make(Services)
 	for serviceName, serviceConfig := range config {
@@ -87,7 +102,7 @@ func (m *Maker) Make(
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
-		sandbox, ok := server.Sandbox(sandbox.Type(serviceConfig.Sandbox))
+		sandbox, ok := server.Sandbox(providers.Type(serviceConfig.Sandbox))
 		if !ok {
 			return nil, fmt.Errorf("sandbox %s not found for service %s", serviceConfig.Sandbox, serviceName)
 		}
@@ -126,35 +141,59 @@ type nativeServiceConfig struct {
 }
 
 type nativeService struct {
-	name    string
-	scripts scripts.Scripts
-	server  servers.Server
-	sandbox sandbox.Sandbox
-	configs map[string]nativeServiceConfig
+	name        string
+	scripts     scripts.Scripts
+	server      servers.Server
+	sandbox     sandbox.Sandbox
+	task        task.Task
+	environment environment.Environment
+	configs     map[string]nativeServiceConfig
+}
+
+func (s *nativeService) OutputScanner(outputType OutputType) *bufio.Scanner {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *nativeService) Restart(ctx context.Context, reload bool) error {
-	//TODO implement me
-	panic("implement me")
+	if s.task == nil {
+		return fmt.Errorf("service has not started yet")
+	}
+	return s.environment.ExecTask(ctx, s.task, s.sandbox.Hook(hooks.ReloadHookType))
 }
 
 func (s *nativeService) Start(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	t, err := s.environment.RunTask(ctx, s)
+	if err != nil {
+		return err
+	}
+	s.task = t
+	return nil
 }
 
 func (s *nativeService) Stop(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	if s.task == nil {
+		return fmt.Errorf("service has not started yet")
+	}
+	err := s.environment.ExecTask(ctx, s.task, s.sandbox.Hook(hooks.StopHookType))
+	if err != nil {
+		return err
+	}
+	// TODO: add some kill fallback if natural stop unsuccessful
+	s.task = nil
+	return nil
 }
 
 func (s *nativeService) Name() string {
 	return s.name
 }
 
-func (s *nativeService) BaseUrl() string {
-	//TODO implement me
-	panic("implement me")
+func (s *nativeService) BaseUrl() (string, error) {
+	if s.task == nil {
+		return "", fmt.Errorf("service has not started yet")
+	}
+
+	return s.task.BaseUrl(), nil
 }
 
 func (s *nativeService) RenderTemplate(text string) (string, error) {

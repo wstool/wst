@@ -12,11 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package types
+package docker
 
-type Config struct {
-	Version     string `wst:"version,enum=1.0"`
-	Name        string `wst:"name"`
-	Description string `wst:"description"`
-	Spec        Spec   `wst:"spec"`
+import (
+	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox/container"
+)
+
+type Maker struct {
+	env            app.Env
+	containerMaker *container.Maker
+}
+
+func CreateMaker(env app.Env, containerMaker *container.Maker) *Maker {
+	return &Maker{
+		env:            env,
+		containerMaker: containerMaker,
+	}
+}
+
+func (m *Maker) MakeSandbox(config *types.DockerSandbox) (*Sandbox, error) {
+	panic("implement")
+}
+
+type Sandbox struct {
+	container.Sandbox
 }

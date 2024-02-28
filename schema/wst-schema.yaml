@@ -14,10 +14,6 @@ properties:
     title: WST project description
     description: The description should describe project purpose.
     type: string
-  sandboxes:
-    $ref: '#/$defs/sandboxes'
-  servers:
-    $ref: '#/$defs/servers'
   spec:
     $ref: '#/$defs/spec'
 
@@ -33,6 +29,48 @@ $defs:
         oneOf:
           - type: [ string, number, boolean ]
           - $ref: '#/$defs/parameters'
+
+  environments:
+    title: Environment definitions
+    description: |
+      Environments can be specified either as an object defining the used sandboxes or as a string representing a path
+      to fetch sandbox definitions from.
+    type: [ object, string ]
+    properties:
+      local:
+        title: Local environment configuration
+        type: object
+        properties:
+          ports:
+            title: Range of available ports
+            type: object
+            properties:
+              from:
+                title: Start of the port range
+                type: integer
+              to:
+                title: End of the port range
+                type: integer
+
+      docker:
+        title: Kubernetes environment configuration
+        type: object
+        properties:
+          namespace:
+            title: Prefix for the network and services names
+            description: The namespace is optional and
+            type: string
+
+      kubernetes:
+        title: Kubernetes environment configuration
+        type: object
+        properties:
+          namespace:
+            title: Prefix for the network and services
+            type: string
+          kubeconfig:
+            title: Kubernetes config file path
+            type: string
 
   headers:
     title: HTTP Headers
@@ -482,7 +520,7 @@ $defs:
             title: Action timeout
             description: |
               This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
-          unlimited and 0 means using the default value defined in the instance action timeout.
+              unlimited and 0 means using the default value defined in the instance action timeout.
             type: integer
       - oneOf:
           - properties:
@@ -673,6 +711,8 @@ $defs:
         description: |
           The name is used for reporting which is mainly useful when more instances are used. If not specified, the
           name is generated from instance index and file name.
+      environments:
+        $ref: '#/$defs/environments'
       resources:
         title: Resource data
         description: |
@@ -711,12 +751,8 @@ $defs:
       are going to be executed.
     type: object
     properties:
-      workspace:
-        title: Workspace location
-        description: |
-          The workspace is a location where all the configuration and scripts are rendered from templates. It should
-          be a directory, and this directory should be ignored by the version control system (e.g., git).
-        type: string
+      environments:
+        $ref: '#/$defs/environments'
       instances:
         title: Spec instances
         description: |
@@ -726,3 +762,13 @@ $defs:
         type: [ array, string ]
         items:
           $ref: '#/$defs/instance'
+      sandboxes:
+        $ref: '#/$defs/sandboxes'
+      servers:
+        $ref: '#/$defs/servers'
+      workspace:
+        title: Workspace location
+        description: |
+          The workspace is a location where all the configuration and scripts are rendered from templates. It should
+          be a directory, and this directory should be ignored by the version control system (e.g., git).
+        type: string

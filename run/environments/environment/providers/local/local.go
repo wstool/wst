@@ -12,32 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is an abstract provider
-
-package container
+package local
 
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/providers/common"
+	"github.com/bukka/wst/run/environments/environment"
 )
 
 type Maker struct {
-	env         app.Env
-	commonMaker *common.Maker
+	env app.Env
 }
 
-func CreateMaker(env app.Env, commonMaker *common.Maker) *Maker {
+func CreateMaker(env app.Env) *Maker {
 	return &Maker{
-		env:         env,
-		commonMaker: commonMaker,
+		env: env,
 	}
 }
 
-func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
+func (m *Maker) Make(config *types.LocalEnvironment) (environment.Environment, error) {
 	panic("implement")
 }
 
-type Sandbox struct {
-	common.Sandbox
+type localEnvironment struct {
 }

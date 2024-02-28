@@ -12,11 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package types
+package environment
 
-type Config struct {
-	Version     string `wst:"version,enum=1.0"`
-	Name        string `wst:"name"`
-	Description string `wst:"description"`
-	Spec        Spec   `wst:"spec"`
+import (
+	"context"
+	"github.com/bukka/wst/run/sandboxes/hooks"
+	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/task"
+	"io"
+)
+
+type Environment interface {
+	Init(ctx context.Context) error
+	Destroy(ctx context.Context) error
+	RunTask(ctx context.Context, service services.Service) (task.Task, error)
+	ExecTask(ctx context.Context, target task.Task, hook hooks.Hook) error
+	Output(ctx context.Context) (io.Reader, error)
 }

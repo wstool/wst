@@ -14,20 +14,10 @@
 
 package types
 
-type InstanceTimeouts struct {
-	Action  int `wst:"action,default=30000"`
-	Actions int `wst:"actions,default=0"`
-}
-
-type Instance struct {
-	Name      string             `wst:"name"`
-	Resources Resources          `wst:"resources"`
-	Services  map[string]Service `wst:"services,loadable"`
-	Timeouts  InstanceTimeouts   `wst:"timeouts"`
-	Actions   []Action           `wst:"actions,factory=createActions"`
-}
-
 type Spec struct {
-	Workspace string     `wst:"workspace"`
-	Instances []Instance `wst:"instances,loadable"`
+	Environments map[string]Environment  `wst:"environments,loadable"`
+	Instances    []Instance              `wst:"instances,loadable"`
+	Sandboxes    map[SandboxType]Sandbox `wst:"sandboxes,loadable,factory=createSandboxes"`
+	Servers      []Server                `wst:"servers,loadable"`
+	Workspace    string                  `wst:"workspace"`
 }

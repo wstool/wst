@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/environments"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
@@ -32,35 +33,46 @@ type Instance interface {
 }
 
 type InstanceMaker struct {
-	env           app.Env
-	actionMaker   *actions.ActionMaker
-	servicesMaker *services.Maker
-	scriptsMaker  *scripts.Maker
+	env              app.Env
+	actionMaker      *actions.ActionMaker
+	servicesMaker    *services.Maker
+	scriptsMaker     *scripts.Maker
+	environmentMaker *environments.Maker
 }
 
 func CreateInstanceMaker(env app.Env) *InstanceMaker {
 	return &InstanceMaker{
-		env:           env,
-		actionMaker:   actions.CreateActionMaker(env),
-		servicesMaker: services.CreateMaker(env),
-		scriptsMaker:  scripts.CreateMaker(env),
+		env:              env,
+		actionMaker:      actions.CreateActionMaker(env),
+		servicesMaker:    services.CreateMaker(env),
+		scriptsMaker:     scripts.CreateMaker(env),
+		environmentMaker: environments.CreateMaker(env),
 	}
 }
 
-func (m *InstanceMaker) Make(config types.Instance, srvs servers.Servers) (Instance, error) {
-	scriptResources, err := m.scriptsMaker.Make(config.Resources.Scripts)
+func (m *InstanceMaker) Make(
+	instanceConfig types.Instance,
+	envsConfig map[string]types.Environment,
+	srvs servers.Servers,
+) (Instance, error) {
+	scriptResources, err := m.scriptsMaker.Make(instanceConfig.Resources.Scripts)
 	if err != nil {
 		return nil, err
 	}
 
-	svcs, err := m.servicesMaker.Make(config.Services, scriptResources, srvs)
+	envs, err := m.environmentMaker.Make(envsConfig, instanceConfig.Environments)
 	if err != nil {
 		return nil, err
 	}
 
-	actions := make([]actions.Action, len(config.Actions))
-	for i, actionConfig := range config.Actions {
-		action, err := m.actionMaker.MakeAction(actionConfig, svcs, config.Timeouts.Action)
+	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs)
+	if err != nil {
+		return nil, err
+	}
+
+	actions := make([]actions.Action, len(instanceConfig.Actions))
+	for i, actionConfig := range instanceConfig.Actions {
+		action, err := m.actionMaker.MakeAction(actionConfig, svcs, instanceConfig.Timeouts.Action)
 		if err != nil {
 			return nil, err
 		}
@@ -68,8 +80,8 @@ func (m *InstanceMaker) Make(config types.Instance, srvs servers.Servers) (Insta
 	}
 	runData := runtime.CreateData()
 	return &nativeInstance{
-		name:    config.Name,
-		timeout: config.Timeouts.Actions,
+		name:    instanceConfig.Name,
+		timeout: instanceConfig.Timeouts.Actions,
 		actions: actions,
 		runData: runData,
 	}, nil

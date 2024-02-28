@@ -8,10 +8,15 @@ in the future.
 ### Run
 - service events - start, stop, restart
 - sandbox and service api finalization
-- dry run mode - integrate to action, services and sandboxes
+- native hooks integration
 - local sandbox integration
+- docker sandbox integration
+- kubernetes sandbox integration
+- dry run mode - integrate to action, services and sandboxes
+- template rendering
 - tests
 
 ### Config
+- get rid of SandboxType?
 - merging - generic merging rules taken from params
 - factories

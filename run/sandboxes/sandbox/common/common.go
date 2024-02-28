@@ -12,48 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package docker
+// This is an abstract provider
+
+package common
 
 import (
-	"bufio"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/providers/container"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
-	"github.com/bukka/wst/run/sandboxes/sandbox/hooks"
+	"github.com/bukka/wst/run/sandboxes/hooks"
 )
 
 type Maker struct {
-	env            app.Env
-	containerMaker *container.Maker
+	env        app.Env
+	hooksMaker *hooks.Maker
 }
 
-func CreateMaker(env app.Env, containerMaker *container.Maker) *Maker {
+func CreateMaker(env app.Env, hooksMaker *hooks.Maker) *Maker {
 	return &Maker{
-		env:            env,
-		containerMaker: containerMaker,
+		env:        env,
+		hooksMaker: hooksMaker,
 	}
 }
 
-func (m *Maker) MakeSandbox(config *types.DockerSandbox) (*Sandbox, error) {
+func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 	panic("implement")
 }
 
 type Sandbox struct {
-	container.Sandbox
+	Dirs  map[string]string
+	Hooks map[string]hooks.Hook
 }
 
-func (s Sandbox) OutputScanner(outputType sandbox.OutputType) *bufio.Scanner {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s Sandbox) ExecuteCommand(command *hooks.HookCommand) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s Sandbox) ExecuteSignal(signal *hooks.HookSignal) error {
+func (s *Sandbox) Hook(hookType hooks.HookType) hooks.Hook {
 	//TODO implement me
 	panic("implement me")
 }
