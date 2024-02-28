@@ -102,9 +102,16 @@ func (m *Maker) Make(
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
-		sandbox, ok := server.Sandbox(providers.Type(serviceConfig.Sandbox))
+		providerType := providers.Type(serviceConfig.Sandbox)
+
+		sb, ok := server.Sandbox(providerType)
 		if !ok {
 			return nil, fmt.Errorf("sandbox %s not found for service %s", serviceConfig.Sandbox, serviceName)
+		}
+
+		env, ok := environments[providerType]
+		if !ok {
+			return nil, fmt.Errorf("environment %s not found for service %s", serviceConfig.Sandbox, serviceName)
 		}
 
 		nativeConfigs := make(map[string]nativeServiceConfig)
@@ -122,11 +129,12 @@ func (m *Maker) Make(
 		}
 
 		service := &nativeService{
-			name:    serviceName,
-			scripts: includedScripts,
-			server:  server,
-			sandbox: sandbox,
-			configs: nativeConfigs,
+			name:        serviceName,
+			environment: env,
+			scripts:     includedScripts,
+			server:      server,
+			sandbox:     sb,
+			configs:     nativeConfigs,
 		}
 
 		svcs[serviceName] = service
@@ -159,7 +167,11 @@ func (s *nativeService) Restart(ctx context.Context, reload bool) error {
 	if s.task == nil {
 		return fmt.Errorf("service has not started yet")
 	}
-	return s.environment.ExecTask(ctx, s.task, s.sandbox.Hook(hooks.ReloadHookType))
+	hook, err := s.sandbox.Hook(hooks.ReloadHookType)
+	if err != nil {
+		return err
+	}
+	return s.environment.ExecTask(ctx, s.task, hook)
 }
 
 func (s *nativeService) Start(ctx context.Context) error {
@@ -175,7 +187,11 @@ func (s *nativeService) Stop(ctx context.Context) error {
 	if s.task == nil {
 		return fmt.Errorf("service has not started yet")
 	}
-	err := s.environment.ExecTask(ctx, s.task, s.sandbox.Hook(hooks.StopHookType))
+	hook, err := s.sandbox.Hook(hooks.StopHookType)
+	if err != nil {
+		return err
+	}
+	err = s.environment.ExecTask(ctx, s.task, hook)
 	if err != nil {
 		return err
 	}

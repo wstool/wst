@@ -35,9 +35,26 @@ func CreateMaker(env app.Env, commonMaker *common.Maker) *Maker {
 }
 
 func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
-	panic("implement")
+	commonSandbox, err := m.commonMaker.MakeSandbox(&config.CommonSandbox)
+	if err != nil {
+		return nil, err
+	}
+
+	sandbox := &Sandbox{
+		Sandbox:          *commonSandbox,
+		ImageName:        config.Image.Name,
+		ImageTag:         config.Image.Tag,
+		RegistryUsername: config.Registry.Auth.Username,
+		RegistryPassword: config.Registry.Auth.Password,
+	}
+
+	return sandbox, nil
 }
 
 type Sandbox struct {
 	common.Sandbox
+	ImageName        string
+	ImageTag         string
+	RegistryUsername string
+	RegistryPassword string
 }

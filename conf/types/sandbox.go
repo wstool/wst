@@ -104,13 +104,8 @@ func (s *DockerSandbox) Type() SandboxType {
 	return KubernetesSandboxType
 }
 
-type KubernetesAuth struct {
-	Kubeconfig string `wst:"kubeconfig,path"`
-}
-
 type KubernetesSandbox struct {
 	ContainerSandbox
-	Auth KubernetesAuth `wst:"auth"`
 }
 
 func (s *KubernetesSandbox) Type() SandboxType {

@@ -17,6 +17,7 @@
 package common
 
 import (
+	"errors"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/sandboxes/hooks"
@@ -35,15 +36,30 @@ func CreateMaker(env app.Env, hooksMaker *hooks.Maker) *Maker {
 }
 
 func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
-	panic("implement")
+	sandboxHooks := map[hooks.HookType]hooks.Hook{}
+	for name, hookConfig := range config.Hooks {
+		hook, err := m.hooksMaker.MakeHook(hookConfig)
+		if err != nil {
+			return nil, err
+		}
+		sandboxHooks[hooks.HookType(name)] = hook
+	}
+
+	return &Sandbox{
+		Dirs:  config.Dirs,
+		Hooks: sandboxHooks,
+	}, nil
 }
 
 type Sandbox struct {
 	Dirs  map[string]string
-	Hooks map[string]hooks.Hook
+	Hooks map[hooks.HookType]hooks.Hook
 }
 
-func (s *Sandbox) Hook(hookType hooks.HookType) hooks.Hook {
-	//TODO implement me
-	panic("implement me")
+func (s *Sandbox) Hook(hookType hooks.HookType) (hooks.Hook, error) {
+	hook, ok := s.Hooks[hookType]
+	if !ok {
+		return nil, errors.New("hook not found")
+	}
+	return hook, nil
 }

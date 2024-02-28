@@ -33,7 +33,16 @@ func CreateMaker(env app.Env, commonMaker *common.Maker) *Maker {
 }
 
 func (m *Maker) MakeSandbox(config *types.LocalSandbox) (*Sandbox, error) {
-	panic("implement")
+	commonSandbox, err := m.commonMaker.MakeSandbox(&config.CommonSandbox)
+	if err != nil {
+		return nil, err
+	}
+
+	sandbox := &Sandbox{
+		Sandbox: *commonSandbox,
+	}
+
+	return sandbox, nil
 }
 
 type Sandbox struct {

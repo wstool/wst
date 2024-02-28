@@ -18,13 +18,6 @@ import (
 	"github.com/bukka/wst/run/sandboxes/hooks"
 )
 
-type OutputType int
-
-const (
-	StdoutOutputType = 1
-	StderrOutputType = 2
-)
-
 type Sandbox interface {
-	Hook(hookType hooks.HookType) hooks.Hook
+	Hook(hookType hooks.HookType) (hooks.Hook, error)
 }

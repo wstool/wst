@@ -319,8 +319,8 @@ func (m *Maker) mergeDockerSandbox(root, server types.Sandbox) (types.Sandbox, e
 }
 
 func (m *Maker) mergeKubernetesSandbox(root, server types.Sandbox) (types.Sandbox, error) {
-	rootKubernetes, rootOk := root.(*types.KubernetesSandbox)
-	serverKubernetes, serverOk := server.(*types.KubernetesSandbox)
+	_, rootOk := root.(*types.KubernetesSandbox)
+	_, serverOk := server.(*types.KubernetesSandbox)
 	if !rootOk || !serverOk {
 		return nil, errors.New("type assertion to *KubernetesSandbox failed")
 	}
@@ -332,11 +332,6 @@ func (m *Maker) mergeKubernetesSandbox(root, server types.Sandbox) (types.Sandbo
 
 	mergedKubernetes := &types.KubernetesSandbox{
 		ContainerSandbox: *mergedContainer.(*types.ContainerSandbox),
-		Auth:             rootKubernetes.Auth,
-	}
-
-	if serverKubernetes.Auth.Kubeconfig != "" {
-		mergedKubernetes.Auth.Kubeconfig = serverKubernetes.Auth.Kubeconfig
 	}
 
 	return mergedKubernetes, nil
