@@ -50,8 +50,8 @@ func CreateMaker(env app.Env) *Maker {
 }
 
 func (m *Maker) MakeSandboxes(
-	rootSandboxes map[types.SandboxType]types.Sandbox,
-	serverSandboxes map[types.SandboxType]types.Sandbox,
+	rootSandboxes map[string]types.Sandbox,
+	serverSandboxes map[string]types.Sandbox,
 ) (Sandboxes, error) {
 	var err error
 	mergedSandboxes, err := m.mergeConfigMaps(rootSandboxes, serverSandboxes)
@@ -176,8 +176,8 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox)
 type mergeFunc func(root, server types.Sandbox) (types.Sandbox, error)
 
 func (m *Maker) mergeConfigMaps(
-	rootSandboxes map[types.SandboxType]types.Sandbox,
-	serverSandboxes map[types.SandboxType]types.Sandbox,
+	rootSandboxes map[string]types.Sandbox,
+	serverSandboxes map[string]types.Sandbox,
 ) (map[types.SandboxType]types.Sandbox, error) {
 	mergeFuncs := map[types.SandboxType]mergeFunc{
 		types.CommonSandboxType:     m.mergeCommonSandbox,
@@ -186,10 +186,12 @@ func (m *Maker) mergeConfigMaps(
 		types.DockerSandboxType:     m.mergeDockerSandbox,
 		types.KubernetesSandboxType: m.mergeKubernetesSandbox,
 	}
+	mergedSandboxes := make(map[types.SandboxType]types.Sandbox)
 
 	for sandboxType, merge := range mergeFuncs {
-		rootSandbox, rootExists := rootSandboxes[sandboxType]
-		serverSandbox, serverExists := serverSandboxes[sandboxType]
+		sandboxTypeStr := string(sandboxType)
+		rootSandbox, rootExists := rootSandboxes[sandboxTypeStr]
+		serverSandbox, serverExists := serverSandboxes[sandboxTypeStr]
 
 		if rootExists && serverExists {
 			// Use the merge function, now handling errors.
@@ -198,14 +200,15 @@ func (m *Maker) mergeConfigMaps(
 				// Handle the error, e.g., by returning it or logging it.
 				return nil, err // Return an error if merging fails.
 			}
-			rootSandboxes[sandboxType] = mergedSandbox
+			mergedSandboxes[sandboxType] = mergedSandbox
 		} else if !rootExists && serverExists {
-			rootSandboxes[sandboxType] = serverSandbox
+			mergedSandboxes[sandboxType] = serverSandbox
+		} else {
+			mergedSandboxes[sandboxType] = rootSandbox
 		}
-		// No action needed if only root exists or neither exists.
 	}
 
-	return rootSandboxes, nil // No error encountered, return the merged map.
+	return mergedSandboxes, nil
 }
 
 func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, error) {

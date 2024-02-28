@@ -33,4 +33,5 @@ type OutputType string
 const (
 	OutputTypeStdout OutputType = "stdout"
 	OutputTypeStderr OutputType = "stderr"
+	OutputTypeAny    OutputType = "any"
 )

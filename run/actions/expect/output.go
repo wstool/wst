@@ -20,7 +20,6 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances/runtime"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/services"
 	"regexp"
 	"time"
@@ -52,7 +51,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	}
 
 	outputType := OutputType(config.Output.Type)
-	if outputType != OutputTypeStdout && outputType != OutputTypeStderr {
+	if outputType != OutputTypeAny && outputType != OutputTypeStdout && outputType != OutputTypeStderr {
 		return nil, fmt.Errorf("invalid output type: %v", config.Output.Type)
 	}
 
@@ -92,8 +91,7 @@ func (a *outputAction) Timeout() time.Duration {
 }
 
 func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
-	sandbox := a.service.Sandbox()
-	outputType, err := a.getSandboxOutputType(a.outputType)
+	outputType, err := a.getServiceOutputType(a.outputType)
 	if err != nil {
 		return false, err
 	}
@@ -101,7 +99,7 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 	if err != nil {
 		return false, err
 	}
-	scanner := sandbox.OutputScanner(outputType)
+	scanner := a.service.OutputScanner(outputType)
 	for scanner.Scan() {
 		line := scanner.Text()
 		messages, err = a.matchMessages(line, messages)
@@ -119,14 +117,14 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 	return false, nil
 }
 
-func (a *outputAction) getSandboxOutputType(outputType OutputType) (sandbox.OutputType, error) {
+func (a *outputAction) getServiceOutputType(outputType OutputType) (services.OutputType, error) {
 	switch outputType {
 	case OutputTypeStdout:
-		return sandbox.StdoutOutputType, nil
+		return services.StdoutOutputType, nil
 	case OutputTypeStderr:
-		return sandbox.StderrOutputType, nil
+		return services.StderrOutputType, nil
 	default:
-		return sandbox.StderrOutputType, fmt.Errorf("unknow output type %s", string(outputType))
+		return services.StderrOutputType, fmt.Errorf("unknow output type %s", string(outputType))
 	}
 }
 
