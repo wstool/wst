@@ -18,6 +18,7 @@ import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"io"
@@ -39,7 +40,7 @@ func (m *ActionMaker) Make(
 	config *types.RequestAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*action, error) {
+) (actions.Action, error) {
 	svc, err := svcs.FindService(config.Service)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,11 @@ func (a *action) Timeout() time.Duration {
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
 	// Construct the request URL from the service and path.
-	url := a.service.BaseUrl() + a.path
+	baseUrl, err := a.service.BaseUrl()
+	if err != nil {
+		return false, err
+	}
+	url := baseUrl + a.path
 
 	// Create the HTTP request.
 	req, err := http.NewRequestWithContext(ctx, a.method, url, nil)

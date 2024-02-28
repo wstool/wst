@@ -40,21 +40,21 @@ func (m *ActionMaker) Make(
 	svcs services.Services,
 	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
-) (*action, error) {
+) (actions.Action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	var actions []actions.Action
+	var parallelActions []actions.Action
 	for _, configAction := range config.Actions {
 		newAction, err := actionMaker.MakeAction(configAction, svcs, config.Timeout)
 		if err != nil {
 			return nil, err
 		}
-		actions = append(actions, newAction)
+		parallelActions = append(parallelActions, newAction)
 	}
 	return &action{
-		actions: actions,
+		actions: parallelActions,
 		timeout: time.Duration(config.Timeout),
 	}, nil
 }

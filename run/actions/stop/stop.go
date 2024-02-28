@@ -18,6 +18,7 @@ import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -37,7 +38,7 @@ func (m *ActionMaker) Make(
 	config *types.StopAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*Action, error) {
+) (actions.Action, error) {
 	var stopServices services.Services
 
 	if config.Service != "" {

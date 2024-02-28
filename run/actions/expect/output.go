@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"regexp"
@@ -39,7 +40,7 @@ func (m *OutputExpectationActionMaker) MakeAction(
 	config *types.OutputExpectationAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*outputAction, error) {
+) (actions.Action, error) {
 	order := OrderType(config.Output.Order)
 	if order != OrderTypeFixed && order != OrderTypeRandom {
 		return nil, fmt.Errorf("invalid order type: %v", config.Output.Order)

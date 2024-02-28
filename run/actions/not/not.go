@@ -39,7 +39,7 @@ func (m *ActionMaker) Make(
 	svcs services.Services,
 	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
-) (*action, error) {
+) (actions.Action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}

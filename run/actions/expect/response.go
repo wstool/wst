@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/request"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
@@ -41,7 +42,7 @@ func (m *ResponseExpectationActionMaker) MakeAction(
 	config *types.ResponseExpectationAction,
 	svcs services.Services,
 	defaultTimeout int,
-) (*responseAction, error) {
+) (actions.Action, error) {
 	match := MatchType(config.Response.Body.Match)
 	if match != MatchTypeExact && match != MatchTypeRegexp {
 		return nil, fmt.Errorf("invalid MatchType: %v", config.Response.Body.Match)
