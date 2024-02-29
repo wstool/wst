@@ -16,16 +16,22 @@ package environment
 
 import (
 	"context"
-	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/services"
 	"github.com/bukka/wst/run/task"
 	"io"
+	"os"
 )
+
+type Command struct {
+	Name string
+	Args []string
+}
 
 type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
-	RunTask(ctx context.Context, service services.Service) (task.Task, error)
-	ExecTask(ctx context.Context, target task.Task, hook hooks.Hook) error
+	RunTask(ctx context.Context, service services.Service, cmd *Command) (task.Task, error)
+	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
+	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error
 	Output(ctx context.Context) (io.Reader, error)
 }

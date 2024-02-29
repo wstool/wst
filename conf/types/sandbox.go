@@ -27,13 +27,15 @@ const (
 type SandboxHookType string
 
 const (
-	StartSandboxHookType  SandboxHookType = "start"
-	StopSandboxHookType                   = "stop"
-	ReloadSandboxHookType                 = "reload"
+	ReloadSandboxHookType  SandboxHookType = "reload"
+	RestartSandboxHookType                 = "restart"
+	StartSandboxHookType                   = "start"
+	StopSandboxHookType                    = "stop"
 )
 
 type SandboxHookNative struct {
-	Type string `wst:"type,enum=start|restart|stop"`
+	Enabled bool `wst:"enabled,default=true"`
+	Force   bool `wst:"force,default=false"`
 }
 
 type SandboxHookShellCommand struct {
@@ -41,7 +43,7 @@ type SandboxHookShellCommand struct {
 	Shell   string `wst:"shell"`
 }
 
-type SandboxHookCommand struct {
+type SandboxHookArgsCommand struct {
 	Executable string   `wst:"executable"`
 	Args       []string `wst:"args"`
 }

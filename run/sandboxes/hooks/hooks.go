@@ -15,62 +15,25 @@
 package hooks
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/task"
 	"os"
 	"syscall"
 )
 
-type HookNative struct {
-	Type string
-}
-
-func (h HookNative) Execute(sandbox *sandbox.Sandbox) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-type HookShellCommand struct {
-	Command string
-	Shell   string
-}
-
-func (h HookShellCommand) Execute(sandbox *sandbox.Sandbox) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-type HookCommand struct {
-	Executable string
-	Args       []string
-}
-
-func (h HookCommand) Execute(sandbox *sandbox.Sandbox) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-type HookSignal struct {
-	Signal os.Signal
-}
-
-func (h HookSignal) Execute(sandbox *sandbox.Sandbox) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-type Hook interface {
-	Execute(sandbox *sandbox.Sandbox) error
-}
-
 type HookType string
 
 const (
-	StartHookType  HookType = "start"
-	StopHookType            = "stop"
-	ReloadHookType          = "reload"
+	StartHookType   HookType = "start"
+	StopHookType             = "stop"
+	ReloadHookType           = "reload"
+	RestartHookType          = "restart"
 )
 
 type Hooks map[HookType]Hook
@@ -87,19 +50,26 @@ func CreateMaker(env app.Env) *Maker {
 
 func (m *Maker) MakeHooks(config map[string]types.SandboxHook) (Hooks, error) {
 	hooks := make(Hooks)
-	for hookType, hookConfig := range config {
-		hook, err := m.MakeHook(hookConfig)
+	for configHookTypeStr, hookConfig := range config {
+		configHookType := types.SandboxHookType(configHookTypeStr)
+		var hookType HookType
+		switch configHookType {
+		case types.StartSandboxHookType:
+			hookType = StartHookType
+		case types.StopSandboxHookType:
+			hookType = StopHookType
+		case types.RestartSandboxHookType:
+			hookType = RestartHookType
+		case types.ReloadSandboxHookType:
+			hookType = ReloadHookType
+		default:
+			return nil, fmt.Errorf("invalid hook type %s", configHookTypeStr)
+		}
+		hook, err := m.MakeHook(hookConfig, hookType)
 		if err != nil {
 			return nil, err
 		}
-		switch types.SandboxHookType(hookType) {
-		case types.StartSandboxHookType:
-			hooks[StartHookType] = hook
-		case types.StopSandboxHookType:
-			hooks[StopHookType] = hook
-		case types.ReloadSandboxHookType:
-			hooks[ReloadHookType] = hook
-		}
+		hooks[hookType] = hook
 	}
 	return hooks, nil
 }
@@ -110,6 +80,9 @@ var stringToSignalMap = map[string]os.Signal{
 	"SIGKILL": syscall.SIGKILL,
 	"SIGINT":  syscall.SIGINT,
 	"SIGQUIT": syscall.SIGQUIT,
+	"SIGHUP":  syscall.SIGHUP,
+	"SIGUSR1": syscall.SIGUSR1,
+	"SIGUSR2": syscall.SIGUSR2,
 }
 
 // Define mapping for integer signal numbers to os.Signal
@@ -119,31 +92,157 @@ var intToSignalMap = map[int]os.Signal{
 	int(syscall.SIGKILL): syscall.SIGKILL,
 	int(syscall.SIGINT):  syscall.SIGINT,
 	int(syscall.SIGQUIT): syscall.SIGQUIT,
+	int(syscall.SIGHUP):  syscall.SIGHUP,
+	int(syscall.SIGUSR1): syscall.SIGUSR1,
+	int(syscall.SIGUSR2): syscall.SIGUSR2,
 }
 
-func (m *Maker) MakeHook(config types.SandboxHook) (Hook, error) {
+func createBaseHook(enabled bool, hookType HookType) *BaseHook {
+	return &BaseHook{Enabled: enabled, Type: hookType}
+}
+
+func (m *Maker) MakeHook(config types.SandboxHook, hookType HookType) (Hook, error) {
+	var resultHook Hook
 	switch hook := config.(type) {
 	case *types.SandboxHookNative:
-		return &HookNative{Type: hook.Type}, nil
+		resultHook = &HookNative{
+			BaseHook: *createBaseHook(hook.Enabled, hookType),
+		}
 	case *types.SandboxHookShellCommand:
-		return &HookShellCommand{Command: hook.Command, Shell: hook.Shell}, nil
-	case *types.SandboxHookCommand:
-		return &HookCommand{Executable: hook.Executable, Args: hook.Args}, nil
+		resultHook = &HookShellCommand{
+			BaseHook: *createBaseHook(true, hookType),
+			Command:  hook.Command,
+			Shell:    hook.Shell,
+		}
+	case *types.SandboxHookArgsCommand:
+		resultHook = &HookArgsCommand{
+			BaseHook:   *createBaseHook(true, hookType),
+			Executable: hook.Executable,
+			Args:       hook.Args,
+		}
 	case *types.SandboxHookSignal:
+		baseHook := createBaseHook(true, hookType)
 		if hook.IsString {
 			signal, ok := stringToSignalMap[hook.StringValue]
 			if !ok {
 				return nil, errors.New("unsupported string signal value")
 			}
-			return &HookSignal{signal}, nil
+			resultHook = &HookSignal{BaseHook: *baseHook, Signal: signal}
 		} else {
 			signal, ok := intToSignalMap[hook.IntValue]
 			if !ok {
 				return nil, errors.New("unsupported int signal value")
 			}
-			return &HookSignal{signal}, nil
+			resultHook = &HookSignal{BaseHook: *baseHook, Signal: signal}
 		}
 	default:
 		return nil, errors.New("unsupported hook type")
 	}
+
+	return resultHook, nil
+}
+
+type Hook interface {
+	Execute(ctx context.Context, service services.Service) (task.Task, error)
+}
+
+type BaseHook struct {
+	Type    HookType
+	Enabled bool
+}
+
+type HookNative struct {
+	BaseHook
+}
+
+func (h *HookNative) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+	serviceTask := service.Task()
+	var err error
+	if h.Type == StartHookType {
+		if serviceTask != nil {
+			return nil, errors.New("task has already been created which is likely because start already done")
+		}
+		serviceTask, err = service.Environment().RunTask(ctx, service, nil)
+	} else {
+		if serviceTask == nil {
+			return nil, errors.New("task has not been created which is likely because start is not done")
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return serviceTask, nil
+}
+
+type HookArgsCommand struct {
+	BaseHook
+	Executable string
+	Args       []string
+}
+
+func (h *HookArgsCommand) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+	serviceTask := service.Task()
+	var err error
+	if h.Type == StartHookType {
+		if serviceTask != nil {
+			return nil, errors.New("task has already been created which is likely because start already done")
+		}
+		serviceTask, err = service.Environment().RunTask(ctx, service, &environment.Command{
+			Name: h.Executable,
+			Args: h.Args,
+		})
+	} else {
+		if serviceTask == nil {
+			return nil, errors.New("task has not been created which is likely because start is not done")
+		}
+		err = service.Environment().ExecTaskCommand(ctx, service, serviceTask, &environment.Command{
+			Name: h.Executable,
+			Args: h.Args,
+		})
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return serviceTask, nil
+}
+
+type HookShellCommand struct {
+	BaseHook
+	Command string
+	Shell   string
+}
+
+func (h *HookShellCommand) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+	argsCommand := &HookArgsCommand{
+		BaseHook:   h.BaseHook,
+		Executable: h.Shell,
+		Args:       []string{"-c", h.Command},
+	}
+	return argsCommand.Execute(ctx, service)
+}
+
+type HookSignal struct {
+	BaseHook
+	Signal os.Signal
+}
+
+func (h *HookSignal) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+	if h.Type == StartHookType {
+		return nil, fmt.Errorf("signal hook cannot be executed on start")
+	}
+	task := service.Task()
+	if task == nil {
+		return nil, errors.New("task does not exist for signal hook to execute")
+	}
+
+	err := service.Environment().ExecTaskSignal(ctx, service, task, h.Signal)
+	if err != nil {
+		return nil, err
+	}
+
+	return task, nil
 }

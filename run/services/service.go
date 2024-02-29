@@ -41,10 +41,13 @@ const (
 type Service interface {
 	BaseUrl() (string, error)
 	Name() string
+	Environment() environment.Environment
+	Task() task.Task
 	RenderTemplate(text string) (string, error)
 	OutputScanner(outputType OutputType) *bufio.Scanner
 	Sandbox() sandbox.Sandbox
-	Restart(ctx context.Context, reload bool) error
+	Reload(ctx context.Context) error
+	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
@@ -163,41 +166,55 @@ func (s *nativeService) OutputScanner(outputType OutputType) *bufio.Scanner {
 	panic("implement me")
 }
 
-func (s *nativeService) Restart(ctx context.Context, reload bool) error {
-	if s.task == nil {
-		return fmt.Errorf("service has not started yet")
-	}
+func (s *nativeService) Reload(ctx context.Context) error {
 	hook, err := s.sandbox.Hook(hooks.ReloadHookType)
 	if err != nil {
 		return err
 	}
-	return s.environment.ExecTask(ctx, s.task, hook)
+
+	_, err = hook.Execute(ctx, s)
+
+	return err
 }
 
-func (s *nativeService) Start(ctx context.Context) error {
-	t, err := s.environment.RunTask(ctx, s)
+func (s *nativeService) Restart(ctx context.Context) error {
+	hook, err := s.sandbox.Hook(hooks.RestartHookType)
 	if err != nil {
 		return err
 	}
+
+	_, err = hook.Execute(ctx, s)
+
+	return err
+}
+
+func (s *nativeService) Start(ctx context.Context) error {
+	hook, err := s.sandbox.Hook(hooks.StartHookType)
+	if err != nil {
+		return err
+	}
+
+	t, err := hook.Execute(ctx, s)
+	if err != nil {
+		return err
+	}
+
 	s.task = t
 	return nil
 }
 
 func (s *nativeService) Stop(ctx context.Context) error {
-	if s.task == nil {
-		return fmt.Errorf("service has not started yet")
-	}
 	hook, err := s.sandbox.Hook(hooks.StopHookType)
 	if err != nil {
 		return err
 	}
-	err = s.environment.ExecTask(ctx, s.task, hook)
+
+	_, err = hook.Execute(ctx, s)
 	if err != nil {
-		return err
+		s.task = nil
 	}
-	// TODO: add some kill fallback if natural stop unsuccessful
-	s.task = nil
-	return nil
+
+	return err
 }
 
 func (s *nativeService) Name() string {
@@ -219,4 +236,12 @@ func (s *nativeService) RenderTemplate(text string) (string, error) {
 
 func (s *nativeService) Sandbox() sandbox.Sandbox {
 	return s.sandbox
+}
+
+func (s *nativeService) Environment() environment.Environment {
+	return s.environment
+}
+
+func (s *nativeService) Task() task.Task {
+	return s.task
 }
