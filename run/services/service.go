@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/sandboxes/hooks"
@@ -31,20 +32,13 @@ import (
 	"github.com/bukka/wst/run/task"
 )
 
-type OutputType int
-
-const (
-	StdoutOutputType OutputType = 1
-	StderrOutputType            = 2
-)
-
 type Service interface {
 	BaseUrl() (string, error)
 	Name() string
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string) (string, error)
-	OutputScanner(outputType OutputType) *bufio.Scanner
+	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
 	Sandbox() sandbox.Sandbox
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
@@ -161,9 +155,12 @@ type nativeService struct {
 	configs     map[string]nativeServiceConfig
 }
 
-func (s *nativeService) OutputScanner(outputType OutputType) *bufio.Scanner {
-	//TODO implement me
-	panic("implement me")
+func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
+	reader, err := s.environment.Output(ctx, outputType)
+	if err != nil {
+		return nil, err
+	}
+	return bufio.NewScanner(reader), nil
 }
 
 func (s *nativeService) Reload(ctx context.Context) error {

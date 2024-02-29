@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"regexp"
@@ -100,7 +101,10 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 	if err != nil {
 		return false, err
 	}
-	scanner := a.service.OutputScanner(outputType)
+	scanner, err := a.service.OutputScanner(ctx, outputType)
+	if err != nil {
+		return false, err
+	}
 	for scanner.Scan() {
 		line := scanner.Text()
 		messages, err = a.matchMessages(line, messages)
@@ -118,14 +122,16 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 	return false, nil
 }
 
-func (a *outputAction) getServiceOutputType(outputType OutputType) (services.OutputType, error) {
+func (a *outputAction) getServiceOutputType(outputType OutputType) (output.Type, error) {
 	switch outputType {
 	case OutputTypeStdout:
-		return services.StdoutOutputType, nil
+		return output.Stdout, nil
 	case OutputTypeStderr:
-		return services.StderrOutputType, nil
+		return output.Stderr, nil
+	case OutputTypeAny:
+		return output.Any, nil
 	default:
-		return services.StderrOutputType, fmt.Errorf("unknow output type %s", string(outputType))
+		return output.Any, fmt.Errorf("unknow output type %s", string(outputType))
 	}
 }
 

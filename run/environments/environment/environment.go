@@ -16,6 +16,7 @@ package environment
 
 import (
 	"context"
+	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/services"
 	"github.com/bukka/wst/run/task"
 	"io"
@@ -33,5 +34,5 @@ type Environment interface {
 	RunTask(ctx context.Context, service services.Service, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
 	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error
-	Output(ctx context.Context) (io.Reader, error)
+	Output(ctx context.Context, outputType output.Type) (io.Reader, error)
 }
