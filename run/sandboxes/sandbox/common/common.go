@@ -36,13 +36,9 @@ func CreateMaker(fnd app.Foundation, hooksMaker *hooks.Maker) *Maker {
 }
 
 func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
-	sandboxHooks := map[hooks.HookType]hooks.Hook{}
-	for name, hookConfig := range config.Hooks {
-		hook, err := m.hooksMaker.MakeHook(hookConfig)
-		if err != nil {
-			return nil, err
-		}
-		sandboxHooks[hooks.HookType(name)] = hook
+	sandboxHooks, err := m.hooksMaker.MakeHooks(config.Hooks)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Sandbox{
