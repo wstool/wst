@@ -25,12 +25,12 @@ import (
 )
 
 type ActionMaker struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateActionMaker(env app.Env) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 	return &ActionMaker{
-		env: env,
+		fnd: fnd,
 	}
 }
 
@@ -67,14 +67,12 @@ func (m *ActionMaker) Make(
 	return &action{
 		services: restartServices,
 		timeout:  time.Duration(config.Timeout),
-		reload:   config.Reload,
 	}, nil
 }
 
 type action struct {
 	services services.Services
 	timeout  time.Duration
-	reload   bool
 }
 
 func (a *action) Timeout() time.Duration {
@@ -83,7 +81,7 @@ func (a *action) Timeout() time.Duration {
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
 	for _, svc := range a.services {
-		err := svc.Restart(ctx, a.reload)
+		err := svc.Restart(ctx)
 		if err != nil {
 			return false, err
 		}

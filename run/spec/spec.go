@@ -27,16 +27,16 @@ type Spec interface {
 }
 
 type Maker struct {
-	env           app.Env
+	fnd           app.Foundation
 	instanceMaker *instances.InstanceMaker
 	serversMaker  *servers.Maker
 }
 
-func CreateMaker(env app.Env) *Maker {
+func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		env:           env,
-		instanceMaker: instances.CreateInstanceMaker(env),
-		serversMaker:  servers.CreateMaker(env),
+		fnd:           fnd,
+		instanceMaker: instances.CreateInstanceMaker(fnd),
+		serversMaker:  servers.CreateMaker(fnd),
 	}
 }
 

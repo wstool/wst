@@ -29,12 +29,12 @@ import (
 )
 
 type ResponseExpectationActionMaker struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateResponseExpectationActionMaker(env app.Env) *ResponseExpectationActionMaker {
+func CreateResponseExpectationActionMaker(fnd app.Foundation) *ResponseExpectationActionMaker {
 	return &ResponseExpectationActionMaker{
-		env: env,
+		fnd: fnd,
 	}
 }
 

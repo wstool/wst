@@ -21,13 +21,13 @@ import (
 )
 
 type Maker struct {
-	env         app.Env
+	fnd         app.Foundation
 	commonMaker *common.Maker
 }
 
-func CreateMaker(env app.Env, commonMaker *common.Maker) *Maker {
+func CreateMaker(fnd app.Foundation, commonMaker *common.Maker) *Maker {
 	return &Maker{
-		env:         env,
+		fnd:         fnd,
 		commonMaker: commonMaker,
 	}
 }

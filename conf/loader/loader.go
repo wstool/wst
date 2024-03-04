@@ -49,11 +49,11 @@ func (d LoadedConfigData) Data() map[string]interface{} {
 }
 
 type ConfigLoader struct {
-	env app.Env
+	fnd app.Foundation
 }
 
 func (l ConfigLoader) LoadConfig(path string) (LoadedConfig, error) {
-	fs := l.env.Fs()
+	fs := l.fnd.Fs()
 
 	rawData, err := afero.ReadFile(fs, path)
 	if err != nil {
@@ -99,7 +99,7 @@ func (l ConfigLoader) LoadConfigs(paths []string) ([]LoadedConfig, error) {
 }
 
 func (l ConfigLoader) GlobConfigs(pattern string) ([]LoadedConfig, error) {
-	fs := l.env.Fs()
+	fs := l.fnd.Fs()
 	paths, err := afero.Glob(fs, pattern)
 	if err != nil {
 		return nil, err
@@ -107,8 +107,8 @@ func (l ConfigLoader) GlobConfigs(pattern string) ([]LoadedConfig, error) {
 	return l.LoadConfigs(paths)
 }
 
-func CreateLoader(env app.Env) Loader {
+func CreateLoader(fnd app.Foundation) Loader {
 	return &ConfigLoader{
-		env: env,
+		fnd: fnd,
 	}
 }

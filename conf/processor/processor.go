@@ -24,10 +24,10 @@ type Processor interface {
 }
 
 type nativeProcessor struct {
-	env app.Env
+	env app.Foundation
 }
 
-func CreateProcessor(env app.Env) Processor {
+func CreateProcessor(env app.Foundation) Processor {
 	return &nativeProcessor{
 		env: env,
 	}

@@ -31,21 +31,21 @@ import (
 type Sandboxes map[providers.Type]sandbox.Sandbox
 
 type Maker struct {
-	env             app.Env
+	fnd             app.Foundation
 	localMaker      *local.Maker
 	dockerMaker     *docker.Maker
 	kubernetesMaker *kubernetes.Maker
 }
 
-func CreateMaker(env app.Env) *Maker {
-	hooksMaker := hooks.CreateMaker(env)
-	commonMaker := common.CreateMaker(env, hooksMaker)
-	containerMaker := container.CreateMaker(env, commonMaker)
+func CreateMaker(fnd app.Foundation) *Maker {
+	hooksMaker := hooks.CreateMaker(fnd)
+	commonMaker := common.CreateMaker(fnd, hooksMaker)
+	containerMaker := container.CreateMaker(fnd, commonMaker)
 	return &Maker{
-		env:             env,
-		localMaker:      local.CreateMaker(env, commonMaker),
-		dockerMaker:     docker.CreateMaker(env, containerMaker),
-		kubernetesMaker: kubernetes.CreateMaker(env, containerMaker),
+		fnd:             fnd,
+		localMaker:      local.CreateMaker(fnd, commonMaker),
+		dockerMaker:     docker.CreateMaker(fnd, containerMaker),
+		kubernetesMaker: kubernetes.CreateMaker(fnd, containerMaker),
 	}
 }
 

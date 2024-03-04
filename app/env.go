@@ -20,7 +20,7 @@ import (
 	"os"
 )
 
-type Env interface {
+type Foundation interface {
 	Logger() *zap.SugaredLogger
 	Fs() afero.Fs
 	UserHomeDir() (string, error)
@@ -32,7 +32,7 @@ type DefaultEnv struct {
 	fs     afero.Fs
 }
 
-func CreateEnv(logger *zap.SugaredLogger, fs afero.Fs) Env {
+func CreateEnv(logger *zap.SugaredLogger, fs afero.Fs) Foundation {
 	return &DefaultEnv{
 		logger: logger,
 		fs:     fs,

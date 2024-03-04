@@ -24,12 +24,12 @@ type Merger interface {
 }
 
 type nativeMerger struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateMerger(env app.Env) Merger {
+func CreateMerger(fnd app.Foundation) Merger {
 	return &nativeMerger{
-		env: env,
+		fnd: fnd,
 	}
 }
 

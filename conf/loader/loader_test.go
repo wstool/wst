@@ -35,51 +35,51 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 	err = afero.WriteFile(mockFs, "/test.toml", []byte("key = \"value\""), 0644)
 	assert.NoError(t, err)
 
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	MockFnd := &appMocks.MockFoundation{}
+	MockFnd.On("Fs").Return(mockFs)
 
 	type args struct {
 		path string
 	}
 	tests := []struct {
 		name    string
-		env     app.Env
+		fnd     app.Foundation
 		args    args
 		want    LoadedConfig
 		wantErr bool
 	}{
 		{
 			name:    "Testing LoadConfig - JSON",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/test.json"},
 			want:    LoadedConfigData{path: "/test.json", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - YAML",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/test.yaml"},
 			want:    LoadedConfigData{path: "/test.yaml", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - TOML",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/test.toml"},
 			want:    LoadedConfigData{path: "/test.toml", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
 			name:    "Testing LoadConfig - Unsupported file type",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/test.unknown"},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "Testing LoadConfig - Invalid JSON",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/test-invalid.json"},
 			want:    nil,
 			wantErr: true,
@@ -88,7 +88,7 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := ConfigLoader{env: tt.env}
+			l := ConfigLoader{fnd: tt.fnd}
 			got, err := l.LoadConfig(tt.args.path)
 
 			if (err != nil) != tt.wantErr {
@@ -109,23 +109,23 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 	err = afero.WriteFile(mockFs, "/test2.json", []byte(`{"key": "value2"}`), 0644)
 	assert.NoError(t, err)
 
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	MockFnd := &appMocks.MockFoundation{}
+	MockFnd.On("Fs").Return(mockFs)
 
 	type args struct {
 		paths []string
 	}
 	tests := []struct {
 		name    string
-		env     app.Env
+		fnd     app.Foundation
 		args    args
 		want    []LoadedConfig
 		wantErr bool
 	}{
 		{
 			name: "Testing LoadConfigs",
-			env:  mockEnv,
+			fnd:  MockFnd,
 			args: args{paths: []string{"/test.json", "/test2.json"}},
 			want: []LoadedConfig{
 				LoadedConfigData{
@@ -141,7 +141,7 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 		},
 		{
 			name:    "Testing LoadConfigs - Error case - Non existent file",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{paths: []string{"non_existent_file.json"}},
 			want:    nil,
 			wantErr: true,
@@ -150,7 +150,7 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := ConfigLoader{
-				env: tt.env,
+				fnd: tt.fnd,
 			}
 			got, err := l.LoadConfigs(tt.args.paths)
 			if (err != nil) != tt.wantErr {
@@ -170,23 +170,23 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 	err = afero.WriteFile(mockFs, "/dir/test2.json", []byte(`{"key": "value2"}`), 0644)
 	assert.NoError(t, err)
 
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	MockFnd := &appMocks.MockFoundation{}
+	MockFnd.On("Fs").Return(mockFs)
 
 	type args struct {
 		path string
 	}
 	tests := []struct {
 		name    string
-		env     app.Env
+		fnd     app.Foundation
 		args    args
 		want    []LoadedConfig
 		wantErr bool
 	}{
 		{
 			name: "Testing GlobConfigs",
-			env:  mockEnv,
+			fnd:  MockFnd,
 			args: args{path: "/dir/*.json"},
 			want: []LoadedConfig{
 				LoadedConfigData{
@@ -202,7 +202,7 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 		},
 		{
 			name:    "Testing GlobConfigs - Error case - No Matching Files",
-			env:     mockEnv,
+			fnd:     MockFnd,
 			args:    args{path: "/dir/non_matching_pattern.json"},
 			want:    []LoadedConfig{},
 			wantErr: false,
@@ -211,7 +211,7 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := ConfigLoader{
-				env: tt.env,
+				fnd: tt.fnd,
 			}
 			got, err := l.GlobConfigs(tt.args.path)
 			if (err != nil) != tt.wantErr {
@@ -227,25 +227,25 @@ func TestCreateLoader(t *testing.T) {
 	// Create and setup an in-memory file system
 	mockFs := afero.NewMemMapFs()
 
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	MockFnd := &appMocks.MockFoundation{}
+	MockFnd.On("Fs").Return(mockFs)
 
 	tests := []struct {
 		name string
-		env  app.Env
+		fnd  app.Foundation
 		want Loader
 	}{
 		{
 			name: "Testing CreateLoader",
-			env:  mockEnv,
-			want: &ConfigLoader{env: mockEnv},
+			fnd:  MockFnd,
+			want: &ConfigLoader{fnd: MockFnd},
 		},
 		// TODO: Add more test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateLoader(tt.env)
+			got := CreateLoader(tt.fnd)
 			// Here we use testify library's require package to compare struct pointers by their values
 			require.Equal(t, tt.want, got)
 		})

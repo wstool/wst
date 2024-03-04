@@ -28,18 +28,18 @@ import (
 type Environments map[providers.Type]environment.Environment
 
 type Maker struct {
-	env             app.Env
+	fnd             app.Foundation
 	localMaker      *local.Maker
 	dockerMaker     *docker.Maker
 	kubernetesMaker *kubernetes.Maker
 }
 
-func CreateMaker(env app.Env) *Maker {
+func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		env:             env,
-		localMaker:      local.CreateMaker(env),
-		dockerMaker:     docker.CreateMaker(env),
-		kubernetesMaker: kubernetes.CreateMaker(env),
+		fnd:             fnd,
+		localMaker:      local.CreateMaker(fnd),
+		dockerMaker:     docker.CreateMaker(fnd),
+		kubernetesMaker: kubernetes.CreateMaker(fnd),
 	}
 }
 

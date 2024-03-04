@@ -25,12 +25,12 @@ type ActionsFactory interface {
 }
 
 type NativeActionsFactory struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateActionsFactory(env app.Env) ActionsFactory {
+func CreateActionsFactory(fnd app.Foundation) ActionsFactory {
 	return &NativeActionsFactory{
-		env: env,
+		fnd: fnd,
 	}
 }
 

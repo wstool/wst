@@ -33,18 +33,18 @@ type Options struct {
 }
 
 type Runner struct {
-	env         app.Env
+	fnd         app.Foundation
 	configMaker *conf.ConfigMaker
 	specMaker   *spec.Maker
 }
 
 var DefaultsFs = afero.NewOsFs()
 
-func CreateRunner(env app.Env) *Runner {
+func CreateRunner(fnd app.Foundation) *Runner {
 	return &Runner{
-		env:         env,
-		configMaker: conf.CreateConfigMaker(env),
-		specMaker:   spec.CreateMaker(env),
+		fnd:         fnd,
+		configMaker: conf.CreateConfigMaker(fnd),
+		specMaker:   spec.CreateMaker(fnd),
 	}
 }
 
@@ -73,7 +73,7 @@ func (r *Runner) Execute(options *Options) error {
 
 func (r *Runner) getConfigPaths() []string {
 	var paths []string
-	home, _ := r.env.UserHomeDir()
+	home, _ := r.fnd.UserHomeDir()
 	r.validateAndAppendPath("wst.yaml", &paths)
 	r.validateAndAppendPath(filepath.Join(home, ".wst/wst.yaml"), &paths)
 	r.validateAndAppendPath(filepath.Join(home, ".config/wst/wst.yaml"), &paths)
@@ -82,7 +82,7 @@ func (r *Runner) getConfigPaths() []string {
 }
 
 func (r *Runner) validateAndAppendPath(path string, paths *[]string) {
-	if _, err := r.env.Fs().Stat(path); !os.IsNotExist(err) {
+	if _, err := r.fnd.Fs().Stat(path); !os.IsNotExist(err) {
 		*paths = append(*paths, path)
 	}
 }

@@ -26,7 +26,7 @@ func Test_getOverwrites(t *testing.T) {
 	type args struct {
 		overwriteValues []string
 		noEnvs          bool
-		env             app.Env
+		env             app.Foundation
 	}
 	tests := []struct {
 		name           string
@@ -119,11 +119,11 @@ func Test_getOverwrites(t *testing.T) {
 			// Setup mocks
 			mockLogger := external.NewMockLogger()
 
-			mockEnv := &appMocks.MockEnv{}
-			mockEnv.On("Logger").Return(mockLogger.SugaredLogger)
-			mockEnv.On("LookupEnvVar", "WST_OVERWRITE").Return(tt.overwrite, tt.overwriteFound)
+			mockFnd := &appMocks.MockFoundation{}
+			mockFnd.On("Logger").Return(mockLogger.SugaredLogger)
+			mockFnd.On("LookupEnvVar", "WST_OVERWRITE").Return(tt.overwrite, tt.overwriteFound)
 
-			tt.args.env = mockEnv // Assign mockEnv to your test case
+			tt.args.env = mockFnd // Assign mockFnd to your test case
 
 			// Run test case
 			if got := getOverwrites(tt.args.overwriteValues, tt.args.noEnvs, tt.args.env); !reflect.DeepEqual(got, tt.want) {

@@ -48,18 +48,18 @@ func (s Servers) GetServer(fullName string) (Server, bool) {
 }
 
 type Maker struct {
-	env            app.Env
+	fnd            app.Foundation
 	configsMaker   *configs.Maker
 	sandboxesMaker *sandboxes.Maker
 	templatesMaker *templates.Maker
 }
 
-func CreateMaker(env app.Env) *Maker {
+func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		env:            env,
-		configsMaker:   configs.CreateMaker(env),
-		sandboxesMaker: sandboxes.CreateMaker(env),
-		templatesMaker: templates.CreateMaker(env),
+		fnd:            fnd,
+		configsMaker:   configs.CreateMaker(fnd),
+		sandboxesMaker: sandboxes.CreateMaker(fnd),
+		templatesMaker: templates.CreateMaker(fnd),
 	}
 }
 

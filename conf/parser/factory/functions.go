@@ -29,14 +29,14 @@ type Functions interface {
 
 // FuncProvider contains the implementation of the FactoryFunctions
 type FuncProvider struct {
-	env            app.Env
+	fnd            app.Foundation
 	actionsFactory ActionsFactory
 }
 
-func CreateFactories(env app.Env) Functions {
+func CreateFactories(fnd app.Foundation) Functions {
 	return &FuncProvider{
-		env:            env,
-		actionsFactory: CreateActionsFactory(env),
+		fnd:            fnd,
+		actionsFactory: CreateActionsFactory(fnd),
 	}
 }
 

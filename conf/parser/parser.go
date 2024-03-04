@@ -47,7 +47,7 @@ type Parser interface {
 }
 
 type ConfigParser struct {
-	env       app.Env
+	fnd       app.Foundation
 	loader    loader.Loader
 	factories factory.Functions
 }
@@ -180,7 +180,7 @@ func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Valu
 		return fmt.Errorf("unexpected type %T for data, expected string", data)
 	}
 
-	fs := p.env.Fs()
+	fs := p.fnd.Fs()
 
 	// If it's not an absolute path, prepend the path variable to it
 	if !filepath.IsAbs(path) {
@@ -530,10 +530,10 @@ func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Con
 	return p.parseStruct(data, config, configPath)
 }
 
-func CreateParser(env app.Env, loader loader.Loader) Parser {
+func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
 	return &ConfigParser{
-		env:       env,
+		fnd:       fnd,
 		loader:    loader,
-		factories: factory.CreateFactories(env),
+		factories: factory.CreateFactories(fnd),
 	}
 }

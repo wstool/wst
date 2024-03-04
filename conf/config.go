@@ -24,14 +24,14 @@ import (
 )
 
 type ConfigMaker struct {
-	env       app.Env
+	env       app.Foundation
 	loader    loader.Loader
 	parser    parser.Parser
 	merger    merger.Merger
 	processor processor.Processor
 }
 
-func CreateConfigMaker(env app.Env) *ConfigMaker {
+func CreateConfigMaker(env app.Foundation) *ConfigMaker {
 	ld := loader.CreateLoader(env)
 	return &ConfigMaker{
 		env:       env,

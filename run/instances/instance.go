@@ -33,20 +33,20 @@ type Instance interface {
 }
 
 type InstanceMaker struct {
-	env              app.Env
+	fnd              app.Foundation
 	actionMaker      *actions.ActionMaker
 	servicesMaker    *services.Maker
 	scriptsMaker     *scripts.Maker
 	environmentMaker *environments.Maker
 }
 
-func CreateInstanceMaker(env app.Env) *InstanceMaker {
+func CreateInstanceMaker(fnd app.Foundation) *InstanceMaker {
 	return &InstanceMaker{
-		env:              env,
-		actionMaker:      actions.CreateActionMaker(env),
-		servicesMaker:    services.CreateMaker(env),
-		scriptsMaker:     scripts.CreateMaker(env),
-		environmentMaker: environments.CreateMaker(env),
+		fnd:              fnd,
+		actionMaker:      actions.CreateActionMaker(fnd),
+		servicesMaker:    services.CreateMaker(fnd),
+		scriptsMaker:     scripts.CreateMaker(fnd),
+		environmentMaker: environments.CreateMaker(fnd),
 	}
 }
 

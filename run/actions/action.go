@@ -37,7 +37,7 @@ type Action interface {
 }
 
 type ActionMaker struct {
-	env                 app.Env
+	fnd                 app.Foundation
 	expectOutputMaker   *expect.OutputExpectationActionMaker
 	expectResponseMaker *expect.ResponseExpectationActionMaker
 	notMaker            *not.ActionMaker
@@ -48,17 +48,17 @@ type ActionMaker struct {
 	stopMaker           *stop.ActionMaker
 }
 
-func CreateActionMaker(env app.Env) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 	return &ActionMaker{
-		env:                 env,
-		expectOutputMaker:   expect.CreateOutputExpectationActionMaker(env),
-		expectResponseMaker: expect.CreateResponseExpectationActionMaker(env),
-		notMaker:            not.CreateActionMaker(env),
-		parallelMaker:       parallel.CreateActionMaker(env),
-		requestMaker:        request.CreateActionMaker(env),
-		restartMaker:        restart.CreateActionMaker(env),
-		startMaker:          start.CreateActionMaker(env),
-		stopMaker:           stop.CreateActionMaker(env),
+		fnd:                 fnd,
+		expectOutputMaker:   expect.CreateOutputExpectationActionMaker(fnd),
+		expectResponseMaker: expect.CreateResponseExpectationActionMaker(fnd),
+		notMaker:            not.CreateActionMaker(fnd),
+		parallelMaker:       parallel.CreateActionMaker(fnd),
+		requestMaker:        request.CreateActionMaker(fnd),
+		restartMaker:        restart.CreateActionMaker(fnd),
+		startMaker:          start.CreateActionMaker(fnd),
+		stopMaker:           stop.CreateActionMaker(fnd),
 	}
 }
 

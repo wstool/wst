@@ -28,12 +28,12 @@ type Script interface {
 type Scripts map[string]Script
 
 type Maker struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateMaker(env app.Env) *Maker {
+func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		env: env,
+		fnd: fnd,
 	}
 }
 

@@ -232,7 +232,7 @@ func TestConfigParser_processFactoryParam(t *testing.T) {
 		}))
 
 	p := ConfigParser{
-		env:       nil, // replace with necessary mock if necessary
+		fnd:       nil, // replace with necessary mock if necessary
 		factories: factories,
 	}
 
@@ -407,7 +407,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			}
 
 			p := ConfigParser{
-				env:    nil, // replace with necessary mock if necessary
+				fnd:    nil, // replace with necessary mock if necessary
 				loader: mockLoader,
 			}
 			got, err := p.processLoadableParam(tt.data, tt.fieldValue)
@@ -427,9 +427,9 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 func TestProcessPathParam(t *testing.T) {
 	mockFs := afero.NewMemMapFs()
 
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	mockFnd := &appMocks.MockFoundation{}
+	mockFnd.On("Fs").Return(mockFs)
 
 	fieldName := "file"
 
@@ -524,7 +524,7 @@ func TestProcessPathParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := ConfigParser{env: mockEnv}
+			parser := ConfigParser{fnd: mockFnd}
 			err := parser.processPathParam(tt.data, tt.fieldValue, fieldName, tt.configPath)
 
 			if tt.wantErr {
@@ -552,7 +552,7 @@ type StringParamTestMapStruct struct {
 
 func Test_ConfigParser_processStringParam(t *testing.T) {
 	// Prepare ConfigParser
-	p := ConfigParser{env: nil} // you may need to initialize this with suitable fields based on your implementation
+	p := ConfigParser{fnd: nil} // you may need to initialize this with suitable fields based on your implementation
 
 	// Testing data setup
 	dataVal := "stringValue"
@@ -628,7 +628,7 @@ type AssignFieldParentStruct struct {
 }
 
 func Test_ConfigParser_assignField(t *testing.T) {
-	p := ConfigParser{env: nil} // Initialize appropriately
+	p := ConfigParser{fnd: nil} // Initialize appropriately
 
 	tests := []struct {
 		name          string
@@ -962,9 +962,9 @@ func Test_ConfigParser_parseField(t *testing.T) {
 	}
 
 	mockFs := afero.NewMemMapFs()
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	mockFnd := &appMocks.MockFoundation{}
+	mockFnd.On("Fs").Return(mockFs)
 
 	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
 	assert.NoError(t, err)
@@ -1004,7 +1004,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 
 			// Create a new ConfigParser for each test case
 			p := &ConfigParser{
-				env:       mockEnv,
+				fnd:       mockFnd,
 				loader:    mockLoader,
 				factories: mockFactories,
 			}
@@ -1049,15 +1049,15 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 	mockFactories.On("GetFactoryFunc", "test").Return(nil)
 
 	mockFs := afero.NewMemMapFs()
-	// mock app.Env
-	mockEnv := &appMocks.MockEnv{}
-	mockEnv.On("Fs").Return(mockFs)
+	// mock app.Foundation
+	mockFnd := &appMocks.MockFoundation{}
+	mockFnd.On("Fs").Return(mockFs)
 
 	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
 	assert.NoError(t, err)
 
 	p := &ConfigParser{
-		env:       mockEnv,
+		fnd:       mockFnd,
 		loader:    mockLoader,
 		factories: mockFactories,
 	}
@@ -1139,7 +1139,7 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 
 func TestCreateParser(t *testing.T) {
 	type args struct {
-		env    app.Env
+		fnd    app.Foundation
 		loader loader.Loader
 	}
 	tests := []struct {
@@ -1151,7 +1151,7 @@ func TestCreateParser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, CreateParser(tt.args.env, tt.args.loader), "CreateParser(%v, %v)", tt.args.env, tt.args.loader)
+			assert.Equalf(t, tt.want, CreateParser(tt.args.fnd, tt.args.loader), "CreateParser(%v, %v)", tt.args.fnd, tt.args.loader)
 		})
 	}
 }

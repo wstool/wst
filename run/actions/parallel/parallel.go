@@ -26,12 +26,12 @@ import (
 )
 
 type ActionMaker struct {
-	env app.Env
+	fnd app.Foundation
 }
 
-func CreateActionMaker(env app.Env) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 	return &ActionMaker{
-		env: env,
+		fnd: fnd,
 	}
 }
 

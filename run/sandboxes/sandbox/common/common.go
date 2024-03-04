@@ -24,13 +24,13 @@ import (
 )
 
 type Maker struct {
-	env        app.Env
+	fnd        app.Foundation
 	hooksMaker *hooks.Maker
 }
 
-func CreateMaker(env app.Env, hooksMaker *hooks.Maker) *Maker {
+func CreateMaker(fnd app.Foundation, hooksMaker *hooks.Maker) *Maker {
 	return &Maker{
-		env:        env,
+		fnd:        fnd,
 		hooksMaker: hooksMaker,
 	}
 }
