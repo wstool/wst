@@ -82,6 +82,12 @@ type StartAction struct {
 	Timeout  int      `wst:"timeout"`
 }
 
+type ReloadAction struct {
+	Service  string   `wst:"service"`
+	Services []string `wst:"service"`
+	Timeout  int      `wst:"timeout"`
+}
+
 type RestartAction struct {
 	Service  string   `wst:"service"`
 	Services []string `wst:"service"`

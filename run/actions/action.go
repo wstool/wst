@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/run/actions/expect"
 	"github.com/bukka/wst/run/actions/not"
 	"github.com/bukka/wst/run/actions/parallel"
+	"github.com/bukka/wst/run/actions/reload"
 	"github.com/bukka/wst/run/actions/request"
 	"github.com/bukka/wst/run/actions/restart"
 	"github.com/bukka/wst/run/actions/start"
@@ -43,6 +44,7 @@ type ActionMaker struct {
 	notMaker            *not.ActionMaker
 	parallelMaker       *parallel.ActionMaker
 	requestMaker        *request.ActionMaker
+	reloadMaker         *reload.ActionMaker
 	restartMaker        *restart.ActionMaker
 	startMaker          *start.ActionMaker
 	stopMaker           *stop.ActionMaker
@@ -56,6 +58,7 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 		notMaker:            not.CreateActionMaker(fnd),
 		parallelMaker:       parallel.CreateActionMaker(fnd),
 		requestMaker:        request.CreateActionMaker(fnd),
+		reloadMaker:         reload.CreateActionMaker(fnd),
 		restartMaker:        restart.CreateActionMaker(fnd),
 		startMaker:          start.CreateActionMaker(fnd),
 		stopMaker:           stop.CreateActionMaker(fnd),
@@ -74,6 +77,8 @@ func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services, de
 		return m.parallelMaker.Make(action, svcs, defaultTimeout, m)
 	case *types.RequestAction:
 		return m.requestMaker.Make(action, svcs, defaultTimeout)
+	case *types.ReloadAction:
+		return m.reloadMaker.Make(action, svcs, defaultTimeout)
 	case *types.RestartAction:
 		return m.restartMaker.Make(action, svcs, defaultTimeout)
 	case *types.StartAction:
