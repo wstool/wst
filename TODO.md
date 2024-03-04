@@ -9,6 +9,7 @@ in the future.
 - possibly some other helpers
 
 ### Run
+- replace chan error in Output and use instead some combined reader that returns immediately error
 - local environment integration
 - docker environment integration
 - kubernetes environment integration

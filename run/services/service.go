@@ -24,12 +24,12 @@ import (
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
-	"github.com/bukka/wst/run/task"
 	"path/filepath"
 )
 
@@ -39,7 +39,7 @@ type Service interface {
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string) (string, error)
-	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
+	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, <-chan error)
 	Sandbox() sandbox.Sandbox
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
@@ -164,12 +164,12 @@ func (s *nativeService) Workspace() string {
 	return s.workspace
 }
 
-func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
-	reader, err := s.environment.Output(ctx, outputType)
-	if err != nil {
-		return nil, err
+func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, <-chan error) {
+	reader, errChan := s.environment.Output(ctx, s.task, outputType)
+	if reader == nil {
+		return nil, errChan
 	}
-	return bufio.NewScanner(reader), nil
+	return bufio.NewScanner(reader), errChan
 }
 
 func (s *nativeService) Reload(ctx context.Context) error {

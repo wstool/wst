@@ -43,7 +43,11 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(specConfig, instanceConfig map[string]types.Environment) (Environments, error) {
+func (m *Maker) Make(
+	specConfig,
+	instanceConfig map[string]types.Environment,
+	instanceWorkspace string,
+) (Environments, error) {
 	envs := Environments{}
 
 	for _, providerType := range providers.Types() {
@@ -69,7 +73,7 @@ func (m *Maker) Make(specConfig, instanceConfig map[string]types.Environment) (E
 		switch providerType {
 		case providers.LocalType:
 			if localEnv, ok := mergedEnv.(*types.LocalEnvironment); ok {
-				env, err = m.localMaker.Make(localEnv)
+				env, err = m.localMaker.Make(localEnv, instanceWorkspace)
 			} else {
 				err = fmt.Errorf("local environment has unexpected data type %t", mergedEnv)
 			}

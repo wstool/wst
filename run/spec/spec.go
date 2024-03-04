@@ -48,7 +48,7 @@ func (m *Maker) Make(config *types.Spec) (Spec, error) {
 
 	var instances []instances.Instance
 	for _, instance := range config.Instances {
-		inst, err := m.instanceMaker.Make(instance, config.Environments, serversMap)
+		inst, err := m.instanceMaker.Make(instance, config.Environments, serversMap, config.Workspace)
 		if err != nil {
 			return nil, err
 		}

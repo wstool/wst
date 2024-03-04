@@ -21,8 +21,8 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/services"
-	"github.com/bukka/wst/run/task"
 	"os"
 	"syscall"
 )

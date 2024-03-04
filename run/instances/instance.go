@@ -56,22 +56,22 @@ func (m *InstanceMaker) Make(
 	instanceConfig types.Instance,
 	envsConfig map[string]types.Environment,
 	srvs servers.Servers,
-	instanceWorkspace string,
+	specWorkspace string,
 ) (Instance, error) {
 	scriptResources, err := m.scriptsMaker.Make(instanceConfig.Resources.Scripts)
 	if err != nil {
 		return nil, err
 	}
 
-	envs, err := m.environmentMaker.Make(envsConfig, instanceConfig.Environments)
+	name := instanceConfig.Name
+	instanceWorkspace := filepath.Join(specWorkspace, name)
+
+	envs, err := m.environmentMaker.Make(envsConfig, instanceConfig.Environments, instanceWorkspace)
 	if err != nil {
 		return nil, err
 	}
 
-	name := instanceConfig.Name
-	serviceWorkspace := filepath.Join(instanceWorkspace, name)
-
-	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, serviceWorkspace)
+	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, instanceWorkspace)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (m *InstanceMaker) Make(
 		timeout:   instanceConfig.Timeouts.Actions,
 		actions:   instanceActions,
 		runData:   runData,
-		workspace: serviceWorkspace,
+		workspace: instanceWorkspace,
 	}, nil
 }
 
