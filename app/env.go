@@ -27,30 +27,30 @@ type Foundation interface {
 	LookupEnvVar(key string) (string, bool)
 }
 
-type DefaultEnv struct {
+type DefaultFoundation struct {
 	logger *zap.SugaredLogger
 	fs     afero.Fs
 }
 
-func CreateEnv(logger *zap.SugaredLogger, fs afero.Fs) Foundation {
-	return &DefaultEnv{
+func CreateFoundation(logger *zap.SugaredLogger, fs afero.Fs) Foundation {
+	return &DefaultFoundation{
 		logger: logger,
 		fs:     fs,
 	}
 }
 
-func (e *DefaultEnv) Logger() *zap.SugaredLogger {
+func (e *DefaultFoundation) Logger() *zap.SugaredLogger {
 	return e.logger
 }
 
-func (e *DefaultEnv) Fs() afero.Fs {
+func (e *DefaultFoundation) Fs() afero.Fs {
 	return e.fs
 }
 
-func (e *DefaultEnv) UserHomeDir() (string, error) {
+func (e *DefaultFoundation) UserHomeDir() (string, error) {
 	return os.UserHomeDir()
 }
 
-func (e *DefaultEnv) LookupEnvVar(key string) (string, bool) {
+func (e *DefaultFoundation) LookupEnvVar(key string) (string, bool) {
 	return os.LookupEnv(key)
 }

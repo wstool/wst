@@ -48,18 +48,18 @@ func Run() {
 				panic(fmt.Sprintf("Cannot initialize zap logger: %v", err))
 			}
 
-			appEnv := app.CreateEnv(logger.Sugar(), run.DefaultsFs)
+			fnd := app.CreateFoundation(logger.Sugar(), run.DefaultsFs)
 
 			options := &run.Options{
 				ConfigPaths: configPaths,
 				IncludeAll:  includeAll,
-				Overwrites:  getOverwrites(overwriteValues, noEnvs, appEnv),
+				Overwrites:  getOverwrites(overwriteValues, noEnvs, fnd),
 				NoEnvs:      noEnvs,
 				DryRun:      dryRun,
 				Instances:   args,
 			}
 			// Add execution code here.
-			if err = run.CreateRunner(appEnv).Execute(options); err != nil {
+			if err = run.CreateRunner(fnd).Execute(options); err != nil {
 				logger.Error("Unable to execute run operation: ", zap.Error(err))
 			}
 			return err
