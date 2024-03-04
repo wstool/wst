@@ -25,11 +25,13 @@ import (
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/services"
+	"path/filepath"
 )
 
 type Instance interface {
 	ExecuteActions(dryRun bool) error
 	Name() string
+	Workspace() string
 }
 
 type InstanceMaker struct {
@@ -54,6 +56,7 @@ func (m *InstanceMaker) Make(
 	instanceConfig types.Instance,
 	envsConfig map[string]types.Environment,
 	srvs servers.Servers,
+	instanceWorkspace string,
 ) (Instance, error) {
 	scriptResources, err := m.scriptsMaker.Make(instanceConfig.Resources.Scripts)
 	if err != nil {
@@ -65,33 +68,42 @@ func (m *InstanceMaker) Make(
 		return nil, err
 	}
 
-	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs)
+	name := instanceConfig.Name
+	serviceWorkspace := filepath.Join(instanceWorkspace, name)
+
+	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, serviceWorkspace)
 	if err != nil {
 		return nil, err
 	}
 
-	actions := make([]actions.Action, len(instanceConfig.Actions))
+	instanceActions := make([]actions.Action, len(instanceConfig.Actions))
 	for i, actionConfig := range instanceConfig.Actions {
 		action, err := m.actionMaker.MakeAction(actionConfig, svcs, instanceConfig.Timeouts.Action)
 		if err != nil {
 			return nil, err
 		}
-		actions[i] = action
+		instanceActions[i] = action
 	}
 	runData := runtime.CreateData()
 	return &nativeInstance{
-		name:    instanceConfig.Name,
-		timeout: instanceConfig.Timeouts.Actions,
-		actions: actions,
-		runData: runData,
+		name:      name,
+		timeout:   instanceConfig.Timeouts.Actions,
+		actions:   instanceActions,
+		runData:   runData,
+		workspace: serviceWorkspace,
 	}, nil
 }
 
 type nativeInstance struct {
-	name    string
-	actions []actions.Action
-	runData runtime.Data
-	timeout int
+	name      string
+	actions   []actions.Action
+	runData   runtime.Data
+	timeout   int
+	workspace string
+}
+
+func (i *nativeInstance) Workspace() string {
+	return i.workspace
 }
 
 func (i *nativeInstance) Name() string {

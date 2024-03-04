@@ -30,6 +30,7 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/task"
+	"path/filepath"
 )
 
 type Service interface {
@@ -44,6 +45,7 @@ type Service interface {
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
+	Workspace() string
 }
 
 type Services map[string]Service
@@ -76,6 +78,7 @@ func (m *Maker) Make(
 	scriptResources scripts.Scripts,
 	srvs servers.Servers,
 	environments environments.Environments,
+	instanceWorkspace string,
 ) (Services, error) {
 	svcs := make(Services)
 	for serviceName, serviceConfig := range config {
@@ -132,6 +135,7 @@ func (m *Maker) Make(
 			server:      server,
 			sandbox:     sb,
 			configs:     nativeConfigs,
+			workspace:   filepath.Join(instanceWorkspace, serviceName),
 		}
 
 		svcs[serviceName] = service
@@ -153,6 +157,11 @@ type nativeService struct {
 	task        task.Task
 	environment environment.Environment
 	configs     map[string]nativeServiceConfig
+	workspace   string
+}
+
+func (s *nativeService) Workspace() string {
+	return s.workspace
 }
 
 func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {

@@ -15,9 +15,16 @@
 package local
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/environment/output"
+	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/task"
+	"io"
+	"os"
+	"path/filepath"
 )
 
 type Maker struct {
@@ -30,9 +37,67 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(config *types.LocalEnvironment) (environment.Environment, error) {
-	panic("implement")
+func (m *Maker) Make(
+	config *types.LocalEnvironment,
+	service services.Service,
+) (environment.Environment, error) {
+	return &localEnvironment{
+		fnd:        m.fnd,
+		portsStart: config.Ports.From,
+		portsEnd:   config.Ports.To,
+		service:    service,
+		workspace:  filepath.Join(service.Workspace(), "env"),
+	}, nil
 }
 
 type localEnvironment struct {
+	fnd        app.Foundation
+	portsStart int16
+	portsEnd   int16
+	service    services.Service
+	workspace  string
+}
+
+func (l *localEnvironment) Init(ctx context.Context) error {
+	fs := l.fnd.Fs()
+	err := fs.MkdirAll(l.workspace, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *localEnvironment) Destroy(ctx context.Context) error {
+	fs := l.fnd.Fs()
+	err := fs.RemoveAll(l.workspace)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *localEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *localEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *localEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *localEnvironment) Output(ctx context.Context, outputType output.Type) (io.Reader, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type localTask struct {
+	id int
 }

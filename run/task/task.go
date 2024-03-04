@@ -1,7 +1,7 @@
 package task
 
 type Task interface {
+	Id() int
 	Namespace() string
-	Id() string
 	BaseUrl() string
 }

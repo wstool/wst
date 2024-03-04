@@ -6,17 +6,19 @@ in the future.
 ## Code
 
 ### App
-- rename Env
+- possibly some other helpers
 
 ### Run
-- local sandbox integration
-- docker sandbox integration
-- kubernetes sandbox integration
+- local environment integration
+- docker environment integration
+- kubernetes environment integration
 - dry run mode - integrate to action, services and sandboxes
 - template rendering
 - load testing action (wrk runner)
 - tests
 
 ### Config
+- local env port should be start / end instead of from / to maybe
+- add checks for casting to lower integers (e.g. int16)
 - merging - generic merging rules taken from params
 - factories
