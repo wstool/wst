@@ -39,7 +39,7 @@ type Service interface {
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string) (string, error)
-	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, <-chan error)
+	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
 	Sandbox() sandbox.Sandbox
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
@@ -164,12 +164,12 @@ func (s *nativeService) Workspace() string {
 	return s.workspace
 }
 
-func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, <-chan error) {
-	reader, errChan := s.environment.Output(ctx, s.task, outputType)
-	if reader == nil {
-		return nil, errChan
+func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
+	reader, err := s.environment.Output(ctx, s.task, outputType)
+	if err != nil {
+		return nil, err
 	}
-	return bufio.NewScanner(reader), errChan
+	return bufio.NewScanner(reader), nil
 }
 
 func (s *nativeService) Reload(ctx context.Context) error {

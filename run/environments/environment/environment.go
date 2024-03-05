@@ -34,5 +34,5 @@ type Environment interface {
 	RunTask(ctx context.Context, service services.Service, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
 	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error
-	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, <-chan error)
+	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error)
 }

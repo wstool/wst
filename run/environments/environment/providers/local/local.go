@@ -147,82 +147,41 @@ func (l *localEnvironment) ExecTaskSignal(ctx context.Context, service services.
 	return nil
 }
 
-func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, <-chan error) {
+func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
 	localTask, err := convertTask(target)
 	if err != nil {
-		errChan := make(chan error, 1)
-		errChan <- err
-		close(errChan)
-		return nil, errChan
+		return nil, err
 	}
 
+	outputCollector := NewBufferedOutputCollector()
 	switch outputType {
 	case output.Stdout:
-		reader, err := localTask.cmd.StdoutPipe()
+		stdoutPipe, err := localTask.cmd.StdoutPipe()
 		if err != nil {
-			errChan := make(chan error, 1)
-			errChan <- err
-			close(errChan)
-			return nil, errChan
+			return nil, err
 		}
-		return reader, nil
+		outputCollector.collectOutput(stdoutPipe)
 	case output.Stderr:
-
-		reader, err := localTask.cmd.StderrPipe()
+		stderrPipe, err := localTask.cmd.StderrPipe()
 		if err != nil {
-			errChan := make(chan error, 1)
-			errChan <- err
-			return nil, errChan
+			return nil, err
 		}
-		return reader, nil
+		outputCollector.collectOutput(stderrPipe)
 	case output.Any:
 		stdoutPipe, err := localTask.cmd.StdoutPipe()
 		if err != nil {
-			errChan := make(chan error, 1) // Buffered channel to hold at least one error
-			errChan <- err
-			close(errChan)
-			return nil, errChan
+			return nil, err
 		}
-
 		stderrPipe, err := localTask.cmd.StderrPipe()
 		if err != nil {
-			errChan := make(chan error, 1) // Buffered channel to hold at least one error
-			errChan <- err
-			close(errChan)
-			return nil, errChan
+			return nil, err
 		}
-
-		pr, pw := io.Pipe()
-
-		errChan := make(chan error, 2) // Buffered channel to hold potential errors from both io.Copy operations
-
-		// Use a goroutine to copy stdout to the pipe writer and send any errors on errChan
-		go func() {
-			_, err := io.Copy(pw, stdoutPipe)
-			if err != nil {
-				errChan <- err
-			}
-			err = pw.Close() // Close the writer once done to avoid deadlocks
-			if err != nil {
-				errChan <- err
-			}
-		}()
-
-		// Use another goroutine to copy stderr to the pipe writer and send any errors on errChan
-		go func() {
-			_, err := io.Copy(pw, stderrPipe)
-			if err != nil {
-				errChan <- err
-			}
-		}()
-
-		return pr, errChan
+		outputCollector.collectOutput(stdoutPipe, stderrPipe)
 	default:
-		errChan := make(chan error, 1)
-		errChan <- fmt.Errorf("unsupported output type")
-		close(errChan)
-		return nil, errChan
+		return nil, fmt.Errorf("unsupported output type")
 	}
+
+	return outputCollector, nil
 }
 
 type localTask struct {

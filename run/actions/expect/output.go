@@ -101,7 +101,7 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 	if err != nil {
 		return false, err
 	}
-	scanner, errChan := a.service.OutputScanner(ctx, outputType)
+	scanner, err := a.service.OutputScanner(ctx, outputType)
 	if err != nil {
 		return false, err
 	}
