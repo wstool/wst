@@ -25,6 +25,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
@@ -64,12 +65,14 @@ func (s Services) AddService(service Service) error {
 }
 
 type Maker struct {
-	fnd app.Foundation
+	fnd             app.Foundation
+	parametersMaker *parameters.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
+func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
-		fnd: fnd,
+		fnd:             fnd,
+		parametersMaker: parametersMaker,
 	}
 }
 
@@ -121,8 +124,13 @@ func (m *Maker) Make(
 			if !found {
 				return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
 			}
+			serviceParameters, err := m.parametersMaker.Make(serviceConfig.Parameters)
+			if err != nil {
+				return nil, err
+			}
+
 			nativeConfigs[configName] = nativeServiceConfig{
-				parameters:          serviceConfig.Parameters,
+				parameters:          serviceParameters,
 				overwriteParameters: serviceConfig.OverwriteParameters,
 				config:              config,
 			}
@@ -144,7 +152,7 @@ func (m *Maker) Make(
 }
 
 type nativeServiceConfig struct {
-	parameters          types.Parameters
+	parameters          parameters.Parameters
 	overwriteParameters bool
 	config              configs.Config
 }

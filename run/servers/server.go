@@ -19,6 +19,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/sandboxes"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers/configs"
@@ -48,18 +49,20 @@ func (s Servers) GetServer(fullName string) (Server, bool) {
 }
 
 type Maker struct {
-	fnd            app.Foundation
-	configsMaker   *configs.Maker
-	sandboxesMaker *sandboxes.Maker
-	templatesMaker *templates.Maker
+	fnd             app.Foundation
+	configsMaker    *configs.Maker
+	sandboxesMaker  *sandboxes.Maker
+	templatesMaker  *templates.Maker
+	parametersMaker *parameters.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
+func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
-		fnd:            fnd,
-		configsMaker:   configs.CreateMaker(fnd),
-		sandboxesMaker: sandboxes.CreateMaker(fnd),
-		templatesMaker: templates.CreateMaker(fnd),
+		fnd:             fnd,
+		configsMaker:    configs.CreateMaker(fnd),
+		sandboxesMaker:  sandboxes.CreateMaker(fnd),
+		templatesMaker:  templates.CreateMaker(fnd),
+		parametersMaker: parametersMaker,
 	}
 }
 
@@ -82,13 +85,18 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 			return nil, err
 		}
 
+		serverParameters, err := m.parametersMaker.Make(server.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
 		srvs[name][tag] = &nativeServer{
 			name:       name,
 			tag:        tag,
 			parentName: server.Extends,
 			configs:    serverConfigs,
 			templates:  serverTemplates,
-			parameters: server.Parameters,
+			parameters: serverParameters,
 			sandboxes:  serverSandboxes,
 		}
 	}
@@ -128,7 +136,7 @@ type nativeServer struct {
 	parent     *Server
 	configs    configs.Configs
 	templates  templates.Templates
-	parameters types.Parameters
+	parameters parameters.Parameters
 	sandboxes  sandboxes.Sandboxes
 }
 

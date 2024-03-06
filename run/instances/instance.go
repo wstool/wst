@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/environments"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/services"
@@ -42,11 +43,11 @@ type InstanceMaker struct {
 	environmentMaker *environments.Maker
 }
 
-func CreateInstanceMaker(fnd app.Foundation) *InstanceMaker {
+func CreateInstanceMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *InstanceMaker {
 	return &InstanceMaker{
 		fnd:              fnd,
 		actionMaker:      actions.CreateActionMaker(fnd),
-		servicesMaker:    services.CreateMaker(fnd),
+		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
 		scriptsMaker:     scripts.CreateMaker(fnd),
 		environmentMaker: environments.CreateMaker(fnd),
 	}

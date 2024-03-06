@@ -18,6 +18,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/instances"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers"
 	"strings"
 )
@@ -33,10 +34,11 @@ type Maker struct {
 }
 
 func CreateMaker(fnd app.Foundation) *Maker {
+	parametersMaker := parameters.CreateMaker(fnd)
 	return &Maker{
 		fnd:           fnd,
-		instanceMaker: instances.CreateInstanceMaker(fnd),
-		serversMaker:  servers.CreateMaker(fnd),
+		instanceMaker: instances.CreateInstanceMaker(fnd, parametersMaker),
+		serversMaker:  servers.CreateMaker(fnd, parametersMaker),
 	}
 }
 
