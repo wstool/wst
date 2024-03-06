@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"strconv"
 )
 
 type Parameter interface {
-	IsNil() bool
 	BoolValue() bool
 	IntValue() int
 	FloatValue() float64
@@ -92,52 +92,116 @@ type parameter struct {
 	mapValue      map[string]Parameter
 }
 
-func (p *parameter) IsNil() bool {
-	return p.parameterType == NilType
+func (p *parameter) Type() Type {
+	return p.parameterType
 }
 
 func (p *parameter) BoolValue() bool {
-	if p.parameterType != BoolType {
-		panic("parameter is not a bool")
+	switch p.parameterType {
+	case BoolType:
+		return p.boolValue
+	case IntType, FloatType:
+		return p.IntValue() != 0 // Reuse IntValue for simplicity
+	case StringType:
+		return p.stringValue != ""
+	case ArrayType:
+		return len(p.arrayValue) > 0
+	case MapType:
+		return len(p.mapValue) > 0
+	default:
+		return false
 	}
-	return p.boolValue
 }
 
 func (p *parameter) IntValue() int {
-	if p.parameterType != IntType {
-		panic("parameter is not an int")
+	switch p.parameterType {
+	case IntType:
+		return p.intValue
+	case BoolType:
+		if p.boolValue {
+			return 1
+		}
+		return 0
+	case FloatType:
+		return int(p.floatValue) // Note: Truncation
+	case StringType:
+		val, err := strconv.Atoi(p.stringValue)
+		if err == nil {
+			return val
+		}
+		return 0
+	case ArrayType:
+		return len(p.arrayValue)
+	case MapType:
+		return len(p.mapValue)
+	default:
+		return 0
 	}
-	return p.intValue
 }
 
 func (p *parameter) FloatValue() float64 {
-	if p.parameterType != FloatType {
-		panic("parameter is not a float")
+	switch p.parameterType {
+	case FloatType:
+		return p.floatValue
+	case IntType:
+		return float64(p.intValue)
+	case BoolType:
+		if p.boolValue {
+			return 1.0
+		}
+		return 0.0
+	case ArrayType:
+		return float64(len(p.arrayValue))
+	case MapType:
+		return float64(len(p.mapValue))
+	default:
+		return 0.0
 	}
-	return p.floatValue
 }
 
 func (p *parameter) StringValue() string {
-	if p.parameterType != StringType {
-		panic("parameter is not a string")
+	switch p.parameterType {
+	case StringType:
+		return p.stringValue
+	case BoolType:
+		return strconv.FormatBool(p.boolValue)
+	case IntType:
+		return strconv.Itoa(p.intValue)
+	case FloatType:
+		return fmt.Sprintf("%v", p.floatValue)
+	default:
+		return fmt.Sprintf("%v", p)
 	}
-	return p.stringValue
 }
 
 func (p *parameter) ArrayValue() []Parameter {
-	if p.parameterType != ArrayType {
-		panic("parameter is not an array")
+	if p.parameterType == ArrayType {
+		return p.arrayValue
+	} else if p.parameterType == MapType {
+		// Convert map to array, focusing only on the map's values
+		var convertedArray []Parameter
+		for _, val := range p.mapValue {
+			convertedArray = append(convertedArray, val)
+		}
+		return convertedArray
+	} else {
+		// For all other types, convert to an array with a single element
+		return []Parameter{p}
 	}
-	return p.arrayValue
 }
 
 func (p *parameter) MapValue() map[string]Parameter {
-	if p.parameterType != MapType {
-		panic("parameter is not a map")
+	if p.parameterType == MapType {
+		return p.mapValue
+	} else if p.parameterType == ArrayType {
+		// Convert array to map, using string indexes as keys
+		convertedMap := make(map[string]Parameter, len(p.arrayValue))
+		for i, val := range p.arrayValue {
+			convertedMap[strconv.Itoa(i)] = val
+		}
+		return convertedMap
+	} else {
+		// For all other types, convert to a map with a single key "0"
+		return map[string]Parameter{"0": p}
 	}
-	return p.mapValue
-}
-
-func (p *parameter) Type() Type {
-	return p.parameterType
 }
