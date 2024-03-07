@@ -18,65 +18,67 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/request"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"regexp"
 	"time"
 )
 
-type ResponseExpectationActionMaker struct {
-	fnd app.Foundation
-}
-
-func CreateResponseExpectationActionMaker(fnd app.Foundation) *ResponseExpectationActionMaker {
-	return &ResponseExpectationActionMaker{
-		fnd: fnd,
-	}
-}
-
-func (m *ResponseExpectationActionMaker) MakeAction(
-	config *types.ResponseExpectationAction,
-	svcs services.Services,
-	defaultTimeout int,
-) (actions.Action, error) {
-	match := MatchType(config.Response.Body.Match)
+func (m *ExpectationActionMaker) MakeResponseExpectation(
+	config *types.ResponseExpectation,
+) (*ResponseExpectation, error) {
+	match := MatchType(config.Body.Match)
 	if match != MatchTypeExact && match != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid MatchType: %v", config.Response.Body.Match)
+		return nil, fmt.Errorf("invalid MatchType: %v", config.Body.Match)
 	}
 
-	svc, err := svcs.FindService(config.Service)
-	if err != nil {
-		return nil, err
-	}
-
-	if config.Timeout == 0 {
-		config.Timeout = defaultTimeout
-	}
-
-	return &responseAction{
-		expectationAction: expectationAction{
-			service: svc,
-			timeout: time.Duration(config.Timeout),
-		},
-		request:            config.Response.Request,
-		headers:            config.Response.Headers,
-		bodyContent:        config.Response.Body.Content,
+	return &ResponseExpectation{
+		request:            config.Request,
+		headers:            config.Headers,
+		bodyContent:        config.Body.Content,
 		bodyMatch:          match,
-		bodyRenderTemplate: config.Response.Body.RenderTemplate,
+		bodyRenderTemplate: config.Body.RenderTemplate,
 	}, nil
 }
 
-type responseAction struct {
-	expectationAction
+type ResponseExpectation struct {
 	request            string
 	headers            types.Headers
 	bodyContent        string
 	bodyMatch          MatchType
 	bodyRenderTemplate bool
+}
+
+func (m *ExpectationActionMaker) MakeResponseAction(
+	config *types.ResponseExpectationAction,
+	svcs services.Services,
+	defaultTimeout int,
+) (actions.Action, error) {
+	commonExpectation, err := m.MakeCommonExpectation(svcs, config.Service, config.Timeout, defaultTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	responseExpectation, err := m.MakeResponseExpectation(&config.Response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseAction{
+		CommonExpectation:   commonExpectation,
+		ResponseExpectation: responseExpectation,
+		parameters:          parameters.Parameters{},
+	}, nil
+}
+
+type responseAction struct {
+	*CommonExpectation
+	*ResponseExpectation
+	parameters parameters.Parameters
 }
 
 func (a *responseAction) Timeout() time.Duration {
@@ -132,7 +134,7 @@ func (a *responseAction) renderBodyContent(ctx context.Context) (string, error) 
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			content, err := a.service.RenderTemplate(a.bodyContent)
+			content, err := a.service.RenderTemplate(a.bodyContent, a.parameters)
 			if err != nil {
 				return "", err
 			}

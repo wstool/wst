@@ -38,39 +38,37 @@ type Action interface {
 }
 
 type ActionMaker struct {
-	fnd                 app.Foundation
-	expectOutputMaker   *expect.OutputExpectationActionMaker
-	expectResponseMaker *expect.ResponseExpectationActionMaker
-	notMaker            *not.ActionMaker
-	parallelMaker       *parallel.ActionMaker
-	requestMaker        *request.ActionMaker
-	reloadMaker         *reload.ActionMaker
-	restartMaker        *restart.ActionMaker
-	startMaker          *start.ActionMaker
-	stopMaker           *stop.ActionMaker
+	fnd           app.Foundation
+	expectMaker   *expect.ExpectationActionMaker
+	notMaker      *not.ActionMaker
+	parallelMaker *parallel.ActionMaker
+	requestMaker  *request.ActionMaker
+	reloadMaker   *reload.ActionMaker
+	restartMaker  *restart.ActionMaker
+	startMaker    *start.ActionMaker
+	stopMaker     *stop.ActionMaker
 }
 
 func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 	return &ActionMaker{
-		fnd:                 fnd,
-		expectOutputMaker:   expect.CreateOutputExpectationActionMaker(fnd),
-		expectResponseMaker: expect.CreateResponseExpectationActionMaker(fnd),
-		notMaker:            not.CreateActionMaker(fnd),
-		parallelMaker:       parallel.CreateActionMaker(fnd),
-		requestMaker:        request.CreateActionMaker(fnd),
-		reloadMaker:         reload.CreateActionMaker(fnd),
-		restartMaker:        restart.CreateActionMaker(fnd),
-		startMaker:          start.CreateActionMaker(fnd),
-		stopMaker:           stop.CreateActionMaker(fnd),
+		fnd:           fnd,
+		expectMaker:   expect.CreateExpectationActionMaker(fnd),
+		notMaker:      not.CreateActionMaker(fnd),
+		parallelMaker: parallel.CreateActionMaker(fnd),
+		requestMaker:  request.CreateActionMaker(fnd),
+		reloadMaker:   reload.CreateActionMaker(fnd),
+		restartMaker:  restart.CreateActionMaker(fnd),
+		startMaker:    start.CreateActionMaker(fnd),
+		stopMaker:     stop.CreateActionMaker(fnd),
 	}
 }
 
 func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services, defaultTimeout int) (Action, error) {
 	switch action := config.(type) {
 	case *types.OutputExpectationAction:
-		return m.expectOutputMaker.MakeAction(action, svcs, defaultTimeout)
+		return m.expectMaker.MakeOutputAction(action, svcs, defaultTimeout)
 	case *types.ResponseExpectationAction:
-		return m.expectResponseMaker.MakeAction(action, svcs, defaultTimeout)
+		return m.expectMaker.MakeResponseAction(action, svcs, defaultTimeout)
 	case *types.NotAction:
 		return m.notMaker.Make(action, svcs, defaultTimeout, m)
 	case *types.ParallelAction:

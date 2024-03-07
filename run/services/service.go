@@ -31,6 +31,7 @@ import (
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
+	"github.com/bukka/wst/run/services/template"
 	"path/filepath"
 )
 
@@ -39,14 +40,16 @@ type Service interface {
 	Name() string
 	Environment() environment.Environment
 	Task() task.Task
-	RenderTemplate(text string) (string, error)
+	RenderTemplate(text string, params parameters.Parameters) (string, error)
 	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
 	Sandbox() sandbox.Sandbox
+	Server() servers.Server
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 	Workspace() string
+	SetTemplate(template template.Template)
 }
 
 type Services map[string]Service
@@ -67,12 +70,14 @@ func (s Services) AddService(service Service) error {
 type Maker struct {
 	fnd             app.Foundation
 	parametersMaker *parameters.Maker
+	templateMaker   *template.Maker
 }
 
 func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
+		templateMaker:   template.CreateMaker(fnd),
 	}
 }
 
@@ -148,6 +153,11 @@ func (m *Maker) Make(
 
 		svcs[serviceName] = service
 	}
+
+	for _, svc := range svcs {
+		svc.SetTemplate(m.templateMaker.Make(svc, svcs))
+	}
+
 	return svcs, nil
 }
 
@@ -166,6 +176,15 @@ type nativeService struct {
 	environment environment.Environment
 	configs     map[string]nativeServiceConfig
 	workspace   string
+	template    template.Template
+}
+
+func (s *nativeService) Server() servers.Server {
+	return s.server
+}
+
+func (s *nativeService) SetTemplate(template template.Template) {
+	s.template = template
 }
 
 func (s *nativeService) Workspace() string {
@@ -243,9 +262,8 @@ func (s *nativeService) BaseUrl() (string, error) {
 	return s.task.BaseUrl(), nil
 }
 
-func (s *nativeService) RenderTemplate(text string) (string, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *nativeService) RenderTemplate(text string, params parameters.Parameters) (string, error) {
+	return s.template.Render(text, params)
 }
 
 func (s *nativeService) Sandbox() sandbox.Sandbox {

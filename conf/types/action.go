@@ -16,6 +16,8 @@ package types
 
 type CustomExpectationAction struct {
 	Service    string     `wst:"service"`
+	Timeout    int        `wst:"timeout"`
+	Name       string     `wst:"name"`
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 

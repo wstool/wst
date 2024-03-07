@@ -15,11 +15,43 @@
 package expect
 
 import (
+	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run/services"
 	"time"
 )
 
-type expectationAction struct {
+type ExpectationActionMaker struct {
+	fnd app.Foundation
+}
+
+func CreateExpectationActionMaker(fnd app.Foundation) *ExpectationActionMaker {
+	return &ExpectationActionMaker{
+		fnd: fnd,
+	}
+}
+
+func (m *ExpectationActionMaker) MakeCommonExpectation(
+	svcs services.Services,
+	serviceName string,
+	timeout,
+	defaultTimeout int,
+) (*CommonExpectation, error) {
+	svc, err := svcs.FindService(serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
+
+	return &CommonExpectation{
+		service: svc,
+		timeout: time.Duration(timeout),
+	}, nil
+}
+
+type CommonExpectation struct {
 	service services.Service
 	timeout time.Duration
 }

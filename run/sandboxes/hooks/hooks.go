@@ -136,7 +136,7 @@ func (m *Maker) MakeHook(config types.SandboxHook, hookType HookType) (Hook, err
 			resultHook = &HookSignal{BaseHook: *baseHook, Signal: signal}
 		}
 	default:
-		return nil, errors.New("unsupported hook type")
+		return nil, fmt.Errorf("unsupported hook type %t", config)
 	}
 
 	return resultHook, nil

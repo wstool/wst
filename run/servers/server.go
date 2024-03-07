@@ -22,12 +22,14 @@ import (
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/sandboxes"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/servers/actions"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/servers/templates"
 	"strings"
 )
 
 type Server interface {
+	ExpectAction(name string) (actions.ExpectAction, bool)
 	Config(name string) (configs.Config, bool)
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
 }
@@ -50,6 +52,7 @@ func (s Servers) GetServer(fullName string) (Server, bool) {
 
 type Maker struct {
 	fnd             app.Foundation
+	actionsMaker    *actions.Maker
 	configsMaker    *configs.Maker
 	sandboxesMaker  *sandboxes.Maker
 	templatesMaker  *templates.Maker
@@ -59,6 +62,7 @@ type Maker struct {
 func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
 		fnd:             fnd,
+		actionsMaker:    actions.CreateMaker(fnd, parametersMaker),
 		configsMaker:    configs.CreateMaker(fnd),
 		sandboxesMaker:  sandboxes.CreateMaker(fnd),
 		templatesMaker:  templates.CreateMaker(fnd),
@@ -70,6 +74,12 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 	srvs := make(map[string]map[string]Server)
 	for _, server := range config.Servers {
 		name, tag := splitFullName(server.Name)
+
+		serverActions, err := m.actionsMaker.Make(&server.Actions)
+		if err != nil {
+			return nil, err
+		}
+
 		serverConfigs, err := m.configsMaker.Make(server.Configs)
 		if err != nil {
 			return nil, err
@@ -94,6 +104,7 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 			name:       name,
 			tag:        tag,
 			parentName: server.Extends,
+			actions:    serverActions,
 			configs:    serverConfigs,
 			templates:  serverTemplates,
 			parameters: serverParameters,
@@ -134,10 +145,16 @@ type nativeServer struct {
 	tag        string
 	parentName string
 	parent     *Server
+	actions    *actions.Actions
 	configs    configs.Configs
 	templates  templates.Templates
 	parameters parameters.Parameters
 	sandboxes  sandboxes.Sandboxes
+}
+
+func (s nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
+	act, ok := s.actions.Expect[name]
+	return act, ok
 }
 
 func (s nativeServer) Config(name string) (configs.Config, bool) {

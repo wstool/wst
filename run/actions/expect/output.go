@@ -17,75 +17,77 @@ package expect
 import (
 	"context"
 	"fmt"
-	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"regexp"
 	"time"
 )
 
-type OutputExpectationActionMaker struct {
-	fnd app.Foundation
-}
-
-func CreateOutputExpectationActionMaker(fnd app.Foundation) *OutputExpectationActionMaker {
-	return &OutputExpectationActionMaker{
-		fnd: fnd,
-	}
-}
-
-func (m *OutputExpectationActionMaker) MakeAction(
-	config *types.OutputExpectationAction,
-	svcs services.Services,
-	defaultTimeout int,
-) (actions.Action, error) {
-	order := OrderType(config.Output.Order)
-	if order != OrderTypeFixed && order != OrderTypeRandom {
-		return nil, fmt.Errorf("invalid order type: %v", config.Output.Order)
+func (m *ExpectationActionMaker) MakeOutputExpectation(
+	config *types.OutputExpectation,
+) (*OutputExpectation, error) {
+	orderType := OrderType(config.Order)
+	if orderType != OrderTypeFixed && orderType != OrderTypeRandom {
+		return nil, fmt.Errorf("invalid order type: %v", config.Order)
 	}
 
-	match := MatchType(config.Output.Match)
-	if match != MatchTypeExact && match != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid match type: %v", config.Output.Match)
+	matchType := MatchType(config.Match)
+	if matchType != MatchTypeExact && matchType != MatchTypeRegexp {
+		return nil, fmt.Errorf("invalid match type: %v", config.Match)
 	}
 
-	outputType := OutputType(config.Output.Type)
+	outputType := OutputType(config.Type)
 	if outputType != OutputTypeAny && outputType != OutputTypeStdout && outputType != OutputTypeStderr {
-		return nil, fmt.Errorf("invalid output type: %v", config.Output.Type)
+		return nil, fmt.Errorf("invalid output type: %v", config.Type)
 	}
 
-	svc, err := svcs.FindService(config.Service)
-	if err != nil {
-		return nil, err
-	}
-
-	if config.Timeout == 0 {
-		config.Timeout = defaultTimeout
-	}
-
-	return &outputAction{
-		expectationAction: expectationAction{
-			service: svc,
-			timeout: time.Duration(config.Timeout),
-		},
-		orderType:      order,
-		matchType:      match,
+	return &OutputExpectation{
+		orderType:      orderType,
+		matchType:      matchType,
 		outputType:     outputType,
-		messages:       config.Output.Messages,
-		renderTemplate: config.Output.RenderTemplate,
+		messages:       config.Messages,
+		renderTemplate: config.RenderTemplate,
 	}, nil
 }
 
-type outputAction struct {
-	expectationAction
+type OutputExpectation struct {
 	orderType      OrderType
 	matchType      MatchType
 	outputType     OutputType
 	messages       []string
 	renderTemplate bool
+}
+
+func (m *ExpectationActionMaker) MakeOutputAction(
+	config *types.OutputExpectationAction,
+	svcs services.Services,
+	defaultTimeout int,
+) (actions.Action, error) {
+	commonExpectation, err := m.MakeCommonExpectation(svcs, config.Service, config.Timeout, defaultTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	outputExpectation, err := m.MakeOutputExpectation(&config.Output)
+	if err != nil {
+		return nil, err
+	}
+
+	return &outputAction{
+		CommonExpectation: commonExpectation,
+		OutputExpectation: outputExpectation,
+		parameters:        parameters.Parameters{},
+	}, nil
+}
+
+type outputAction struct {
+	*CommonExpectation
+	*OutputExpectation
+	parameters parameters.Parameters
 }
 
 func (a *outputAction) Timeout() time.Duration {
@@ -141,7 +143,7 @@ func (a *outputAction) renderMessages(messages []string) ([]string, error) {
 	}
 	var renderedMessages []string
 	for _, message := range messages {
-		renderedMessage, err := a.service.RenderTemplate(message)
+		renderedMessage, err := a.service.RenderTemplate(message, a.parameters)
 		if err != nil {
 			return nil, err
 		}
