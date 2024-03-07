@@ -32,6 +32,7 @@ type Server interface {
 	ExpectAction(name string) (actions.ExpectAction, bool)
 	Config(name string) (configs.Config, bool)
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
+	Parameters() parameters.Parameters
 }
 
 type Servers map[string]map[string]Server
@@ -150,6 +151,10 @@ type nativeServer struct {
 	templates  templates.Templates
 	parameters parameters.Parameters
 	sandboxes  sandboxes.Sandboxes
+}
+
+func (s nativeServer) Parameters() parameters.Parameters {
+	return s.parameters
 }
 
 func (s nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
