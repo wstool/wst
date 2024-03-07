@@ -28,6 +28,7 @@ import (
 	"github.com/bukka/wst/run/actions/start"
 	"github.com/bukka/wst/run/actions/stop"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"time"
 )
@@ -49,10 +50,10 @@ type ActionMaker struct {
 	stopMaker     *stop.ActionMaker
 }
 
-func CreateActionMaker(fnd app.Foundation) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *ActionMaker {
 	return &ActionMaker{
 		fnd:           fnd,
-		expectMaker:   expect.CreateExpectationActionMaker(fnd),
+		expectMaker:   expect.CreateExpectationActionMaker(fnd, parametersMaker),
 		notMaker:      not.CreateActionMaker(fnd),
 		parallelMaker: parallel.CreateActionMaker(fnd),
 		requestMaker:  request.CreateActionMaker(fnd),

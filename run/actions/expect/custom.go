@@ -21,16 +21,22 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 		return nil, err
 	}
 
-	expectation, ok := commonExpectation.service.Server().ExpectAction(config.Name)
+	server := commonExpectation.service.Server()
+	expectation, ok := server.ExpectAction(config.Name)
 	if !ok {
 		return nil, fmt.Errorf("expectation action %s not found", config.Name)
+	}
+
+	configParameters, err := m.parametersMaker.Make(config.Parameters)
+	if err != nil {
+		return nil, err
 	}
 
 	return &customAction{
 		CommonExpectation:   commonExpectation,
 		OutputExpectation:   expectation.OutputExpectation(),
 		ResponseExpectation: expectation.ResponseExpectation(),
-		parameters:          parameters.Parameters{},
+		parameters:          configParameters.InheritFrom(expectation.Parameters()),
 	}, nil
 }
 

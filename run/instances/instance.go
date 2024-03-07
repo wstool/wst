@@ -46,7 +46,7 @@ type InstanceMaker struct {
 func CreateInstanceMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *InstanceMaker {
 	return &InstanceMaker{
 		fnd:              fnd,
-		actionMaker:      actions.CreateActionMaker(fnd),
+		actionMaker:      actions.CreateActionMaker(fnd, parametersMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
 		scriptsMaker:     scripts.CreateMaker(fnd),
 		environmentMaker: environments.CreateMaker(fnd),
