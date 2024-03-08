@@ -17,29 +17,47 @@ package configs
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/parameters"
 )
 
 type Config interface {
+	FilePath() string
+	Parameters() parameters.Parameters
 }
 
 type Configs map[string]Config
 
-type Maker struct {
-	fnd app.Foundation
+func (a Configs) Inherit(parentConfigs Configs) {
+	for configName, config := range parentConfigs {
+		_, ok := a[configName]
+		if !ok {
+			a[configName] = config
+		}
+	}
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
+type Maker struct {
+	fnd             app.Foundation
+	parametersMaker *parameters.Maker
+}
+
+func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
-		fnd: fnd,
+		fnd:             fnd,
+		parametersMaker: parametersMaker,
 	}
 }
 
 func (m *Maker) Make(config map[string]types.ServerConfig) (Configs, error) {
 	configs := make(Configs)
 	for name, serverConfig := range config {
+		params, err := m.parametersMaker.Make(serverConfig.Parameters)
+		if err != nil {
+			return nil, err
+		}
 		configs[name] = &nativeConfig{
 			file:       serverConfig.File,
-			parameters: serverConfig.Parameters,
+			parameters: params,
 		}
 	}
 	return configs, nil
@@ -47,5 +65,13 @@ func (m *Maker) Make(config map[string]types.ServerConfig) (Configs, error) {
 
 type nativeConfig struct {
 	file       string
-	parameters types.Parameters
+	parameters parameters.Parameters
+}
+
+func (c *nativeConfig) FilePath() string {
+	return c.file
+}
+
+func (c *nativeConfig) Parameters() parameters.Parameters {
+	return c.parameters
 }

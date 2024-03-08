@@ -38,6 +38,9 @@ import (
 type Service interface {
 	BaseUrl() (string, error)
 	Name() string
+	User() string
+	Group() string
+	Dirs() map[string]string
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
@@ -177,6 +180,18 @@ type nativeService struct {
 	configs     map[string]nativeServiceConfig
 	workspace   string
 	template    template.Template
+}
+
+func (s *nativeService) User() string {
+	return s.server.User()
+}
+
+func (s *nativeService) Group() string {
+	return s.server.Group()
+}
+
+func (s *nativeService) Dirs() map[string]string {
+	return s.Sandbox().Dirs()
 }
 
 func (s *nativeService) Server() servers.Server {

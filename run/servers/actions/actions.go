@@ -25,6 +25,15 @@ type Actions struct {
 	Expect map[string]ExpectAction
 }
 
+func (a *Actions) Inherit(parentActions *Actions) {
+	for expectationName, expectation := range parentActions.Expect {
+		_, ok := a.Expect[expectationName]
+		if !ok {
+			a.Expect[expectationName] = expectation
+		}
+	}
+}
+
 type Maker struct {
 	fnd             app.Foundation
 	parametersMaker *parameters.Maker
@@ -35,7 +44,7 @@ func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
-		expectMaker:     expect.CreateExpectationActionMaker(fnd),
+		expectMaker:     expect.CreateExpectationActionMaker(fnd, parametersMaker),
 	}
 }
 

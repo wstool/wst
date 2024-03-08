@@ -18,11 +18,15 @@ import (
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"os"
+	"os/user"
 )
 
 type Foundation interface {
 	Logger() *zap.SugaredLogger
 	Fs() afero.Fs
+	CurrentUser() (*user.User, error)
+	User(username string) (*user.User, error)
+	UserGroup(u *user.User) (*user.Group, error)
 	UserHomeDir() (string, error)
 	LookupEnvVar(key string) (string, bool)
 }
@@ -45,6 +49,18 @@ func (e *DefaultFoundation) Logger() *zap.SugaredLogger {
 
 func (e *DefaultFoundation) Fs() afero.Fs {
 	return e.fs
+}
+
+func (e *DefaultFoundation) CurrentUser() (*user.User, error) {
+	return user.Current()
+}
+
+func (e *DefaultFoundation) User(username string) (*user.User, error) {
+	return user.Lookup(username)
+}
+
+func (e *DefaultFoundation) UserGroup(u *user.User) (*user.Group, error) {
+	return user.LookupGroupId(u.Gid)
 }
 
 func (e *DefaultFoundation) UserHomeDir() (string, error) {

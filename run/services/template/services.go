@@ -10,14 +10,26 @@ func (s *Service) Address() (string, error) {
 	return s.service.BaseUrl()
 }
 
+func (s *Service) Dirs() map[string]string {
+	return s.service.Dirs()
+}
+
+func (s *Service) Group() string {
+	return s.service.Group()
+}
+
+func (s *Service) User() string {
+	return s.service.User()
+}
+
 type Services struct {
-	services map[string]Service
+	services services.Services
 }
 
 func (s *Services) Find(name string) Service {
-	return s.services[name]
+	return Service{service: s.services[name]}
 }
 
-func NewServices(services map[string]Service) *Services {
+func NewServices(services services.Services) *Services {
 	return &Services{services: services}
 }

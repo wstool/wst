@@ -19,5 +19,8 @@ import (
 )
 
 type Sandbox interface {
+	Dirs() map[string]string
+	Hooks() map[hooks.HookType]hooks.Hook
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
+	Inherit(parentSandbox Sandbox) error
 }

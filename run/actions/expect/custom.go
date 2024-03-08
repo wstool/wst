@@ -36,7 +36,7 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 		CommonExpectation:   commonExpectation,
 		OutputExpectation:   expectation.OutputExpectation(),
 		ResponseExpectation: expectation.ResponseExpectation(),
-		parameters:          configParameters.InheritFrom(expectation.Parameters()).InheritFrom(server.Parameters()),
+		parameters:          configParameters.Inherit(expectation.Parameters()).Inherit(server.Parameters()),
 	}, nil
 }
 

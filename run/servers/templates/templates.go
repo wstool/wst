@@ -24,6 +24,15 @@ type Template interface {
 
 type Templates map[string]Template
 
+func (a Templates) Inherit(parentTemplates Templates) {
+	for templateName, template := range parentTemplates {
+		_, ok := a[templateName]
+		if !ok {
+			a[templateName] = template
+		}
+	}
+}
+
 type Maker struct {
 	fnd app.Foundation
 }

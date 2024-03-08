@@ -21,6 +21,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/sandboxes/hooks"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 )
 
 type Maker struct {
@@ -42,20 +43,47 @@ func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 	}
 
 	return &Sandbox{
-		Dirs:  config.Dirs,
-		Hooks: sandboxHooks,
+		dirs:  config.Dirs,
+		hooks: sandboxHooks,
 	}, nil
 }
 
 type Sandbox struct {
-	Dirs  map[string]string
-	Hooks map[hooks.HookType]hooks.Hook
+	dirs  map[string]string
+	hooks map[hooks.HookType]hooks.Hook
+}
+
+func (s *Sandbox) Dirs() map[string]string {
+	return s.dirs
+}
+
+func (s *Sandbox) Hooks() map[hooks.HookType]hooks.Hook {
+	return s.hooks
 }
 
 func (s *Sandbox) Hook(hookType hooks.HookType) (hooks.Hook, error) {
-	hook, ok := s.Hooks[hookType]
+	hook, ok := s.hooks[hookType]
 	if !ok {
 		return nil, errors.New("hook not found")
 	}
 	return hook, nil
+}
+
+func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
+	// Inherit hooks.
+	for hookType, parentHook := range parentSandbox.Hooks() {
+		_, ok := s.hooks[hookType]
+		if !ok {
+			s.hooks[hookType] = parentHook
+		}
+	}
+	// Inherit Dirs.
+	for dirName, dirPath := range parentSandbox.Dirs() {
+		_, ok := s.dirs[dirName]
+		if !ok {
+			s.dirs[dirName] = dirPath
+		}
+	}
+
+	return nil
 }

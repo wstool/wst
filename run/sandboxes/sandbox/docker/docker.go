@@ -15,8 +15,10 @@
 package docker
 
 import (
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/sandbox/container"
 )
 
@@ -47,4 +49,13 @@ func (m *Maker) MakeSandbox(config *types.DockerSandbox) (*Sandbox, error) {
 
 type Sandbox struct {
 	container.Sandbox
+}
+
+func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
+	dockerParentSandbox, ok := parentSandbox.(*Sandbox)
+	if !ok {
+		return fmt.Errorf("invalid docker parent sandbox type %t", parentSandbox)
+	}
+
+	return s.Sandbox.InheritContainer(&dockerParentSandbox.Sandbox)
 }

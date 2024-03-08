@@ -58,3 +58,21 @@ type Sandbox struct {
 	RegistryUsername string
 	RegistryPassword string
 }
+
+func (s *Sandbox) InheritContainer(parentSandbox *Sandbox) error {
+	s.Sandbox.Inherit(parentSandbox)
+	if s.ImageName == "" {
+		s.ImageName = parentSandbox.ImageName
+	}
+	if s.ImageTag == "" {
+		s.ImageTag = parentSandbox.ImageTag
+	}
+	if s.RegistryUsername == "" {
+		s.RegistryUsername = parentSandbox.RegistryUsername
+	}
+	if s.RegistryPassword == "" {
+		s.RegistryPassword = parentSandbox.RegistryPassword
+	}
+
+	return nil
+}

@@ -33,7 +33,7 @@ func (m *Maker) Make(config types.Parameters) (Parameters, error) {
 	return params, nil
 }
 
-func (p Parameters) InheritFrom(parameters Parameters) Parameters {
+func (p Parameters) Inherit(parameters Parameters) Parameters {
 	for key, value := range parameters {
 		if _, ok := p[key]; !ok {
 			p[key] = value

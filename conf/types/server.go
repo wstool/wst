@@ -43,6 +43,8 @@ type ServerTemplate struct {
 type Server struct {
 	Name       string                    `wst:"name"`
 	Extends    string                    `wst:"extends"`
+	User       string                    `wst:"user"`
+	Group      string                    `wst:"group"`
 	Configs    map[string]ServerConfig   `wst:"configs"`
 	Templates  map[string]ServerTemplate `wst:"templates"`
 	Sandboxes  map[string]Sandbox        `wst:"sandboxes,factory=createSandboxes"`

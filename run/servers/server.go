@@ -25,14 +25,19 @@ import (
 	"github.com/bukka/wst/run/servers/actions"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/servers/templates"
+	"os/user"
 	"strings"
 )
 
 type Server interface {
 	ExpectAction(name string) (actions.ExpectAction, bool)
 	Config(name string) (configs.Config, bool)
+	ConfigPaths() map[string]string
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
+	Group() string
+	User() string
 	Parameters() parameters.Parameters
+	Templates() templates.Templates
 }
 
 type Servers map[string]map[string]Server
@@ -64,7 +69,7 @@ func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
 	return &Maker{
 		fnd:             fnd,
 		actionsMaker:    actions.CreateMaker(fnd, parametersMaker),
-		configsMaker:    configs.CreateMaker(fnd),
+		configsMaker:    configs.CreateMaker(fnd, parametersMaker),
 		sandboxesMaker:  sandboxes.CreateMaker(fnd),
 		templatesMaker:  templates.CreateMaker(fnd),
 		parametersMaker: parametersMaker,
@@ -102,6 +107,7 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 		}
 
 		srvs[name][tag] = &nativeServer{
+			fnd:        m.fnd,
 			name:       name,
 			tag:        tag,
 			parentName: server.Extends,
@@ -116,11 +122,7 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 	// set parents
 	for name, nameServers := range srvs {
 		for tag, srv := range nameServers {
-			nativeSrv, ok := srv.(nativeServer)
-			if !ok {
-				// this should never happen so something went seriously wrong
-				panic("conversion to nativeServer failed")
-			}
+			nativeSrv := srv.(*nativeServer)
 			if nativeSrv.parentName != "" {
 				parentName, parentTag := splitFullName(nativeSrv.parentName)
 				parent, ok := srvs[parentName][parentTag]
@@ -133,7 +135,22 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 						tag,
 					)
 				}
-				nativeSrv.parent = &parent
+				nativeSrv.parent = parent.(*nativeServer)
+			} else {
+				nativeSrv.extended = true
+			}
+		}
+	}
+
+	// inherit from parents
+	for _, nameServers := range srvs {
+		for _, srv := range nameServers {
+			nativeSrv := srv.(*nativeServer)
+			if !nativeSrv.extended {
+				err := nativeSrv.inherit()
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -142,10 +159,14 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 }
 
 type nativeServer struct {
+	fnd        app.Foundation
 	name       string
 	tag        string
+	user       string
+	group      string
 	parentName string
-	parent     *Server
+	parent     *nativeServer
+	extended   bool
 	actions    *actions.Actions
 	configs    configs.Configs
 	templates  templates.Templates
@@ -153,21 +174,98 @@ type nativeServer struct {
 	sandboxes  sandboxes.Sandboxes
 }
 
-func (s nativeServer) Parameters() parameters.Parameters {
+func (s *nativeServer) inherit() error {
+	if s.parent == nil {
+		// this should not happen as extended should be set during parent setting loop
+		s.extended = true
+		return nil
+	}
+	var err error
+	if !s.parent.extended {
+		err = s.parent.inherit()
+		if err != nil {
+			return err
+		}
+	}
+
+	var serverUser *user.User
+	if s.user == "" {
+		if s.parent.user == "" {
+			serverUser, err = s.fnd.CurrentUser()
+			if err != nil {
+				return err
+			}
+			s.user = serverUser.Username
+		} else {
+			s.user = s.parent.user
+		}
+	}
+
+	if s.group == "" {
+		if s.parent.group == "" {
+			if serverUser == nil {
+				serverUser, err = s.fnd.User(s.user)
+				if err != nil {
+					return err
+				}
+			}
+			group, err := s.fnd.UserGroup(serverUser)
+			if err != nil {
+				return err
+			}
+			s.group = group.Name
+		} else {
+			s.group = s.parent.group
+		}
+	}
+
+	s.actions.Inherit(s.parent.actions)
+	s.configs.Inherit(s.parent.configs)
+	s.templates.Inherit(s.parent.templates)
+	s.parameters.Inherit(s.parent.parameters)
+	err = s.sandboxes.Inherit(s.parent.sandboxes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *nativeServer) Group() string {
+	return s.group
+}
+
+func (s *nativeServer) User() string {
+	return s.user
+}
+
+func (s *nativeServer) Templates() templates.Templates {
+	return s.templates
+}
+
+func (s *nativeServer) Parameters() parameters.Parameters {
 	return s.parameters
 }
 
-func (s nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
+func (s *nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
 	act, ok := s.actions.Expect[name]
 	return act, ok
 }
 
-func (s nativeServer) Config(name string) (configs.Config, bool) {
+func (s *nativeServer) Config(name string) (configs.Config, bool) {
 	cfg, ok := s.configs[name]
 	return cfg, ok
 }
 
-func (s nativeServer) Sandbox(name providers.Type) (sandbox.Sandbox, bool) {
+func (s *nativeServer) ConfigPaths() map[string]string {
+	configPaths := make(map[string]string, len(s.configs))
+	for name, config := range s.configs {
+		configPaths[name] = config.FilePath()
+	}
+	return configPaths
+}
+
+func (s *nativeServer) Sandbox(name providers.Type) (sandbox.Sandbox, bool) {
 	sb, ok := s.sandboxes[name]
 	return sb, ok
 }

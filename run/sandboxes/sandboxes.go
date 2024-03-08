@@ -30,6 +30,22 @@ import (
 
 type Sandboxes map[providers.Type]sandbox.Sandbox
 
+func (a Sandboxes) Inherit(parentSandboxes Sandboxes) error {
+	for sandboxName, parentSandbox := range parentSandboxes {
+		sb, ok := a[sandboxName]
+		if ok {
+			err := sb.Inherit(parentSandbox)
+			if err != nil {
+				return err
+			}
+		} else {
+			a[sandboxName] = parentSandbox
+		}
+	}
+
+	return nil
+}
+
 type Maker struct {
 	fnd             app.Foundation
 	localMaker      *local.Maker
