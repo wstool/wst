@@ -42,8 +42,9 @@ type Service interface {
 	Name() string
 	User() string
 	Group() string
-	Dirs() map[string]string
-	ConfigPaths() map[string]string
+	Dirs() map[sandbox.DirType]string
+	EnvironmentConfigPaths() map[string]string
+	WorkspaceConfigPaths() map[string]string
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
@@ -183,21 +184,26 @@ type nativeServiceConfig struct {
 }
 
 type nativeService struct {
-	name             string
-	scripts          scripts.Scripts
-	server           servers.Server
-	serverParameters parameters.Parameters
-	sandbox          sandbox.Sandbox
-	task             task.Task
-	environment      environment.Environment
-	configs          map[string]nativeServiceConfig
-	configPaths      map[string]string
-	workspace        string
-	template         template.Template
+	name                   string
+	scripts                scripts.Scripts
+	server                 servers.Server
+	serverParameters       parameters.Parameters
+	sandbox                sandbox.Sandbox
+	task                   task.Task
+	environment            environment.Environment
+	configs                map[string]nativeServiceConfig
+	environmentConfigPaths map[string]string
+	workspaceConfigPaths   map[string]string
+	workspace              string
+	template               template.Template
 }
 
-func (s *nativeService) ConfigPaths() map[string]string {
-	return s.configPaths
+func (s *nativeService) EnvironmentConfigPaths() map[string]string {
+	return s.environmentConfigPaths
+}
+
+func (s *nativeService) WorkspaceConfigPaths() map[string]string {
+	return s.workspaceConfigPaths
 }
 
 func (s *nativeService) User() string {
@@ -208,7 +214,7 @@ func (s *nativeService) Group() string {
 	return s.server.Group()
 }
 
-func (s *nativeService) Dirs() map[string]string {
+func (s *nativeService) Dirs() map[sandbox.DirType]string {
 	return s.Sandbox().Dirs()
 }
 
@@ -236,43 +242,55 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 	return bufio.NewScanner(reader), nil
 }
 
-func (s *nativeService) configPath(config configs.Config) string {
-	return filepath.Join(s.workspace, filepath.Base(s.configPath(config)))
+func (s *nativeService) configPaths(config configs.Config) (string, string, error) {
+	environmentRootPath := s.environment.RootPath(s)
+	sandboxConfDir, err := s.sandbox.Dir(sandbox.ConfDirType)
+	if err != nil {
+		return "", "", err
+	}
+	confPath := filepath.Join(sandboxConfDir, filepath.Base(config.FilePath()))
+	return filepath.Join(s.workspace, confPath), filepath.Join(environmentRootPath, confPath), nil
 }
 
-func (s *nativeService) renderConfig(config configs.Config) (string, error) {
+func (s *nativeService) renderConfig(config configs.Config) (string, string, error) {
 	file, err := os.Open(config.FilePath())
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer file.Close()
 
 	configContent, err := io.ReadAll(file)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	configPath := s.configPath(config)
-
-	err = s.template.RenderToFile(string(configContent), config.Parameters(), configPath)
+	workspaceConfigPath, environmentConfigPath, err := s.configPaths(config)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return configPath, nil
+	err = s.template.RenderToFile(string(configContent), config.Parameters(), workspaceConfigPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	return workspaceConfigPath, environmentConfigPath, nil
 }
 
 func (s *nativeService) renderConfigs() error {
 	configs := s.server.Configs()
-	configPaths := make(map[string]string, len(configs))
+	envConfigPaths := make(map[string]string, len(configs))
+	wsConfigPaths := make(map[string]string, len(configs))
 	for configName, config := range configs {
-		path, err := s.renderConfig(config)
+		wsPath, envPath, err := s.renderConfig(config)
 		if err != nil {
 			return err
 		}
-		configPaths[configName] = path
+		envConfigPaths[configName] = envPath
+		wsConfigPaths[configName] = wsPath
 	}
-	s.configPaths = configPaths
+	s.environmentConfigPaths = envConfigPaths
+	s.workspaceConfigPaths = envConfigPaths
 	return nil
 }
 

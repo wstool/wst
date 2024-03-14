@@ -9,8 +9,8 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- docker environment integration
 - kubernetes environment integration
+- docker environment integration
 - dry run mode - integrate to action, services and sandboxes
 - load testing action (wrk runner)
 - tests

@@ -31,6 +31,7 @@ type Command struct {
 type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
+	RootPath(service services.Service) string
 	RunTask(ctx context.Context, service services.Service, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
 	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error

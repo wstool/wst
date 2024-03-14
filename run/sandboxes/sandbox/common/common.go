@@ -18,6 +18,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/sandboxes/hooks"
@@ -42,19 +43,36 @@ func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 		return nil, err
 	}
 
+	sandboxDirs := make(map[sandbox.DirType]string)
+	for dirTypeStr, dirPath := range config.Dirs {
+		dirType := sandbox.DirType(dirTypeStr)
+		if dirType != sandbox.ConfDirType && dirType != sandbox.RunDirType && dirType != sandbox.ScriptDirType {
+			return nil, fmt.Errorf("invalid dir type: %v", dirType)
+		}
+		sandboxDirs[dirType] = dirPath
+	}
+
 	return &Sandbox{
-		dirs:  config.Dirs,
+		dirs:  sandboxDirs,
 		hooks: sandboxHooks,
 	}, nil
 }
 
 type Sandbox struct {
-	dirs  map[string]string
+	dirs  map[sandbox.DirType]string
 	hooks map[hooks.HookType]hooks.Hook
 }
 
-func (s *Sandbox) Dirs() map[string]string {
+func (s *Sandbox) Dirs() map[sandbox.DirType]string {
 	return s.dirs
+}
+
+func (s *Sandbox) Dir(dirType sandbox.DirType) (string, error) {
+	dir, ok := s.dirs[dirType]
+	if !ok {
+		return "", fmt.Errorf("directory not found for dir type: %v", dirType)
+	}
+	return dir, nil
 }
 
 func (s *Sandbox) Hooks() map[hooks.HookType]hooks.Hook {

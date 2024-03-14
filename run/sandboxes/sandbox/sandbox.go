@@ -18,8 +18,17 @@ import (
 	"github.com/bukka/wst/run/sandboxes/hooks"
 )
 
+type DirType string
+
+const (
+	ConfDirType   DirType = "conf"
+	RunDirType            = "run"
+	ScriptDirType         = "script"
+)
+
 type Sandbox interface {
-	Dirs() map[string]string
+	Dirs() map[DirType]string
+	Dir(dirType DirType) (string, error)
 	Hooks() map[hooks.HookType]hooks.Hook
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
 	Inherit(parentSandbox Sandbox) error

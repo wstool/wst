@@ -54,7 +54,7 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	if err != nil {
 		return fmt.Errorf("error parsing main template: %v", err)
 	}
-	configs := t.svc.ConfigPaths()
+	configs := t.svc.EnvironmentConfigPaths()
 	if configs == nil {
 		return fmt.Errorf("configs are not set")
 	}

@@ -63,6 +63,10 @@ type localEnvironment struct {
 	initialized bool
 }
 
+func (l *localEnvironment) RootPath(service services.Service) string {
+	return service.Workspace()
+}
+
 func (l *localEnvironment) Init(ctx context.Context) error {
 	fs := l.fnd.Fs()
 	err := fs.MkdirAll(l.workspace, 0644)

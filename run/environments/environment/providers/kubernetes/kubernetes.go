@@ -18,6 +18,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/services"
 )
 
 type Maker struct {
@@ -35,4 +36,8 @@ func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environme
 }
 
 type kubernetesEnvironment struct {
+}
+
+func (l *kubernetesEnvironment) RootPath(service services.Service) string {
+	return ""
 }
