@@ -8,6 +8,7 @@ import (
 	"github.com/bukka/wst/run/services"
 	"io"
 	"os"
+	"path/filepath"
 	"text/template"
 )
 
@@ -72,6 +73,11 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 }
 
 func (t *nativeTemplate) RenderToFile(content string, params parameters.Parameters, filePath string) error {
+	err := os.MkdirAll(filepath.Dir(filePath), 0755)
+	if err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
 	if err != nil {
 		return err

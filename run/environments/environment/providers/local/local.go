@@ -92,9 +92,6 @@ func (l *localEnvironment) RunTask(ctx context.Context, service services.Service
 		}
 	}
 
-	// TODO: rendering
-	// err := cmd.Render(service)
-
 	command := exec.CommandContext(ctx, cmd.Name, cmd.Args...)
 
 	if err := command.Start(); err != nil {
