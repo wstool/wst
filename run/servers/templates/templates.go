@@ -20,6 +20,7 @@ import (
 )
 
 type Template interface {
+	FilePath() string
 }
 
 type Templates map[string]Template
@@ -47,12 +48,16 @@ func (m *Maker) Make(config map[string]types.ServerTemplate) (Templates, error) 
 	configs := make(Templates)
 	for name, serverTemplate := range config {
 		configs[name] = &nativeTemplate{
-			file: serverTemplate.File,
+			filePath: serverTemplate.File,
 		}
 	}
 	return configs, nil
 }
 
 type nativeTemplate struct {
-	file string
+	filePath string
+}
+
+func (t *nativeTemplate) FilePath() string {
+	return t.filePath
 }

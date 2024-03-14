@@ -38,6 +38,7 @@ type Server interface {
 	User() string
 	Parameters() parameters.Parameters
 	Templates() templates.Templates
+	Template(name string) (templates.Template, bool)
 }
 
 type Servers map[string]map[string]Server
@@ -237,6 +238,11 @@ func (s *nativeServer) Group() string {
 
 func (s *nativeServer) User() string {
 	return s.user
+}
+
+func (s *nativeServer) Template(name string) (templates.Template, bool) {
+	tmpl, ok := s.templates[name]
+	return tmpl, ok
 }
 
 func (s *nativeServer) Templates() templates.Templates {

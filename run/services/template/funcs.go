@@ -7,8 +7,12 @@ import (
 	"text/template"
 )
 
-func (t *nativeTemplate) include(tmplPath string, data interface{}) (string, error) {
-	tmpl, err := template.ParseFiles(tmplPath)
+func (t *nativeTemplate) include(tmplName string, data interface{}) (string, error) {
+	serverTemplate, found := t.svc.Server().Template(tmplName)
+	if !found {
+		return "", fmt.Errorf("failed to find template: %s", tmplName)
+	}
+	tmpl, err := template.ParseFiles(serverTemplate.FilePath())
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}

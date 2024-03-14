@@ -9,8 +9,6 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- configs saving to local service on start
-- loading server templates (custom template function)
 - docker environment integration
 - kubernetes environment integration
 - dry run mode - integrate to action, services and sandboxes
