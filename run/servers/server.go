@@ -32,7 +32,7 @@ import (
 type Server interface {
 	ExpectAction(name string) (actions.ExpectAction, bool)
 	Config(name string) (configs.Config, bool)
-	ConfigPaths() map[string]string
+	Configs() configs.Configs
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
 	Group() string
 	User() string
@@ -255,6 +255,10 @@ func (s *nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
 func (s *nativeServer) Config(name string) (configs.Config, bool) {
 	cfg, ok := s.configs[name]
 	return cfg, ok
+}
+
+func (s *nativeServer) Configs() configs.Configs {
+	return s.configs
 }
 
 func (s *nativeServer) ConfigPaths() map[string]string {

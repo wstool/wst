@@ -6,6 +6,10 @@ type Service struct {
 	service services.Service
 }
 
+func NewService(service services.Service) *Service {
+	return &Service{service: service}
+}
+
 func (s *Service) Address() (string, error) {
 	return s.service.BaseUrl()
 }

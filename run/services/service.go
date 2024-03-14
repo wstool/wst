@@ -32,6 +32,8 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/services/template"
+	"io"
+	"os"
 	"path/filepath"
 )
 
@@ -41,6 +43,7 @@ type Service interface {
 	User() string
 	Group() string
 	Dirs() map[string]string
+	ConfigPaths() map[string]string
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
@@ -113,6 +116,11 @@ func (m *Maker) Make(
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
+		serverParameters, err := m.parametersMaker.Make(serviceConfig.Server.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
 		sandboxName := serviceConfig.Server.Sandbox
 		providerType := providers.Type(sandboxName)
 
@@ -140,20 +148,21 @@ func (m *Maker) Make(
 			}
 
 			nativeConfigs[configName] = nativeServiceConfig{
-				parameters:          serviceServerConfigParameters,
+				parameters:          serviceServerConfigParameters.Inherit(serverParameters),
 				overwriteParameters: serviceServerConfig.OverwriteParameters,
 				config:              config,
 			}
 		}
 
 		service := &nativeService{
-			name:        serviceName,
-			environment: env,
-			scripts:     includedScripts,
-			server:      server,
-			sandbox:     sb,
-			configs:     nativeConfigs,
-			workspace:   filepath.Join(instanceWorkspace, serviceName),
+			name:             serviceName,
+			environment:      env,
+			scripts:          includedScripts,
+			server:           server,
+			serverParameters: serverParameters,
+			sandbox:          sb,
+			configs:          nativeConfigs,
+			workspace:        filepath.Join(instanceWorkspace, serviceName),
 		}
 
 		svcs[serviceName] = service
@@ -173,15 +182,21 @@ type nativeServiceConfig struct {
 }
 
 type nativeService struct {
-	name        string
-	scripts     scripts.Scripts
-	server      servers.Server
-	sandbox     sandbox.Sandbox
-	task        task.Task
-	environment environment.Environment
-	configs     map[string]nativeServiceConfig
-	workspace   string
-	template    template.Template
+	name             string
+	scripts          scripts.Scripts
+	server           servers.Server
+	serverParameters parameters.Parameters
+	sandbox          sandbox.Sandbox
+	task             task.Task
+	environment      environment.Environment
+	configs          map[string]nativeServiceConfig
+	configPaths      map[string]string
+	workspace        string
+	template         template.Template
+}
+
+func (s *nativeService) ConfigPaths() map[string]string {
+	return s.configPaths
 }
 
 func (s *nativeService) User() string {
@@ -216,6 +231,46 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 	return bufio.NewScanner(reader), nil
 }
 
+func (s *nativeService) configPath(config configs.Config) string {
+	return filepath.Join(s.workspace, filepath.Base(s.configPath(config)))
+}
+
+func (s *nativeService) renderConfig(config configs.Config) (string, error) {
+	file, err := os.Open(config.FilePath())
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	configContent, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	configPath := s.configPath(config)
+
+	err = s.template.RenderToFile(string(configContent), config.Parameters(), configPath)
+	if err != nil {
+		return "", err
+	}
+
+	return configPath, nil
+}
+
+func (s *nativeService) renderConfigs() error {
+	configs := s.server.Configs()
+	configPaths := make(map[string]string, len(configs))
+	for configName, config := range configs {
+		path, err := s.renderConfig(config)
+		if err != nil {
+			return err
+		}
+		configPaths[configName] = path
+	}
+	s.configPaths = configPaths
+	return nil
+}
+
 func (s *nativeService) Reload(ctx context.Context) error {
 	hook, err := s.sandbox.Hook(hooks.ReloadHookType)
 	if err != nil {
@@ -244,6 +299,13 @@ func (s *nativeService) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Render configs.
+	err = s.renderConfigs()
+	if err != nil {
+		return err
+	}
+
+	// Execute start hook
 	t, err := hook.Execute(ctx, s)
 	if err != nil {
 		return err
@@ -280,7 +342,7 @@ func (s *nativeService) BaseUrl() (string, error) {
 }
 
 func (s *nativeService) RenderTemplate(text string, params parameters.Parameters) (string, error) {
-	return s.template.Render(text, params)
+	return s.template.RenderToString(text, params)
 }
 
 func (s *nativeService) Sandbox() sandbox.Sandbox {

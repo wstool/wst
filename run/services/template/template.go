@@ -6,12 +6,15 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
-	"log"
+	"io"
+	"os"
 	"text/template"
 )
 
 type Template interface {
-	Render(content string, parameters parameters.Parameters) (string, error)
+	RenderToWriter(content string, parameters parameters.Parameters, writer io.Writer) error
+	RenderToFile(content string, parameters parameters.Parameters, filePath string) error
+	RenderToString(content string, parameters parameters.Parameters) (string, error)
 }
 
 type Maker struct {
@@ -45,23 +48,47 @@ type Data struct {
 	Parameters Parameters
 }
 
-func (t *nativeTemplate) Render(content string, params parameters.Parameters) (string, error) {
+func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parameters, writer io.Writer) error {
 	mainTmpl, err := template.New("main").Funcs(t.funcs()).Parse(content)
 	if err != nil {
-		return "", fmt.Errorf("error parsing main template: %v", err)
+		return fmt.Errorf("error parsing main template: %v", err)
+	}
+	configs := t.svc.ConfigPaths()
+	if configs == nil {
+		return fmt.Errorf("configs are not set")
 	}
 
 	data := &Data{
-		Configs: t.svc.Server().ConfigPaths(),
-		Service: Service{
-			service: t.svc,
-		},
+		Configs:    configs,
+		Service:    *NewService(t.svc),
 		Services:   *NewServices(t.svcs),
-		Parameters: nil,
+		Parameters: NewParameters(params, t),
 	}
+	if err := mainTmpl.Execute(writer, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *nativeTemplate) RenderToFile(content string, params parameters.Parameters, filePath string) error {
+	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if err = t.RenderToWriter(content, params, file); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *nativeTemplate) RenderToString(content string, params parameters.Parameters) (string, error) {
 	var buf bytes.Buffer
-	if err := mainTmpl.Execute(&buf, data); err != nil {
-		log.Fatalf("error executing main template: %v", err)
+	if err := t.RenderToWriter(content, params, &buf); err != nil {
+		return "", err
 	}
 
 	return buf.String(), nil

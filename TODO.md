@@ -9,9 +9,7 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- configs parameter merging
-- configs rendering
-- configs saving to service on start
+- configs saving to local service on start
 - hook rendering
 - actual rendering logic and creating Config
 - loading server templates (custom template function)

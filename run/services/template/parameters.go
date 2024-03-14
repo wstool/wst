@@ -1,26 +1,27 @@
 package template
 
 import (
+	"fmt"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/parameters/parameter"
 )
 
-type Parameters map[string]Parameter
+type Parameters map[string]*Parameter
 
-func NewParameters(parameters parameters.Parameters) Parameters {
-	params := map[string]Parameter{}
-	for key, param := range parameters {
-		params[key] = *NewParameter(param)
+func NewParameters(origParams parameters.Parameters, tmpl Template) Parameters {
+	params := map[string]*Parameter{}
+	for key, param := range origParams {
+		params[key] = NewParameter(param, origParams, tmpl)
 	}
 	return params
 }
 
 // GetString retrieves a string value directly from the parameters.
-func (p Parameters) GetString(key string) string {
+func (p Parameters) GetString(key string) (string, error) {
 	if val, ok := p[key]; ok {
 		return val.ToString()
 	}
-	return ""
+	return "", fmt.Errorf("object string for key [%s] not found", key)
 }
 
 // GetObject retrieves a map as a dynamic object with `ToString` method for each value.
@@ -32,47 +33,72 @@ func (p Parameters) GetObject(key string) Parameters {
 }
 
 // GetObjectString retrieves a string value by the secondKey of the object retrieved by the firstKey
-func (p Parameters) GetObjectString(firstKey, secondKey string) string {
+func (p Parameters) GetObjectString(firstKey, secondKey string) (string, error) {
 	if val, ok := p[firstKey]; ok {
 		params := val.ToObject()
 		if val, ok = params[secondKey]; ok {
 			return val.ToString()
 		}
 	}
-	return ""
+	return "", fmt.Errorf("object string for key [%s][%s] not found", firstKey, secondKey)
 }
 
 // Parameter is used to encapsulate values and provide a ToString method.
 type Parameter struct {
-	parameter parameter.Parameter
+	param            parameter.Parameter
+	params           parameters.Parameters
+	renderedValue    string
+	isRendered       bool
+	startedRendering bool
+	tmpl             Template
 }
 
-func NewParameter(parameter parameter.Parameter) *Parameter {
-	return &Parameter{parameter: parameter}
+func NewParameter(param parameter.Parameter, params parameters.Parameters, tmpl Template) *Parameter {
+	return &Parameter{
+		param:            param,
+		params:           params,
+		tmpl:             tmpl,
+		renderedValue:    "",
+		isRendered:       false,
+		startedRendering: false,
+	}
 }
 
 func (p *Parameter) IsNumber() bool {
-	paramType := p.parameter.Type()
+	paramType := p.param.Type()
 	return paramType == parameter.IntType || paramType == parameter.FloatType
 }
 
 func (p *Parameter) ToNumber() float64 {
-	if p.parameter == nil {
+	if p.param == nil {
 		return 0.0
 	}
-	return p.parameter.FloatValue()
+	return p.param.FloatValue()
 }
 
-func (p *Parameter) ToString() string {
-	if p.parameter == nil {
-		return ""
+func (p *Parameter) ToString() (string, error) {
+	if p.param == nil {
+		return "", fmt.Errorf("trying to render not set parameter")
 	}
-	return p.parameter.StringValue()
+	if p.isRendered {
+		return p.renderedValue, nil
+	}
+	if p.startedRendering {
+		return "", fmt.Errorf("recursive rendering of parameter %s detected", p.param.StringValue())
+	}
+	p.startedRendering = true
+	renderedValue, err := p.tmpl.RenderToString(p.param.StringValue(), p.params)
+	if err != nil {
+		return "", err
+	}
+	p.isRendered = true
+	p.renderedValue = renderedValue
+	return p.renderedValue, nil
 }
 
 func (p *Parameter) ToObject() Parameters {
-	if p.parameter == nil {
+	if p.param == nil {
 		return Parameters{}
 	}
-	return NewParameters(p.parameter.MapValue())
+	return NewParameters(p.param.MapValue(), p.tmpl)
 }
