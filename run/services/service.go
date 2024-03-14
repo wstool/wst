@@ -108,38 +108,40 @@ func (m *Maker) Make(
 			}
 		}
 
-		server, ok := srvs.GetServer(serviceConfig.Server)
+		server, ok := srvs.GetServer(serviceConfig.Server.Name)
 		if !ok {
 			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
 		}
 
-		providerType := providers.Type(serviceConfig.Sandbox)
+		sandboxName := serviceConfig.Server.Sandbox
+		providerType := providers.Type(sandboxName)
 
 		sb, ok := server.Sandbox(providerType)
 		if !ok {
-			return nil, fmt.Errorf("sandbox %s not found for service %s", serviceConfig.Sandbox, serviceName)
+			return nil, fmt.Errorf("sandbox %s not found for service %s", sandboxName, serviceName)
 		}
 
 		env, ok := environments[providerType]
 		if !ok {
-			return nil, fmt.Errorf("environment %s not found for service %s", serviceConfig.Sandbox, serviceName)
+			return nil, fmt.Errorf("environment %s not found for service %s", sandboxName, serviceName)
 		}
 
 		nativeConfigs := make(map[string]nativeServiceConfig)
 
-		for configName, serviceConfig := range serviceConfig.Configs {
+		for configName, serviceServerConfig := range serviceConfig.Server.Configs {
 			config, found := server.Config(configName)
 			if !found {
 				return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
 			}
-			serviceParameters, err := m.parametersMaker.Make(serviceConfig.Parameters)
+
+			serviceServerConfigParameters, err := m.parametersMaker.Make(serviceServerConfig.Parameters)
 			if err != nil {
 				return nil, err
 			}
 
 			nativeConfigs[configName] = nativeServiceConfig{
-				parameters:          serviceParameters,
-				overwriteParameters: serviceConfig.OverwriteParameters,
+				parameters:          serviceServerConfigParameters,
+				overwriteParameters: serviceServerConfig.OverwriteParameters,
 				config:              config,
 			}
 		}

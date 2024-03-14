@@ -26,7 +26,8 @@ type Resources struct {
 
 type ServiceConfig struct {
 	Parameters          Parameters `wst:"parameters,factory=createParameters"`
-	OverwriteParameters bool       `wst:"overwrite_parameters"`
+	OverwriteParameters bool       `wst:"overwrite_parameters,default=true"`
+	Include             bool       `wst:"include,default=true"`
 }
 
 type ServiceScripts struct {
@@ -38,9 +39,14 @@ type ServiceResources struct {
 	Scripts ServiceScripts `wst:"scripts,factory=createServiceScripts"`
 }
 
+type ServiceServer struct {
+	Name    string                   `wst:"name"`
+	Sandbox string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
+	Configs map[string]ServiceConfig `wst:"configs"`
+}
+
 type Service struct {
-	Server    string                   `wst:"server"`
-	Sandbox   string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
-	Resources ServiceResources         `wst:"resources"`
-	Configs   map[string]ServiceConfig `wst:"configs"`
+	Server    ServiceServer    `wst:"server"`
+	Resources ServiceResources `wst:"resources"`
+	Requires  []string         `wst:"requires"`
 }

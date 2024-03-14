@@ -58,8 +58,9 @@ type SandboxHook interface {
 }
 
 type CommonSandbox struct {
-	Dirs  map[string]string      `wst:"dirs,keys=conf|run|script"`
-	Hooks map[string]SandboxHook `wst:"hooks,factory=createHooks"`
+	Available bool                   `wst:"available"`
+	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
 func (s *CommonSandbox) Type() SandboxType {

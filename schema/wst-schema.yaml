@@ -30,6 +30,12 @@ $defs:
           - type: [ string, number, boolean ]
           - $ref: '#/$defs/parameters'
 
+  parametersOverwrite:
+    title: Parameters overwriting
+    description: Specifies whether parameters should be overwritten or just merged.
+    type: boolean
+    default: true
+
   environments:
     title: Environment definitions
     description: |
@@ -263,6 +269,11 @@ $defs:
       a set of hooks is common to all sandboxes.
     type: object
     properties:
+      available:
+        title: Availability switch
+        description: |
+          This property specifies whether the sandbox is available. It is usually used to disable some sandboxes
+          on server platforms that have no availability for them (e.g. RHEL containers).
       dirs:
         title: Sandbox directories
         description: |
@@ -453,14 +464,35 @@ $defs:
             Server points to the server used by the service. As the server defines the configuration, it's
             important to ensure that a compatible server is used. The service name is used if the value isn't
             specified.
-          type: string
-        sandbox:
-          title: Sandbox to use
-          description: |
-            Sandbox should define the server sandbox in which to run the service.
-          default: local
-          type: string
-          enum: [ local, docker, kubernetes ]
+          type: object
+          properties:
+            name:
+              title: Server name
+              description: The name is used for selecting the server used by service.
+            sandbox:
+              title: Sandbox to use
+              description: |
+                Sandbox should define the server sandbox in which to run the service.
+              default: local
+              type: string
+              enum: [ local, docker, kubernetes ]
+            configs:
+              title: Configuration files to include
+              description: |
+                This object defines the configuration files that will be included from the server. The key is the
+                configuration filename as defined in the server, and the value is the configuration object.
+              type: object
+              additionalProperties:
+                type: [ object ]
+                properties:
+                  include:
+                    title: Service inclusion switch
+                    description: Whether the server config is going to be included to the service.
+                    default: true
+                  overwrite_parameters:
+                    $ref: '#/$defs/parametersOverwrite'
+                  parameters:
+                    $ref: '#/$defs/parameters'
         resources:
           title: Resource included in the service
           description: It is container for scripts and other resources defined in the future.
@@ -476,21 +508,10 @@ $defs:
               type: [ array, boolean ]
               items:
                 type: string
-        configs:
-          title: Configuration files to include
+        requires:
+          title: Required services
           description: |
-            This object defines the configuration files that will be included from the server. The key is the
-            configuration filename as defined in the server, and the value is the configuration object.
-          type: object
-          additionalProperties:
-            type: [ object ]
-            properties:
-              overwrite_parameters:
-                title: Parameters overwriting
-                description: Specifies whether parameters should be overwritten or just merged.
-                type: boolean
-              parameters:
-                '#/$defs/parameters'
+            The list of services that has to be started before starting the service containing this property.  
 
   customExpectation:
     title: Custom expectation
@@ -501,8 +522,10 @@ $defs:
       name:
         title: Custom expectation name
         description: The name is used for selecting the expectation from the server expectations.
+      overwrite_parameters:
+        $ref: '#/$dev/parametersOverwrite'
       parameters:
-        '#/$defs/parameters'
+        $ref: '#/$defs/parameters'
 
   actionExpectation:
     title: Expectation action
@@ -565,7 +588,7 @@ $defs:
         enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
         default: GET
       headers:
-        '#/$defs/headers'
+        $ref: '#/$defs/headers'
 
   actionRestart:
     title: Restart services
