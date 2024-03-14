@@ -10,8 +10,6 @@ in the future.
 
 ### Run
 - configs saving to local service on start
-- hook rendering
-- actual rendering logic and creating Config
 - loading server templates (custom template function)
 - docker environment integration
 - kubernetes environment integration

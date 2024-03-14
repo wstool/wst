@@ -50,6 +50,7 @@ type Service interface {
 	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
 	Sandbox() sandbox.Sandbox
 	Server() servers.Server
+	ServerParameters() parameters.Parameters
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
@@ -213,6 +214,10 @@ func (s *nativeService) Dirs() map[string]string {
 
 func (s *nativeService) Server() servers.Server {
 	return s.server
+}
+
+func (s *nativeService) ServerParameters() parameters.Parameters {
+	return s.serverParameters
 }
 
 func (s *nativeService) SetTemplate(template template.Template) {

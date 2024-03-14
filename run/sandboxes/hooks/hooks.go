@@ -182,25 +182,43 @@ type HookArgsCommand struct {
 	Args       []string
 }
 
+func (h *HookArgsCommand) newCommand(service services.Service) (*environment.Command, error) {
+	executable, err := service.RenderTemplate(h.Executable, service.ServerParameters())
+	if err != nil {
+		return nil, err
+	}
+	args := make([]string, len(h.Args))
+	for i, arg := range h.Args {
+		args[i], err = service.RenderTemplate(arg, service.ServerParameters())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cmd := &environment.Command{
+		Name: executable,
+		Args: args,
+	}
+	return cmd, nil
+}
+
 func (h *HookArgsCommand) Execute(ctx context.Context, service services.Service) (task.Task, error) {
 	serviceTask := service.Task()
-	var err error
+	command, err := h.newCommand(service)
+	if err != nil {
+		return nil, err
+	}
+
 	if h.Type == StartHookType {
 		if serviceTask != nil {
 			return nil, errors.New("task has already been created which is likely because start already done")
 		}
-		serviceTask, err = service.Environment().RunTask(ctx, service, &environment.Command{
-			Name: h.Executable,
-			Args: h.Args,
-		})
+		serviceTask, err = service.Environment().RunTask(ctx, service, command)
 	} else {
 		if serviceTask == nil {
 			return nil, errors.New("task has not been created which is likely because start is not done")
 		}
-		err = service.Environment().ExecTaskCommand(ctx, service, serviceTask, &environment.Command{
-			Name: h.Executable,
-			Args: h.Args,
-		})
+		err = service.Environment().ExecTaskCommand(ctx, service, serviceTask, command)
 	}
 
 	if err != nil {
