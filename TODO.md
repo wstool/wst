@@ -12,6 +12,9 @@ in the future.
 - kubernetes environment integration
 - docker environment integration
 - dry run mode - integrate to action, services and sandboxes
+- parameters overwriting (option implementation)
+- inactive configs omission
+- not available sandbox omission
 - load testing action (wrk runner)
 - tests
 
