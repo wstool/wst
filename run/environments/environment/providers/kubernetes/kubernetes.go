@@ -49,11 +49,25 @@ func CreateMaker(fnd app.Foundation) *Maker {
 }
 
 func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
+	kubeConfig, err := clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a clientset for interacting with the Kubernetes API
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &kubernetesEnvironment{
-		fnd:            m.fnd,
-		kubeconfigPath: config.Kubeconfig,
-		namespace:      config.Namespace,
-		useFullName:    false,
+		fnd:              m.fnd,
+		kubeconfigPath:   config.Kubeconfig,
+		namespace:        config.Namespace,
+		useFullName:      false,
+		deploymentClient: clientset.AppsV1().Deployments(config.Namespace),
+		podClient:        clientset.CoreV1().Pods(config.Namespace),
+		serviceClient:    clientset.CoreV1().Services(config.Namespace),
 	}, nil
 }
 
@@ -69,21 +83,6 @@ type kubernetesEnvironment struct {
 }
 
 func (l *kubernetesEnvironment) Init(ctx context.Context) error {
-	config, err := clientcmd.BuildConfigFromFlags("", l.kubeconfigPath)
-	if err != nil {
-		return err
-	}
-
-	// Create a clientset for interacting with the Kubernetes API
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-
-	l.deploymentClient = clientset.AppsV1().Deployments(l.namespace)
-	l.podClient = clientset.CoreV1().Pods(l.namespace)
-	l.serviceClient = clientset.CoreV1().Services(l.namespace)
-
 	return nil
 }
 
@@ -91,20 +90,20 @@ func (l *kubernetesEnvironment) Destroy(ctx context.Context) error {
 	var err error
 
 	// Iterate over all tasks to delete services and deployments
-	for _, task := range l.tasks {
+	for _, kubeTask := range l.tasks {
 		// Delete the service
-		if task.service != nil {
-			err = l.serviceClient.Delete(ctx, task.serviceName, metav1.DeleteOptions{})
+		if kubeTask.service != nil {
+			err = l.serviceClient.Delete(ctx, kubeTask.serviceName, metav1.DeleteOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to delete service %s: %w", task.serviceName, err)
+				return fmt.Errorf("failed to delete service %s: %w", kubeTask.serviceName, err)
 			}
 		}
 
 		// Delete the deployment
-		if task.deployment != nil {
-			err = l.deploymentClient.Delete(ctx, task.deployment.Name, metav1.DeleteOptions{})
+		if kubeTask.deployment != nil {
+			err = l.deploymentClient.Delete(ctx, kubeTask.deployment.Name, metav1.DeleteOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to delete deployment %s: %w", task.deployment.Name, err)
+				return fmt.Errorf("failed to delete deployment %s: %w", kubeTask.deployment.Name, err)
 			}
 		}
 	}
@@ -302,11 +301,11 @@ func (l *kubernetesEnvironment) RunTask(ctx context.Context, service services.Se
 }
 
 func (l *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
-	return fmt.Errorf("executing command is not currently supported by Kubernetes environment")
+	return fmt.Errorf("executing command is not currently supported in Kubernetes environment")
 }
 
 func (l *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
-	return fmt.Errorf("executing signal is not currently supported by Kubernetes environment")
+	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
 func (l *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
@@ -348,6 +347,10 @@ type kubernetesTask struct {
 	serviceName     string
 	serviceUrl      string
 	deploymentReady bool
+}
+
+func (t *kubernetesTask) Id() string {
+	return t.serviceName
 }
 
 func (t *kubernetesTask) Name() string {

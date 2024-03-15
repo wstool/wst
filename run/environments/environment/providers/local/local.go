@@ -103,7 +103,8 @@ func (l *localEnvironment) RunTask(ctx context.Context, service services.Service
 	}
 
 	return &localTask{
-		cmd: command,
+		cmd:         command,
+		serviceName: service.Name(),
 	}, nil
 }
 
@@ -186,7 +187,16 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 }
 
 type localTask struct {
-	cmd *exec.Cmd
+	cmd         *exec.Cmd
+	serviceName string
+}
+
+func (t *localTask) Id() string {
+	return t.serviceName
+}
+
+func (t *localTask) Name() string {
+	return t.serviceName
 }
 
 func (t *localTask) BaseUrl() string {
