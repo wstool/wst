@@ -28,6 +28,7 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
+	k8s.io/client-go v0.29.2 // indirect
 )
 
 replace github.com/imdario/mergo => dario.cat/mergo v1.0.0

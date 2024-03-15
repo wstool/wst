@@ -14,7 +14,8 @@ type DockerEnvironment struct {
 }
 
 type KubernetesEnvironment struct {
-	NamePrefix string `wst:"name_prefix"`
+	Namespace  string `wst:"name_prefix"`
+	Kubeconfig string `wst:"kubeconfig,path"`
 }
 
 type Environment interface {

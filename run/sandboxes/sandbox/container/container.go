@@ -19,6 +19,7 @@ package container
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/sandbox/common"
 )
 
@@ -41,11 +42,13 @@ func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
 	}
 
 	sandbox := &Sandbox{
-		Sandbox:          *commonSandbox,
-		ImageName:        config.Image.Name,
-		ImageTag:         config.Image.Tag,
-		RegistryUsername: config.Registry.Auth.Username,
-		RegistryPassword: config.Registry.Auth.Password,
+		Sandbox: *commonSandbox,
+		config: sandbox.ContainerConfig{
+			ImageName:        config.Image.Name,
+			ImageTag:         config.Image.Tag,
+			RegistryUsername: config.Registry.Auth.Username,
+			RegistryPassword: config.Registry.Auth.Password,
+		},
 	}
 
 	return sandbox, nil
@@ -53,25 +56,34 @@ func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
 
 type Sandbox struct {
 	common.Sandbox
-	ImageName        string
-	ImageTag         string
-	RegistryUsername string
-	RegistryPassword string
+	config sandbox.ContainerConfig
 }
 
-func (s *Sandbox) InheritContainer(parentSandbox *Sandbox) error {
-	s.Sandbox.Inherit(parentSandbox)
-	if s.ImageName == "" {
-		s.ImageName = parentSandbox.ImageName
+func (s *Sandbox) ContainerConfig() (*sandbox.ContainerConfig, error) {
+	return &s.config, nil
+}
+
+func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
+	err := s.Sandbox.Inherit(parentSandbox)
+	if err != nil {
+		return err
 	}
-	if s.ImageTag == "" {
-		s.ImageTag = parentSandbox.ImageTag
+	containerConfig, err := parentSandbox.ContainerConfig()
+	if err != nil {
+		return err
 	}
-	if s.RegistryUsername == "" {
-		s.RegistryUsername = parentSandbox.RegistryUsername
+
+	if s.config.ImageName == "" {
+		s.config.ImageName = containerConfig.ImageName
 	}
-	if s.RegistryPassword == "" {
-		s.RegistryPassword = parentSandbox.RegistryPassword
+	if s.config.ImageTag == "" {
+		s.config.ImageTag = containerConfig.ImageTag
+	}
+	if s.config.RegistryUsername == "" {
+		s.config.RegistryUsername = containerConfig.RegistryUsername
+	}
+	if s.config.RegistryPassword == "" {
+		s.config.RegistryPassword = containerConfig.RegistryPassword
 	}
 
 	return nil

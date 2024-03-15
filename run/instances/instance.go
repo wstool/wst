@@ -72,7 +72,7 @@ func (m *InstanceMaker) Make(
 		return nil, err
 	}
 
-	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, instanceWorkspace)
+	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, name, instanceWorkspace)
 	if err != nil {
 		return nil, err
 	}

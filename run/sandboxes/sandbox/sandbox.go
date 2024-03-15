@@ -26,10 +26,22 @@ const (
 	ScriptDirType         = "script"
 )
 
+type ContainerConfig struct {
+	ImageName        string
+	ImageTag         string
+	RegistryUsername string
+	RegistryPassword string
+}
+
+func (c *ContainerConfig) Image() string {
+	return c.ImageName + ":" + c.ImageTag
+}
+
 type Sandbox interface {
 	Dirs() map[DirType]string
 	Dir(dirType DirType) (string, error)
 	Hooks() map[hooks.HookType]hooks.Hook
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
+	ContainerConfig() (*ContainerConfig, error)
 	Inherit(parentSandbox Sandbox) error
 }

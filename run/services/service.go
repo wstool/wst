@@ -40,6 +40,7 @@ import (
 type Service interface {
 	BaseUrl() (string, error)
 	Name() string
+	FullName() string
 	User() string
 	Group() string
 	Dirs() map[sandbox.DirType]string
@@ -94,6 +95,7 @@ func (m *Maker) Make(
 	scriptResources scripts.Scripts,
 	srvs servers.Servers,
 	environments environments.Environments,
+	instanceName string,
 	instanceWorkspace string,
 ) (Services, error) {
 	svcs := make(Services)
@@ -158,6 +160,7 @@ func (m *Maker) Make(
 
 		service := &nativeService{
 			name:             serviceName,
+			fullName:         instanceName + "-" + serviceName,
 			environment:      env,
 			scripts:          includedScripts,
 			server:           server,
@@ -185,6 +188,7 @@ type nativeServiceConfig struct {
 
 type nativeService struct {
 	name                   string
+	fullName               string
 	scripts                scripts.Scripts
 	server                 servers.Server
 	serverParameters       parameters.Parameters
@@ -354,6 +358,10 @@ func (s *nativeService) Stop(ctx context.Context) error {
 
 func (s *nativeService) Name() string {
 	return s.name
+}
+
+func (s *nativeService) FullName() string {
+	return s.fullName
 }
 
 func (s *nativeService) BaseUrl() (string, error) {
