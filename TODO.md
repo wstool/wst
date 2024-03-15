@@ -9,12 +9,18 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- kubernetes environment integration
-- docker environment integration
-- dry run mode - integrate to action, services and sandboxes
-- parameters overwriting (option implementation)
-- inactive configs omission
 - not available sandbox omission
+- inactive configs omission
+- kubernetes integration
+  - port setup and internal routing paths vs externals routing paths
+  - adding config volumes
+  - add health probes setup
+- docker integration
+  - port setup and internal routing paths (creating a network) vs externals routing paths
+  - volume config and resources
+  - health check - waiting for container to be able to serve the traffic
+- parameters overwriting (option implementation)
+- dry run mode - integrate to action, services and sandboxes
 - load testing action (wrk runner)
 - tests
 
