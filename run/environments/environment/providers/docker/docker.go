@@ -25,6 +25,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"io"
 	"os"
+	"time"
 
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
@@ -86,6 +87,15 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 	return nil
 }
 
+func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID string) (bool, error) {
+	resp, err := e.cli.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect container %s: %w", containerID, err)
+	}
+
+	return resp.State.Running, nil
+}
+
 func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
 	sandboxContainerConfig, err := service.Sandbox().ContainerConfig()
 	if err != nil {
@@ -134,19 +144,34 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		return nil, fmt.Errorf("failed to start Docker container %s: %w", containerResp.ID, err)
 	}
 
+	containerId := containerResp.ID
 	// Construct your dockerTask with necessary details
 	dockTask := &dockerTask{
 		containerName:  containerName,
-		containerId:    containerResp.ID,
+		containerId:    containerId,
 		containerReady: false,
 	}
 
 	e.tasks[service.FullName()] = dockTask
 
-	// TODO: add logic to verify that container is ready (some sort of health check)
-	dockTask.containerReady = true
+	timeout := time.After(30 * time.Second)
+	tick := time.Tick(1 * time.Second)
 
-	return dockTask, nil
+	for {
+		select {
+		case <-timeout:
+			return nil, fmt.Errorf("timed out waiting for container to be ready")
+		case <-tick:
+			ready, err := e.isContainerReady(context.Background(), containerId)
+			if err != nil {
+				return nil, fmt.Errorf("failed checking of container readiness: %v\n", err)
+			}
+			if ready {
+				dockTask.containerReady = true
+				return dockTask, nil
+			}
+		}
+	}
 }
 
 func (e *dockerEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
