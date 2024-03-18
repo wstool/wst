@@ -9,8 +9,6 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- not available sandbox omission
-- inactive configs omission
 - kubernetes integration
   - port setup and internal routing paths vs externals routing paths
   - adding config volumes

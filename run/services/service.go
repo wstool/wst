@@ -144,20 +144,22 @@ func (m *Maker) Make(
 		nativeConfigs := make(map[string]nativeServiceConfig)
 
 		for configName, serviceServerConfig := range serviceConfig.Server.Configs {
-			config, found := server.Config(configName)
-			if !found {
-				return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
-			}
+			if serviceServerConfig.Include {
+				config, found := server.Config(configName)
+				if !found {
+					return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
+				}
 
-			serviceServerConfigParameters, err := m.parametersMaker.Make(serviceServerConfig.Parameters)
-			if err != nil {
-				return nil, err
-			}
+				serviceServerConfigParameters, err := m.parametersMaker.Make(serviceServerConfig.Parameters)
+				if err != nil {
+					return nil, err
+				}
 
-			nativeConfigs[configName] = nativeServiceConfig{
-				parameters:          serviceServerConfigParameters.Inherit(serverParameters),
-				overwriteParameters: serviceServerConfig.OverwriteParameters,
-				config:              config,
+				nativeConfigs[configName] = nativeServiceConfig{
+					parameters:          serviceServerConfigParameters.Inherit(serverParameters),
+					overwriteParameters: serviceServerConfig.OverwriteParameters,
+					config:              config,
+				}
 			}
 		}
 
