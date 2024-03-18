@@ -61,17 +61,19 @@ func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environme
 	}
 
 	return &kubernetesEnvironment{
-		fnd:              m.fnd,
-		kubeconfigPath:   config.Kubeconfig,
-		namespace:        config.Namespace,
-		useFullName:      false,
-		deploymentClient: clientset.AppsV1().Deployments(config.Namespace),
-		podClient:        clientset.CoreV1().Pods(config.Namespace),
-		serviceClient:    clientset.CoreV1().Services(config.Namespace),
+		ContainerEnvironment: *environment.NewContainerEnvironment(&config.ContainerEnvironment),
+		fnd:                  m.fnd,
+		kubeconfigPath:       config.Kubeconfig,
+		namespace:            config.Namespace,
+		useFullName:          false,
+		deploymentClient:     clientset.AppsV1().Deployments(config.Namespace),
+		podClient:            clientset.CoreV1().Pods(config.Namespace),
+		serviceClient:        clientset.CoreV1().Services(config.Namespace),
 	}, nil
 }
 
 type kubernetesEnvironment struct {
+	environment.ContainerEnvironment
 	fnd              app.Foundation
 	kubeconfigPath   string
 	namespace        string

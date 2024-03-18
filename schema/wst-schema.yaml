@@ -36,39 +36,56 @@ $defs:
     type: boolean
     default: true
 
-  environments:
-    title: Environment definitions
+  commonEnvironment:
+    title: Common environment
     description: |
-      Environments can be specified either as an object defining the used sandboxes or as a string representing a path
-      to fetch sandbox definitions from.
-    type: [ object, string ]
+      The common environment serves as a base environment for all environments.
     properties:
-      local:
-        title: Local environment configuration
+      ports:
+        title: Environment ports
+        description: The ports specifies the port range that can be used by services in environment
         type: object
         properties:
-          ports:
-            title: Range of available ports
-            type: object
-            properties:
-              from:
-                title: Start of the port range
-                type: integer
-              to:
-                title: End of the port range
-                type: integer
+          start:
+            title: Ports range start
+            type: integer
+          end:
+            title: Ports range end
+            type: integer
 
-      docker:
-        title: Kubernetes environment configuration
+  containerEnvironment:
+    title: Container environment
+    description: |
+      The container environment serves as a base environment for all environments that run OCI containers.
+    allOf:
+      - $ref: '#/$defs/commonEnvironment'
+      - title: Container specific properties
         type: object
         properties:
-          namespace:
+          registry:
+            $ref: '#/$defs/containerRegistry'
+
+  dockerEnvironment:
+    title: Docker environment
+    description: |
+      The Docker environment handles communication with Docker daemon.
+    allOf:
+      - $ref: '#/$defs/containerEnvironment'
+      - title: Docker specific properties
+        type: object
+        properties:
+          name_prefix:
             title: Prefix for the network and services names
             description: The namespace is optional and
             type: string
 
-      kubernetes:
-        title: Kubernetes environment configuration
+  kubernetesEnvironment:
+    title: Kubernetes environment
+    description: |
+      The Kubernetes environment handles communication with Docker daemon.
+    allOf:
+      - $ref: '#/$defs/containerEnvironment'
+      - title: Kubernetes specific properties
         type: object
         properties:
           namespace:
@@ -77,6 +94,24 @@ $defs:
           kubeconfig:
             title: Kubernetes config file path
             type: string
+
+  environments:
+    title: Environment definitions
+    description: |
+      Environments can be specified either as an object defining the used sandboxes or as a string representing a path
+      to fetch sandbox definitions from.
+    type: [ object, string ]
+    properties:
+      common:
+        $ref: '#/$defs/commonEnvironment'
+      local:
+        $ref: '#/$defs/commonEnvironment'
+      container:
+        $ref: '#/$defs/containerEnvironment'
+      docker:
+        $ref: '#/$defs/dockerEnvironment'
+      kubernetes:
+        $ref: '#/$defs/kubernetesEnvironment'
 
   headers:
     title: HTTP Headers
@@ -308,6 +343,23 @@ $defs:
           reload:
             $ref: '#/$defs/sandboxHook'
 
+  containerRegistry:
+    title: Container registry
+    description: |
+      This property is used to pull and push images from and to the registry.
+    type: object
+    properties:
+      auth:
+        title: Registry authentication credentials
+        type: object
+        properties:
+          username:
+            title: Registry user username
+            type: string
+          password:
+            title: Registry user password
+            type: string
+
   containerSandbox:
     title: Container sandbox
     description: |
@@ -330,21 +382,8 @@ $defs:
                     title: Image tag
                     type: string
           registry:
-            title: Container registry
-            description: |
-              This property is used to pull and push images from and to the registry.
-            type: object
-            properties:
-              auth:
-                title: Registry authentication credentials
-                type: object
-                properties:
-                  username:
-                    title: Registry user username
-                    type: string
-                  password:
-                    title: Registry user password
-                    type: string
+            $ref: '#/$defs/containerRegistry'
+
 
   sandboxes:
     title: Sandboxes definitions

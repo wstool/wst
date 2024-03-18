@@ -9,6 +9,8 @@ in the future.
 - possibly some other helpers
 
 ### Run
+- environments merging
+  - spec and instance environment merging followed by common and container environment merging
 - kubernetes integration
   - port setup and internal routing paths vs externals routing paths
   - adding config volumes

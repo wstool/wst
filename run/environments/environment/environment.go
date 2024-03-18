@@ -16,6 +16,7 @@ package environment
 
 import (
 	"context"
+	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/services"
@@ -28,6 +29,20 @@ type Command struct {
 	Args []string
 }
 
+type Ports struct {
+	Start int32
+	End   int32
+}
+
+type ContainerRegistryAuth struct {
+	Username string
+	Password string
+}
+
+type ContainerRegistry struct {
+	Auth ContainerRegistryAuth
+}
+
 type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
@@ -36,4 +51,53 @@ type Environment interface {
 	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
 	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error
 	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error)
+	PortsStart() int32
+	PortsEnd() int32
+	ContainerRegistry() *ContainerRegistry
+}
+
+type CommonEnvironment struct {
+	Ports Ports
+}
+
+func NewCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
+	return &CommonEnvironment{
+		Ports: Ports{
+			Start: config.Ports.Start,
+			End:   config.Ports.End,
+		},
+	}
+}
+
+func (e *CommonEnvironment) PortsStart() int32 {
+	return e.Ports.Start
+}
+
+func (e *CommonEnvironment) PortsEnd() int32 {
+	return e.Ports.End
+}
+
+func (e *CommonEnvironment) ContainerRegistry() *ContainerRegistry {
+	return nil
+}
+
+type ContainerEnvironment struct {
+	CommonEnvironment
+	Registry ContainerRegistry
+}
+
+func NewContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
+	return &ContainerEnvironment{
+		CommonEnvironment: *NewCommonEnvironment(&config.CommonEnvironment),
+		Registry: ContainerRegistry{
+			Auth: ContainerRegistryAuth{
+				Username: config.Registry.Auth.Username,
+				Password: config.Registry.Auth.Password,
+			},
+		},
+	}
+}
+
+func (e *ContainerEnvironment) ContainerRegistry() *ContainerRegistry {
+	return &e.Registry
 }

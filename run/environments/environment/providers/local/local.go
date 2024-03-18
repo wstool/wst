@@ -46,18 +46,16 @@ func (m *Maker) Make(
 	instanceWorkspace string,
 ) (environment.Environment, error) {
 	return &localEnvironment{
-		fnd:         m.fnd,
-		portsStart:  config.Ports.From,
-		portsEnd:    config.Ports.To,
-		workspace:   filepath.Join(instanceWorkspace, "envs", "local"),
-		initialized: false,
+		CommonEnvironment: *environment.NewCommonEnvironment(&config.CommonEnvironment),
+		fnd:               m.fnd,
+		workspace:         filepath.Join(instanceWorkspace, "envs", "local"),
+		initialized:       false,
 	}, nil
 }
 
 type localEnvironment struct {
+	environment.CommonEnvironment
 	fnd         app.Foundation
-	portsStart  int16
-	portsEnd    int16
 	instance    instances.Instance
 	workspace   string
 	initialized bool

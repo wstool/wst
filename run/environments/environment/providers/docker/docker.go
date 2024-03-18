@@ -51,12 +51,14 @@ func (m *Maker) Make(config *types.DockerEnvironment) (environment.Environment, 
 	}
 
 	return &dockerEnvironment{
-		cli:        cli,
-		namePrefix: config.NamePrefix,
+		ContainerEnvironment: *environment.NewContainerEnvironment(&config.ContainerEnvironment),
+		cli:                  cli,
+		namePrefix:           config.NamePrefix,
 	}, nil
 }
 
 type dockerEnvironment struct {
+	environment.ContainerEnvironment
 	cli        *client.Client
 	namePrefix string
 	tasks      map[string]*dockerTask

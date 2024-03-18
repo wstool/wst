@@ -1,20 +1,31 @@
 package types
 
-type LocalEnvironmentPorts struct {
-	From int16 `wst:"from"`
-	To   int16 `wst:"to"`
+type CommonEnvironmentPorts struct {
+	Start int32 `wst:"start"`
+	End   int32 `wst:"end"`
+}
+
+type CommonEnvironment struct {
+	Ports CommonEnvironmentPorts `wst:"ports"`
 }
 
 type LocalEnvironment struct {
-	Ports LocalEnvironmentPorts `wst:"ports"`
+	CommonEnvironment
+}
+
+type ContainerEnvironment struct {
+	CommonEnvironment
+	Registry ContainerRegistry `wst:"registry"`
 }
 
 type DockerEnvironment struct {
+	ContainerEnvironment
 	NamePrefix string `wst:"name_prefix"`
 }
 
 type KubernetesEnvironment struct {
-	Namespace  string `wst:"name_prefix"`
+	ContainerEnvironment
+	Namespace  string `wst:"namespace"`
 	Kubeconfig string `wst:"kubeconfig,path"`
 }
 
