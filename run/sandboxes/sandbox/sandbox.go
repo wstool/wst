@@ -38,6 +38,7 @@ func (c *ContainerConfig) Image() string {
 }
 
 type Sandbox interface {
+	Available() bool
 	Dirs() map[DirType]string
 	Dir(dirType DirType) (string, error)
 	Hooks() map[hooks.HookType]hooks.Hook

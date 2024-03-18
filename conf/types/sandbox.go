@@ -58,13 +58,17 @@ type SandboxHook interface {
 }
 
 type CommonSandbox struct {
-	Available bool                   `wst:"available"`
+	Available bool                   `wst:"available,default=true"`
 	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
 func (s *CommonSandbox) Type() SandboxType {
 	return CommonSandboxType
+}
+
+func (s *CommonSandbox) IsAvailable() bool {
+	return s.Available
 }
 
 type LocalSandbox struct {
@@ -117,4 +121,5 @@ func (s *KubernetesSandbox) Type() SandboxType {
 
 type Sandbox interface {
 	Type() SandboxType
+	IsAvailable() bool
 }

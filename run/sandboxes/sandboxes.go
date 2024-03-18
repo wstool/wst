@@ -257,6 +257,9 @@ func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, e
 		mergedCommon.Hooks[k] = v
 	}
 
+	// Available is always set from the server
+	mergedCommon.Available = serverCommon.Available
+
 	// Return the new, merged CommonSandbox as a Sandbox interface.
 	return mergedCommon, nil
 }

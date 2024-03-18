@@ -53,14 +53,20 @@ func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 	}
 
 	return &Sandbox{
-		dirs:  sandboxDirs,
-		hooks: sandboxHooks,
+		available: config.Available,
+		dirs:      sandboxDirs,
+		hooks:     sandboxHooks,
 	}, nil
 }
 
 type Sandbox struct {
-	dirs  map[sandbox.DirType]string
-	hooks map[hooks.HookType]hooks.Hook
+	available bool
+	dirs      map[sandbox.DirType]string
+	hooks     map[hooks.HookType]hooks.Hook
+}
+
+func (s *Sandbox) Available() bool {
+	return s.available
 }
 
 func (s *Sandbox) Dirs() map[sandbox.DirType]string {

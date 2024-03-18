@@ -132,6 +132,9 @@ func (m *Maker) Make(
 		if !ok {
 			return nil, fmt.Errorf("sandbox %s not found for service %s", sandboxName, serviceName)
 		}
+		if !sb.Available() {
+			return nil, fmt.Errorf("sandbox %s is not available for service %s", sandboxName, serviceName)
+		}
 
 		env, ok := environments[providerType]
 		if !ok {
