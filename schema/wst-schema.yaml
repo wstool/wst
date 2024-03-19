@@ -425,6 +425,17 @@ $defs:
       name:
         title: Server name
         type: string
+      user:
+        title: Server user
+        description: Default user for the server. If not set, then currently logged in user is used.
+        type: string
+      group:
+        title: Server group
+        description: Default group for the server. If not set, then currently logged in user group is used.
+        type: string
+      port:
+        title: Server primary exported port
+        type: string
       configs:
         title: Configuration files
         type: object

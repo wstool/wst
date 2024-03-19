@@ -1,6 +1,9 @@
 package template
 
-import "github.com/bukka/wst/run/services"
+import (
+	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/services"
+)
 
 type Service struct {
 	service services.Service
@@ -11,10 +14,10 @@ func NewService(service services.Service) *Service {
 }
 
 func (s *Service) Address() (string, error) {
-	return s.service.BaseUrl()
+	return s.service.PrivateUrl()
 }
 
-func (s *Service) Dirs() map[string]string {
+func (s *Service) Dirs() map[sandbox.DirType]string {
 	return s.service.Dirs()
 }
 

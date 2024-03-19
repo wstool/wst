@@ -21,6 +21,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/providers"
 	apitypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"io"
@@ -59,9 +60,10 @@ func (m *Maker) Make(config *types.DockerEnvironment) (environment.Environment, 
 
 type dockerEnvironment struct {
 	environment.ContainerEnvironment
-	cli        *client.Client
-	namePrefix string
-	tasks      map[string]*dockerTask
+	cli         *client.Client
+	namePrefix  string
+	networkName string
+	tasks       map[string]*dockerTask
 }
 
 func (e *dockerEnvironment) Init(ctx context.Context) error {
@@ -69,6 +71,7 @@ func (e *dockerEnvironment) Init(ctx context.Context) error {
 }
 
 func (e *dockerEnvironment) Destroy(ctx context.Context) error {
+	// TODO: do not return afte first error but try to destroy as much as possible (continue destroying)
 	for _, dockTask := range e.tasks {
 		containerId := dockTask.containerId
 		// Stop the container
@@ -86,6 +89,11 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 	// Clear the tasks map after successful cleanup
 	e.tasks = make(map[string]*dockerTask)
 
+	// Delete network
+	if err := e.cli.NetworkRemove(ctx, e.networkName); err != nil {
+		return fmt.Errorf("failed to remove network %s: %w", e.networkName, err)
+	}
+
 	return nil
 }
 
@@ -98,6 +106,21 @@ func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID st
 	return resp.State.Running, nil
 }
 
+// Function to create network if it doesn't exist
+func (e *dockerEnvironment) ensureNetwork(ctx context.Context) error {
+	if e.networkName != "" {
+		return nil
+	}
+	e.networkName = e.namePrefix
+	_, err := e.cli.NetworkCreate(ctx, e.networkName, apitypes.NetworkCreate{
+		Driver: "bridge",
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
 	sandboxContainerConfig, err := service.Sandbox().ContainerConfig()
 	if err != nil {
@@ -107,6 +130,10 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	var command []string
 	if cmd.Name != "" {
 		command = append([]string{cmd.Name}, cmd.Args...)
+	}
+
+	if err = e.ensureNetwork(ctx); err != nil {
+		return nil, err
 	}
 
 	// 1. Pull the Docker image if not already present
@@ -122,20 +149,31 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		Cmd:   command,
 	}
 
-	// Example: Construct host configuration, such as port bindings
-	hostConfig := &container.HostConfig{
-		// Example: Port bindings
-		PortBindings: nat.PortMap{
-			// TODO: make configurable
-			"80/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "8080"}},
+	serverPort := string(service.Port())
+	hostUrl := ""
+	var hostConfig *container.HostConfig
+	if service.IsPublic() {
+		hostPort := string(e.ReservePort())
+		portMapName := nat.Port(serverPort + "/tcp")
+		hostConfig = &container.HostConfig{
+			PortBindings: nat.PortMap{
+				portMapName: []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: hostPort}},
+			},
+		}
+		hostUrl = "http://localhost:" + hostPort
+	} else {
+		hostConfig = &container.HostConfig{}
+	}
+
+	networkingConfig := &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			e.networkName: {},
 		},
 	}
 
 	// 2. Create the Docker container
-
 	containerName := fmt.Sprintf("%s-%s", e.namePrefix, service.Name())
-	// TODO: create network
-	containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
+	containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker container for service %s: %w", service.Name(), err)
 	}
@@ -149,9 +187,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	containerId := containerResp.ID
 	// Construct your dockerTask with necessary details
 	dockTask := &dockerTask{
-		containerName:  containerName,
-		containerId:    containerId,
-		containerReady: false,
+		containerName:       containerName,
+		containerId:         containerId,
+		containerPublicUrl:  hostUrl,
+		containerPrivateUrl: fmt.Sprintf("http://%s:%s", containerName, serverPort),
+		containerReady:      false,
 	}
 
 	e.tasks[service.FullName()] = dockTask
@@ -203,10 +243,11 @@ func (e *dockerEnvironment) RootPath(service services.Service) string {
 }
 
 type dockerTask struct {
-	containerName  string
-	containerId    string
-	containerReady bool
-	containerUrl   string
+	containerName       string
+	containerId         string
+	containerReady      bool
+	containerPublicUrl  string
+	containerPrivateUrl string
 }
 
 func (t *dockerTask) Id() string {
@@ -221,6 +262,10 @@ func (t *dockerTask) Type() providers.Type {
 	return providers.DockerType
 }
 
-func (t *dockerTask) BaseUrl() string {
-	return t.containerUrl
+func (t *dockerTask) PublicUrl() string {
+	return t.containerPublicUrl
+}
+
+func (t *dockerTask) PrivateUrl() string {
+	return t.containerPrivateUrl
 }

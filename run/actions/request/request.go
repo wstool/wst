@@ -81,7 +81,7 @@ func (a *action) Timeout() time.Duration {
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
 	// Construct the request URL from the service and path.
-	baseUrl, err := a.service.BaseUrl()
+	baseUrl, err := a.service.PublicUrl()
 	if err != nil {
 		return false, err
 	}

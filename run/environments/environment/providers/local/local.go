@@ -103,6 +103,7 @@ func (l *localEnvironment) RunTask(ctx context.Context, service services.Service
 	return &localTask{
 		cmd:         command,
 		serviceName: service.Name(),
+		serviceUrl:  fmt.Sprintf("http://localhost:%d", service.Port()),
 	}, nil
 }
 
@@ -187,6 +188,7 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 type localTask struct {
 	cmd         *exec.Cmd
 	serviceName string
+	serviceUrl  string
 }
 
 func (t *localTask) Id() string {
@@ -197,8 +199,12 @@ func (t *localTask) Name() string {
 	return t.serviceName
 }
 
-func (t *localTask) BaseUrl() string {
-	return ""
+func (t *localTask) PublicUrl() string {
+	return t.serviceUrl
+}
+
+func (t *localTask) PrivateUrl() string {
+	return t.serviceUrl
 }
 
 func (t *localTask) Type() providers.Type {

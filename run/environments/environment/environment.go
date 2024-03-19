@@ -31,6 +31,7 @@ type Command struct {
 
 type Ports struct {
 	Start int32
+	Used  int32
 	End   int32
 }
 
@@ -53,6 +54,7 @@ type Environment interface {
 	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error)
 	PortsStart() int32
 	PortsEnd() int32
+	ReservePort() int32
 	ContainerRegistry() *ContainerRegistry
 }
 
@@ -64,6 +66,7 @@ func NewCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
 	return &CommonEnvironment{
 		Ports: Ports{
 			Start: config.Ports.Start,
+			Used:  config.Ports.Start,
 			End:   config.Ports.End,
 		},
 	}
@@ -75,6 +78,12 @@ func (e *CommonEnvironment) PortsStart() int32 {
 
 func (e *CommonEnvironment) PortsEnd() int32 {
 	return e.Ports.End
+}
+
+func (e *CommonEnvironment) ReservePort() int32 {
+	used := e.Ports.Used
+	e.Ports.Used++
+	return used
 }
 
 func (e *CommonEnvironment) ContainerRegistry() *ContainerRegistry {

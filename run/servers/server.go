@@ -36,6 +36,7 @@ type Server interface {
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
 	Group() string
 	User() string
+	Port() int32
 	Parameters() parameters.Parameters
 	Templates() templates.Templates
 	Template(name string) (templates.Template, bool)
@@ -112,6 +113,7 @@ func (m *Maker) Make(config *types.Spec) (Servers, error) {
 			name:       name,
 			tag:        tag,
 			parentName: server.Extends,
+			port:       server.Port,
 			actions:    serverActions,
 			configs:    serverConfigs,
 			templates:  serverTemplates,
@@ -165,6 +167,7 @@ type nativeServer struct {
 	tag        string
 	user       string
 	group      string
+	port       int32
 	parentName string
 	parent     *nativeServer
 	extended   bool
@@ -220,6 +223,10 @@ func (s *nativeServer) inherit() error {
 		}
 	}
 
+	if s.port == 0 {
+		s.port = s.parent.port
+	}
+
 	s.actions.Inherit(s.parent.actions)
 	s.configs.Inherit(s.parent.configs)
 	s.templates.Inherit(s.parent.templates)
@@ -238,6 +245,10 @@ func (s *nativeServer) Group() string {
 
 func (s *nativeServer) User() string {
 	return s.user
+}
+
+func (s *nativeServer) Port() int32 {
+	return s.port
 }
 
 func (s *nativeServer) Template(name string) (templates.Template, bool) {

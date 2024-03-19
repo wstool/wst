@@ -228,16 +228,22 @@ func (l *kubernetesEnvironment) createService(
 	serviceName string,
 	service services.Service,
 ) error {
+	var kubeServiceType corev1.ServiceType
+	if service.IsPublic() {
+		kubeServiceType = corev1.ServiceTypeLoadBalancer
+	} else {
+		kubeServiceType = corev1.ServiceTypeClusterIP
+	}
 	kubeServiceSpec := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 		},
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeLoadBalancer,
+			Type: kubeServiceType,
 			Ports: []corev1.ServicePort{
 				{
-					Port:       80,
-					TargetPort: intstr.FromInt(80),
+					Port:       service.Port(),
+					TargetPort: intstr.FromInt32(service.Port()),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -274,7 +280,10 @@ func (l *kubernetesEnvironment) createService(
 				}
 				if len(svc.Status.LoadBalancer.Ingress) > 0 {
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
-					kubeTask.serviceUrl = fmt.Sprintf("http://%s", ip)
+					if service.IsPublic() {
+						kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
+					}
+					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, service.Port())
 					return nil
 				}
 			case watch.Deleted:
@@ -344,11 +353,12 @@ func (l *kubernetesEnvironment) RootPath(service services.Service) string {
 }
 
 type kubernetesTask struct {
-	deployment      *appsv1.Deployment
-	service         *corev1.Service
-	serviceName     string
-	serviceUrl      string
-	deploymentReady bool
+	deployment        *appsv1.Deployment
+	service           *corev1.Service
+	serviceName       string
+	servicePublicUrl  string
+	servicePrivateUrl string
+	deploymentReady   bool
 }
 
 func (t *kubernetesTask) Id() string {
@@ -363,6 +373,10 @@ func (k *kubernetesTask) Type() providers.Type {
 	return providers.KubernetesType
 }
 
-func (t *kubernetesTask) BaseUrl() string {
-	return t.serviceUrl
+func (t *kubernetesTask) PublicUrl() string {
+	return t.servicePublicUrl
+}
+
+func (t *kubernetesTask) PrivateUrl() string {
+	return t.servicePrivateUrl
 }

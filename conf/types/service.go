@@ -51,4 +51,5 @@ type Service struct {
 	Server    ServiceServer    `wst:"server"`
 	Resources ServiceResources `wst:"resources"`
 	Requires  []string         `wst:"requires"`
+	Public    bool             `wst:"public,default=false"`
 }

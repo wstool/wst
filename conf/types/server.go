@@ -45,6 +45,7 @@ type Server struct {
 	Extends    string                    `wst:"extends"`
 	User       string                    `wst:"user"`
 	Group      string                    `wst:"group"`
+	Port       int32                     `wst:"port"`
 	Configs    map[string]ServerConfig   `wst:"configs"`
 	Templates  map[string]ServerTemplate `wst:"templates"`
 	Sandboxes  map[string]Sandbox        `wst:"sandboxes,factory=createSandboxes"`

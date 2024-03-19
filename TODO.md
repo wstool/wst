@@ -9,20 +9,31 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- environments merging
-  - spec and instance environment merging followed by common and container environment merging
 - kubernetes integration
-  - port setup and internal routing paths vs externals routing paths
   - adding config volumes
   - add health probes setup
 - docker integration
-  - port setup and internal routing paths (creating a network) vs externals routing paths
   - volume config and resources
   - health check - waiting for container to be able to serve the traffic
 - parameters overwriting (option implementation)
 - dry run mode - integrate to action, services and sandboxes
 - load testing action (wrk runner)
-- tests
+- config factories
+- clean up and extra checks
+- config parser tests
+- config merging and test
+- finalize all config tests
+- actions tests
+- environments integration tests
+- instance tests
+- spec tests
+- parameters tests
+- resources tests
+- sandboxes tests
+- servers tests
+  - specifically check setting of user and group as well as inheriting of the port
+- services tests
+- run tests
 
 ### Config
 - local env port should be start / end instead of from / to maybe

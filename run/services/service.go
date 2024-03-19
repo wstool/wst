@@ -38,12 +38,14 @@ import (
 )
 
 type Service interface {
-	BaseUrl() (string, error)
+	PublicUrl() (string, error)
+	PrivateUrl() (string, error)
 	Name() string
 	FullName() string
 	User() string
 	Group() string
 	Dirs() map[sandbox.DirType]string
+	Port() int32
 	EnvironmentConfigPaths() map[string]string
 	WorkspaceConfigPaths() map[string]string
 	Environment() environment.Environment
@@ -57,6 +59,7 @@ type Service interface {
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
+	IsPublic() bool
 	Workspace() string
 	SetTemplate(template template.Template)
 }
@@ -166,6 +169,7 @@ func (m *Maker) Make(
 		service := &nativeService{
 			name:             serviceName,
 			fullName:         instanceName + "-" + serviceName,
+			public:           serviceConfig.Public,
 			environment:      env,
 			scripts:          includedScripts,
 			server:           server,
@@ -194,6 +198,7 @@ type nativeServiceConfig struct {
 type nativeService struct {
 	name                   string
 	fullName               string
+	public                 bool
 	scripts                scripts.Scripts
 	server                 servers.Server
 	serverParameters       parameters.Parameters
@@ -205,6 +210,14 @@ type nativeService struct {
 	workspaceConfigPaths   map[string]string
 	workspace              string
 	template               template.Template
+}
+
+func (s *nativeService) Port() int32 {
+	return s.server.Port()
+}
+
+func (s *nativeService) IsPublic() bool {
+	return s.public
 }
 
 func (s *nativeService) EnvironmentConfigPaths() map[string]string {
@@ -369,12 +382,23 @@ func (s *nativeService) FullName() string {
 	return s.fullName
 }
 
-func (s *nativeService) BaseUrl() (string, error) {
+func (s *nativeService) PublicUrl() (string, error) {
+	if s.task == nil {
+		return "", fmt.Errorf("service has not started yet")
+	}
+	if !s.IsPublic() {
+		return "", fmt.Errorf("only public service has public URL")
+	}
+
+	return s.task.PublicUrl(), nil
+}
+
+func (s *nativeService) PrivateUrl() (string, error) {
 	if s.task == nil {
 		return "", fmt.Errorf("service has not started yet")
 	}
 
-	return s.task.BaseUrl(), nil
+	return s.task.PrivateUrl(), nil
 }
 
 func (s *nativeService) RenderTemplate(text string, params parameters.Parameters) (string, error) {

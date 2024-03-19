@@ -6,5 +6,6 @@ type Task interface {
 	Name() string
 	Id() string
 	Type() providers.Type
-	BaseUrl() string
+	PrivateUrl() string
+	PublicUrl() string
 }
