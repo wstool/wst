@@ -166,7 +166,7 @@ func (m *Maker) mergeDockerAndContainer(docker, container types.Sandbox) (types.
 	if !dockerSandboxOk {
 		return nil, errors.New("type assertion to *DockerSandbox failed")
 	}
-	mergedContainer, err := m.mergeCommonSandbox(&dockerSandbox.ContainerSandbox, docker)
+	mergedContainer, err := m.mergeContainerSandbox(&dockerSandbox.ContainerSandbox, container)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox)
 	if !kubernetesSandboxOk {
 		return nil, errors.New("type assertion to *KubernetesSandbox failed")
 	}
-	mergedContainer, err := m.mergeCommonSandbox(&kubernetesSandbox.ContainerSandbox, kubernetes)
+	mergedContainer, err := m.mergeContainerSandbox(&kubernetesSandbox.ContainerSandbox, container)
 	if err != nil {
 		return nil, err
 	}
@@ -264,15 +264,15 @@ func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, e
 	return mergedCommon, nil
 }
 
-func (m *Maker) mergeLocalSandbox(root, server types.Sandbox) (types.Sandbox, error) {
-	// Ensure both root and server are of the correct type, using type assertion to *CommonSandbox.
-	_, rootOk := root.(*types.LocalSandbox)
+func (m *Maker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+	// Ensure both spec and server are of the correct type, using type assertion to *CommonSandbox.
+	_, specOk := spec.(*types.LocalSandbox)
 	_, serverOk := server.(*types.LocalSandbox)
-	if !rootOk || !serverOk {
+	if !specOk || !serverOk {
 		return nil, errors.New("type assertion to *LocalSandbox failed")
 	}
 
-	mergedCommon, err := m.mergeCommonSandbox(root, server)
+	mergedCommon, err := m.mergeCommonSandbox(spec, server)
 	if err != nil {
 		return nil, err
 	}
@@ -284,22 +284,22 @@ func (m *Maker) mergeLocalSandbox(root, server types.Sandbox) (types.Sandbox, er
 	return mergedLocal, nil
 }
 
-func (m *Maker) mergeContainerSandbox(root, server types.Sandbox) (types.Sandbox, error) {
-	rootContainer, rootOk := root.(*types.ContainerSandbox)
+func (m *Maker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+	specContainer, specOk := spec.(*types.ContainerSandbox)
 	serverContainer, serverOk := server.(*types.ContainerSandbox)
-	if !rootOk || !serverOk {
+	if !specOk || !serverOk {
 		return nil, errors.New("type assertion to *ContainerSandbox failed")
 	}
 
-	mergedCommon, err := m.mergeCommonSandbox(root, server)
+	mergedCommon, err := m.mergeCommonSandbox(spec, server)
 	if err != nil {
 		return nil, err
 	}
 
 	mergedContainer := &types.ContainerSandbox{
 		CommonSandbox: *mergedCommon.(*types.CommonSandbox),
-		Image:         rootContainer.Image,
-		Registry:      rootContainer.Registry,
+		Image:         specContainer.Image,
+		Registry:      specContainer.Registry,
 	}
 
 	if serverContainer.Image.Name != "" {
@@ -318,14 +318,14 @@ func (m *Maker) mergeContainerSandbox(root, server types.Sandbox) (types.Sandbox
 	return mergedContainer, nil
 }
 
-func (m *Maker) mergeDockerSandbox(root, server types.Sandbox) (types.Sandbox, error) {
-	_, rootOk := root.(*types.DockerSandbox)
+func (m *Maker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+	_, specOk := spec.(*types.DockerSandbox)
 	_, serverOk := server.(*types.DockerSandbox)
-	if !rootOk || !serverOk {
+	if !specOk || !serverOk {
 		return nil, errors.New("type assertion to *DockerSandbox failed")
 	}
 
-	mergedContainer, err := m.mergeContainerSandbox(root, server)
+	mergedContainer, err := m.mergeContainerSandbox(spec, server)
 	if err != nil {
 		return nil, err
 	}
@@ -337,14 +337,14 @@ func (m *Maker) mergeDockerSandbox(root, server types.Sandbox) (types.Sandbox, e
 	return mergedDocker, nil
 }
 
-func (m *Maker) mergeKubernetesSandbox(root, server types.Sandbox) (types.Sandbox, error) {
-	_, rootOk := root.(*types.KubernetesSandbox)
+func (m *Maker) mergeKubernetesSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+	_, specOk := spec.(*types.KubernetesSandbox)
 	_, serverOk := server.(*types.KubernetesSandbox)
-	if !rootOk || !serverOk {
+	if !specOk || !serverOk {
 		return nil, errors.New("type assertion to *KubernetesSandbox failed")
 	}
 
-	mergedContainer, err := m.mergeContainerSandbox(root, server)
+	mergedContainer, err := m.mergeContainerSandbox(spec, server)
 	if err != nil {
 		return nil, err
 	}

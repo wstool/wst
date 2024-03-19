@@ -15,7 +15,7 @@
 package environments
 
 import (
-	"fmt"
+	"errors"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
@@ -48,57 +48,283 @@ func (m *Maker) Make(
 	instanceConfig map[string]types.Environment,
 	instanceWorkspace string,
 ) (Environments, error) {
-	envs := Environments{}
+	var err error
+	mergedEnvironments, err := m.mergeConfigMaps(specConfig, instanceConfig)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, providerType := range providers.Types() {
-		specEnv, specExists := specConfig[string(providerType)]
-		instanceEnv, instanceExists := instanceConfig[string(providerType)]
-
-		var mergedEnv types.Environment
-		if instanceExists {
-			// If instanceConfig exists for this providerType, use it (possibly merging with specEnv).
-			// TODO: deep merging
-			mergedEnv = instanceEnv
-		} else if specExists {
-			// If only specConfig exists, use it.
-			mergedEnv = specEnv
-		} else {
-			// If neither exists, fail as there should be always defaults in config
-			return nil, fmt.Errorf("unsupported environment type: %s", providerType)
-		}
-
-		var env environment.Environment
-		var err error
-
-		switch providerType {
-		case providers.LocalType:
-			if localEnv, ok := mergedEnv.(*types.LocalEnvironment); ok {
-				env, err = m.localMaker.Make(localEnv, instanceWorkspace)
-			} else {
-				err = fmt.Errorf("local environment has unexpected data type %t", mergedEnv)
-			}
-		case providers.DockerType:
-			if localEnv, ok := mergedEnv.(*types.DockerEnvironment); ok {
-				env, err = m.dockerMaker.Make(localEnv)
-			} else {
-				err = fmt.Errorf("docker environment has unexpected data type %t", mergedEnv)
-			}
-		case providers.KubernetesType:
-			if localEnv, ok := mergedEnv.(*types.KubernetesEnvironment); ok {
-				env, err = m.kubernetesMaker.Make(localEnv)
-			} else {
-				err = fmt.Errorf("kubernetes environment has unexpected data type %t", mergedEnv)
-			}
-		default:
-			err = fmt.Errorf("unsupported environment type: %s", providerType)
-		}
-
+	commonSb, commonFound := mergedEnvironments[types.CommonEnvironmentType]
+	localSb, localFound := mergedEnvironments[types.LocalEnvironmentType]
+	containerSb, containerFound := mergedEnvironments[types.ContainerEnvironmentType]
+	dockerSb, dockerFound := mergedEnvironments[types.ContainerEnvironmentType]
+	kubernetesSb, kubernetesFound := mergedEnvironments[types.ContainerEnvironmentType]
+	if commonFound {
+		// Local merging
+		localSb, err = m.mergeLocalAndCommon(localSb, commonSb)
 		if err != nil {
 			return nil, err
 		}
-
-		envs[providerType] = env
+		localFound = true
+		// Container merging
+		containerSb, err = m.mergeLocalAndCommon(containerSb, commonSb)
+		if err != nil {
+			return nil, err
+		}
+		containerFound = true
+	}
+	if containerFound {
+		// Docker merging
+		dockerSb, err = m.mergeDockerAndContainer(dockerSb, containerSb)
+		if err != nil {
+			return nil, err
+		}
+		dockerFound = true
+		// Kubernetes merging
+		kubernetesSb, err = m.mergeKubernetesAndContainer(kubernetesSb, containerSb)
+		if err != nil {
+			return nil, err
+		}
+		kubernetesFound = true
 	}
 
-	return envs, nil
+	Environments := make(Environments)
+
+	if localFound {
+		Environments[providers.LocalType], err = m.localMaker.Make(localSb.(*types.LocalEnvironment), instanceWorkspace)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if dockerFound {
+		Environments[providers.DockerType], err = m.dockerMaker.Make(dockerSb.(*types.DockerEnvironment))
+		if err != nil {
+			return nil, err
+		}
+	}
+	if kubernetesFound {
+		Environments[providers.KubernetesType], err = m.kubernetesMaker.Make(dockerSb.(*types.KubernetesEnvironment))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return Environments, nil
+}
+
+func (m *Maker) mergeLocalAndCommon(local, common types.Environment) (types.Environment, error) {
+	localEnvironment, localEnvironmentOk := local.(*types.LocalEnvironment)
+	if !localEnvironmentOk {
+		return nil, errors.New("type assertion to *LocalEnvironment failed")
+	}
+	mergedCommon, err := m.mergeCommonEnvironment(&localEnvironment.CommonEnvironment, common)
+	if err != nil {
+		return nil, err
+	}
+	localEnvironment.CommonEnvironment = *mergedCommon.(*types.CommonEnvironment)
+
+	return localEnvironment, nil
+}
+
+func (m *Maker) mergeContainerAndCommon(container, common types.Environment) (types.Environment, error) {
+	containerEnvironment, containerEnvironmentOk := container.(*types.ContainerEnvironment)
+	if !containerEnvironmentOk {
+		return nil, errors.New("type assertion to *ContainerEnvironment failed")
+	}
+	mergedCommon, err := m.mergeCommonEnvironment(&containerEnvironment.CommonEnvironment, common)
+	if err != nil {
+		return nil, err
+	}
+	containerEnvironment.CommonEnvironment = *mergedCommon.(*types.CommonEnvironment)
+
+	return containerEnvironment, nil
+}
+
+func (m *Maker) mergeDockerAndContainer(docker, container types.Environment) (types.Environment, error) {
+	dockerEnvironment, dockerEnvironmentOk := docker.(*types.DockerEnvironment)
+	if !dockerEnvironmentOk {
+		return nil, errors.New("type assertion to *DockerEnvironment failed")
+	}
+	mergedContainer, err := m.mergeContainerEnvironment(&dockerEnvironment.ContainerEnvironment, container)
+	if err != nil {
+		return nil, err
+	}
+	dockerEnvironment.ContainerEnvironment = *mergedContainer.(*types.ContainerEnvironment)
+
+	return dockerEnvironment, nil
+}
+
+func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Environment) (types.Environment, error) {
+	kubernetesEnvironment, kubernetesEnvironmentOk := kubernetes.(*types.KubernetesEnvironment)
+	if !kubernetesEnvironmentOk {
+		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
+	}
+	mergedContainer, err := m.mergeContainerEnvironment(&kubernetesEnvironment.ContainerEnvironment, container)
+	if err != nil {
+		return nil, err
+	}
+	kubernetesEnvironment.ContainerEnvironment = *mergedContainer.(*types.ContainerEnvironment)
+
+	return kubernetesEnvironment, nil
+}
+
+type mergeFunc func(spec, instance types.Environment) (types.Environment, error)
+
+func (m *Maker) mergeConfigMaps(
+	specEnvironments map[string]types.Environment,
+	instanceEnvironments map[string]types.Environment,
+) (map[types.EnvironmentType]types.Environment, error) {
+	mergeFuncs := map[types.EnvironmentType]mergeFunc{
+		types.CommonEnvironmentType:     m.mergeCommonEnvironment,
+		types.LocalEnvironmentType:      m.mergeLocalEnvironment,
+		types.ContainerEnvironmentType:  m.mergeContainerEnvironment,
+		types.DockerEnvironmentType:     m.mergeDockerEnvironment,
+		types.KubernetesEnvironmentType: m.mergeKubernetesEnvironment,
+	}
+	mergedEnvironments := make(map[types.EnvironmentType]types.Environment)
+
+	for sandboxType, merge := range mergeFuncs {
+		sandboxTypeStr := string(sandboxType)
+		specEnvironment, specExists := specEnvironments[sandboxTypeStr]
+		instanceEnvironment, instanceExists := instanceEnvironments[sandboxTypeStr]
+
+		if specExists && instanceExists {
+			// Use the merge function, now handling errors.
+			mergedEnvironment, err := merge(specEnvironment, instanceEnvironment)
+			if err != nil {
+				// Handle the error, e.g., by returning it or logging it.
+				return nil, err // Return an error if merging fails.
+			}
+			mergedEnvironments[sandboxType] = mergedEnvironment
+		} else if !specExists && instanceExists {
+			mergedEnvironments[sandboxType] = instanceEnvironment
+		} else {
+			mergedEnvironments[sandboxType] = specEnvironment
+		}
+	}
+
+	return mergedEnvironments, nil
+}
+
+func (m *Maker) mergeCommonEnvironment(spec, instance types.Environment) (types.Environment, error) {
+	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
+	specCommon, specOk := spec.(*types.CommonEnvironment)
+	instanceCommon, instanceOk := instance.(*types.CommonEnvironment)
+	if !specOk || !instanceOk {
+		return nil, errors.New("type assertion to *CommonEnvironment failed")
+	}
+
+	// Create a new instance of CommonEnvironment for the merged result.
+	mergedCommon := &types.CommonEnvironment{
+		Ports: specCommon.Ports,
+	}
+
+	if instanceCommon.Ports.Start > 0 {
+		mergedCommon.Ports.Start = instanceCommon.Ports.Start
+	}
+	if instanceCommon.Ports.End > 0 {
+		mergedCommon.Ports.End = instanceCommon.Ports.End
+	}
+
+	// Return the new, merged CommonEnvironment as an Environment interface.
+	return mergedCommon, nil
+}
+
+func (m *Maker) mergeLocalEnvironment(spec, instance types.Environment) (types.Environment, error) {
+	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
+	_, specOk := spec.(*types.LocalEnvironment)
+	_, instanceOk := instance.(*types.LocalEnvironment)
+	if !specOk || !instanceOk {
+		return nil, errors.New("type assertion to *LocalEnvironment failed")
+	}
+
+	mergedCommon, err := m.mergeCommonEnvironment(spec, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedLocal := &types.LocalEnvironment{
+		CommonEnvironment: *mergedCommon.(*types.CommonEnvironment),
+	}
+
+	return mergedLocal, nil
+}
+
+func (m *Maker) mergeContainerEnvironment(spec, instance types.Environment) (types.Environment, error) {
+	specContainer, specOk := spec.(*types.ContainerEnvironment)
+	instanceContainer, instanceOk := instance.(*types.ContainerEnvironment)
+	if !specOk || !instanceOk {
+		return nil, errors.New("type assertion to *ContainerEnvironment failed")
+	}
+
+	mergedCommon, err := m.mergeCommonEnvironment(spec, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedContainer := &types.ContainerEnvironment{
+		CommonEnvironment: *mergedCommon.(*types.CommonEnvironment),
+		Registry:          specContainer.Registry,
+	}
+
+	if instanceContainer.Registry.Auth.Username != "" {
+		mergedContainer.Registry.Auth.Username = instanceContainer.Registry.Auth.Username
+	}
+	if instanceContainer.Registry.Auth.Password != "" {
+		mergedContainer.Registry.Auth.Password = instanceContainer.Registry.Auth.Password
+	}
+
+	return mergedContainer, nil
+}
+
+func (m *Maker) mergeDockerEnvironment(spec, instance types.Environment) (types.Environment, error) {
+	specDocker, specOk := spec.(*types.DockerEnvironment)
+	instanceDocker, instanceOk := instance.(*types.DockerEnvironment)
+	if !specOk || !instanceOk {
+		return nil, errors.New("type assertion to *DockerEnvironment failed")
+	}
+
+	mergedContainer, err := m.mergeContainerEnvironment(spec, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedDocker := &types.DockerEnvironment{
+		ContainerEnvironment: *mergedContainer.(*types.ContainerEnvironment),
+		NamePrefix:           specDocker.NamePrefix,
+	}
+
+	if instanceDocker.NamePrefix != "" {
+		mergedDocker.NamePrefix = instanceDocker.NamePrefix
+	}
+
+	return mergedDocker, nil
+}
+
+func (m *Maker) mergeKubernetesEnvironment(spec, instance types.Environment) (types.Environment, error) {
+	specKubernetes, specOk := spec.(*types.KubernetesEnvironment)
+	instanceKubernetes, instanceOk := instance.(*types.KubernetesEnvironment)
+	if !specOk || !instanceOk {
+		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
+	}
+
+	mergedContainer, err := m.mergeContainerEnvironment(spec, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedKubernetes := &types.KubernetesEnvironment{
+		ContainerEnvironment: *mergedContainer.(*types.ContainerEnvironment),
+		Namespace:            specKubernetes.Namespace,
+		Kubeconfig:           specKubernetes.Kubeconfig,
+	}
+
+	if instanceKubernetes.Namespace != "" {
+		mergedKubernetes.Namespace = instanceKubernetes.Namespace
+	}
+	if instanceKubernetes.Kubeconfig != "" {
+		mergedKubernetes.Kubeconfig = instanceKubernetes.Kubeconfig
+	}
+
+	return mergedKubernetes, nil
 }

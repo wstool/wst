@@ -1,5 +1,28 @@
 package types
 
+type EnvironmentType string
+
+const (
+	CommonEnvironmentType     EnvironmentType = "common"
+	LocalEnvironmentType                      = "local"
+	ContainerEnvironmentType                  = "container"
+	DockerEnvironmentType                     = "docker"
+	KubernetesEnvironmentType                 = "kubernetes"
+)
+
+func EnvironmentTypes() []EnvironmentType {
+	return []EnvironmentType{
+		CommonEnvironmentType,
+		LocalEnvironmentType,
+		ContainerEnvironmentType,
+		DockerEnvironmentType,
+		KubernetesEnvironmentType,
+	}
+}
+
+type Environment interface {
+}
+
 type CommonEnvironmentPorts struct {
 	Start int32 `wst:"start"`
 	End   int32 `wst:"end"`
@@ -27,7 +50,4 @@ type KubernetesEnvironment struct {
 	ContainerEnvironment
 	Namespace  string `wst:"namespace"`
 	Kubeconfig string `wst:"kubeconfig,path"`
-}
-
-type Environment interface {
 }
