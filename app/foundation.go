@@ -25,6 +25,7 @@ type Foundation interface {
 	Logger() *zap.SugaredLogger
 	Fs() afero.Fs
 	CurrentUser() (*user.User, error)
+	DryRun() bool
 	User(username string) (*user.User, error)
 	UserGroup(u *user.User) (*user.Group, error)
 	UserHomeDir() (string, error)
@@ -34,39 +35,45 @@ type Foundation interface {
 type DefaultFoundation struct {
 	logger *zap.SugaredLogger
 	fs     afero.Fs
+	dryRun bool
 }
 
-func CreateFoundation(logger *zap.SugaredLogger, fs afero.Fs) Foundation {
+func CreateFoundation(logger *zap.SugaredLogger, fs afero.Fs, dryRun bool) Foundation {
 	return &DefaultFoundation{
 		logger: logger,
 		fs:     fs,
+		dryRun: dryRun,
 	}
 }
 
-func (e *DefaultFoundation) Logger() *zap.SugaredLogger {
-	return e.logger
+func (f *DefaultFoundation) DryRun() bool {
+	return f.dryRun
 }
 
-func (e *DefaultFoundation) Fs() afero.Fs {
-	return e.fs
+func (f *DefaultFoundation) Logger() *zap.SugaredLogger {
+	return f.logger
 }
 
-func (e *DefaultFoundation) CurrentUser() (*user.User, error) {
+func (f *DefaultFoundation) Fs() afero.Fs {
+	return f.fs
+}
+
+func (f *DefaultFoundation) CurrentUser() (*user.User, error) {
 	return user.Current()
 }
 
-func (e *DefaultFoundation) User(username string) (*user.User, error) {
+func (f *DefaultFoundation) User(username string) (*user.User, error) {
 	return user.Lookup(username)
 }
 
-func (e *DefaultFoundation) UserGroup(u *user.User) (*user.Group, error) {
+func (f *DefaultFoundation) UserGroup(u *user.User) (*user.Group, error) {
 	return user.LookupGroupId(u.Gid)
 }
 
-func (e *DefaultFoundation) UserHomeDir() (string, error) {
+func (f *DefaultFoundation) UserHomeDir() (string, error) {
 	return os.UserHomeDir()
 }
 
-func (e *DefaultFoundation) LookupEnvVar(key string) (string, bool) {
+func (f *DefaultFoundation) LookupEnvVar(key string) (string, bool) {
 	return os.LookupEnv(key)
 }

@@ -28,7 +28,6 @@ type Options struct {
 	IncludeAll  bool
 	Overwrites  map[string]string
 	NoEnvs      bool
-	DryRun      bool
 	Instances   []string
 }
 

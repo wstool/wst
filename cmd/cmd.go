@@ -48,14 +48,13 @@ func Run() {
 				panic(fmt.Sprintf("Cannot initialize zap logger: %v", err))
 			}
 
-			fnd := app.CreateFoundation(logger.Sugar(), run.DefaultsFs)
+			fnd := app.CreateFoundation(logger.Sugar(), run.DefaultsFs, dryRun)
 
 			options := &run.Options{
 				ConfigPaths: configPaths,
 				IncludeAll:  includeAll,
 				Overwrites:  getOverwrites(overwriteValues, noEnvs, fnd),
 				NoEnvs:      noEnvs,
-				DryRun:      dryRun,
 				Instances:   args,
 			}
 			// Add execution code here.
