@@ -136,7 +136,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		return nil, err
 	}
 
-	// 1. Pull the Docker image if not already present
+	// Pull the Docker image if not already present
 	pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull Docker image %s: %w", imageName, err)
@@ -149,6 +149,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		Cmd:   command,
 	}
 
+	// Prepare host config with Port bindings
 	serverPort := string(service.Port())
 	hostUrl := ""
 	var hostConfig *container.HostConfig
@@ -165,20 +166,33 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		hostConfig = &container.HostConfig{}
 	}
 
+	// Bind configs to the host config
+	wsConfigPaths := service.WorkspaceConfigPaths()
+	binds := make([]string, len(wsConfigPaths))
+	for configName, envConfigPath := range service.EnvironmentConfigPaths() {
+		wsConfigPath, found := wsConfigPaths[configName]
+		if !found {
+			return nil, fmt.Errorf("no workspace config for %s", configName)
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s", wsConfigPath, envConfigPath))
+	}
+	hostConfig.Binds = binds
+
+	// Create network config
 	networkingConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			e.networkName: {},
 		},
 	}
 
-	// 2. Create the Docker container
+	// Create the Docker container
 	containerName := fmt.Sprintf("%s-%s", e.namePrefix, service.Name())
 	containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker container for service %s: %w", service.Name(), err)
 	}
 
-	// 3. Start the Docker container
+	// Start the Docker container
 	err = e.cli.ContainerStart(ctx, containerResp.ID, container.StartOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to start Docker container %s: %w", containerResp.ID, err)
