@@ -30,12 +30,6 @@ $defs:
           - type: [ string, number, boolean ]
           - $ref: '#/$defs/parameters'
 
-  parametersOverwrite:
-    title: Parameters overwriting
-    description: Specifies whether parameters should be overwritten or just merged.
-    type: boolean
-    default: true
-
   commonEnvironment:
     title: Common environment
     description: |
@@ -539,8 +533,6 @@ $defs:
                     title: Service inclusion switch
                     description: Whether the server config is going to be included to the service.
                     default: true
-                  overwrite_parameters:
-                    $ref: '#/$defs/parametersOverwrite'
                   parameters:
                     $ref: '#/$defs/parameters'
         resources:
@@ -572,8 +564,6 @@ $defs:
       name:
         title: Custom expectation name
         description: The name is used for selecting the expectation from the server expectations.
-      overwrite_parameters:
-        $ref: '#/$dev/parametersOverwrite'
       parameters:
         $ref: '#/$defs/parameters'
 

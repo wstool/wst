@@ -161,9 +161,8 @@ func (m *Maker) Make(
 				}
 
 				nativeConfigs[configName] = nativeServiceConfig{
-					parameters:          serviceServerConfigParameters.Inherit(serverParameters),
-					overwriteParameters: serviceServerConfig.OverwriteParameters,
-					config:              config,
+					parameters: serviceServerConfigParameters.Inherit(serverParameters),
+					config:     config,
 				}
 			}
 		}
@@ -192,9 +191,8 @@ func (m *Maker) Make(
 }
 
 type nativeServiceConfig struct {
-	parameters          parameters.Parameters
-	overwriteParameters bool
-	config              configs.Config
+	parameters parameters.Parameters
+	config     configs.Config
 }
 
 type nativeService struct {

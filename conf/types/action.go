@@ -15,11 +15,10 @@
 package types
 
 type CustomExpectationAction struct {
-	Service             string     `wst:"service"`
-	Timeout             int        `wst:"timeout"`
-	Name                string     `wst:"name"`
-	Parameters          Parameters `wst:"parameters,factory=createParameters"`
-	OverwriteParameters bool       `wst:"overwrite_parameters,default=true"`
+	Service    string     `wst:"service"`
+	Timeout    int        `wst:"timeout"`
+	Name       string     `wst:"name"`
+	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 
 type OutputExpectation struct {
