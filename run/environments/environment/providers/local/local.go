@@ -32,12 +32,12 @@ import (
 )
 
 type Maker struct {
-	fnd app.Foundation
+	environment.Maker
 }
 
 func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		fnd: fnd,
+		Maker: *environment.CreateMaker(fnd),
 	}
 }
 
@@ -46,8 +46,7 @@ func (m *Maker) Make(
 	instanceWorkspace string,
 ) (environment.Environment, error) {
 	return &localEnvironment{
-		CommonEnvironment: *environment.NewCommonEnvironment(&config.CommonEnvironment),
-		fnd:               m.fnd,
+		CommonEnvironment: *m.MakeCommonEnvironment(&config.CommonEnvironment),
 		workspace:         filepath.Join(instanceWorkspace, "envs", "local"),
 		initialized:       false,
 	}, nil
@@ -55,7 +54,6 @@ func (m *Maker) Make(
 
 type localEnvironment struct {
 	environment.CommonEnvironment
-	fnd         app.Foundation
 	instance    instances.Instance
 	workspace   string
 	initialized bool
@@ -66,7 +64,7 @@ func (l *localEnvironment) RootPath(service services.Service) string {
 }
 
 func (l *localEnvironment) Init(ctx context.Context) error {
-	fs := l.fnd.Fs()
+	fs := l.Fnd.Fs()
 	err := fs.MkdirAll(l.workspace, 0644)
 	if err != nil {
 		return err
@@ -77,7 +75,7 @@ func (l *localEnvironment) Init(ctx context.Context) error {
 }
 
 func (l *localEnvironment) Destroy(ctx context.Context) error {
-	fs := l.fnd.Fs()
+	fs := l.Fnd.Fs()
 	err := fs.RemoveAll(l.workspace)
 	if err != nil {
 		return err

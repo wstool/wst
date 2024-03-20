@@ -43,12 +43,12 @@ import (
 )
 
 type Maker struct {
-	fnd app.Foundation
+	environment.Maker
 }
 
 func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		fnd: fnd,
+		Maker: *environment.CreateMaker(fnd),
 	}
 }
 
@@ -65,8 +65,7 @@ func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environme
 	}
 
 	return &kubernetesEnvironment{
-		ContainerEnvironment: *environment.NewContainerEnvironment(&config.ContainerEnvironment),
-		fnd:                  m.fnd,
+		ContainerEnvironment: *m.MakeContainerEnvironment(&config.ContainerEnvironment),
 		kubeconfigPath:       config.Kubeconfig,
 		namespace:            config.Namespace,
 		useFullName:          false,

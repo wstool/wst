@@ -36,12 +36,12 @@ import (
 )
 
 type Maker struct {
-	fnd app.Foundation
+	environment.Maker
 }
 
 func CreateMaker(fnd app.Foundation) *Maker {
 	return &Maker{
-		fnd: fnd,
+		Maker: *environment.CreateMaker(fnd),
 	}
 }
 
@@ -52,7 +52,7 @@ func (m *Maker) Make(config *types.DockerEnvironment) (environment.Environment, 
 	}
 
 	return &dockerEnvironment{
-		ContainerEnvironment: *environment.NewContainerEnvironment(&config.ContainerEnvironment),
+		ContainerEnvironment: *m.MakeContainerEnvironment(&config.ContainerEnvironment),
 		cli:                  cli,
 		namePrefix:           config.NamePrefix,
 	}, nil
@@ -71,7 +71,7 @@ func (e *dockerEnvironment) Init(ctx context.Context) error {
 }
 
 func (e *dockerEnvironment) Destroy(ctx context.Context) error {
-	// TODO: do not return afte first error but try to destroy as much as possible (continue destroying)
+	// TODO: do not return after first error but try to destroy as much as possible (continue destroying)
 	for _, dockTask := range e.tasks {
 		containerId := dockTask.containerId
 		// Stop the container

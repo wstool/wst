@@ -16,6 +16,7 @@ package environment
 
 import (
 	"context"
+	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/task"
@@ -58,12 +59,24 @@ type Environment interface {
 	ContainerRegistry() *ContainerRegistry
 }
 
+type Maker struct {
+	Fnd app.Foundation
+}
+
+func CreateMaker(fnd app.Foundation) *Maker {
+	return &Maker{
+		Fnd: fnd,
+	}
+}
+
 type CommonEnvironment struct {
+	Fnd   app.Foundation
 	Ports Ports
 }
 
-func NewCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
+func (m *Maker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
 	return &CommonEnvironment{
+		Fnd: m.Fnd,
 		Ports: Ports{
 			Start: config.Ports.Start,
 			Used:  config.Ports.Start,
@@ -95,9 +108,9 @@ type ContainerEnvironment struct {
 	Registry ContainerRegistry
 }
 
-func NewContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
+func (m *Maker) MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
 	return &ContainerEnvironment{
-		CommonEnvironment: *NewCommonEnvironment(&config.CommonEnvironment),
+		CommonEnvironment: *m.MakeCommonEnvironment(&config.CommonEnvironment),
 		Registry: ContainerRegistry{
 			Auth: ContainerRegistryAuth{
 				Username: config.Registry.Auth.Username,
