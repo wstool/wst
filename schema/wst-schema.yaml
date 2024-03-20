@@ -490,6 +490,8 @@ $defs:
           description: Indicates the file's access mode, according to standard Unix permissions.
           type: [ string, integer ]
           default: '0644'
+        parameters:
+          $ref: '#/$defs/parameters'
 
   services:
     title: Set of instance-specific services
