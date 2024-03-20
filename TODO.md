@@ -9,7 +9,7 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- parameters overwriting (option implementation)
+
 - dry run mode - integrate to action, services and sandboxes
 - load testing action (wrk runner)
 - config factories
@@ -28,9 +28,9 @@ in the future.
   - specifically check setting of user and group as well as inheriting of the port
 - services tests
 - run tests
-- kubernetes integration
+- kubernetes environment improvements
   - add health probes setup
-- docker integration
+- docker environment improvements
   - health check - waiting for container to be able to serve the traffic
 
 ### Config
