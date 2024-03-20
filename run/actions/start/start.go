@@ -65,12 +65,14 @@ func (m *ActionMaker) Make(
 	}
 
 	return &action{
+		fnd:      m.fnd,
 		services: startServices,
 		timeout:  time.Duration(config.Timeout),
 	}, nil
 }
 
 type action struct {
+	fnd      app.Foundation
 	services services.Services
 	timeout  time.Duration
 }
@@ -79,7 +81,7 @@ func (a *action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	for _, svc := range a.services {
 		err := svc.Start(ctx)
 		if err != nil {

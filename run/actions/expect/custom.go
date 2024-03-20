@@ -51,14 +51,14 @@ func (a *customAction) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *customAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *customAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	if a.OutputExpectation != nil {
 		action := outputAction{
 			CommonExpectation: a.CommonExpectation,
 			OutputExpectation: a.OutputExpectation,
 			parameters:        a.parameters,
 		}
-		return action.Execute(ctx, runData, dryRun)
+		return action.Execute(ctx, runData)
 	}
 	if a.ResponseExpectation != nil {
 		action := responseAction{
@@ -66,7 +66,7 @@ func (a *customAction) Execute(ctx context.Context, runData runtime.Data, dryRun
 			ResponseExpectation: a.ResponseExpectation,
 			parameters:          a.parameters,
 		}
-		return action.Execute(ctx, runData, dryRun)
+		return action.Execute(ctx, runData)
 	}
 	return false, fmt.Errorf("no expectation set")
 }

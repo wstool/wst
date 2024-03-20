@@ -85,7 +85,7 @@ func (a *responseAction) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *responseAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	data, ok := runData.Load(a.request)
 	if !ok {
 		return false, errors.New("response data not found")

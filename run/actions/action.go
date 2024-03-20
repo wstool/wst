@@ -34,7 +34,7 @@ import (
 )
 
 type Action interface {
-	Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error)
+	Execute(ctx context.Context, runData runtime.Data) (bool, error)
 	Timeout() time.Duration
 }
 

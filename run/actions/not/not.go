@@ -50,12 +50,14 @@ func (m *ActionMaker) Make(
 	}
 
 	return &action{
+		fnd:     m.fnd,
 		action:  newAction,
 		timeout: time.Duration(config.Timeout),
 	}, nil
 }
 
 type action struct {
+	fnd     app.Foundation
 	action  actions.Action
 	timeout time.Duration
 }
@@ -64,8 +66,8 @@ func (a *action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
-	success, err := a.action.Execute(ctx, runData, dryRun)
+func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	success, err := a.action.Execute(ctx, runData)
 	if err != nil {
 		return false, err
 	}

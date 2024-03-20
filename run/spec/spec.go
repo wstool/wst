@@ -24,7 +24,7 @@ import (
 )
 
 type Spec interface {
-	ExecuteInstances(filteredInstances []string, dryRun bool) error
+	ExecuteInstances(filteredInstances []string) error
 }
 
 type Maker struct {
@@ -58,17 +58,19 @@ func (m *Maker) Make(config *types.Spec) (Spec, error) {
 	}
 
 	return &nativeSpec{
+		fnd:       m.fnd,
 		workspace: config.Workspace,
 		instances: instances,
 	}, nil
 }
 
 type nativeSpec struct {
+	fnd       app.Foundation
 	workspace string
 	instances []instances.Instance
 }
 
-func (n nativeSpec) ExecuteInstances(filteredInstances []string, dryRun bool) error {
+func (n nativeSpec) ExecuteInstances(filteredInstances []string) error {
 	// Loop through the instances.
 	for _, instance := range n.instances {
 		// Determine the instance identifier or name.
@@ -76,7 +78,7 @@ func (n nativeSpec) ExecuteInstances(filteredInstances []string, dryRun bool) er
 
 		// Execute if filteredInstances is empty or nil, meaning execute all instances.
 		if len(filteredInstances) == 0 {
-			if err := instance.ExecuteActions(dryRun); err != nil {
+			if err := instance.ExecuteActions(); err != nil {
 				return err // Return immediately if any execution fails.
 			}
 		} else {
@@ -84,7 +86,7 @@ func (n nativeSpec) ExecuteInstances(filteredInstances []string, dryRun bool) er
 			for _, filter := range filteredInstances {
 				if strings.HasPrefix(instanceName, filter) {
 					// Execute the instance if it matches the filter.
-					if err := instance.ExecuteActions(dryRun); err != nil {
+					if err := instance.ExecuteActions(); err != nil {
 						return err // Return immediately if any execution fails.
 					}
 					break // Move to the next instance after successful execution.

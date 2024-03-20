@@ -68,7 +68,7 @@ func (r *Runner) Execute(options *Options) error {
 		return err
 	}
 
-	return specification.ExecuteInstances(options.Instances, options.DryRun)
+	return specification.ExecuteInstances(options.Instances)
 }
 
 func (r *Runner) getConfigPaths() []string {

@@ -51,6 +51,7 @@ func (m *ActionMaker) Make(
 	}
 
 	return &action{
+		fnd:     m.fnd,
 		service: svc,
 		timeout: time.Duration(config.Timeout),
 		id:      config.Id,
@@ -67,6 +68,7 @@ type ResponseData struct {
 }
 
 type action struct {
+	fnd     app.Foundation
 	service services.Service
 	timeout time.Duration
 	id      string
@@ -79,7 +81,7 @@ func (a *action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	// Construct the request URL from the service and path.
 	baseUrl, err := a.service.PublicUrl()
 	if err != nil {

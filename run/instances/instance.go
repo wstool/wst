@@ -30,7 +30,7 @@ import (
 )
 
 type Instance interface {
-	ExecuteActions(dryRun bool) error
+	ExecuteActions() error
 	Name() string
 	Workspace() string
 }
@@ -48,7 +48,7 @@ func CreateInstanceMaker(fnd app.Foundation, parametersMaker *parameters.Maker) 
 		fnd:              fnd,
 		actionMaker:      actions.CreateActionMaker(fnd, parametersMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
-		scriptsMaker:     scripts.CreateMaker(fnd),
+		scriptsMaker:     scripts.CreateMaker(fnd, parametersMaker),
 		environmentMaker: environments.CreateMaker(fnd),
 	}
 }
@@ -87,6 +87,7 @@ func (m *InstanceMaker) Make(
 	}
 	runData := runtime.CreateData()
 	return &nativeInstance{
+		fnd:       m.fnd,
 		name:      name,
 		timeout:   instanceConfig.Timeouts.Actions,
 		actions:   instanceActions,
@@ -96,6 +97,7 @@ func (m *InstanceMaker) Make(
 }
 
 type nativeInstance struct {
+	fnd       app.Foundation
 	name      string
 	actions   []actions.Action
 	runData   runtime.Data
@@ -111,19 +113,19 @@ func (i *nativeInstance) Name() string {
 	return i.name
 }
 
-func (i *nativeInstance) ExecuteActions(dryRun bool) error {
+func (i *nativeInstance) ExecuteActions() error {
 	for _, action := range i.actions {
-		if err := i.executeAction(action, dryRun); err != nil {
+		if err := i.executeAction(action); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (i *nativeInstance) executeAction(action actions.Action, dryRun bool) error {
+func (i *nativeInstance) executeAction(action actions.Action) error {
 	ctx, cancel := context.WithTimeout(context.Background(), action.Timeout())
 	defer cancel()
-	success, err := action.Execute(ctx, i.runData, dryRun)
+	success, err := action.Execute(ctx, i.runData)
 	if err != nil {
 		return err
 	}

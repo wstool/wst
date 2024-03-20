@@ -94,7 +94,7 @@ func (a *outputAction) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *outputAction) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	outputType, err := a.getServiceOutputType(a.outputType)
 	if err != nil {
 		return false, err

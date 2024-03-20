@@ -54,12 +54,14 @@ func (m *ActionMaker) Make(
 		parallelActions = append(parallelActions, newAction)
 	}
 	return &action{
+		fnd:     m.fnd,
 		actions: parallelActions,
 		timeout: time.Duration(config.Timeout),
 	}, nil
 }
 
 type action struct {
+	fnd     app.Foundation
 	actions []actions.Action
 	timeout time.Duration
 }
@@ -68,7 +70,7 @@ func (a *action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool) (bool, error) {
+func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
 	wg.Add(len(a.actions))
@@ -81,7 +83,7 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data, dryRun bool)
 			defer wg.Done()
 
 			// Execute the action, passing the context.
-			success, err := act.Execute(ctx, runData, dryRun)
+			success, err := act.Execute(ctx, runData)
 			if err != nil || !success {
 				errs <- err
 			}

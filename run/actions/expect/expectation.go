@@ -49,12 +49,14 @@ func (m *ExpectationActionMaker) MakeCommonExpectation(
 	}
 
 	return &CommonExpectation{
+		fnd:     m.fnd,
 		service: svc,
 		timeout: time.Duration(timeout),
 	}, nil
 }
 
 type CommonExpectation struct {
+	fnd     app.Foundation
 	service services.Service
 	timeout time.Duration
 }
