@@ -166,15 +166,23 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		hostConfig = &container.HostConfig{}
 	}
 
-	// Bind configs to the host config
+	// Bind configs and scripts to the host config
 	wsConfigPaths := service.WorkspaceConfigPaths()
-	binds := make([]string, len(wsConfigPaths))
+	wsScriptPaths := service.WorkspaceScriptPaths()
+	binds := make([]string, 0, len(wsConfigPaths)+len(wsScriptPaths))
 	for configName, envConfigPath := range service.EnvironmentConfigPaths() {
 		wsConfigPath, found := wsConfigPaths[configName]
 		if !found {
 			return nil, fmt.Errorf("no workspace config for %s", configName)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsConfigPath, envConfigPath))
+	}
+	for scriptName, envScriptPath := range service.EnvironmentScriptPaths() {
+		wsScriptPath, found := wsScriptPaths[scriptName]
+		if !found {
+			return nil, fmt.Errorf("no workspace script for %s", scriptName)
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s", wsScriptPath, envScriptPath))
 	}
 	hostConfig.Binds = binds
 

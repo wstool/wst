@@ -48,6 +48,8 @@ type Service interface {
 	Port() int32
 	EnvironmentConfigPaths() map[string]string
 	WorkspaceConfigPaths() map[string]string
+	EnvironmentScriptPaths() map[string]string
+	WorkspaceScriptPaths() map[string]string
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
@@ -208,6 +210,8 @@ type nativeService struct {
 	configs                map[string]nativeServiceConfig
 	environmentConfigPaths map[string]string
 	workspaceConfigPaths   map[string]string
+	environmentScriptPaths map[string]string
+	workspaceScriptPaths   map[string]string
 	workspace              string
 	template               template.Template
 }
@@ -226,6 +230,14 @@ func (s *nativeService) EnvironmentConfigPaths() map[string]string {
 
 func (s *nativeService) WorkspaceConfigPaths() map[string]string {
 	return s.workspaceConfigPaths
+}
+
+func (s *nativeService) EnvironmentScriptPaths() map[string]string {
+	return s.environmentScriptPaths
+}
+
+func (s *nativeService) WorkspaceScriptPaths() map[string]string {
+	return s.workspaceScriptPaths
 }
 
 func (s *nativeService) User() string {
@@ -264,13 +276,13 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 	return bufio.NewScanner(reader), nil
 }
 
-func (s *nativeService) configPaths(config configs.Config) (string, string, error) {
+func (s *nativeService) configPaths(configPath string) (string, string, error) {
 	environmentRootPath := s.environment.RootPath(s)
 	sandboxConfDir, err := s.sandbox.Dir(sandbox.ConfDirType)
 	if err != nil {
 		return "", "", err
 	}
-	confPath := filepath.Join(sandboxConfDir, filepath.Base(config.FilePath()))
+	confPath := filepath.Join(sandboxConfDir, filepath.Base(configPath))
 	return filepath.Join(s.workspace, confPath), filepath.Join(environmentRootPath, confPath), nil
 }
 
@@ -286,12 +298,12 @@ func (s *nativeService) renderConfig(config configs.Config) (string, string, err
 		return "", "", err
 	}
 
-	workspaceConfigPath, environmentConfigPath, err := s.configPaths(config)
+	workspaceConfigPath, environmentConfigPath, err := s.configPaths(config.FilePath())
 	if err != nil {
 		return "", "", err
 	}
 
-	err = s.template.RenderToFile(string(configContent), config.Parameters(), workspaceConfigPath)
+	err = s.template.RenderToFile(string(configContent), config.Parameters(), workspaceConfigPath, 0644)
 	if err != nil {
 		return "", "", err
 	}
@@ -300,19 +312,52 @@ func (s *nativeService) renderConfig(config configs.Config) (string, string, err
 }
 
 func (s *nativeService) renderConfigs() error {
-	configs := s.server.Configs()
-	envConfigPaths := make(map[string]string, len(configs))
-	wsConfigPaths := make(map[string]string, len(configs))
-	for configName, config := range configs {
-		wsPath, envPath, err := s.renderConfig(config)
+	cfgs := s.server.Configs()
+	envConfigPaths := make(map[string]string, len(cfgs))
+	wsConfigPaths := make(map[string]string, len(cfgs))
+	for cfgName, cfg := range cfgs {
+		wsPath, envPath, err := s.renderConfig(cfg)
 		if err != nil {
 			return err
 		}
-		envConfigPaths[configName] = envPath
-		wsConfigPaths[configName] = wsPath
+		envConfigPaths[cfgName] = envPath
+		wsConfigPaths[cfgName] = wsPath
 	}
 	s.environmentConfigPaths = envConfigPaths
 	s.workspaceConfigPaths = envConfigPaths
+	return nil
+}
+
+func (s *nativeService) renderScript(script scripts.Script) (string, string, error) {
+	sandboxScriptDir, err := s.sandbox.Dir(sandbox.ScriptDirType)
+	if err != nil {
+		return "", "", err
+	}
+	environmentScriptPath := filepath.Join(sandboxScriptDir, script.Path())
+	workspaceScriptPath := filepath.Join(s.workspace, environmentScriptPath)
+
+	err = s.template.RenderToFile(script.Content(), script.Parameters(), workspaceScriptPath, script.Mode())
+	if err != nil {
+		return "", "", err
+	}
+
+	return workspaceScriptPath, environmentScriptPath, nil
+}
+
+func (s *nativeService) renderScripts() error {
+	includedScripts := s.scripts
+	envScriptPaths := make(map[string]string, len(includedScripts))
+	wsScriptPaths := make(map[string]string, len(includedScripts))
+	for scriptName, script := range includedScripts {
+		wsPath, envPath, err := s.renderScript(script)
+		if err != nil {
+			return err
+		}
+		envScriptPaths[scriptName] = envPath
+		wsScriptPaths[scriptName] = wsPath
+	}
+	s.environmentScriptPaths = envScriptPaths
+	s.workspaceScriptPaths = wsScriptPaths
 	return nil
 }
 
@@ -344,8 +389,14 @@ func (s *nativeService) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Render configs.
+	// Render configs
 	err = s.renderConfigs()
+	if err != nil {
+		return err
+	}
+
+	// Render scripts
+	err = s.renderScripts()
 	if err != nil {
 		return err
 	}

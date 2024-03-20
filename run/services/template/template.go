@@ -14,7 +14,7 @@ import (
 
 type Template interface {
 	RenderToWriter(content string, parameters parameters.Parameters, writer io.Writer) error
-	RenderToFile(content string, parameters parameters.Parameters, filePath string) error
+	RenderToFile(content string, parameters parameters.Parameters, filePath string, perm os.FileMode) error
 	RenderToString(content string, parameters parameters.Parameters) (string, error)
 }
 
@@ -72,13 +72,18 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	return nil
 }
 
-func (t *nativeTemplate) RenderToFile(content string, params parameters.Parameters, filePath string) error {
+func (t *nativeTemplate) RenderToFile(
+	content string,
+	params parameters.Parameters,
+	filePath string,
+	perm os.FileMode,
+) error {
 	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
+	file, err := os.OpenFile(filePath, os.O_RDWR, perm)
 	if err != nil {
 		return err
 	}
