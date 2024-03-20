@@ -25,12 +25,16 @@ import (
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/services"
 	"io"
+	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -67,6 +71,7 @@ func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environme
 		namespace:            config.Namespace,
 		useFullName:          false,
 		deploymentClient:     clientset.AppsV1().Deployments(config.Namespace),
+		configMapClient:      clientset.CoreV1().ConfigMaps(config.Namespace),
 		podClient:            clientset.CoreV1().Pods(config.Namespace),
 		serviceClient:        clientset.CoreV1().Services(config.Namespace),
 	}, nil
@@ -79,6 +84,7 @@ type kubernetesEnvironment struct {
 	namespace        string
 	useFullName      bool
 	deploymentClient clientappsv1.DeploymentInterface
+	configMapClient  clientcorev1.ConfigMapInterface
 	podClient        clientcorev1.PodInterface
 	serviceClient    clientcorev1.ServiceInterface
 	tasks            map[string]*kubernetesTask
@@ -128,6 +134,98 @@ func (l *kubernetesEnvironment) serviceName(service services.Service) string {
 	}
 }
 
+// sanitizeName prepares a string to be used as a Kubernetes resource name
+func sanitizeName(input string) string {
+	// Replace invalid characters with '-'
+	reg := regexp.MustCompile("[^a-zA-Z0-9-]+")
+	sanitized := reg.ReplaceAllString(input, "-")
+
+	// Trim to maximum length for ConfigMap names
+	maxLength := 253
+	if len(sanitized) > maxLength {
+		sanitized = sanitized[:maxLength]
+	}
+	return strings.ToLower(sanitized)
+}
+
+// createConfigMap creates a single ConfigMap from the provided data
+func (l *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapName string, data map[string]string) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configMapName,
+		},
+		Data: data,
+	}
+
+	return l.configMapClient.Create(ctx, configMap, metav1.CreateOptions{})
+}
+
+// loadFileContent reads the content of the file at the given path.
+func loadFileContent(filePath string) (string, error) {
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file at %s: %w", filePath, err)
+	}
+	return string(content), nil
+}
+
+// processWorkspacePaths creates ConfigMaps from files specified in workspacePaths and updates volumes and volumeMounts slices.
+// workspacePaths maps a logical name to a file path on the host.
+// envPaths maps the same logical name to a mount path within the container.
+// The function assumes volumeMounts and volumes are pre-initialized and passed by reference.
+func (l *kubernetesEnvironment) processWorkspacePaths(
+	ctx context.Context,
+	serviceName string,
+	workspacePaths,
+	envPaths map[string]string,
+	volumeMounts *[]corev1.VolumeMount,
+	volumes *[]corev1.Volume,
+) error {
+	for name, hostPath := range workspacePaths {
+		envPath, found := envPaths[name]
+		if !found {
+			return fmt.Errorf("environment path not found for %s", name)
+		}
+
+		// Load the content of the file at hostPath
+		content, err := loadFileContent(hostPath)
+		if err != nil {
+			return err
+		}
+
+		// Create a ConfigMap for the file content
+		configMapName := sanitizeName(fmt.Sprintf("%s-%s", serviceName, name))
+		data := map[string]string{
+			filepath.Base(hostPath): content, // Use the file name as the key
+		}
+
+		_, err = l.createConfigMap(ctx, configMapName, data)
+		if err != nil {
+			return fmt.Errorf("failed to create configMap %s: %w", configMapName, err)
+		}
+
+		// Prepare volume and volume mount for this ConfigMap
+		volumeName := configMapName + "-volume"
+		*volumes = append(*volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: configMapName,
+					},
+				},
+			},
+		})
+
+		*volumeMounts = append(*volumeMounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: envPath,
+		})
+	}
+
+	return nil
+}
+
 func (l *kubernetesEnvironment) createDeployment(
 	ctx context.Context,
 	serviceName string,
@@ -138,6 +236,33 @@ func (l *kubernetesEnvironment) createDeployment(
 	if err != nil {
 		return nil, err
 	}
+
+	var volumeMounts []corev1.VolumeMount
+	var volumes []corev1.Volume
+
+	err = l.processWorkspacePaths(
+		ctx,
+		serviceName,
+		service.WorkspaceConfigPaths(),
+		service.EnvironmentConfigPaths(),
+		&volumeMounts,
+		&volumes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	err = l.processWorkspacePaths(
+		ctx,
+		serviceName,
+		service.WorkspaceScriptPaths(),
+		service.EnvironmentScriptPaths(),
+		&volumeMounts,
+		&volumes,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	var command []string
 	var args []string
 	if cmd.Name != "" {
@@ -170,13 +295,15 @@ func (l *kubernetesEnvironment) createDeployment(
 							Image:   containerConfig.Image(),
 							Command: command,
 							Args:    args,
-							Ports: []corev1.ContainerPort{ // TODO: make it configurable
+							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: 80,
+									ContainerPort: service.Port(),
 								},
 							},
+							VolumeMounts: volumeMounts,
 						},
 					},
+					Volumes: volumes,
 				},
 			},
 		},

@@ -9,12 +9,6 @@ in the future.
 - possibly some other helpers
 
 ### Run
-- kubernetes integration
-  - adding config volumes
-  - add health probes setup
-- docker integration
-  - volume config and resources
-  - health check - waiting for container to be able to serve the traffic
 - parameters overwriting (option implementation)
 - dry run mode - integrate to action, services and sandboxes
 - load testing action (wrk runner)
@@ -34,6 +28,10 @@ in the future.
   - specifically check setting of user and group as well as inheriting of the port
 - services tests
 - run tests
+- kubernetes integration
+  - add health probes setup
+- docker integration
+  - health check - waiting for container to be able to serve the traffic
 
 ### Config
 - local env port should be start / end instead of from / to maybe
