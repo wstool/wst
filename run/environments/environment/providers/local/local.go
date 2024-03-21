@@ -120,13 +120,10 @@ func convertTask(target task.Task) (*localTask, error) {
 }
 
 func (l *localEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
-	localTask, err := convertTask(target)
+	_, err := convertTask(target)
 	if err != nil {
 		return err
 	}
-
-	// Render with pid
-	_ = localTask.cmd.ProcessPid()
 
 	return l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args).Run()
 }

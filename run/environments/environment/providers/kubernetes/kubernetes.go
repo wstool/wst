@@ -89,18 +89,26 @@ type kubernetesEnvironment struct {
 	tasks            map[string]*kubernetesTask
 }
 
-func (l *kubernetesEnvironment) Init(ctx context.Context) error {
+func (e *kubernetesEnvironment) dryRunOption() []string {
+	if e.Fnd.DryRun() {
+		return []string{metav1.DryRunAll}
+	}
 	return nil
 }
 
-func (l *kubernetesEnvironment) Destroy(ctx context.Context) error {
+func (e *kubernetesEnvironment) Init(ctx context.Context) error {
+	return nil
+}
+
+func (e *kubernetesEnvironment) Destroy(ctx context.Context) error {
 	var err error
 
+	deleteOptions := metav1.DeleteOptions{DryRun: e.dryRunOption()}
 	// Iterate over all tasks to delete services and deployments
-	for _, kubeTask := range l.tasks {
+	for _, kubeTask := range e.tasks {
 		// Delete the service
 		if kubeTask.service != nil {
-			err = l.serviceClient.Delete(ctx, kubeTask.serviceName, metav1.DeleteOptions{})
+			err = e.serviceClient.Delete(ctx, kubeTask.serviceName, deleteOptions)
 			if err != nil {
 				return fmt.Errorf("failed to delete service %s: %w", kubeTask.serviceName, err)
 			}
@@ -108,7 +116,7 @@ func (l *kubernetesEnvironment) Destroy(ctx context.Context) error {
 
 		// Delete the deployment
 		if kubeTask.deployment != nil {
-			err = l.deploymentClient.Delete(ctx, kubeTask.deployment.Name, metav1.DeleteOptions{})
+			err = e.deploymentClient.Delete(ctx, kubeTask.deployment.Name, deleteOptions)
 			if err != nil {
 				return fmt.Errorf("failed to delete deployment %s: %w", kubeTask.deployment.Name, err)
 			}
@@ -116,7 +124,7 @@ func (l *kubernetesEnvironment) Destroy(ctx context.Context) error {
 	}
 
 	// Clear the tasks map for potential reuse of the environment
-	l.tasks = make(map[string]*kubernetesTask)
+	e.tasks = make(map[string]*kubernetesTask)
 
 	return nil
 }
@@ -125,8 +133,8 @@ func int32Ptr(i int32) *int32 {
 	return &i
 }
 
-func (l *kubernetesEnvironment) serviceName(service services.Service) string {
-	if l.useFullName {
+func (e *kubernetesEnvironment) serviceName(service services.Service) string {
+	if e.useFullName {
 		return service.FullName()
 	} else {
 		return service.Name()
@@ -148,7 +156,7 @@ func sanitizeName(input string) string {
 }
 
 // createConfigMap creates a single ConfigMap from the provided data
-func (l *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapName string, data map[string]string) (*corev1.ConfigMap, error) {
+func (e *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapName string, data map[string]string) (*corev1.ConfigMap, error) {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configMapName,
@@ -156,7 +164,7 @@ func (l *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapNa
 		Data: data,
 	}
 
-	return l.configMapClient.Create(ctx, configMap, metav1.CreateOptions{})
+	return e.configMapClient.Create(ctx, configMap, metav1.CreateOptions{DryRun: e.dryRunOption()})
 }
 
 // loadFileContent reads the content of the file at the given path.
@@ -172,7 +180,7 @@ func loadFileContent(filePath string) (string, error) {
 // workspacePaths maps a logical name to a file path on the host.
 // envPaths maps the same logical name to a mount path within the container.
 // The function assumes volumeMounts and volumes are pre-initialized and passed by reference.
-func (l *kubernetesEnvironment) processWorkspacePaths(
+func (e *kubernetesEnvironment) processWorkspacePaths(
 	ctx context.Context,
 	serviceName string,
 	workspacePaths,
@@ -198,7 +206,7 @@ func (l *kubernetesEnvironment) processWorkspacePaths(
 			filepath.Base(hostPath): content, // Use the file name as the key
 		}
 
-		_, err = l.createConfigMap(ctx, configMapName, data)
+		_, err = e.createConfigMap(ctx, configMapName, data)
 		if err != nil {
 			return fmt.Errorf("failed to create configMap %s: %w", configMapName, err)
 		}
@@ -225,7 +233,7 @@ func (l *kubernetesEnvironment) processWorkspacePaths(
 	return nil
 }
 
-func (l *kubernetesEnvironment) createDeployment(
+func (e *kubernetesEnvironment) createDeployment(
 	ctx context.Context,
 	serviceName string,
 	service services.Service,
@@ -239,7 +247,7 @@ func (l *kubernetesEnvironment) createDeployment(
 	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 
-	err = l.processWorkspacePaths(
+	err = e.processWorkspacePaths(
 		ctx,
 		serviceName,
 		service.WorkspaceConfigPaths(),
@@ -250,7 +258,7 @@ func (l *kubernetesEnvironment) createDeployment(
 	if err != nil {
 		return nil, err
 	}
-	err = l.processWorkspacePaths(
+	err = e.processWorkspacePaths(
 		ctx,
 		serviceName,
 		service.WorkspaceScriptPaths(),
@@ -308,14 +316,19 @@ func (l *kubernetesEnvironment) createDeployment(
 		},
 	}
 
-	result, err := l.deploymentClient.Create(ctx, deployment, metav1.CreateOptions{})
+	result, err := e.deploymentClient.Create(ctx, deployment, metav1.CreateOptions{DryRun: e.dryRunOption()})
 	if err != nil {
 		return nil, err
 	}
 	kubeTask := &kubernetesTask{deployment: result}
-	l.tasks[serviceName] = kubeTask
+	e.tasks[serviceName] = kubeTask
 
-	watcher, err := l.deploymentClient.Watch(ctx, metav1.ListOptions{
+	if e.Fnd.DryRun() {
+		kubeTask.deploymentReady = true
+		return kubeTask, nil
+	}
+
+	watcher, err := e.deploymentClient.Watch(ctx, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("metadata.name=%s", serviceName),
 	})
 	if err != nil {
@@ -348,7 +361,7 @@ func (l *kubernetesEnvironment) createDeployment(
 	}
 }
 
-func (l *kubernetesEnvironment) createService(
+func (e *kubernetesEnvironment) createService(
 	ctx context.Context,
 	kubeTask *kubernetesTask,
 	serviceName string,
@@ -379,14 +392,22 @@ func (l *kubernetesEnvironment) createService(
 		},
 	}
 
-	kubeService, err := l.serviceClient.Create(ctx, kubeServiceSpec, metav1.CreateOptions{})
+	kubeService, err := e.serviceClient.Create(ctx, kubeServiceSpec, metav1.CreateOptions{DryRun: e.dryRunOption()})
 	if err != nil {
 		return fmt.Errorf("failed to create service: %w", err)
 	}
 
 	kubeTask.service = kubeService
 
-	watcher, err := l.serviceClient.Watch(ctx, metav1.ListOptions{
+	if e.Fnd.DryRun() {
+		if service.IsPublic() {
+			kubeTask.servicePublicUrl = "http://127.0.0.1"
+		}
+		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, service.Port())
+		return nil
+	}
+
+	watcher, err := e.serviceClient.Watch(ctx, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("metadata.name=%s", serviceName),
 	})
 	if err != nil {
@@ -423,13 +444,13 @@ func (l *kubernetesEnvironment) createService(
 	}
 }
 
-func (l *kubernetesEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
-	serviceName := l.serviceName(service)
-	kubeTask, err := l.createDeployment(ctx, serviceName, service, cmd)
+func (e *kubernetesEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
+	serviceName := e.serviceName(service)
+	kubeTask, err := e.createDeployment(ctx, serviceName, service, cmd)
 	if err != nil {
 		return nil, err
 	}
-	err = l.createService(ctx, kubeTask, serviceName, service)
+	err = e.createService(ctx, kubeTask, serviceName, service)
 	if err != nil {
 		return nil, err
 	}
@@ -437,19 +458,26 @@ func (l *kubernetesEnvironment) RunTask(ctx context.Context, service services.Se
 	return kubeTask, nil
 }
 
-func (l *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
+func (e *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
 	return fmt.Errorf("executing command is not currently supported in Kubernetes environment")
 }
 
-func (l *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
+func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
 	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
-func (l *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
+func (e *kubernetesEnvironment) logsStream(ctx context.Context, pod corev1.Pod) (io.ReadCloser, error) {
+	if e.Fnd.DryRun() {
+		return &app.DummyReaderCloser{}, nil
+	}
+	return e.podClient.GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream(ctx)
+}
+
+func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
 	if outputType != output.Any {
 		return nil, fmt.Errorf("only any output type is supported by Kubernetes environment")
 	}
-	pods, err := l.podClient.List(ctx, metav1.ListOptions{
+	pods, err := e.podClient.List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("app=%s", target.Name()),
 	})
 	if err != nil {
@@ -458,8 +486,7 @@ func (l *kubernetesEnvironment) Output(ctx context.Context, target task.Task, ou
 
 	readers := make([]io.Reader, 0, len(pods.Items))
 	for _, pod := range pods.Items {
-		req := l.podClient.GetLogs(pod.Name, &corev1.PodLogOptions{})
-		podLogs, err := req.Stream(ctx)
+		podLogs, err := e.logsStream(ctx, pod)
 		if err != nil {
 			return nil, fmt.Errorf("error in opening stream: %w", err)
 		}
@@ -474,7 +501,7 @@ func (l *kubernetesEnvironment) Output(ctx context.Context, target task.Task, ou
 	return combinedReader, nil
 }
 
-func (l *kubernetesEnvironment) RootPath(service services.Service) string {
+func (e *kubernetesEnvironment) RootPath(service services.Service) string {
 	return ""
 }
 
