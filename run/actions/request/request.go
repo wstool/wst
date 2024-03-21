@@ -101,7 +101,7 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	// Send the request.
-	client := &http.Client{}
+	client := a.fnd.HttpClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err

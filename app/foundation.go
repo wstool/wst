@@ -32,6 +32,7 @@ type Foundation interface {
 	UserHomeDir() (string, error)
 	LookupEnvVar(key string) (string, bool)
 	ExecCommand(ctx context.Context, name string, args []string) Command
+	HttpClient() HttpClient
 }
 
 type DefaultFoundation struct {
@@ -95,4 +96,11 @@ func (f *DefaultFoundation) ExecCommand(ctx context.Context, name string, args [
 		return NewDryRunCommand()
 	}
 	return NewExecCommand(ctx, name, args)
+}
+
+func (f *DefaultFoundation) HttpClient() HttpClient {
+	if f.dryRun {
+		return NewDryRunHttpClient()
+	}
+	return NewRealHttpClient()
 }
