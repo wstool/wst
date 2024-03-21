@@ -17,6 +17,10 @@ func (s *Service) Address() (string, error) {
 	return s.service.PrivateUrl()
 }
 
+func (s *Service) Pid() (int, error) {
+	return s.service.Pid()
+}
+
 func (s *Service) Dirs() map[sandbox.DirType]string {
 	return s.service.Dirs()
 }

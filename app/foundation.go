@@ -15,6 +15,7 @@
 package app
 
 import (
+	"context"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"os"
@@ -30,6 +31,7 @@ type Foundation interface {
 	UserGroup(u *user.User) (*user.Group, error)
 	UserHomeDir() (string, error)
 	LookupEnvVar(key string) (string, bool)
+	ExecCommand(ctx context.Context, name string, args []string) Command
 }
 
 type DefaultFoundation struct {
@@ -38,7 +40,17 @@ type DefaultFoundation struct {
 	dryRun bool
 }
 
-func CreateFoundation(logger *zap.SugaredLogger, fs afero.Fs, dryRun bool) Foundation {
+var OsFs = afero.NewOsFs()
+
+var MemoryFs = afero.NewMemMapFs()
+
+func NewFoundation(logger *zap.SugaredLogger, dryRun bool) Foundation {
+	var fs afero.Fs
+	if dryRun {
+		fs = MemoryFs
+	} else {
+		fs = OsFs
+	}
 	return &DefaultFoundation{
 		logger: logger,
 		fs:     fs,
@@ -76,4 +88,11 @@ func (f *DefaultFoundation) UserHomeDir() (string, error) {
 
 func (f *DefaultFoundation) LookupEnvVar(key string) (string, bool) {
 	return os.LookupEnv(key)
+}
+
+func (f *DefaultFoundation) ExecCommand(ctx context.Context, name string, args []string) Command {
+	if f.dryRun {
+		return NewDryRunCommand()
+	}
+	return NewExecCommand(ctx, name, args)
 }

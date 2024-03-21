@@ -30,12 +30,15 @@ func CreateMaker(fnd app.Foundation) *Maker {
 
 func (m *Maker) Make(svc services.Service, svcs services.Services) Template {
 	return &nativeTemplate{
+		fnd:  m.fnd,
 		svc:  svc,
 		svcs: svcs,
 	}
 }
 
 type nativeTemplate struct {
+	// Fondation
+	fnd app.Foundation
 	// All services.
 	svcs services.Services
 	// Current service.
@@ -78,12 +81,14 @@ func (t *nativeTemplate) RenderToFile(
 	filePath string,
 	perm os.FileMode,
 ) error {
-	err := os.MkdirAll(filepath.Dir(filePath), 0755)
+	fs := t.fnd.Fs()
+
+	err := fs.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(filePath, os.O_RDWR, perm)
+	file, err := fs.OpenFile(filePath, os.O_RDWR, perm)
 	if err != nil {
 		return err
 	}

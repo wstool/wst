@@ -3,9 +3,14 @@
 package app
 
 import (
+	app "github.com/bukka/wst/app"
 	afero "github.com/spf13/afero"
 
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
+
+	user "os/user"
 
 	zap "go.uber.org/zap"
 )
@@ -21,6 +26,158 @@ type MockFoundation_Expecter struct {
 
 func (_m *MockFoundation) EXPECT() *MockFoundation_Expecter {
 	return &MockFoundation_Expecter{mock: &_m.Mock}
+}
+
+// CurrentUser provides a mock function with given fields:
+func (_m *MockFoundation) CurrentUser() (*user.User, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CurrentUser")
+	}
+
+	var r0 *user.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (*user.User, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *user.User); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*user.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFoundation_CurrentUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CurrentUser'
+type MockFoundation_CurrentUser_Call struct {
+	*mock.Call
+}
+
+// CurrentUser is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) CurrentUser() *MockFoundation_CurrentUser_Call {
+	return &MockFoundation_CurrentUser_Call{Call: _e.mock.On("CurrentUser")}
+}
+
+func (_c *MockFoundation_CurrentUser_Call) Run(run func()) *MockFoundation_CurrentUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_CurrentUser_Call) Return(_a0 *user.User, _a1 error) *MockFoundation_CurrentUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFoundation_CurrentUser_Call) RunAndReturn(run func() (*user.User, error)) *MockFoundation_CurrentUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DryRun provides a mock function with given fields:
+func (_m *MockFoundation) DryRun() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DryRun")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockFoundation_DryRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DryRun'
+type MockFoundation_DryRun_Call struct {
+	*mock.Call
+}
+
+// DryRun is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) DryRun() *MockFoundation_DryRun_Call {
+	return &MockFoundation_DryRun_Call{Call: _e.mock.On("DryRun")}
+}
+
+func (_c *MockFoundation_DryRun_Call) Run(run func()) *MockFoundation_DryRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_DryRun_Call) Return(_a0 bool) *MockFoundation_DryRun_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_DryRun_Call) RunAndReturn(run func() bool) *MockFoundation_DryRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ExecCommand provides a mock function with given fields: ctx, name, args
+func (_m *MockFoundation) ExecCommand(ctx context.Context, name string, args []string) app.Command {
+	ret := _m.Called(ctx, name, args)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecCommand")
+	}
+
+	var r0 app.Command
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) app.Command); ok {
+		r0 = rf(ctx, name, args)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(app.Command)
+		}
+	}
+
+	return r0
+}
+
+// MockFoundation_ExecCommand_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecCommand'
+type MockFoundation_ExecCommand_Call struct {
+	*mock.Call
+}
+
+// ExecCommand is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - args []string
+func (_e *MockFoundation_Expecter) ExecCommand(ctx interface{}, name interface{}, args interface{}) *MockFoundation_ExecCommand_Call {
+	return &MockFoundation_ExecCommand_Call{Call: _e.mock.On("ExecCommand", ctx, name, args)}
+}
+
+func (_c *MockFoundation_ExecCommand_Call) Run(run func(ctx context.Context, name string, args []string)) *MockFoundation_ExecCommand_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
+	})
+	return _c
+}
+
+func (_c *MockFoundation_ExecCommand_Call) Return(_a0 app.Command) *MockFoundation_ExecCommand_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_ExecCommand_Call) RunAndReturn(run func(context.Context, string, []string) app.Command) *MockFoundation_ExecCommand_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Fs provides a mock function with given fields:
@@ -169,6 +326,122 @@ func (_c *MockFoundation_LookupEnvVar_Call) Return(_a0 string, _a1 bool) *MockFo
 }
 
 func (_c *MockFoundation_LookupEnvVar_Call) RunAndReturn(run func(string) (string, bool)) *MockFoundation_LookupEnvVar_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// User provides a mock function with given fields: username
+func (_m *MockFoundation) User(username string) (*user.User, error) {
+	ret := _m.Called(username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for User")
+	}
+
+	var r0 *user.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*user.User, error)); ok {
+		return rf(username)
+	}
+	if rf, ok := ret.Get(0).(func(string) *user.User); ok {
+		r0 = rf(username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*user.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFoundation_User_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'User'
+type MockFoundation_User_Call struct {
+	*mock.Call
+}
+
+// User is a helper method to define mock.On call
+//   - username string
+func (_e *MockFoundation_Expecter) User(username interface{}) *MockFoundation_User_Call {
+	return &MockFoundation_User_Call{Call: _e.mock.On("User", username)}
+}
+
+func (_c *MockFoundation_User_Call) Run(run func(username string)) *MockFoundation_User_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockFoundation_User_Call) Return(_a0 *user.User, _a1 error) *MockFoundation_User_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFoundation_User_Call) RunAndReturn(run func(string) (*user.User, error)) *MockFoundation_User_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UserGroup provides a mock function with given fields: u
+func (_m *MockFoundation) UserGroup(u *user.User) (*user.Group, error) {
+	ret := _m.Called(u)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UserGroup")
+	}
+
+	var r0 *user.Group
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*user.User) (*user.Group, error)); ok {
+		return rf(u)
+	}
+	if rf, ok := ret.Get(0).(func(*user.User) *user.Group); ok {
+		r0 = rf(u)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*user.Group)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*user.User) error); ok {
+		r1 = rf(u)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFoundation_UserGroup_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UserGroup'
+type MockFoundation_UserGroup_Call struct {
+	*mock.Call
+}
+
+// UserGroup is a helper method to define mock.On call
+//   - u *user.User
+func (_e *MockFoundation_Expecter) UserGroup(u interface{}) *MockFoundation_UserGroup_Call {
+	return &MockFoundation_UserGroup_Call{Call: _e.mock.On("UserGroup", u)}
+}
+
+func (_c *MockFoundation_UserGroup_Call) Run(run func(u *user.User)) *MockFoundation_UserGroup_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*user.User))
+	})
+	return _c
+}
+
+func (_c *MockFoundation_UserGroup_Call) Return(_a0 *user.Group, _a1 error) *MockFoundation_UserGroup_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFoundation_UserGroup_Call) RunAndReturn(run func(*user.User) (*user.Group, error)) *MockFoundation_UserGroup_Call {
 	_c.Call.Return(run)
 	return _c
 }

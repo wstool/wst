@@ -487,6 +487,10 @@ type kubernetesTask struct {
 	deploymentReady   bool
 }
 
+func (t *kubernetesTask) Pid() int {
+	return 1
+}
+
 func (t *kubernetesTask) Id() string {
 	return t.serviceName
 }

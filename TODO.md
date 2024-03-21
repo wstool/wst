@@ -28,16 +28,17 @@ in the future.
   - specifically check setting of user and group as well as inheriting of the port
 - services tests
 - run tests
+- add detailed info and debug logging
 - kubernetes environment improvements
   - add health probes setup
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
 
 ### Config
-- local env port should be start / end instead of from / to maybe
-- add checks for casting to lower integers (e.g. int16)
+- add checks for casting to lower integers (e.g. int32 and int16)
 - factories
 - merging - generic merging rules taken from params
+- boolean conversion in the same way as string (maybe something more generic that can handle both)
 
 ## Plan
 

@@ -272,6 +272,10 @@ type dockerTask struct {
 	containerPrivateUrl string
 }
 
+func (t *dockerTask) Pid() int {
+	return 1
+}
+
 func (t *dockerTask) Id() string {
 	return t.containerId
 }

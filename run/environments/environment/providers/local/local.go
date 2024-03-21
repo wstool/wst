@@ -27,7 +27,6 @@ import (
 	"github.com/bukka/wst/run/services"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 )
 
@@ -92,7 +91,7 @@ func (l *localEnvironment) RunTask(ctx context.Context, service services.Service
 		}
 	}
 
-	command := exec.CommandContext(ctx, cmd.Name, cmd.Args...)
+	command := l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args)
 
 	if err := command.Start(); err != nil {
 		return nil, err
@@ -127,9 +126,9 @@ func (l *localEnvironment) ExecTaskCommand(ctx context.Context, service services
 	}
 
 	// Render with pid
-	_ = localTask.cmd.Process.Pid
+	_ = localTask.cmd.ProcessPid()
 
-	return exec.CommandContext(ctx, cmd.Name, cmd.Args...).Run()
+	return l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args).Run()
 }
 
 func (l *localEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
@@ -138,7 +137,7 @@ func (l *localEnvironment) ExecTaskSignal(ctx context.Context, service services.
 		return err
 	}
 
-	err = localTask.cmd.Process.Signal(signal)
+	err = localTask.cmd.ProcessSignal(signal)
 	if err != nil {
 		return err
 	}
@@ -184,9 +183,13 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 }
 
 type localTask struct {
-	cmd         *exec.Cmd
+	cmd         app.Command
 	serviceName string
 	serviceUrl  string
+}
+
+func (t *localTask) Pid() int {
+	return t.cmd.ProcessPid()
 }
 
 func (t *localTask) Id() string {

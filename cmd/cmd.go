@@ -48,7 +48,7 @@ func Run() {
 				panic(fmt.Sprintf("Cannot initialize zap logger: %v", err))
 			}
 
-			fnd := app.CreateFoundation(logger.Sugar(), run.DefaultsFs, dryRun)
+			fnd := app.NewFoundation(logger.Sugar(), dryRun)
 
 			options := &run.Options{
 				ConfigPaths: configPaths,

@@ -40,6 +40,7 @@ import (
 type Service interface {
 	PublicUrl() (string, error)
 	PrivateUrl() (string, error)
+	Pid() (int, error)
 	Name() string
 	FullName() string
 	User() string
@@ -448,6 +449,14 @@ func (s *nativeService) PrivateUrl() (string, error) {
 	}
 
 	return s.task.PrivateUrl(), nil
+}
+
+func (s *nativeService) Pid() (int, error) {
+	if s.task == nil {
+		return 0, fmt.Errorf("service has not started yet")
+	}
+
+	return s.task.Pid(), nil
 }
 
 func (s *nativeService) RenderTemplate(text string, params parameters.Parameters) (string, error) {

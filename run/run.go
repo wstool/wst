@@ -18,7 +18,6 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf"
 	"github.com/bukka/wst/run/spec"
-	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
 )
@@ -36,8 +35,6 @@ type Runner struct {
 	configMaker *conf.ConfigMaker
 	specMaker   *spec.Maker
 }
-
-var DefaultsFs = afero.NewOsFs()
 
 func CreateRunner(fnd app.Foundation) *Runner {
 	return &Runner{
