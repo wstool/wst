@@ -109,6 +109,10 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 		return false, err
 	}
 
+	if a.fnd.DryRun() {
+		return true, nil
+	}
+
 	// Compare body content based on bodyMatch.
 	switch a.bodyMatch {
 	case MatchTypeExact:

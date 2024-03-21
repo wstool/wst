@@ -68,6 +68,10 @@ func (a *action) Timeout() time.Duration {
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	success, err := a.action.Execute(ctx, runData)
+	if a.fnd.DryRun() {
+		// always return success for dry run
+		return true, nil
+	}
 	if err != nil {
 		return false, err
 	}

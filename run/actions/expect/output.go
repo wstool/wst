@@ -121,6 +121,10 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 		return false, scanner.Err()
 	}
 
+	if a.fnd.DryRun() {
+		return true, nil
+	}
+
 	return false, nil
 }
 
