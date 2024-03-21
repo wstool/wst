@@ -57,6 +57,8 @@ type Environment interface {
 	PortsEnd() int32
 	ReservePort() int32
 	ContainerRegistry() *ContainerRegistry
+	MarkUsed()
+	IsUsed() bool
 }
 
 type Maker struct {
@@ -71,18 +73,28 @@ func CreateMaker(fnd app.Foundation) *Maker {
 
 type CommonEnvironment struct {
 	Fnd   app.Foundation
+	Used  bool
 	Ports Ports
 }
 
 func (m *Maker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
 	return &CommonEnvironment{
-		Fnd: m.Fnd,
+		Fnd:  m.Fnd,
+		Used: false,
 		Ports: Ports{
 			Start: config.Ports.Start,
 			Used:  config.Ports.Start,
 			End:   config.Ports.End,
 		},
 	}
+}
+
+func (e *CommonEnvironment) MarkUsed() {
+	e.Used = true
+}
+
+func (e *CommonEnvironment) IsUsed() bool {
+	return e.Used
 }
 
 func (e *CommonEnvironment) PortsStart() int32 {

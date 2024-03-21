@@ -30,7 +30,7 @@ import (
 )
 
 type Instance interface {
-	ExecuteActions() error
+	Run() error
 	Name() string
 	Workspace() string
 }
@@ -91,6 +91,7 @@ func (m *InstanceMaker) Make(
 		name:      name,
 		timeout:   instanceConfig.Timeouts.Actions,
 		actions:   instanceActions,
+		envs:      envs,
 		runData:   runData,
 		workspace: instanceWorkspace,
 	}, nil
@@ -100,6 +101,7 @@ type nativeInstance struct {
 	fnd       app.Foundation
 	name      string
 	actions   []actions.Action
+	envs      environments.Environments
 	runData   runtime.Data
 	timeout   int
 	workspace string
@@ -113,13 +115,37 @@ func (i *nativeInstance) Name() string {
 	return i.name
 }
 
-func (i *nativeInstance) ExecuteActions() error {
-	for _, action := range i.actions {
-		if err := i.executeAction(action); err != nil {
-			return err
+func (i *nativeInstance) Run() error {
+	var err error
+	for _, env := range i.envs {
+		if env.IsUsed() {
+			if err = env.Init(context.Background()); err != nil {
+				for _, innerEnv := range i.envs {
+					if innerEnv == env {
+						break
+					}
+					if innerEnv.IsUsed() {
+						innerEnv.Destroy(context.Background())
+					}
+				}
+				return err
+			}
 		}
 	}
-	return nil
+	for _, action := range i.actions {
+		if err = i.executeAction(action); err != nil {
+			break
+		}
+	}
+	for _, env := range i.envs {
+		if env.IsUsed() {
+			destroyErr := env.Destroy(context.Background())
+			if err == nil {
+				err = destroyErr
+			}
+		}
+	}
+	return err
 }
 
 func (i *nativeInstance) executeAction(action actions.Action) error {

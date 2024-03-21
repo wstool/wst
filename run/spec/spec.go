@@ -24,7 +24,7 @@ import (
 )
 
 type Spec interface {
-	ExecuteInstances(filteredInstances []string) error
+	Run(filteredInstances []string) error
 }
 
 type Maker struct {
@@ -70,7 +70,7 @@ type nativeSpec struct {
 	instances []instances.Instance
 }
 
-func (n nativeSpec) ExecuteInstances(filteredInstances []string) error {
+func (n nativeSpec) Run(filteredInstances []string) error {
 	// Loop through the instances.
 	for _, instance := range n.instances {
 		// Determine the instance identifier or name.
@@ -78,7 +78,7 @@ func (n nativeSpec) ExecuteInstances(filteredInstances []string) error {
 
 		// Execute if filteredInstances is empty or nil, meaning execute all instances.
 		if len(filteredInstances) == 0 {
-			if err := instance.ExecuteActions(); err != nil {
+			if err := instance.Run(); err != nil {
 				return err // Return immediately if any execution fails.
 			}
 		} else {
@@ -86,7 +86,7 @@ func (n nativeSpec) ExecuteInstances(filteredInstances []string) error {
 			for _, filter := range filteredInstances {
 				if strings.HasPrefix(instanceName, filter) {
 					// Execute the instance if it matches the filter.
-					if err := instance.ExecuteActions(); err != nil {
+					if err := instance.Run(); err != nil {
 						return err // Return immediately if any execution fails.
 					}
 					break // Move to the next instance after successful execution.

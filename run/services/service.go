@@ -146,6 +146,7 @@ func (m *Maker) Make(
 		if !ok {
 			return nil, fmt.Errorf("environment %s not found for service %s", sandboxName, serviceName)
 		}
+		env.MarkUsed()
 
 		nativeConfigs := make(map[string]nativeServiceConfig)
 
