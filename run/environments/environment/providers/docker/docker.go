@@ -71,6 +71,9 @@ func (e *dockerEnvironment) Init(ctx context.Context) error {
 }
 
 func (e *dockerEnvironment) Destroy(ctx context.Context) error {
+	if e.Fnd.DryRun() {
+		return nil
+	}
 	// TODO: do not return after first error but try to destroy as much as possible (continue destroying)
 	for _, dockTask := range e.tasks {
 		containerId := dockTask.containerId
@@ -112,11 +115,13 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context) error {
 		return nil
 	}
 	e.networkName = e.namePrefix
-	_, err := e.cli.NetworkCreate(ctx, e.networkName, apitypes.NetworkCreate{
-		Driver: "bridge",
-	})
-	if err != nil {
-		return err
+	if !e.Fnd.DryRun() {
+		_, err := e.cli.NetworkCreate(ctx, e.networkName, apitypes.NetworkCreate{
+			Driver: "bridge",
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -136,12 +141,16 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		return nil, err
 	}
 
+	dryRun := e.Fnd.DryRun()
+
 	// Pull the Docker image if not already present
-	pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull Docker image %s: %w", imageName, err)
+	if !dryRun {
+		pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to pull Docker image %s: %w", imageName, err)
+		}
+		defer pullOut.Close()
 	}
-	defer pullOut.Close()
 
 	// Docker container config
 	containerConfig := &container.Config{
@@ -195,18 +204,23 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 
 	// Create the Docker container
 	containerName := fmt.Sprintf("%s-%s", e.namePrefix, service.Name())
-	containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker container for service %s: %w", service.Name(), err)
-	}
+	var containerId string
+	if !dryRun {
+		containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Docker container for service %s: %w", service.Name(), err)
+		}
 
-	// Start the Docker container
-	err = e.cli.ContainerStart(ctx, containerResp.ID, container.StartOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to start Docker container %s: %w", containerResp.ID, err)
-	}
+		// Start the Docker container
+		err = e.cli.ContainerStart(ctx, containerResp.ID, container.StartOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to start Docker container %s: %w", containerResp.ID, err)
+		}
 
-	containerId := containerResp.ID
+		containerId = containerResp.ID
+	} else {
+		containerId = "container"
+	}
 	// Construct your dockerTask with necessary details
 	dockTask := &dockerTask{
 		containerName:       containerName,
@@ -217,6 +231,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 
 	e.tasks[service.FullName()] = dockTask
+
+	if dryRun {
+		dockTask.containerReady = true
+		return dockTask, nil
+	}
 
 	timeout := time.After(30 * time.Second)
 	tick := time.Tick(1 * time.Second)
@@ -247,6 +266,10 @@ func (e *dockerEnvironment) ExecTaskSignal(ctx context.Context, service services
 }
 
 func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
+	if e.Fnd.DryRun() {
+		return &app.DummyReaderCloser{}, nil
+	}
+
 	containerID := target.Id()
 	reader, err := e.cli.ContainerLogs(ctx, containerID, container.LogsOptions{
 		ShowStdout: outputType == output.Stdout || outputType == output.Any,
