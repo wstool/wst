@@ -67,13 +67,15 @@ func (a *action) Timeout() time.Duration {
 }
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing not action")
 	success, err := a.action.Execute(ctx, runData)
+	if err != nil {
+		return false, err
+	}
+	a.fnd.Logger().Infof("Executed action resulted to %t - inverting to %t", success, !success)
 	if a.fnd.DryRun() {
 		// always return success for dry run
 		return true, nil
-	}
-	if err != nil {
-		return false, err
 	}
 	return !success, nil
 }

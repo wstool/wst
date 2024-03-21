@@ -70,30 +70,34 @@ type nativeSpec struct {
 	instances []instances.Instance
 }
 
-func (n nativeSpec) Run(filteredInstances []string) error {
-	// Loop through the instances.
-	for _, instance := range n.instances {
-		// Determine the instance identifier or name.
-		instanceName := instance.Name()
+func isFiltered(instanceName string, filteredInstances []string) bool {
+	if len(filteredInstances) == 0 {
+		return true
+	}
 
-		// Execute if filteredInstances is empty or nil, meaning execute all instances.
-		if len(filteredInstances) == 0 {
-			if err := instance.Run(); err != nil {
-				return err // Return immediately if any execution fails.
-			}
-		} else {
-			// If filteredInstances is not empty, check if the instance name starts with any of the filteredInstances strings.
-			for _, filter := range filteredInstances {
-				if strings.HasPrefix(instanceName, filter) {
-					// Execute the instance if it matches the filter.
-					if err := instance.Run(); err != nil {
-						return err // Return immediately if any execution fails.
-					}
-					break // Move to the next instance after successful execution.
-				}
-			}
+	for _, filter := range filteredInstances {
+		if strings.HasPrefix(instanceName, filter) {
+			return true
 		}
 	}
 
-	return nil // Return nil if all selected instances were executed successfully.
+	return false
+}
+
+func (s *nativeSpec) Run(filteredInstances []string) error {
+	// Loop through the instances.
+	for _, instance := range s.instances {
+		instanceName := instance.Name()
+
+		if isFiltered(instanceName, filteredInstances) {
+			s.fnd.Logger().Infof("Running instance %s", instanceName)
+			if err := instance.Run(); err != nil {
+				return err
+			}
+		} else {
+			s.fnd.Logger().Debugf("Skipping instance %s as it is not in filtered instances", instanceName)
+		}
+	}
+
+	return nil
 }

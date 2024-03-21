@@ -82,7 +82,9 @@ func (a *action) Timeout() time.Duration {
 }
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing start action")
 	for _, svc := range a.services {
+		a.fnd.Logger().Debugf("Starting service %s", svc.Name())
 		err := svc.Start(ctx)
 		if err != nil {
 			return false, err

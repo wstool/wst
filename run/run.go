@@ -54,16 +54,21 @@ func (r *Runner) Execute(options *Options) error {
 	}
 	configPaths = r.removeDuplicates(configPaths)
 
+	r.fnd.Logger().Info("Executing configuration")
+
+	r.fnd.Logger().Debugf("Creating config for paths %v and overwrites %v", configPaths, options.Overwrites)
 	config, err := r.configMaker.Make(configPaths, options.Overwrites)
 	if err != nil {
 		return err
 	}
 
+	r.fnd.Logger().Debug("Creating specification")
 	specification, err := r.specMaker.Make(&config.Spec)
 	if err != nil {
 		return err
 	}
 
+	r.fnd.Logger().Debug("Running instances")
 	return specification.Run(options.Instances)
 }
 

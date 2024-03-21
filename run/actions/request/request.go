@@ -82,6 +82,7 @@ func (a *action) Timeout() time.Duration {
 }
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing request action")
 	// Construct the request URL from the service and path.
 	baseUrl, err := a.service.PublicUrl()
 	if err != nil {
@@ -99,6 +100,7 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	for key, value := range a.headers {
 		req.Header.Add(key, value)
 	}
+	a.fnd.Logger().Debugf("Sending request: %v", req)
 
 	// Send the request.
 	client := a.fnd.HttpClient()
@@ -121,6 +123,7 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	// Store the ResponseData in runData.
+	a.fnd.Logger().Debugf("Storing response %s: %v", a.id, responseData)
 	if err := runData.Store(a.id, responseData); err != nil {
 		return false, err
 	}

@@ -117,31 +117,41 @@ func (i *nativeInstance) Name() string {
 
 func (i *nativeInstance) Run() error {
 	var err error
-	for _, env := range i.envs {
+	for envName, env := range i.envs {
 		if env.IsUsed() {
+			i.fnd.Logger().Debugf("Initializing %s environment", envName)
 			if err = env.Init(context.Background()); err != nil {
-				for _, innerEnv := range i.envs {
+				i.fnd.Logger().Debugf("Failed to initialize %s environment", envName)
+				for innerEnvName, innerEnv := range i.envs {
 					if innerEnv == env {
 						break
 					}
 					if innerEnv.IsUsed() {
-						innerEnv.Destroy(context.Background())
+						innerErr := innerEnv.Destroy(context.Background())
+						if innerErr != nil {
+							i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", innerEnvName, innerErr)
+						}
 					}
 				}
 				return err
 			}
 		}
 	}
-	for _, action := range i.actions {
+	for pos, action := range i.actions {
+		i.fnd.Logger().Debugf("Executing action number %d", pos)
 		if err = i.executeAction(action); err != nil {
 			break
 		}
 	}
-	for _, env := range i.envs {
+	for envName, env := range i.envs {
 		if env.IsUsed() {
+			i.fnd.Logger().Debugf("Destroying %s environment", envName)
 			destroyErr := env.Destroy(context.Background())
-			if err == nil {
-				err = destroyErr
+			if destroyErr != nil {
+				i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", envName, destroyErr)
+				if err == nil {
+					err = destroyErr
+				}
 			}
 		}
 	}

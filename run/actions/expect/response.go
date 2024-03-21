@@ -86,6 +86,7 @@ func (a *responseAction) Timeout() time.Duration {
 }
 
 func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing expectation output action")
 	data, ok := runData.Load(a.request)
 	if !ok {
 		return false, errors.New("response data not found")
@@ -95,10 +96,12 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	if !ok {
 		return false, errors.New("invalid response data type")
 	}
+	a.fnd.Logger().Debugf("Checking response %s data: %v", a.request, responseData)
 
 	// Compare headers.
 	for key, expectedValue := range a.headers {
 		value, ok := responseData.Headers[key]
+		a.fnd.Logger().Debugf("Comparing header %s with value %s against expected value %s", key, value, expectedValue)
 		if !ok || (len(value) > 0 && value[0] != expectedValue) {
 			return false, errors.New("header mismatch")
 		}
@@ -116,10 +119,12 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	// Compare body content based on bodyMatch.
 	switch a.bodyMatch {
 	case MatchTypeExact:
+		a.fnd.Logger().Debugf("Matching body %s with expected content %s", responseData.Body, content)
 		if responseData.Body != content {
 			return false, errors.New("body content mismatch")
 		}
 	case MatchTypeRegexp:
+		a.fnd.Logger().Debugf("Matching body %s with expected pattern %s", responseData.Body, content)
 		matched, err := regexp.MatchString(content, responseData.Body)
 		if err != nil {
 			return false, err

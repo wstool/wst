@@ -95,6 +95,7 @@ func (a *outputAction) Timeout() time.Duration {
 }
 
 func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing expectation output action")
 	outputType, err := a.getServiceOutputType(a.outputType)
 	if err != nil {
 		return false, err
@@ -186,8 +187,10 @@ func (a *outputAction) matchMessages(line string, messages []string) ([]string, 
 
 func (a *outputAction) matchMessage(line, message string) (bool, error) {
 	if a.matchType == MatchTypeExact {
+		a.fnd.Logger().Debugf("Matching message '%s' against line: %s", message, line)
 		return line == message, nil
 	} else if a.matchType == MatchTypeRegexp {
+		a.fnd.Logger().Debugf("Matching pattern '%s' against line: %s", message, line)
 		return regexp.MatchString(message, line)
 	} else {
 		return false, fmt.Errorf("unknown match type %s", string(a.matchType))

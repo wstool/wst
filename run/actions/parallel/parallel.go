@@ -16,6 +16,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
@@ -71,6 +72,7 @@ func (a *action) Timeout() time.Duration {
 }
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing parallel action")
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
 	wg.Add(len(a.actions))
@@ -78,16 +80,17 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	// Use an error channel to collect potential errors from actions.
 	errs := make(chan error, len(a.actions))
 
-	for _, action := range a.actions {
-		go func(act actions.Action) {
+	for pos, act := range a.actions {
+		go func(act actions.Action, pos int) {
 			defer wg.Done()
 
 			// Execute the action, passing the context.
+			a.fnd.Logger().Debugf("Executing parallel action %d", pos)
 			success, err := act.Execute(ctx, runData)
 			if err != nil || !success {
-				errs <- err
+				errs <- fmt.Errorf("parallel action %d failed with error %v", pos, err)
 			}
-		}(action)
+		}(act, pos)
 	}
 
 	// Wait for all actions to complete.
@@ -95,10 +98,19 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	close(errs)
 
 	// Check if there were any errors.
+	failedActionsCount := 0
 	for err := range errs {
 		if err != nil {
-			return false, err
+			failedActionsCount++
+			a.fnd.Logger().Errorf("Parallel execution error: %v", err)
 		}
+	}
+	if failedActionsCount > 0 {
+		multipleSuffix := ""
+		if failedActionsCount > 1 {
+			multipleSuffix = "s"
+		}
+		return false, fmt.Errorf("failed %d parallel action%s", failedActionsCount, multipleSuffix)
 	}
 
 	return true, nil
