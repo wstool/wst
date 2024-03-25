@@ -49,6 +49,19 @@ type ResponseExpectation struct {
 	Body    ResponseBody `wst:"content,string=Content"`
 }
 
+type MetricValue interface{}
+
+type MetricRule struct {
+	Metric   string      `wst:"metric"`
+	Operator string      `wst:"operator,enum=eq,ne,gt,lt,ge,le"`
+	Value    MetricValue `wst:"value,factory=createMetric"`
+}
+
+type MetricsExpectation struct {
+	Id    string       `wst:"id,default=last"`
+	Rules []MetricRule `wst:"rules"`
+}
+
 type ResponseExpectationAction struct {
 	Service  string              `wst:"service"`
 	Timeout  int                 `wst:"timeout"`
@@ -66,6 +79,17 @@ type RequestAction struct {
 	Path    string  `wst:"path"`
 	Method  string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
 	Headers Headers `wst:"headers"`
+}
+
+type BenchAction struct {
+	Service  string  `wst:"service"`
+	Timeout  int     `wst:"timeout"`
+	Id       string  `wst:"id,default=last"`
+	Path     string  `wst:"path"`
+	Method   string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
+	Headers  Headers `wst:"headers"`
+	Rate     int     `wst:"rate"`
+	Duration int     `wst:"duration"`
 }
 
 type ParallelAction struct {

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions/bench"
 	"github.com/bukka/wst/run/actions/expect"
 	"github.com/bukka/wst/run/actions/not"
 	"github.com/bukka/wst/run/actions/parallel"
@@ -40,6 +41,7 @@ type Action interface {
 
 type ActionMaker struct {
 	fnd           app.Foundation
+	benchMaker    *bench.ActionMaker
 	expectMaker   *expect.ExpectationActionMaker
 	notMaker      *not.ActionMaker
 	parallelMaker *parallel.ActionMaker
@@ -53,6 +55,7 @@ type ActionMaker struct {
 func CreateActionMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *ActionMaker {
 	return &ActionMaker{
 		fnd:           fnd,
+		benchMaker:    bench.CreateActionMaker(fnd),
 		expectMaker:   expect.CreateExpectationActionMaker(fnd, parametersMaker),
 		notMaker:      not.CreateActionMaker(fnd),
 		parallelMaker: parallel.CreateActionMaker(fnd),
@@ -66,6 +69,8 @@ func CreateActionMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *A
 
 func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services, defaultTimeout int) (Action, error) {
 	switch action := config.(type) {
+	case *types.BenchAction:
+		return m.benchMaker.Make(action, svcs, defaultTimeout)
 	case *types.OutputExpectationAction:
 		return m.expectMaker.MakeOutputAction(action, svcs, defaultTimeout)
 	case *types.ResponseExpectationAction:
