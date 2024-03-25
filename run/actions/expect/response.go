@@ -87,7 +87,7 @@ func (a *responseAction) Timeout() time.Duration {
 
 func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
-	data, ok := runData.Load(a.request)
+	data, ok := runData.Load(fmt.Sprintf("response/%s", a.request))
 	if !ok {
 		return false, errors.New("response data not found")
 	}

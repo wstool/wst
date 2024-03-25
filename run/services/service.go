@@ -38,7 +38,7 @@ import (
 )
 
 type Service interface {
-	PublicUrl() (string, error)
+	PublicUrl(path string) (string, error)
 	PrivateUrl() (string, error)
 	Pid() (int, error)
 	Name() string
@@ -433,7 +433,7 @@ func (s *nativeService) FullName() string {
 	return s.fullName
 }
 
-func (s *nativeService) PublicUrl() (string, error) {
+func (s *nativeService) PublicUrl(path string) (string, error) {
 	if s.task == nil {
 		return "", fmt.Errorf("service has not started yet")
 	}
@@ -441,7 +441,7 @@ func (s *nativeService) PublicUrl() (string, error) {
 		return "", fmt.Errorf("only public service has public URL")
 	}
 
-	return s.task.PublicUrl(), nil
+	return filepath.Join(s.task.PublicUrl(), path), nil
 }
 
 func (s *nativeService) PrivateUrl() (string, error) {

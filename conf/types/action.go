@@ -82,14 +82,14 @@ type RequestAction struct {
 }
 
 type BenchAction struct {
-	Service  string  `wst:"service"`
-	Timeout  int     `wst:"timeout"`
-	Id       string  `wst:"id,default=last"`
-	Path     string  `wst:"path"`
-	Method   string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
-	Headers  Headers `wst:"headers"`
-	Rate     int     `wst:"rate"`
-	Duration int     `wst:"duration"`
+	Service   string  `wst:"service"`
+	Timeout   int     `wst:"timeout"`
+	Id        string  `wst:"id,default=last"`
+	Path      string  `wst:"path"`
+	Method    string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
+	Headers   Headers `wst:"headers"`
+	Frequency int     `wst:"frequency"`
+	Duration  int     `wst:"duration"`
 }
 
 type ParallelAction struct {

@@ -16,6 +16,7 @@ package request
 
 import (
 	"context"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
@@ -83,12 +84,11 @@ func (a *action) Timeout() time.Duration {
 
 func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing request action")
-	// Construct the request URL from the service and path.
-	baseUrl, err := a.service.PublicUrl()
+
+	url, err := a.service.PublicUrl(a.path)
 	if err != nil {
 		return false, err
 	}
-	url := baseUrl + a.path
 
 	// Create the HTTP request.
 	req, err := http.NewRequestWithContext(ctx, a.method, url, nil)
@@ -123,8 +123,9 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	// Store the ResponseData in runData.
-	a.fnd.Logger().Debugf("Storing response %s: %v", a.id, responseData)
-	if err := runData.Store(a.id, responseData); err != nil {
+	key := fmt.Sprintf("response/%s", a.id)
+	a.fnd.Logger().Debugf("Storing response %s: %v", key, responseData)
+	if err := runData.Store(key, responseData); err != nil {
 		return false, err
 	}
 
