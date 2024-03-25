@@ -11,7 +11,7 @@ design strategy ensures it can be extended or customized for other services as n
 WST, a Go-based tool, can be smoothly installed from the source using the following steps:
 
 ```shell
-git clone https://github.com/bukka/wst.git
+git clone https://github.com/wstool/wst.git
 cd wst
 go install
 ```
