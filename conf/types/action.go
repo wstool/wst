@@ -49,6 +49,12 @@ type ResponseExpectation struct {
 	Body    ResponseBody `wst:"content,string=Content"`
 }
 
+type ResponseExpectationAction struct {
+	Service  string              `wst:"service"`
+	Timeout  int                 `wst:"timeout"`
+	Response ResponseExpectation `wst:"response"`
+}
+
 type MetricValue interface{}
 
 type MetricRule struct {
@@ -62,10 +68,10 @@ type MetricsExpectation struct {
 	Rules []MetricRule `wst:"rules"`
 }
 
-type ResponseExpectationAction struct {
-	Service  string              `wst:"service"`
-	Timeout  int                 `wst:"timeout"`
-	Response ResponseExpectation `wst:"response"`
+type MetricsExpectationAction struct {
+	Service string             `wst:"service"`
+	Timeout int                `wst:"timeout"`
+	Metrics MetricsExpectation `wst:"metrics"`
 }
 
 type ExpectationAction interface {

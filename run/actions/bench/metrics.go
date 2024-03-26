@@ -25,11 +25,32 @@ type MetricOperator string
 
 const (
 	MetricEqOperator MetricOperator = "eq"
+	MetricNeOperator                = "ne"
 	MetricGtOperator                = "gt"
 	MetricGeOperator                = "ge"
 	MetricLtOperator                = "lt"
 	MetricLeOperator                = "le"
 )
+
+func ConvertToOperator(op string) (MetricOperator, error) {
+	mop := MetricOperator(op)
+	switch mop {
+	case MetricEqOperator:
+		fallthrough
+	case MetricGtOperator:
+		fallthrough
+	case MetricGeOperator:
+		fallthrough
+	case MetricLeOperator:
+		fallthrough
+	case MetricLtOperator:
+		fallthrough
+	case MetricNeOperator:
+		return mop, nil
+	default:
+		return MetricOperator(""), fmt.Errorf("invalid operator %s", op)
+	}
+}
 
 type Metric interface {
 	Compare(operator MetricOperator, value any) (bool, error)
@@ -67,11 +88,11 @@ func (g GenericMetric[T]) Compare(operator MetricOperator, value any) (bool, err
 	}
 }
 
-type vegataMetrics struct {
+type Metrics struct {
 	metrics vegeta.Metrics
 }
 
-func (vm *vegataMetrics) Find(name string) (Metric, error) {
+func (vm *Metrics) Find(name string) (Metric, error) {
 	switch name {
 	case "Requests":
 		return GenericMetric[uint64]{Value: vm.metrics.Requests}, nil

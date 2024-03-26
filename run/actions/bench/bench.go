@@ -103,11 +103,11 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	metrics.Close()
 
 	key := fmt.Sprintf("metrics/%s", a.id)
-	metricsData := &vegataMetrics{
+	metricsData := &Metrics{
 		metrics: metrics,
 	}
 	a.fnd.Logger().Debugf("Storing response %s: %v", key, metricsData)
-	if err := runData.Store(key, metricsData); err != nil {
+	if err = runData.Store(key, metricsData); err != nil {
 		return false, err
 	}
 
