@@ -20,19 +20,45 @@ import (
 	"time"
 )
 
+type MetricOperator string
+
+const (
+	MetricEqOperator MetricOperator = "eq"
+	MetricGtOperator                = "gt"
+	MetricGeOperator                = "ge"
+	MetricLtOperator                = "lt"
+	MetricLeOperator                = "le"
+)
+
 // Metric is a generic interface for metrics of different types.
 type Metric interface {
-	String() string
-	// Additional methods for comparison or manipulation can be added here
+	Compare(operator MetricOperator, value any) bool
 }
 
-// NumericMetric holds numeric values (int, uint64, float64).
+// NumericMetric holds numeric values (float64 for simplification, but can be adapted).
 type NumericMetric struct {
-	Value interface{}
+	Value float64
 }
 
-func (n NumericMetric) String() string {
-	return fmt.Sprintf("%v", n.Value)
+func (n NumericMetric) Compare(operator MetricOperator, value any) bool {
+	val, ok := value.(float64)
+	if !ok {
+		return false
+	}
+	switch operator {
+	case MetricEqOperator:
+		return n.Value == val
+	case MetricGtOperator:
+		return n.Value > val
+	case MetricGeOperator:
+		return n.Value >= val
+	case MetricLtOperator:
+		return n.Value < val
+	case MetricLeOperator:
+		return n.Value <= val
+	default:
+		return false
+	}
 }
 
 // TimeMetric holds time.Time values.
@@ -40,8 +66,25 @@ type TimeMetric struct {
 	Value time.Time
 }
 
-func (t TimeMetric) String() string {
-	return t.Value.String()
+func (t TimeMetric) Compare(operator MetricOperator, value any) bool {
+	val, ok := value.(time.Time)
+	if !ok {
+		return false
+	}
+	switch operator {
+	case MetricEqOperator:
+		return t.Value.Equal(val)
+	case MetricGtOperator:
+		return t.Value.After(val)
+	case MetricGeOperator:
+		return t.Value.After(val) || t.Value.Equal(val)
+	case MetricLtOperator:
+		return t.Value.Before(val)
+	case MetricLeOperator:
+		return t.Value.Before(val) || t.Value.Equal(val)
+	default:
+		return false
+	}
 }
 
 // DurationMetric holds time.Duration values.
@@ -49,30 +92,25 @@ type DurationMetric struct {
 	Value time.Duration
 }
 
-func (d DurationMetric) String() string {
-	return d.Value.String()
-}
-
-// MapMetric holds map[string]int values (e.g., status codes).
-type MapMetric struct {
-	Value map[string]int
-}
-
-func (m MapMetric) String() string {
-	return fmt.Sprintf("%v", m.Value)
-}
-
-// SliceMetric holds []string values (e.g., errors).
-type SliceMetric struct {
-	Value []string
-}
-
-func (s SliceMetric) String() string {
-	return fmt.Sprintf("%v", s.Value)
-}
-
-type Metrics interface {
-	Find(name string) (Metric, error)
+func (d DurationMetric) Compare(operator MetricOperator, value any) bool {
+	val, ok := value.(time.Duration)
+	if !ok {
+		return false
+	}
+	switch operator {
+	case MetricEqOperator:
+		return d.Value == val
+	case MetricGtOperator:
+		return d.Value > val
+	case MetricGeOperator:
+		return d.Value >= val
+	case MetricLtOperator:
+		return d.Value < val
+	case MetricLeOperator:
+		return d.Value <= val
+	default:
+		return false
+	}
 }
 
 type vegataMetrics struct {
