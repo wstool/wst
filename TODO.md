@@ -10,8 +10,8 @@ in the future.
 
 ### Run
 
-- dry run mode - integrate to action, services and sandboxes
-- load testing action (wrk runner)
+- duration should be in milliseconds for all actions
+- action strings transformation
 - config factories
 - clean up and extra checks
 - config parser tests
@@ -43,9 +43,9 @@ in the future.
 ## Plan
 
 - [x] March 1: Template rendering
-- [ ] March 2: Docker and Kubernetes envs
-- [ ] March 3: Dry run and finalization of all envs
-- [ ] March 4: Benchmarking actions (wrk)
+- [x] March 2: Docker and Kubernetes envs
+- [x] March 3: Dry run and finalization of all envs
+- [x] March 4: Benchmarking actions (wrk)
 - [ ] April 1: Config factories, clean up and extra checks and parser tests
 - [ ] April 2: Config merging and finalize tests
 - [ ] April 3: Actions tests
