@@ -17,6 +17,7 @@ package bench
 import (
 	"fmt"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
+	"golang.org/x/exp/constraints"
 	"time"
 )
 
@@ -30,86 +31,39 @@ const (
 	MetricLeOperator                = "le"
 )
 
-// Metric is a generic interface for metrics of different types.
 type Metric interface {
-	Compare(operator MetricOperator, value any) bool
+	Compare(operator MetricOperator, value any) (bool, error)
 }
 
-// NumericMetric holds numeric values (float64 for simplification, but can be adapted).
-type NumericMetric struct {
-	Value float64
+// NumericOrDuration is a constraint that limits the types to numeric types or time.Duration.
+type NumericOrDuration interface {
+	constraints.Integer | constraints.Float | time.Duration
 }
 
-func (n NumericMetric) Compare(operator MetricOperator, value any) bool {
-	val, ok := value.(float64)
+// GenericMetric is a generic struct for metrics that can handle numeric values and time.Duration.
+type GenericMetric[T NumericOrDuration] struct {
+	Value T
+}
+
+// Compare performs a comparison operation between the GenericMetric's value and another value.
+func (g GenericMetric[T]) Compare(operator MetricOperator, value any) (bool, error) {
+	typedValue, ok := value.(T)
 	if !ok {
-		return false
+		return false, fmt.Errorf("invalid metric type %t", value)
 	}
 	switch operator {
 	case MetricEqOperator:
-		return n.Value == val
+		return g.Value == typedValue, nil
 	case MetricGtOperator:
-		return n.Value > val
+		return g.Value > typedValue, nil
 	case MetricGeOperator:
-		return n.Value >= val
+		return g.Value >= typedValue, nil
 	case MetricLtOperator:
-		return n.Value < val
+		return g.Value < typedValue, nil
 	case MetricLeOperator:
-		return n.Value <= val
+		return g.Value <= typedValue, nil
 	default:
-		return false
-	}
-}
-
-// TimeMetric holds time.Time values.
-type TimeMetric struct {
-	Value time.Time
-}
-
-func (t TimeMetric) Compare(operator MetricOperator, value any) bool {
-	val, ok := value.(time.Time)
-	if !ok {
-		return false
-	}
-	switch operator {
-	case MetricEqOperator:
-		return t.Value.Equal(val)
-	case MetricGtOperator:
-		return t.Value.After(val)
-	case MetricGeOperator:
-		return t.Value.After(val) || t.Value.Equal(val)
-	case MetricLtOperator:
-		return t.Value.Before(val)
-	case MetricLeOperator:
-		return t.Value.Before(val) || t.Value.Equal(val)
-	default:
-		return false
-	}
-}
-
-// DurationMetric holds time.Duration values.
-type DurationMetric struct {
-	Value time.Duration
-}
-
-func (d DurationMetric) Compare(operator MetricOperator, value any) bool {
-	val, ok := value.(time.Duration)
-	if !ok {
-		return false
-	}
-	switch operator {
-	case MetricEqOperator:
-		return d.Value == val
-	case MetricGtOperator:
-		return d.Value > val
-	case MetricGeOperator:
-		return d.Value >= val
-	case MetricLtOperator:
-		return d.Value < val
-	case MetricLeOperator:
-		return d.Value <= val
-	default:
-		return false
+		return false, fmt.Errorf("invalid metric operator %s", operator)
 	}
 }
 
@@ -119,34 +73,32 @@ type vegataMetrics struct {
 
 func (vm *vegataMetrics) Find(name string) (Metric, error) {
 	switch name {
-	case "latencies":
-		return NumericMetric{Value: vm.metrics.Latencies.Mean}, nil
-	case "bytes_in":
-		return NumericMetric{Value: vm.metrics.BytesIn.Total}, nil
-	case "bytes_out":
-		return NumericMetric{Value: vm.metrics.BytesOut.Total}, nil
-	case "earliest":
-		return TimeMetric{Value: vm.metrics.Earliest}, nil
-	case "latest":
-		return TimeMetric{Value: vm.metrics.Latest}, nil
-	case "end":
-		return TimeMetric{Value: vm.metrics.End}, nil
-	case "duration":
-		return DurationMetric{Value: vm.metrics.Duration}, nil
-	case "wait":
-		return DurationMetric{Value: vm.metrics.Wait}, nil
-	case "requests":
-		return NumericMetric{Value: vm.metrics.Requests}, nil
-	case "rate":
-		return NumericMetric{Value: vm.metrics.Rate}, nil
-	case "throughput":
-		return NumericMetric{Value: vm.metrics.Throughput}, nil
-	case "success":
-		return NumericMetric{Value: vm.metrics.Success}, nil
-	case "status_codes":
-		return MapMetric{Value: vm.metrics.StatusCodes}, nil
-	case "errors":
-		return SliceMetric{Value: vm.metrics.Errors}, nil
+	case "Requests":
+		return GenericMetric[uint64]{Value: vm.metrics.Requests}, nil
+	case "Rate":
+		return GenericMetric[float64]{Value: vm.metrics.Rate}, nil
+	case "Throughput":
+		return GenericMetric[float64]{Value: vm.metrics.Throughput}, nil
+	case "Duration":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Duration}, nil
+	case "Success":
+		return GenericMetric[float64]{Value: vm.metrics.Success}, nil
+	case "LatencyTotal":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.Total}, nil
+	case "LatencyMean":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.Mean}, nil
+	case "LatencyP50":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.P50}, nil
+	case "LatencyP90":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.P90}, nil
+	case "LatencyP95":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.P95}, nil
+	case "LatencyP99":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.P99}, nil
+	case "LatencyMax":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.Max}, nil
+	case "LatencyMin":
+		return GenericMetric[time.Duration]{Value: vm.metrics.Latencies.Min}, nil
 	default:
 		return nil, fmt.Errorf("metric %s not found", name)
 	}
