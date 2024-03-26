@@ -116,6 +116,44 @@ $defs:
         title: Header value
         type: string
 
+  metricsExpectation:
+    title: Metrics expectation action
+    description: |
+      The metrics expectation allows verifying the metrics currently only saved by benchmark.
+    type: object
+    properties:
+      id:
+        title: Metrics ID
+        description: |
+          The metrics ID identifies the saved metrics saved by one of the actions (currently just benchmark). The
+          default last value matches the default benchmark metrics ID which means that if there is just one benchmark
+          being and its ID is unchanged, then there is no need to specify this property.
+        type: string
+        default: last
+      rules:
+        title: Metric rules
+        description: |
+          The rules are used to check the expectations. All checks have to pass to result in successful execution.
+        type: array
+        items:
+          title: Metrics rule
+          description: |
+            The metrics rule checks a single metric. Each rule contains metric name that is fetched and its value is
+            compared by the operator with the supplied value.
+          type: object
+          properties:
+            metric:
+              title: Metric name
+              type: string
+            operator:
+              title: Comparison operator
+              type: string
+              enum: [ eq, ne, gt, ge, le, lt ]
+            value:
+              title: Compared value
+              description: Value to compare the metric with.
+              type: number
+
   outputExpectation:
     title: Output expectation action
     description: |
@@ -208,6 +246,9 @@ $defs:
           parameters:
             $ref: '#/$defs/parameters'
       - oneOf:
+          - properties:
+              output:
+                $ref: '#/$defs/metricsExpectation'
           - properties:
               output:
                 $ref: '#/$defs/outputExpectation'
@@ -592,11 +633,58 @@ $defs:
               custom:
                 $ref: '#/$defs/customExpectation'
           - properties:
+              metrics:
+                $ref: '#/$defs/metricsExpectation'
+          - properties:
               output:
                 $ref: '#/$defs/outputExpectation'
           - properties:
               response:
                 $ref: '#/$defs/responseExpectation'
+
+  actionBench:
+    title: Benchmark action
+    description: |
+      The benchmark action defines the details of the benchmark done on to the service.
+    type: object
+    properties:
+      service:
+        title: Service name
+        description: The service that the benchmark is executed on.
+        type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      id:
+        title: Benchmark ID
+        description: |
+          Identifies benchmark which is use as identifier for storing metrics. This can be then used in metrics
+          expectation.
+        type: string
+        default: last
+      path:
+        title: Benchmark request path
+        description: Request URL path used for benchmark which can also contain query parameters.
+        type: string
+        default: /
+      method:
+        title: Benchmark request method
+        type: string
+        enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
+        default: GET
+      headers:
+        $ref: '#/$defs/headers'
+      frequency:
+        title: Benchmark request rate frequency
+        description: The frequency specifies number of requests send per second.
+        type: integer
+      duration:
+        title: Benchmark request duration
+        description: The length of benchmark in milliseconds.
+        type: integer
 
   actionRequest:
     title: Request action
@@ -743,6 +831,8 @@ $defs:
       parallel:
         $ref: '#/$defs/actions'
     patternProperties:
+      "^bench/.*":
+        $ref: '#/$defs/actionBench'
       "^expect/.*":
         $ref: '#/$defs/actionExpectation'
       "^request/.*":
