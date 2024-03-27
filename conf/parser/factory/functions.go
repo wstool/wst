@@ -51,8 +51,6 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 		return f.createActions
 	case "createContainerImage":
 		return f.createContainerImage
-	case "createExpectations":
-		return f.createExpectations
 	case "createEnvironments":
 		return f.createEnvironments
 	case "createHooks":
@@ -62,7 +60,7 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 	case "createSandboxes":
 		return f.createSandboxes
 	case "createServerExpectation":
-		return f.createServiceScripts
+		return f.createServerExpectations
 	case "createServiceScripts":
 		return f.createServiceScripts
 	default:
@@ -109,14 +107,55 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 	}
 
 	fieldValue.Set(reflect.ValueOf(img))
-	return nil
-}
 
-func (f *FuncProvider) createExpectations(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
 func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
+	// Check if data is a map
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("data must be a map, got %T", data)
+	}
+	var environments map[string]types.Environment
+	if _, ok = dataMap["common"]; ok {
+		commonEnvironment := types.CommonEnvironment{}
+		if err := f.structParser(dataMap, &commonEnvironment, path); err != nil {
+			return err
+		}
+		environments["common"] = &commonEnvironment
+	}
+	if _, ok = dataMap["local"]; ok {
+		localEnvironment := types.LocalEnvironment{}
+		if err := f.structParser(dataMap, &localEnvironment, path); err != nil {
+			return err
+		}
+		environments["local"] = &localEnvironment
+	}
+	if _, ok = dataMap["container"]; ok {
+		containerEnvironment := types.ContainerEnvironment{}
+		if err := f.structParser(dataMap, &containerEnvironment, path); err != nil {
+			return err
+		}
+		environments["container"] = &containerEnvironment
+	}
+	if _, ok = dataMap["docker"]; ok {
+		dockerEnvironment := types.DockerEnvironment{}
+		if err := f.structParser(dataMap, &dockerEnvironment, path); err != nil {
+			return err
+		}
+		environments["docker"] = &dockerEnvironment
+	}
+	if _, ok = dataMap["kubernetes"]; ok {
+		kubernetesEnvironment := types.KubernetesEnvironment{}
+		if err := f.structParser(dataMap, &kubernetesEnvironment, path); err != nil {
+			return err
+		}
+		environments["kubernetes"] = &kubernetesEnvironment
+	}
+
+	fieldValue.Set(reflect.ValueOf(environments))
+
 	return nil
 }
 
@@ -129,6 +168,10 @@ func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Val
 }
 
 func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value, path string) error {
+	return nil
+}
+
+func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
