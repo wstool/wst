@@ -57,7 +57,7 @@ func (m *ActionMaker) Make(
 	return &action{
 		fnd:     m.fnd,
 		actions: parallelActions,
-		timeout: time.Duration(config.Timeout),
+		timeout: time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 

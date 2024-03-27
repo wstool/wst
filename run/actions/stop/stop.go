@@ -67,7 +67,7 @@ func (m *ActionMaker) Make(
 	return &Action{
 		fnd:      m.fnd,
 		services: stopServices,
-		timeout:  time.Duration(config.Timeout),
+		timeout:  time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 

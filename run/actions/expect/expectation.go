@@ -51,7 +51,7 @@ func (m *ExpectationActionMaker) MakeCommonExpectation(
 	return &CommonExpectation{
 		fnd:     m.fnd,
 		service: svc,
-		timeout: time.Duration(timeout),
+		timeout: time.Duration(timeout * 1e6),
 	}, nil
 }
 

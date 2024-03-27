@@ -10,7 +10,6 @@ in the future.
 
 ### Run
 
-- duration should be in milliseconds for all actions
 - action strings transformation
 - config factories
 - clean up and extra checks

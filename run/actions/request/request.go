@@ -54,7 +54,7 @@ func (m *ActionMaker) Make(
 	return &action{
 		fnd:     m.fnd,
 		service: svc,
-		timeout: time.Duration(config.Timeout),
+		timeout: time.Duration(config.Timeout * 1e6),
 		id:      config.Id,
 		path:    config.Path,
 		method:  config.Method,
