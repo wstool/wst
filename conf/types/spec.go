@@ -15,7 +15,7 @@
 package types
 
 type Spec struct {
-	Environments map[string]Environment `wst:"environments,loadable"`
+	Environments map[string]Environment `wst:"environments,loadable,factory=createEnvironments"`
 	Instances    []Instance             `wst:"instances,loadable"`
 	Sandboxes    map[string]Sandbox     `wst:"sandboxes,loadable,factory=createSandboxes"`
 	Servers      []Server               `wst:"servers,loadable"`

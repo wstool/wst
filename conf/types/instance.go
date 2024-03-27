@@ -10,6 +10,6 @@ type Instance struct {
 	Resources    Resources              `wst:"resources"`
 	Services     map[string]Service     `wst:"services,loadable"`
 	Timeouts     InstanceTimeouts       `wst:"timeouts"`
-	Environments map[string]Environment `wst:"environments,loadable"`
+	Environments map[string]Environment `wst:"environments,loadable,factory=createEnvironments"`
 	Actions      []Action               `wst:"actions,factory=createActions"`
 }

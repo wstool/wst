@@ -48,12 +48,16 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 		return f.createContainerImage
 	case "createExpectations":
 		return f.createExpectations
+	case "createEnvironments":
+		return f.createEnvironments
 	case "createHooks":
 		return f.createHooks
 	case "createParameters":
 		return f.createParameters
 	case "createSandboxes":
 		return f.createSandboxes
+	case "createServerExpectation":
+		return f.createServiceScripts
 	case "createServiceScripts":
 		return f.createServiceScripts
 	default:
@@ -84,6 +88,10 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 }
 
 func (f *FuncProvider) createExpectations(data interface{}, fieldValue reflect.Value) error {
+	return nil
+}
+
+func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value) error {
 	return nil
 }
 
