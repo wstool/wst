@@ -17,7 +17,9 @@ package factory
 import (
 	"fmt"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
 	"reflect"
+	"strings"
 )
 
 type Func func(data interface{}, fieldValue reflect.Value, path string) error
@@ -87,6 +89,26 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value,
 }
 
 func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect.Value, path string) error {
+	var img types.ContainerImage
+	switch v := data.(type) {
+	case string:
+		parts := strings.SplitN(v, ":", 2)
+		img.Name = parts[0]
+		if len(parts) == 2 {
+			img.Tag = parts[1]
+		} else {
+			img.Tag = "latest"
+		}
+	case map[string]interface{}:
+		err := f.structParser(v, img, path)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported type for image data")
+	}
+
+	fieldValue.Set(reflect.ValueOf(img))
 	return nil
 }
 
