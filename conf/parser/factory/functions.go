@@ -111,47 +111,43 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 	return nil
 }
 
+type environmentsMapFactory func(key string) interface{}
+
 func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("data must be a map, got %T", data)
+		return fmt.Errorf("data for environments must be a map, got %T", data)
 	}
-	var environments map[string]types.Environment
-	if _, ok = dataMap["common"]; ok {
-		commonEnvironment := types.CommonEnvironment{}
-		if err := f.structParser(dataMap, &commonEnvironment, path); err != nil {
-			return err
-		}
-		environments["common"] = &commonEnvironment
+
+	environmentsFactories := map[string]environmentsMapFactory{
+		"common": func(key string) interface{} {
+			return &types.CommonEnvironment{}
+		},
+		"local": func(key string) interface{} {
+			return &types.LocalEnvironment{}
+		},
+		"container": func(key string) interface{} {
+			return &types.ContainerEnvironment{}
+		},
+		"docker": func(key string) interface{} {
+			return &types.DockerEnvironment{}
+		},
+		"kubernetes": func(key string) interface{} {
+			return &types.KubernetesEnvironment{}
+		},
 	}
-	if _, ok = dataMap["local"]; ok {
-		localEnvironment := types.LocalEnvironment{}
-		if err := f.structParser(dataMap, &localEnvironment, path); err != nil {
-			return err
+
+	var environments map[string]interface{}
+	for key, _ := range dataMap {
+		if factory, ok := environmentsFactories[key]; ok {
+			env := factory(key)
+			if err := f.structParser(dataMap, env, path); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("unknown environment type: %s", key)
 		}
-		environments["local"] = &localEnvironment
-	}
-	if _, ok = dataMap["container"]; ok {
-		containerEnvironment := types.ContainerEnvironment{}
-		if err := f.structParser(dataMap, &containerEnvironment, path); err != nil {
-			return err
-		}
-		environments["container"] = &containerEnvironment
-	}
-	if _, ok = dataMap["docker"]; ok {
-		dockerEnvironment := types.DockerEnvironment{}
-		if err := f.structParser(dataMap, &dockerEnvironment, path); err != nil {
-			return err
-		}
-		environments["docker"] = &dockerEnvironment
-	}
-	if _, ok = dataMap["kubernetes"]; ok {
-		kubernetesEnvironment := types.KubernetesEnvironment{}
-		if err := f.structParser(dataMap, &kubernetesEnvironment, path); err != nil {
-			return err
-		}
-		environments["kubernetes"] = &kubernetesEnvironment
 	}
 
 	fieldValue.Set(reflect.ValueOf(environments))
@@ -159,8 +155,92 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 	return nil
 }
 
+type hooksMapFactory func(key string, hook interface{}) (interface{}, error)
+
 func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, path string) error {
+	// Check if data is a map
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("data for hooks must be a map, got %T", data)
+	}
+
+	hooksFactories := map[string]hooksMapFactory{
+		"command": func(key string, hook interface{}) (interface{}, error) {
+			hookMap, ok := hook.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("command hooks must be a map, got %T", hook)
+			}
+
+			if cmd, ok := hookMap["command"]; ok {
+				shell, shellOk := hookMap["shell"].(string)
+				command, commandOk := cmd.(string)
+				if !commandOk {
+					return nil, fmt.Errorf("command must be a string")
+				}
+				if !shellOk {
+					shell = "/bin/sh" // Default to /bin/sh if not specified
+				}
+				return &types.SandboxHookShellCommand{Command: command, Shell: shell}, nil
+			} else if exe, ok := hookMap["executable"]; ok {
+				executable, exeOk := exe.(string)
+				if !exeOk {
+					return nil, fmt.Errorf("executable must be a string")
+				}
+				argsInterface, argsOk := hookMap["args"]
+				var args []string
+				if argsOk {
+					switch v := argsInterface.(type) {
+					case []interface{}:
+						for _, arg := range v {
+							strArg, ok := arg.(string)
+							if !ok {
+								return nil, fmt.Errorf("args must be an array of strings")
+							}
+							args = append(args, strArg)
+						}
+					default:
+						return nil, fmt.Errorf("args must be an array of strings")
+					}
+				}
+				return &types.SandboxHookArgsCommand{Executable: executable, Args: args}, nil
+			} else {
+				return nil, fmt.Errorf("command hooks data is invalid")
+			}
+		},
+		"signal": func(key string, hook interface{}) (interface{}, error) {
+			if strHook, ok := hook.(string); ok {
+				return &types.SandboxHookSignal{
+					IsString:    true,
+					StringValue: strHook,
+				}, nil
+			}
+			if intHook, ok := hook.(int); ok {
+				return &types.SandboxHookSignal{
+					IsString: false,
+					IntValue: intHook,
+				}, nil
+			}
+			return nil, fmt.Errorf("invalid signal hook type %t, only string and int is allowed", hook)
+		},
+	}
+
+	var hooks map[string]interface{}
+	for key, hook := range dataMap {
+		if factory, ok := hooksFactories[key]; ok {
+			env, err := factory(key, hook)
+			if err != nil {
+				return err
+			}
+			hooks[key] = env
+		} else if key == "signal" {
+			return fmt.Errorf("unknown environment type: %s", key)
+		}
+	}
+
+	fieldValue.Set(reflect.ValueOf(hooks))
+
 	return nil
+
 }
 
 func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value, path string) error {
