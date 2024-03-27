@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/bench"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/metrics"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -32,7 +33,7 @@ func (m *ExpectationActionMaker) MakeMetricsExpectation(
 ) (*MetricsExpectation, error) {
 	rules := make([]MetricRule, 0, len(config.Rules))
 	for _, configRule := range config.Rules {
-		operator, err := bench.ConvertToOperator(configRule.Operator)
+		operator, err := metrics.ConvertToOperator(configRule.Operator)
 		if err != nil {
 			return nil, err
 		}
@@ -51,8 +52,8 @@ func (m *ExpectationActionMaker) MakeMetricsExpectation(
 
 type MetricRule struct {
 	metric   string
-	operator bench.MetricOperator
-	value    interface{}
+	operator metrics.MetricOperator
+	value    float64
 }
 
 type MetricsExpectation struct {

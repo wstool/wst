@@ -55,12 +55,10 @@ type ResponseExpectationAction struct {
 	Response ResponseExpectation `wst:"response"`
 }
 
-type MetricValue interface{}
-
 type MetricRule struct {
-	Metric   string      `wst:"metric"`
-	Operator string      `wst:"operator,enum=eq,ne,gt,lt,ge,le"`
-	Value    MetricValue `wst:"value,factory=createMetric"`
+	Metric   string  `wst:"metric"`
+	Operator string  `wst:"operator,enum=eq,ne,gt,lt,ge,le"`
+	Value    float64 `wst:"value"`
 }
 
 type MetricsExpectation struct {
