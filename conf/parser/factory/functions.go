@@ -20,7 +20,9 @@ import (
 	"reflect"
 )
 
-type Func func(data interface{}, fieldValue reflect.Value) error
+type Func func(data interface{}, fieldValue reflect.Value, path string) error
+
+type StructParser func(data map[string]interface{}, structure interface{}, path string) error
 
 // Functions define an interface for factory functions
 type Functions interface {
@@ -31,12 +33,13 @@ type Functions interface {
 type FuncProvider struct {
 	fnd            app.Foundation
 	actionsFactory ActionsFactory
+	structParser   StructParser
 }
 
-func CreateFactories(fnd app.Foundation) Functions {
+func CreateFactories(fnd app.Foundation, structParser StructParser) Functions {
 	return &FuncProvider{
 		fnd:            fnd,
-		actionsFactory: CreateActionsFactory(fnd),
+		actionsFactory: CreateActionsFactory(fnd, structParser),
 	}
 }
 
@@ -66,14 +69,14 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 }
 
 // Define your factory functions as methods of FactoryFuncProvider struct
-func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value, path string) error {
 	// Check if data is a slice
 	dataSlice, ok := data.([]interface{})
 	if !ok {
 		return fmt.Errorf("data must be an array, got %T", data)
 	}
 
-	actions, err := f.actionsFactory.ParseActions(dataSlice)
+	actions, err := f.actionsFactory.ParseActions(dataSlice, path)
 	if err != nil {
 		return err
 	}
@@ -83,30 +86,30 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value)
 	return nil
 }
 
-func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createExpectations(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createExpectations(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }
 
-func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value) error {
+func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value, path string) error {
 	return nil
 }

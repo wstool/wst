@@ -14,6 +14,4 @@
 
 package types
 
-type Parameter interface{}
-
-type Parameters map[string]Parameter
+type Parameters map[string]interface{}

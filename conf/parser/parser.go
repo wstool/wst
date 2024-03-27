@@ -143,12 +143,17 @@ func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string,
 	return nil
 }
 
-func (p ConfigParser) processFactoryParam(factory string, data interface{}, fieldValue reflect.Value) error {
+func (p ConfigParser) processFactoryParam(
+	factory string,
+	data interface{},
+	fieldValue reflect.Value,
+	path string,
+) error {
 	factoryFunc := p.factories.GetFactoryFunc(factory)
 	if factoryFunc == nil {
 		return fmt.Errorf("factory function %s not found", factory)
 	}
-	return factoryFunc(data, fieldValue)
+	return factoryFunc(data, fieldValue, path)
 }
 
 func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
@@ -428,8 +433,8 @@ func (p ConfigParser) parseField(
 ) error {
 	var err error
 
-	if factory, hasFactory := params[paramFactory]; hasFactory {
-		if err = p.processFactoryParam(factory, data, fieldValue); err != nil {
+	if factoryName, hasFactory := params[paramFactory]; hasFactory {
+		if err = p.processFactoryParam(factoryName, data, fieldValue, path); err != nil {
 			return err
 		}
 		// factory should set everything so there is no need to continue
@@ -531,9 +536,13 @@ func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Con
 }
 
 func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
-	return &ConfigParser{
-		fnd:       fnd,
-		loader:    loader,
-		factories: factory.CreateFactories(fnd),
+	configParser := &ConfigParser{
+		fnd:    fnd,
+		loader: loader,
 	}
+
+	factories := factory.CreateFactories(fnd, configParser.parseStruct)
+	configParser.factories = factories
+
+	return configParser
 }
