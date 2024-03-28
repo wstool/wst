@@ -347,5 +347,19 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 }
 
 func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value, path string) error {
+	serviceScripts := &types.ServiceScripts{}
+	boolVal, ok := data.(bool)
+	if ok {
+		serviceScripts.IncludeAll = boolVal
+	} else {
+		arrVal, ok := data.([]string)
+		if !ok {
+			return fmt.Errorf("invalid services scripts type, expected bool or string array but got %t", data)
+		}
+		serviceScripts.IncludeList = arrVal
+	}
+
+	fieldValue.Set(reflect.ValueOf(serviceScripts))
+
 	return nil
 }
