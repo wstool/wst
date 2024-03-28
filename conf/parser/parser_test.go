@@ -215,19 +215,19 @@ func Test_ConfigParser_processDefaultParam(t *testing.T) {
 	}
 }
 
-type MockFactoryFunc func(data interface{}, fieldValue reflect.Value) error
+type MockFactoryFunc func(data interface{}, fieldValue reflect.Value, path string) error
 
 func TestConfigParser_processFactoryParam(t *testing.T) {
 	factories := &factoryMocks.MockFunctions{}
 
 	// Set up mock expectations
 	factories.On("GetFactoryFunc", "mockFactory").Return(
-		factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+		factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 			return nil
 		}))
 	factories.On("GetFactoryFunc", "invalidFactory").Return(nil)
 	factories.On("GetFactoryFunc", "errorMockFactory").Return(
-		factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+		factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 			return fmt.Errorf("forced error")
 		}))
 
@@ -236,6 +236,7 @@ func TestConfigParser_processFactoryParam(t *testing.T) {
 		factories: factories,
 	}
 
+	path := "/var/www/ws"
 	fieldValue := reflect.ValueOf("fieldValue")
 
 	tests := []struct {
@@ -269,7 +270,7 @@ func TestConfigParser_processFactoryParam(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := p.processFactoryParam(tt.factory, tt.data, tt.fieldValue); (err != nil) != tt.wantErr {
+			if err := p.processFactoryParam(tt.factory, tt.data, tt.fieldValue, path); (err != nil) != tt.wantErr {
 				t.Errorf("processFactoryParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -994,7 +995,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			mockFactories := &factoryMocks.MockFunctions{}
 			if tt.factoryFound {
 				mockFactories.On("GetFactoryFunc", "test").Return(
-					factory.Func(func(data interface{}, fieldValue reflect.Value) error {
+					factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 						fieldValue.SetString("test_data")
 						return nil
 					}))

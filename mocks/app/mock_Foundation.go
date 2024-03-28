@@ -227,6 +227,53 @@ func (_c *MockFoundation_Fs_Call) RunAndReturn(run func() afero.Fs) *MockFoundat
 	return _c
 }
 
+// HttpClient provides a mock function with given fields:
+func (_m *MockFoundation) HttpClient() app.HttpClient {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for HttpClient")
+	}
+
+	var r0 app.HttpClient
+	if rf, ok := ret.Get(0).(func() app.HttpClient); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(app.HttpClient)
+		}
+	}
+
+	return r0
+}
+
+// MockFoundation_HttpClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HttpClient'
+type MockFoundation_HttpClient_Call struct {
+	*mock.Call
+}
+
+// HttpClient is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) HttpClient() *MockFoundation_HttpClient_Call {
+	return &MockFoundation_HttpClient_Call{Call: _e.mock.On("HttpClient")}
+}
+
+func (_c *MockFoundation_HttpClient_Call) Run(run func()) *MockFoundation_HttpClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_HttpClient_Call) Return(_a0 app.HttpClient) *MockFoundation_HttpClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_HttpClient_Call) RunAndReturn(run func() app.HttpClient) *MockFoundation_HttpClient_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Logger provides a mock function with given fields:
 func (_m *MockFoundation) Logger() *zap.SugaredLogger {
 	ret := _m.Called()
