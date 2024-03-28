@@ -42,6 +42,7 @@ func CreateFactories(fnd app.Foundation, structParser StructParser) Functions {
 	return &FuncProvider{
 		fnd:            fnd,
 		actionsFactory: CreateActionsFactory(fnd, structParser),
+		structParser:   structParser,
 	}
 }
 
@@ -292,7 +293,7 @@ func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Valu
 			return &types.KubernetesSandbox{}
 		},
 	}
-	sandboxes, err := f.processTypeMap("environments", data, sandboxFactories, path)
+	sandboxes, err := f.processTypeMap("sandboxes", data, sandboxFactories, path)
 	if err != nil {
 		return err
 	}
@@ -303,6 +304,45 @@ func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Valu
 }
 
 func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue reflect.Value, path string) error {
+	// Check if data is a map
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("data for server action expectations must be a map, got %T", data)
+	}
+	expectations := make(map[string]types.Action)
+	var structure interface{}
+	for key, val := range dataMap {
+		expData, ok := val.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("data for value in server action expectations must be a map, got %T", data)
+		}
+		parsed := false
+		for expKey, _ := range expData {
+			switch expKey {
+			case "parameters":
+				continue
+			case "metrics":
+				structure = &types.ServerMetricsExpectation{}
+			case "output":
+				structure = &types.ServerOutputExpectation{}
+			case "response":
+				structure = &types.ServerResponseExpectation{}
+			default:
+				return fmt.Errorf("invalid server expression key %s", expKey)
+			}
+			if parsed {
+				return fmt.Errorf("expression cannot have multiple types - additional key %s", expKey)
+			}
+			if err := f.structParser(expData, structure, path); err != nil {
+				return err
+			}
+			expectations[key] = structure
+			parsed = true
+		}
+	}
+
+	fieldValue.Set(reflect.ValueOf(expectations))
+
 	return nil
 }
 

@@ -19,6 +19,11 @@ type ServerConfig struct {
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 
+type ServerMetricsExpectation struct {
+	Parameters Parameters         `wst:"parameters,factory=createParameters"`
+	Metrics    MetricsExpectation `wst:"metrics"`
+}
+
 type ServerOutputExpectation struct {
 	Parameters Parameters        `wst:"parameters,factory=createParameters"`
 	Output     OutputExpectation `wst:"output"`
