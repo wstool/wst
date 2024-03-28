@@ -21,6 +21,7 @@ import (
 	"github.com/bukka/wst/conf/parser/factory"
 	"github.com/bukka/wst/conf/types"
 	"github.com/spf13/afero"
+	"math"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -412,13 +413,82 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 		}
 	default:
 		v := reflect.ValueOf(data)
-		if fieldValue.Type().Kind() != v.Type().Kind() {
-			return fmt.Errorf("field %s could not be set due to type mismatch", fieldName)
+		targetType := fieldValue.Type()
+		sourceType := v.Type()
+
+		// Handle the case where the types are directly assignable
+		if sourceType.AssignableTo(targetType) {
+			fieldValue.Set(v)
+			return nil
 		}
-		if !v.Type().ConvertibleTo(fieldValue.Type()) {
-			return fmt.Errorf("field %s could not be set", fieldName)
+		sourceKind := sourceType.Kind()
+
+		// Specific conversion from float / int64 to int32 or int16 with overflow check
+		isFloat := sourceKind == reflect.Float64 || sourceKind == reflect.Float32
+		if isFloat || sourceKind == reflect.Int || sourceKind == reflect.Int64 {
+			var intVal int64
+			if isFloat {
+				floatVal := v.Float()
+
+				// Check if the float64 has a fractional part
+				if floatVal == math.Floor(floatVal) {
+					intVal = int64(floatVal)
+				} else {
+					return fmt.Errorf("field %s could not be set: "+
+						"float64 value has a fractional part and cannot be converted to integer types", fieldName)
+				}
+			} else {
+				intVal = v.Int()
+			}
+
+			switch targetType.Kind() {
+			case reflect.Int64:
+				fieldValue.SetInt(intVal)
+				return nil
+			case reflect.Int32:
+				if intVal < -1<<31 || intVal > 1<<31-1 {
+					return fmt.Errorf(
+						"field %s overflow error: int64 value %d is out of range for int32",
+						fieldName,
+						intVal,
+					)
+				}
+				fieldValue.SetInt(intVal)
+				return nil
+			case reflect.Int16:
+				if intVal < -1<<15 || intVal > 1<<15-1 {
+					return fmt.Errorf(
+						"field %s overflow error: int64 value %d is out of range for int16",
+						fieldName,
+						intVal,
+					)
+				}
+				fieldValue.SetInt(intVal)
+				return nil
+			case reflect.Int8:
+				if intVal < -1<<15 || intVal > 1<<15-1 {
+					return fmt.Errorf(
+						"field %s overflow error: int64 value %d is out of range for int16",
+						fieldName,
+						intVal,
+					)
+				}
+				fieldValue.SetInt(intVal)
+				return nil
+			case reflect.String:
+				return fmt.Errorf("field %s is an integer and cannot be converted to string", fieldName)
+			}
 		}
-		fieldValue.Set(v.Convert(fieldValue.Type()))
+
+		// General case for type conversion if it's convertible
+		if v.Type().ConvertibleTo(fieldValue.Type()) {
+			convertedValue := v.Convert(fieldValue.Type())
+			fieldValue.Set(convertedValue)
+			return nil
+		}
+
+		return fmt.Errorf("field %s could not be set due to type mismatch or non-convertible types", fieldName)
+
 	}
 	return nil
 }

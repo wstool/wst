@@ -10,9 +10,7 @@ in the future.
 
 ### Run
 
-- action strings transformation
-- config factories
-- clean up and extra checks
+- test config factories
 - config parser tests
 - config merging and test
 - finalize all config tests
@@ -34,10 +32,11 @@ in the future.
   - health check - waiting for container to be able to serve the traffic
 
 ### Config
-- add checks for casting to lower integers (e.g. int32 and int16)
+
 - factories
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
+- test checks for casting to lower integers (e.g. int32 and int16)
 
 ## Plan
 
