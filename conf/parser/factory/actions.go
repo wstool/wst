@@ -79,39 +79,37 @@ func (f *NativeActionsFactory) parseExpectationAction(
 			Parameters: data,
 		}, nil
 	}
-	if _, ok := data["custom"]; ok {
-		customAction := types.CustomExpectationAction{Service: meta.serviceName}
-		err := f.structParser(data, &customAction, path)
-		if err != nil {
-			return nil, err
+	var structure interface{}
+	parsed := false
+	for expKey, _ := range data {
+		switch expKey {
+		case "service":
+			continue
+		case "name":
+			continue
+		case "timeout":
+			continue
+		case "metrics":
+			structure = &types.MetricsExpectationAction{}
+		case "output":
+			structure = &types.OutputExpectationAction{}
+		case "response":
+			structure = &types.ResponseExpectationAction{}
+		default:
+			return nil, fmt.Errorf("invalid expectation key %s", expKey)
 		}
-		return &customAction, nil
-	}
-	if _, ok := data["metrics"]; ok {
-		metricsAction := types.MetricsExpectationAction{Service: meta.serviceName}
-		err := f.structParser(data, &metricsAction, path)
-		if err != nil {
-			return nil, err
+		if parsed {
+			return nil, fmt.Errorf("expression cannot have multiple types - additional key %s", expKey)
 		}
-		return &metricsAction, nil
+		parsed = true
 	}
-	if _, ok := data["output"]; ok {
-		outputAction := types.OutputExpectationAction{Service: meta.serviceName}
-		err := f.structParser(data, &outputAction, path)
-		if err != nil {
-			return nil, err
-		}
-		return &outputAction, nil
+
+	err := f.structParser(data, structure, path)
+	if err != nil {
+		return nil, err
 	}
-	if _, ok := data["response"]; ok {
-		customAction := types.ResponseExpectationAction{Service: meta.serviceName}
-		err := f.structParser(data, &customAction, path)
-		if err != nil {
-			return nil, err
-		}
-		return &customAction, nil
-	}
-	return nil, fmt.Errorf("invalid expectation action - no expectation type defined")
+
+	return structure, nil
 }
 
 func (f *NativeActionsFactory) parseAction(

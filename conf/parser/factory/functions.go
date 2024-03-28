@@ -328,10 +328,10 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 			case "response":
 				structure = &types.ServerResponseExpectation{}
 			default:
-				return fmt.Errorf("invalid server expression key %s", expKey)
+				return fmt.Errorf("invalid server expectation key %s", expKey)
 			}
 			if parsed {
-				return fmt.Errorf("expression cannot have multiple types - additional key %s", expKey)
+				return fmt.Errorf("expectation cannot have multiple types - additional key %s", expKey)
 			}
 			if err := f.structParser(expData, structure, path); err != nil {
 				return err
