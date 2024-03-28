@@ -111,16 +111,44 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 	return nil
 }
 
-type environmentsMapFactory func(key string) interface{}
+type typeMapFactory func(key string) interface{}
 
-func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
+func (f *FuncProvider) processTypeMap(
+	name string,
+	data interface{},
+	factories map[string]typeMapFactory,
+	path string,
+) (map[string]interface{}, error) {
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("data for environments must be a map, got %T", data)
+		return nil, fmt.Errorf("data for %s must be a map, got %T", name, data)
 	}
 
-	environmentsFactories := map[string]environmentsMapFactory{
+	var result map[string]interface{}
+	var factory typeMapFactory
+	var valMap map[string]interface{}
+	for key, val := range dataMap {
+		if factory, ok = factories[key]; ok {
+			valMap, ok = val.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("data for value in %s must be a map, got %T", name, data)
+			}
+			structure := factory(key)
+			if err := f.structParser(valMap, structure, path); err != nil {
+				return nil, err
+			}
+			result[key] = structure
+		} else {
+			return nil, fmt.Errorf("unknown environment type: %s", key)
+		}
+	}
+
+	return result, nil
+}
+
+func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
+	environmentFactories := map[string]typeMapFactory{
 		"common": func(key string) interface{} {
 			return &types.CommonEnvironment{}
 		},
@@ -137,17 +165,9 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 			return &types.KubernetesEnvironment{}
 		},
 	}
-
-	var environments map[string]interface{}
-	for key, _ := range dataMap {
-		if factory, ok := environmentsFactories[key]; ok {
-			env := factory(key)
-			if err := f.structParser(dataMap, env, path); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("unknown environment type: %s", key)
-		}
+	environments, err := f.processTypeMap("environments", data, environmentFactories, path)
+	if err != nil {
+		return err
 	}
 
 	fieldValue.Set(reflect.ValueOf(environments))
@@ -255,6 +275,30 @@ func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Val
 }
 
 func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value, path string) error {
+	sandboxFactories := map[string]typeMapFactory{
+		"common": func(key string) interface{} {
+			return &types.CommonSandbox{}
+		},
+		"local": func(key string) interface{} {
+			return &types.LocalSandbox{}
+		},
+		"container": func(key string) interface{} {
+			return &types.ContainerSandbox{}
+		},
+		"docker": func(key string) interface{} {
+			return &types.DockerSandbox{}
+		},
+		"kubernetes": func(key string) interface{} {
+			return &types.KubernetesSandbox{}
+		},
+	}
+	sandboxes, err := f.processTypeMap("environments", data, sandboxFactories, path)
+	if err != nil {
+		return err
+	}
+
+	fieldValue.Set(reflect.ValueOf(sandboxes))
+
 	return nil
 }
 
