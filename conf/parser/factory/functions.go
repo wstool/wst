@@ -244,6 +244,13 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 }
 
 func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value, path string) error {
+	_, ok := data.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("data for parameters must be a map, got %T", data)
+	}
+
+	fieldValue.Set(reflect.ValueOf(data))
+
 	return nil
 }
 
