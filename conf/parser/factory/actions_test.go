@@ -9,11 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"reflect"
 	"testing"
 )
 
-func TestCreateLoader(t *testing.T) {
+func TestCreateActionsFactory(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
 	parserMock := parserMocks.NewMockParser(t)
 
@@ -37,27 +36,6 @@ func TestCreateLoader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := CreateActionsFactory(tt.fnd, tt.structParser)
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestCreateActionsFactory(t *testing.T) {
-	type args struct {
-		fnd          app.Foundation
-		structParser StructParser
-	}
-	tests := []struct {
-		name string
-		args args
-		want ActionsFactory
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := CreateActionsFactory(tt.args.fnd, tt.args.structParser); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateActionsFactory() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }
@@ -621,8 +599,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			// Setup mock expectations
 			totalCalls := 0 // Initialize a counter for the total expected calls to ParseStruct
 			for _, call := range tt.mockParseCalls {
-				parserMock.On("ParseStruct", call.data, mock.Anything, call.path).
-					Return(call.err).Once()
+				parserMock.On("ParseStruct", call.data, mock.Anything, call.path).Return(call.err).Once()
 				totalCalls++ // Increment for each mock call setup
 			}
 
