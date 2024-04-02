@@ -45,6 +45,7 @@ const pathKey = "wst/path"
 
 type Parser interface {
 	ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error
+	ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error
 }
 
 type ConfigParser struct {
@@ -288,7 +289,7 @@ func (p ConfigParser) processStringParam(
 
 		fieldValuePtrInterface := fieldValue.Addr().Interface()
 		// Use an empty map as temporary data to populate the struct
-		err := p.parseStruct(make(map[string]interface{}), fieldValuePtrInterface, path)
+		err := p.ParseStruct(make(map[string]interface{}), fieldValuePtrInterface, path)
 		if err != nil {
 			return false, fmt.Errorf("error parsing struct for string param: %v", err)
 		}
@@ -342,7 +343,7 @@ func (p ConfigParser) processMapValue(
 		newElem := reflect.New(elemType)
 
 		// Use an empty map as temporary data to populate the struct
-		err := p.parseStruct(make(map[string]interface{}), newElem.Interface(), path)
+		err := p.ParseStruct(make(map[string]interface{}), newElem.Interface(), path)
 		if err != nil {
 			return fmt.Errorf("error parsing struct for string param: %v", err)
 		}
@@ -369,7 +370,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 		if !ok {
 			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
 		}
-		return p.parseStruct(dataMap, fieldValue.Addr().Interface(), path)
+		return p.ParseStruct(dataMap, fieldValue.Addr().Interface(), path)
 	case reflect.Map:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
@@ -550,8 +551,8 @@ func (p ConfigParser) parseField(
 	return nil
 }
 
-// parseStruct parses a struct into a map of Fields
-func (p ConfigParser) parseStruct(data map[string]interface{}, structure interface{}, path string) error {
+// ParseStruct parses a struct into a map of Fields
+func (p ConfigParser) ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error {
 	structValuePtr := reflect.ValueOf(structure)
 	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("expected a pointer to a struct, got %T", structure)
@@ -564,7 +565,7 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 		if !ok {
 			return fmt.Errorf("unexpected type %T for path", newPathInterface)
 		}
-		path = newPath
+		configPath = newPath
 	}
 
 	for i := 0; i < structType.NumField(); i++ {
@@ -584,7 +585,7 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 		}
 		fieldValue := structValue.FieldByName(field.Name)
 		if fieldData, ok := data[fieldName]; ok {
-			if err := p.parseField(fieldData, fieldValue, fieldName, params, path); err != nil {
+			if err := p.parseField(fieldData, fieldValue, fieldName, params, configPath); err != nil {
 				return err
 			}
 		} else {
@@ -602,7 +603,7 @@ func (p ConfigParser) parseStruct(data map[string]interface{}, structure interfa
 }
 
 func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
-	return p.parseStruct(data, config, configPath)
+	return p.ParseStruct(data, config, configPath)
 }
 
 func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
@@ -611,7 +612,7 @@ func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
 		loader: loader,
 	}
 
-	factories := factory.CreateFactories(fnd, configParser.parseStruct)
+	factories := factory.CreateFactories(fnd, configParser.ParseStruct)
 	configParser.factories = factories
 
 	return configParser

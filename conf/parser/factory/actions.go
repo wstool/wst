@@ -89,6 +89,8 @@ func (f *NativeActionsFactory) parseExpectationAction(
 			continue
 		case "timeout":
 			continue
+		case "custom":
+			structure = &types.CustomExpectationAction{}
 		case "metrics":
 			structure = &types.MetricsExpectationAction{}
 		case "output":
@@ -181,7 +183,7 @@ func (f *NativeActionsFactory) parseAction(
 
 func (f *NativeActionsFactory) parseActionFromMap(action map[string]interface{}, path string) (types.Action, error) {
 	if len(action) > 1 {
-		return nil, fmt.Errorf("invalid action format - exactly one elelemnt in object is required")
+		return nil, fmt.Errorf("invalid action format - exactly one item in map is required")
 	}
 	for name, value := range action {
 		valueMap, ok := value.(map[string]interface{})
@@ -210,7 +212,7 @@ func (f *NativeActionsFactory) ParseActions(actions []interface{}, path string) 
 			}
 			parsedActions = append(parsedActions, parsedAction)
 		default:
-			return nil, fmt.Errorf("unsupported action type")
+			return nil, fmt.Errorf("unsupported action type %t", untypedAction)
 		}
 	}
 	return parsedActions, nil

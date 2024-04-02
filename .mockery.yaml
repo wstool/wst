@@ -11,6 +11,11 @@ packages:
     interfaces:
       LoadedConfig: {}
       Loader: {}
+  github.com/bukka/wst/conf/parser:
+    config:
+      dir: mocks/conf/parser
+    interfaces:
+      Parser: {}
   github.com/bukka/wst/conf/parser/factory:
     config:
       dir: mocks/conf/parser/factory

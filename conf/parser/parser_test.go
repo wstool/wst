@@ -1024,7 +1024,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 	}
 }
 
-func Test_ConfigParser_parseStruct(t *testing.T) {
+func Test_ConfigParser_ParseStruct(t *testing.T) {
 	type parseValidTestStruct struct {
 		A           int    `wst:"name=a,default=5"`
 		B           string `wst:"name=b,default=default_str"`
@@ -1123,7 +1123,7 @@ func Test_ConfigParser_parseStruct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := p.parseStruct(tt.data, tt.testStruct, "/var/www/config.yaml")
+			err := p.ParseStruct(tt.data, tt.testStruct, "/var/www/config.yaml")
 
 			if tt.errMsg != "" {
 				require.Error(t, err)
