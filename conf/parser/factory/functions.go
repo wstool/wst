@@ -60,7 +60,7 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
 		return f.createParameters
 	case "createSandboxes":
 		return f.createSandboxes
-	case "createServerExpectation":
+	case "createServerExpectations":
 		return f.createServerExpectations
 	case "createServiceScripts":
 		return f.createServiceScripts
@@ -309,12 +309,12 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 	if !ok {
 		return fmt.Errorf("data for server action expectations must be a map, got %T", data)
 	}
-	expectations := make(map[string]types.Action)
+	expectations := make(map[string]interface{})
 	var structure interface{}
 	for key, val := range dataMap {
 		expData, ok := val.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("data for value in server action expectations must be a map, got %T", data)
+			return fmt.Errorf("data for value in server action expectations must be a map, got %T", val)
 		}
 		parsed := false
 		for expKey, _ := range expData {

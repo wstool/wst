@@ -569,6 +569,124 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "unknown environment type: unsupported",
 		},
+		// Server expectations
+		{
+			name:     "createServerExpectations with valid data for multiple types",
+			funcName: "createServerExpectations",
+			data: map[string]interface{}{
+				"expectation1": map[string]interface{}{"metrics": map[string]interface{}{}},
+				"expectation2": map[string]interface{}{
+					"output":     map[string]interface{}{},
+					"parameters": map[string]interface{}{},
+				},
+				"expectation3": map[string]interface{}{"response": map[string]interface{}{}},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{ // Corresponds to "metrics"
+					data: map[string]interface{}{"metrics": map[string]interface{}{}},
+					err:  nil,
+				},
+				{ // Corresponds to "output"
+					data: map[string]interface{}{
+						"output":     map[string]interface{}{},
+						"parameters": map[string]interface{}{},
+					},
+					err: nil,
+				},
+				{ // Corresponds to "response"
+					data: map[string]interface{}{"response": map[string]interface{}{}},
+					err:  nil,
+				},
+			},
+			expectedValue: map[string]interface{}{
+				"expectation1": &types.ServerMetricsExpectation{},
+				"expectation2": &types.ServerOutputExpectation{},
+				"expectation3": &types.ServerResponseExpectation{},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createServerExpectations with multiple parsed data",
+			funcName: "createServerExpectations",
+			data: map[string]interface{}{
+				"expectation1": map[string]interface{}{"metrics": map[string]interface{}{}},
+				"expectation2": map[string]interface{}{
+					"metrics":    map[string]interface{}{},
+					"output":     map[string]interface{}{},
+					"parameters": map[string]interface{}{},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{ // Corresponds to "metrics"
+					data: map[string]interface{}{"metrics": map[string]interface{}{}},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{
+						"metrics":    map[string]interface{}{},
+						"output":     map[string]interface{}{},
+						"parameters": map[string]interface{}{},
+					},
+					err: nil,
+				},
+			},
+			expectedValue: map[string]interface{}{},
+			wantErr:       true,
+			errMsg:        "expectation cannot have multiple types - additional key ",
+		},
+		{
+			name:     "createServerExpectations with failed parsing",
+			funcName: "createServerExpectations",
+			data: map[string]interface{}{
+				"expectation1": map[string]interface{}{"metrics": map[string]interface{}{}},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"metrics": map[string]interface{}{}},
+					err:  errors.New("parsing failed"),
+				},
+			},
+			expectedValue: map[string]interface{}{},
+			wantErr:       true,
+			errMsg:        "parsing failed",
+		},
+		{
+			name:          "createServerExpectations with invalid data type",
+			funcName:      "createServerExpectations",
+			data:          1,
+			expectedValue: map[string]interface{}{}, // Expecting no expectations to be created due to error
+			wantErr:       true,
+			errMsg:        "data for server action expectations must be a map, got int",
+		},
+		{
+			name:     "createServerExpectations with invalid data value type",
+			funcName: "createServerExpectations",
+			data: map[string]interface{}{
+				"test": "ss",
+			},
+			expectedValue: map[string]interface{}{}, // Expecting no expectations to be created due to error
+			wantErr:       true,
+			errMsg:        "data for value in server action expectations must be a map, got string",
+		},
+		{
+			name:     "createServerExpectations with unsupported expectation key",
+			funcName: "createServerExpectations",
+			data: map[string]interface{}{
+				"invalidExpectation": map[string]interface{}{"unsupportedKey": map[string]interface{}{}},
+			},
+			expectedValue: map[string]interface{}{}, // Expecting no expectations to be created due to error
+			wantErr:       true,
+			errMsg:        "invalid server expectation key unsupportedKey",
+		},
 	}
 
 	for _, tt := range tests {

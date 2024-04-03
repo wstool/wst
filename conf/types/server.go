@@ -38,7 +38,7 @@ type ServerExpectationAction interface {
 }
 
 type ServerActions struct {
-	Expect map[string]ServerExpectationAction `wst:"expect,factory=createServerExpectation"`
+	Expect map[string]ServerExpectationAction `wst:"expect,factory=createServerExpectations"`
 }
 
 type ServerTemplate struct {
