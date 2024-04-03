@@ -19,26 +19,23 @@ import (
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/merger"
 	"github.com/bukka/wst/conf/parser"
-	"github.com/bukka/wst/conf/processor"
 	"github.com/bukka/wst/conf/types"
 )
 
 type ConfigMaker struct {
-	env       app.Foundation
-	loader    loader.Loader
-	parser    parser.Parser
-	merger    merger.Merger
-	processor processor.Processor
+	env    app.Foundation
+	loader loader.Loader
+	parser parser.Parser
+	merger merger.Merger
 }
 
 func CreateConfigMaker(env app.Foundation) *ConfigMaker {
 	ld := loader.CreateLoader(env)
 	return &ConfigMaker{
-		env:       env,
-		loader:    ld,
-		parser:    parser.CreateParser(env, ld),
-		merger:    merger.CreateMerger(env),
-		processor: processor.CreateProcessor(env),
+		env:    env,
+		loader: ld,
+		parser: parser.CreateParser(env, ld),
+		merger: merger.CreateMerger(env),
 	}
 }
 
@@ -60,10 +57,6 @@ func (m *ConfigMaker) Make(configPaths []string, overwrites map[string]string) (
 
 	config, err := m.merger.MergeConfigs(configs, overwrites)
 	if err != nil {
-		return nil, err
-	}
-
-	if err = m.processor.ProcessConfig(config); err != nil {
 		return nil, err
 	}
 
