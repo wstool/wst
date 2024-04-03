@@ -126,6 +126,74 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "data must be an array, got int",
 		},
+		// Container image
+		{
+			name:     "createContainerImage with name and tag",
+			funcName: "createContainerImage",
+			data:     "imageName:1.0",
+			expectedValue: types.ContainerImage{
+				Name: "imageName",
+				Tag:  "1.0",
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createContainerImage with name only",
+			funcName: "createContainerImage",
+			data:     "imageName",
+			expectedValue: types.ContainerImage{
+				Name: "imageName",
+				Tag:  "latest", // Expecting the default tag to be 'latest'
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createContainerImage with map input",
+			funcName: "createContainerImage",
+			data: map[string]interface{}{
+				"name": "imageName",
+				"tag":  "1.0",
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"name": "imageName", "tag": "1.0"},
+					err:  nil,
+				},
+			},
+			expectedValue: types.ContainerImage{},
+			wantErr:       false,
+		},
+		{
+			name:     "createContainerImage with failed parsing",
+			funcName: "createContainerImage",
+			data: map[string]interface{}{
+				"name": "imageName",
+				"tag":  "1.0",
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"name": "imageName", "tag": "1.0"},
+					err:  errors.New("container parsing failed"),
+				},
+			},
+			expectedValue: types.ContainerImage{},
+			wantErr:       true,
+			errMsg:        "container parsing failed",
+		},
+		{
+			name:          "createContainerImage fails on unsupported type",
+			funcName:      "createContainerImage",
+			data:          1234,                   // Invalid type, expecting string or map
+			expectedValue: types.ContainerImage{}, // Default empty value since it should fail
+			wantErr:       true,
+			errMsg:        "unsupported type for image data",
+		},
 	}
 
 	for _, tt := range tests {
@@ -170,13 +238,13 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 							assert.Equal(tt.expectedValue, actualValue, "Expected and actual slices differ")
 						}
 					}
-					// Ensure all expectations on the mock are met
-					parserMock.AssertExpectations(t)
-					// Additionally, assert that ParseStruct was called the expected number of times
-					parserMock.AssertNumberOfCalls(t, "ParseStruct", totalCalls)
 				} else {
-					t.Errorf("Actual value is not a slice; got type %T", actualValue)
+					assert.Equal(tt.expectedValue, actualValue, "Expected and actual values are not equal")
 				}
+				// Ensure all expectations on the mock are met
+				parserMock.AssertExpectations(t)
+				// Additionally, assert that ParseStruct was called the expected number of times
+				parserMock.AssertNumberOfCalls(t, "ParseStruct", totalCalls)
 			}
 		})
 	}
