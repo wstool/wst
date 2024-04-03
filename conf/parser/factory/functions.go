@@ -354,7 +354,7 @@ func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect
 	} else {
 		arrVal, ok := data.([]string)
 		if !ok {
-			return fmt.Errorf("invalid services scripts type, expected bool or string array but got %t", data)
+			return fmt.Errorf("invalid services scripts type, expected bool or string array but got %T", data)
 		}
 		serviceScripts.IncludeList = arrVal
 	}

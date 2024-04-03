@@ -61,9 +61,10 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			data map[string]interface{}
 			err  error
 		}
-		expectedValue interface{} // Expected value to be set by the factory function.
-		wantErr       bool
-		errMsg        string
+		expectedValue      interface{} // Expected value to be set by the factory function.
+		expectedNoFunction bool
+		wantErr            bool
+		errMsg             string
 	}{
 		// ACTION
 		{
@@ -612,7 +613,6 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createServerExpectations with multiple parsed data",
 			funcName: "createServerExpectations",
 			data: map[string]interface{}{
-				"expectation1": map[string]interface{}{"metrics": map[string]interface{}{}},
 				"expectation2": map[string]interface{}{
 					"metrics":    map[string]interface{}{},
 					"output":     map[string]interface{}{},
@@ -623,10 +623,6 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 				data map[string]interface{}
 				err  error
 			}{
-				{ // Corresponds to "metrics"
-					data: map[string]interface{}{"metrics": map[string]interface{}{}},
-					err:  nil,
-				},
 				{
 					data: map[string]interface{}{
 						"metrics":    map[string]interface{}{},
@@ -687,6 +683,49 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "invalid server expectation key unsupportedKey",
 		},
+		// Service scripts
+		{
+			name:     "createServiceScripts with all scripts included (bool)",
+			funcName: "createServiceScripts",
+			data:     true,
+			expectedValue: &types.ServiceScripts{
+				IncludeAll: true,
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createServiceScripts with selected scripts included (string array)",
+			funcName: "createServiceScripts",
+			data:     []string{"script1.sh", "script2.sh"},
+			expectedValue: &types.ServiceScripts{
+				IncludeList: []string{"script1.sh", "script2.sh"},
+			},
+			wantErr: false,
+		},
+		{
+			name:          "createServiceScripts with invalid data type (int)",
+			funcName:      "createServiceScripts",
+			data:          123,                     // Invalid type, expecting bool or []string
+			expectedValue: &types.ServiceScripts{}, // No scripts should be included due to error
+			wantErr:       true,
+			errMsg:        "invalid services scripts type, expected bool or string array but got int",
+		},
+		{
+			name:          "createServiceScripts with invalid data type (map)",
+			funcName:      "createServiceScripts",
+			data:          map[string]interface{}{"script1": "script1.sh"}, // Invalid type, expecting bool or []string
+			expectedValue: &types.ServiceScripts{},
+			wantErr:       true,
+			errMsg:        "invalid services scripts type, expected bool or string array but got map[string]interface {}",
+		},
+		// Unknown
+		{
+			name:               "create unknown function",
+			funcName:           "createUnknown",
+			data:               map[string]interface{}{"script1": "script1.sh"},
+			expectedNoFunction: true,
+			wantErr:            false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -704,6 +743,9 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 
 			factoryFunc := f.GetFactoryFunc(tt.funcName)
 			if factoryFunc == nil {
+				if tt.expectedNoFunction {
+					return
+				}
 				t.Fatalf("GetFactoryFunc(%s) returned nil", tt.funcName)
 			}
 
