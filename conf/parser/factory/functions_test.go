@@ -514,6 +514,61 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "data for parameters must be a map, got int",
 		},
+		// Sandboxes
+		{
+			name:     "createSandboxes with multiple valid sandbox types",
+			funcName: "createSandboxes",
+			data: map[string]interface{}{
+				"common":     map[string]interface{}{"config": "commonConfig"},
+				"local":      map[string]interface{}{"path": "/local/path"},
+				"container":  map[string]interface{}{"image": "test:1.0"},
+				"docker":     map[string]interface{}{"image": "test:1.1"},
+				"kubernetes": map[string]interface{}{"image": "test:1.2"},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"config": "commonConfig"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"path": "/local/path"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.0"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.1"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.2"},
+					err:  nil,
+				},
+			},
+			expectedValue: map[string]interface{}{
+				"common":     &types.CommonSandbox{},
+				"local":      &types.LocalSandbox{},
+				"container":  &types.ContainerSandbox{},
+				"docker":     &types.DockerSandbox{},
+				"kubernetes": &types.KubernetesSandbox{},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createSandboxes with unsupported sandbox type",
+			funcName: "createSandboxes",
+			data: map[string]interface{}{
+				"unsupported": map[string]interface{}{}, // An unsupported sandbox type
+			},
+			expectedValue: map[string]interface{}{}, // Expecting no sandboxes to be created due to error
+			wantErr:       true,
+			errMsg:        "unknown environment type: unsupported",
+		},
 	}
 
 	for _, tt := range tests {
