@@ -8,13 +8,17 @@ import (
 	parserMocks "github.com/bukka/wst/mocks/conf/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestCreateActionsFactory(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
 	parserMock := parserMocks.NewMockParser(t)
+	testData := map[string]interface{}{"exampleKey": "exampleValue"}
+	testStructure := make(map[string]interface{})
+	testPath := "testPath"
+	parserMock.On("ParseStruct", testData, &testStructure, testPath).
+		Return(nil).Once()
 
 	tests := []struct {
 		name         string
@@ -26,16 +30,18 @@ func TestCreateActionsFactory(t *testing.T) {
 			name:         "Testing CreateLoader",
 			fnd:          fndMock,
 			structParser: parserMock.ParseStruct,
-			want: &NativeActionsFactory{
-				fnd:          fndMock,
-				structParser: parserMock.ParseStruct,
-			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := CreateActionsFactory(tt.fnd, tt.structParser)
-			require.Equal(t, tt.want, got)
+			factory, ok := got.(*NativeActionsFactory)
+			assert.True(t, ok)
+			assert.Equal(t, tt.fnd, factory.fnd)
+			// assert struct parser call
+			err := factory.structParser(testData, &testStructure, testPath)
+			assert.NoError(t, err)
+			parserMock.AssertExpectations(t)
 		})
 	}
 }
