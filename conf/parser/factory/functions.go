@@ -215,12 +215,12 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 						for _, arg := range v {
 							strArg, ok := arg.(string)
 							if !ok {
-								return nil, fmt.Errorf("args must be an array of strings")
+								return nil, fmt.Errorf("args must be an array of strings but its item is of type %T", arg)
 							}
 							args = append(args, strArg)
 						}
 					default:
-						return nil, fmt.Errorf("args must be an array of strings")
+						return nil, fmt.Errorf("args must be an array of strings but it is not an array")
 					}
 				}
 				return &types.SandboxHookArgsCommand{Executable: executable, Args: args}, nil
@@ -245,7 +245,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 		},
 	}
 
-	var hooks map[string]interface{}
+	hooks := make(map[string]interface{}, len(dataMap))
 	for key, hook := range dataMap {
 		if factory, ok := hooksFactories[key]; ok {
 			env, err := factory(key, hook)
@@ -253,7 +253,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 				return err
 			}
 			hooks[key] = env
-		} else if key == "signal" {
+		} else {
 			return fmt.Errorf("unknown environment type: %s", key)
 		}
 	}
