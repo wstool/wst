@@ -397,13 +397,23 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			wantErr:    true,
 			errMsg:     "loading configs: forced GlobConfigs error",
 		},
+		{
+			name:       "Skip if data is not string",
+			data:       1,
+			fieldValue: reflect.ValueOf(map[string]interface{}{}),
+			want:       1,
+			wantErr:    false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockLoader := &loaderMocks.MockLoader{}
 			if tt.name != "Error from GlobConfigs" {
-				mockLoader.On("GlobConfigs", tt.data.(string)).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+				stringData, isString := tt.data.(string)
+				if isString {
+					mockLoader.On("GlobConfigs", stringData).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+				}
 			} else {
 				mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
 			}
