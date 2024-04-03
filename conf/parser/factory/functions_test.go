@@ -490,6 +490,30 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "invalid signal hook type map[], only string and int is allowed",
 		},
+		// Parameters
+		{
+			name:     "createParameters with valid map data",
+			funcName: "createParameters",
+			data: map[string]interface{}{
+				"param1": "value1",
+				"param2": 123,
+				"param3": true,
+			},
+			expectedValue: map[string]interface{}{
+				"param1": "value1",
+				"param2": 123,
+				"param3": true,
+			},
+			wantErr: false,
+		},
+		{
+			name:          "createParameters fails on invalid data type (int)",
+			funcName:      "createParameters",
+			data:          123,                      // Invalid data type, expecting a map.
+			expectedValue: map[string]interface{}{}, // No parameters should be set due to error.
+			wantErr:       true,
+			errMsg:        "data for parameters must be a map, got int",
+		},
 	}
 
 	for _, tt := range tests {
