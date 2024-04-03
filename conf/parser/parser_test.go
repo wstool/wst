@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -425,8 +426,22 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 	}
 }
 
+type ErrorFs struct {
+	afero.Fs
+	ShouldError bool
+}
+
+func (efs *ErrorFs) Stat(name string) (os.FileInfo, error) {
+	if efs.ShouldError {
+		return nil, fmt.Errorf("injected error for Exists call")
+	}
+	return efs.Fs.Stat(name)
+}
+
 func TestProcessPathParam(t *testing.T) {
-	mockFs := afero.NewMemMapFs()
+	mockFs := &ErrorFs{
+		Fs: afero.NewMemMapFs(),
+	}
 
 	// mock app.Foundation
 	mockFnd := &appMocks.MockFoundation{}
@@ -439,6 +454,7 @@ func TestProcessPathParam(t *testing.T) {
 		fieldValue    reflect.Value
 		data          interface{}
 		configPath    string
+		fsExistsErr   bool
 		wantErr       bool
 		expectedErr   string
 		expectedValue string
@@ -458,6 +474,15 @@ func TestProcessPathParam(t *testing.T) {
 			configPath:    "/opt/config/wst.yaml",
 			wantErr:       false,
 			expectedValue: "/test/path",
+		},
+		{
+			name:        "Existence path check error",
+			fieldValue:  reflect.Indirect(reflect.ValueOf(new(string))),
+			data:        "/test/path",
+			configPath:  "/opt/config/wst.yaml",
+			fsExistsErr: true,
+			wantErr:     true,
+			expectedErr: "injected error for Exists call",
 		},
 		{
 			name:        "Non-existent path",
@@ -525,6 +550,7 @@ func TestProcessPathParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockFs.ShouldError = tt.fsExistsErr
 			parser := ConfigParser{fnd: mockFnd}
 			err := parser.processPathParam(tt.data, tt.fieldValue, fieldName, tt.configPath)
 
