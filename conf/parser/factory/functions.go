@@ -126,14 +126,14 @@ func (f *FuncProvider) processTypeMap(
 		return nil, fmt.Errorf("data for %s must be a map, got %T", name, data)
 	}
 
-	var result map[string]interface{}
+	result := make(map[string]interface{}, len(dataMap))
 	var factory typeMapFactory
 	var valMap map[string]interface{}
 	for key, val := range dataMap {
 		if factory, ok = factories[key]; ok {
 			valMap, ok = val.(map[string]interface{})
 			if !ok {
-				return nil, fmt.Errorf("data for value in %s must be a map, got %T", name, data)
+				return nil, fmt.Errorf("data for value in %s must be a map, got %T", name, val)
 			}
 			structure := factory(key)
 			if err := f.structParser(valMap, structure, path); err != nil {

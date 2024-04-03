@@ -194,6 +194,117 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "unsupported type for image data",
 		},
+		{
+			name:     "createEnvironments with valid data for single type",
+			funcName: "createEnvironments",
+			data: map[string]interface{}{
+				"common": map[string]interface{}{"config": "commonConfig"},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"config": "commonConfig"},
+					err:  nil,
+				},
+			},
+			expectedValue: map[string]interface{}{
+				"common": &types.CommonEnvironment{},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createEnvironments with valid data for multiple types",
+			funcName: "createEnvironments",
+			data: map[string]interface{}{
+				"common":     map[string]interface{}{"config": "commonConfig"},
+				"local":      map[string]interface{}{"path": "/local/path"},
+				"container":  map[string]interface{}{"image": "test:1.0"},
+				"docker":     map[string]interface{}{"image": "test:1.1"},
+				"kubernetes": map[string]interface{}{"image": "test:1.2"},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"config": "commonConfig"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"path": "/local/path"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.0"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.1"},
+					err:  nil,
+				},
+				{
+					data: map[string]interface{}{"image": "test:1.2"},
+					err:  nil,
+				},
+			},
+			expectedValue: map[string]interface{}{
+				"common":     &types.CommonEnvironment{},
+				"local":      &types.LocalEnvironment{},
+				"container":  &types.ContainerEnvironment{},
+				"docker":     &types.DockerEnvironment{},
+				"kubernetes": &types.KubernetesEnvironment{},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createEnvironments with failed struct parsing",
+			funcName: "createEnvironments",
+			data: map[string]interface{}{
+				"common": map[string]interface{}{"config": "commonConfig"},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"config": "commonConfig"},
+					err:  errors.New("invalid env"),
+				},
+			},
+			expectedValue: map[string]interface{}{},
+			wantErr:       true,
+			errMsg:        "invalid env",
+		},
+		{
+			name:     "createEnvironments with invalid env data",
+			funcName: "createEnvironments",
+			data: map[string]interface{}{
+				"common": "test",
+			},
+			expectedValue: map[string]interface{}{},
+			wantErr:       true,
+			errMsg:        "data for value in environments must be a map, got string",
+		},
+		{
+			name:     "createEnvironments with unsupported environment type",
+			funcName: "createEnvironments",
+			data: map[string]interface{}{
+				"unsupported": map[string]interface{}{"config": "someConfig"},
+			},
+			expectedValue: map[string]interface{}{}, // Expected no environments to be created
+			wantErr:       true,
+			errMsg:        "unknown environment type: unsupported",
+		},
+		{
+			name:          "createEnvironments with invalid data structure",
+			funcName:      "createEnvironments",
+			data:          "invalidDataStructure",   // Not a map
+			expectedValue: map[string]interface{}{}, // Expected no environments to be created
+			wantErr:       true,
+			errMsg:        "data for environments must be a map, got string",
+		},
 	}
 
 	for _, tt := range tests {
