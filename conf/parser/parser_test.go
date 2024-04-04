@@ -1075,6 +1075,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 		configsData        []ParseFieldConfigData
 		factoryFound       bool
 		wantErr            bool
+		errMsg             string
 	}{
 		{
 			name:      "parse field with factory param found",
@@ -1287,6 +1288,14 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			expectedFieldValue: &ParseFieldTestStruct{},
 			wantErr:            true,
 		},
+		{
+			name:      "parse field with factory param found",
+			fieldName: "A",
+			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
+			params:    map[ConfigParam]string{},
+			wantErr:   true,
+			errMsg:    "field A could not be set due to type mismatch or non-convertible types",
+		},
 	}
 
 	mockFs := afero.NewMemMapFs()
@@ -1299,6 +1308,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 			commonFieldValue := &ParseFieldTestStruct{}
 			fieldValue := reflect.ValueOf(commonFieldValue).Elem().FieldByName(tt.fieldName)
 
@@ -1339,13 +1349,13 @@ func Test_ConfigParser_parseField(t *testing.T) {
 
 			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params, "/opt/config/wst.yaml")
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseField() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if err == nil && !reflect.DeepEqual(commonFieldValue, tt.expectedFieldValue) {
-				t.Errorf("unexpected value: got %v, want %v", commonFieldValue, tt.expectedFieldValue)
+			if tt.wantErr {
+				assert.Error(err)
+				if tt.errMsg != "" {
+					assert.ErrorContains(err, tt.errMsg)
+				}
+			} else {
+				assert.Equal(commonFieldValue, tt.expectedFieldValue)
 			}
 		})
 	}

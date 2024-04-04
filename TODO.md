@@ -33,10 +33,8 @@ in the future.
 
 ### Config
 
-- factories
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
-- test checks for casting to lower integers (e.g. int32 and int16)
 
 ## Plan
 
