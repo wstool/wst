@@ -1489,6 +1489,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 	tests := []struct {
 		name           string
 		data           map[string]interface{}
+		files          map[string]string
 		expectedConfig *types.Config
 		path           string
 		errMsg         string
@@ -1660,6 +1661,9 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 						},
 					},
 				},
+			},
+			files: map[string]string{
+				"/path/to/kubeconfig": "kube: true",
 			},
 			expectedConfig: &types.Config{
 				Version:     "1.0",
@@ -1855,6 +1859,11 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for fileName, content := range tt.files {
+				err := afero.WriteFile(mockFs, fileName, []byte(content), 0644)
+				assert.NoError(t, err)
+			}
+
 			p := CreateParser(mockFnd, mockLoader)
 			config := types.Config{}
 			err := p.ParseConfig(tt.data, &config, tt.path)
