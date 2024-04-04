@@ -587,6 +587,31 @@ type StringParamTestMapStruct struct {
 	MapField map[string]StringParamTestStruct
 }
 
+type StringParamTestMapInvalidStruct struct {
+	MapField map[string]StringParamInvalidTagTestStruct
+}
+
+type StringParamInvalidTagTestStruct struct {
+	A int `wst:"a,unknown=1"`
+}
+
+type StringParamInvalidParentStruct struct {
+	Child StringParamInvalidTagTestStruct
+}
+
+type StringParamUnexportedFieldStruct struct {
+	unexportedField string // Unexported: cannot be set via reflection.
+}
+
+type StringParamNonexistentFieldStruct struct {
+	ExportedField string // This struct is okay, but we'll try to set a nonexistent field.
+}
+
+type StringParamMapFieldStruct struct {
+	Field1 string
+	Field2 string
+}
+
 func Test_ConfigParser_processStringParam(t *testing.T) {
 	// Prepare ConfigParser
 	p := ConfigParser{fnd: nil} // you may need to initialize this with suitable fields based on your implementation
@@ -604,45 +629,137 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 
 	var mapStructVal StringParamTestMapStruct
 
+	var mapInvalidStructVal StringParamTestMapInvalidStruct
+
+	var invalidStruct StringParamInvalidParentStruct
+
+	strVal := "test"
+
 	tests := []struct {
 		name       string
 		fieldName  string
 		data       interface{}
 		fieldValue reflect.Value
-		wantErr    bool
+		changed    bool
 		want       interface{}
+		wantErr    bool
+		errMsg     string
 	}{
 		{
 			name:       "process string param in struct field",
 			fieldName:  "StringField",
 			data:       dataVal,
 			fieldValue: reflect.ValueOf(&structVal.Child),
-			wantErr:    false,
+			changed:    true,
 			want:       StringParamTestStruct{StringField: dataVal},
 		},
 		{
-			name:       "process map param",
+			name:       "process string param with invalid data type",
+			fieldName:  "StringField",
+			data:       false,
+			fieldValue: reflect.ValueOf(&structVal.Child),
+			changed:    false,
+		},
+		{
+			name:       "process string param with invalid struct",
+			fieldName:  "StringField",
+			data:       dataVal,
+			fieldValue: reflect.ValueOf(&invalidStruct.Child),
+			wantErr:    true,
+			errMsg:     "error parsing struct for string param: invalid parameter key: unknown",
+		},
+		{
+			name:       "attempt to set an unexported field",
+			fieldName:  "unexportedField",
+			data:       "value",
+			fieldValue: reflect.ValueOf(&StringParamUnexportedFieldStruct{}),
+			wantErr:    true,
+			errMsg:     "cannot set the field: unexportedField",
+		},
+		{
+			name:       "attempt to set a nonexistent field",
+			fieldName:  "NonexistentField",
+			data:       "value",
+			fieldValue: reflect.ValueOf(&StringParamNonexistentFieldStruct{}),
+			wantErr:    true,
+			errMsg:     "not a valid field name: NonexistentField",
+		},
+		{
+			name:       "process map param success",
 			fieldName:  "StringField",
 			data:       mapDataVal,
 			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
-			wantErr:    false,
+			changed:    true,
 			want: map[string]StringParamTestStruct{
 				"key1": StringParamTestStruct{StringField: "value1"},
 				"key2": StringParamTestStruct{StringField: "value2"},
 			},
 		},
+		{
+			name:       "process map param with non-existent field",
+			fieldName:  "NonExistentField",
+			data:       map[string]string{"NonExistentField": "someValue"},
+			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			wantErr:    true,
+			errMsg:     "failed to set field NonExistentField: not a valid field name: NonExistentField",
+		},
+		{
+			name:       "process map param with invalid struct field",
+			fieldName:  "InvalidField",
+			data:       mapDataVal,
+			fieldValue: reflect.ValueOf(&mapInvalidStructVal.MapField),
+			wantErr:    true,
+			errMsg:     "error parsing struct for string param: invalid parameter key: unknown",
+		},
+		{
+			name:       "process map param with invalid data type",
+			fieldName:  "StringField",
+			data:       "data",
+			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			changed:    false,
+		},
+		{
+			name:       "process string param with string value",
+			fieldName:  "StringField",
+			data:       dataVal,
+			fieldValue: reflect.ValueOf(strVal),
+			wantErr:    true,
+			errMsg:     "field StringField must be a struct or interface type or a pointer to such",
+		},
+		{
+			name:       "process string param with pointer to string value",
+			fieldName:  "StringField",
+			data:       dataVal,
+			fieldValue: reflect.ValueOf(&strVal),
+			wantErr:    true,
+			errMsg:     "field StringField value must be a pointer to a struct or a map",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := p.processStringParam(tt.fieldName, tt.data, tt.fieldValue, "/var/www/config.yaml")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("processStringParam() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			assert := assert.New(t)
+			result, err := p.processStringParam(tt.fieldName, tt.data, tt.fieldValue, "/var/www/config.yaml")
 
-			if got := tt.fieldValue.Elem().Interface(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("processStringParam() got = %v, want %v", got, tt.want)
+			if tt.wantErr {
+				assert.Error(err)
+				if tt.errMsg != "" {
+					assert.ErrorContains(err, tt.errMsg)
+				}
+			} else {
+				assert.NoError(err)
+				if !tt.changed {
+					assert.False(result)
+				} else {
+					var actualValue interface{}
+					if tt.fieldValue.Kind() == reflect.Ptr && !tt.fieldValue.IsNil() {
+						actualValue = tt.fieldValue.Elem().Interface()
+					} else {
+						actualValue = tt.fieldValue.Interface()
+					}
+					assert.Equal(tt.want, actualValue)
+					assert.True(result)
+				}
 			}
 		})
 	}

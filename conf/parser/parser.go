@@ -351,7 +351,7 @@ func (p ConfigParser) processMapValue(
 		// Set the string value to the appropriate sub-field
 		err = p.setFieldByName(newElem.Interface(), fieldName, val)
 		if err != nil {
-			return fmt.Errorf("failed to set field %s : %v", fieldName, err)
+			return fmt.Errorf("failed to set field %s: %v", fieldName, err)
 		}
 
 		// Insert the new element into the result map
