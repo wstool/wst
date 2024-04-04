@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/conf/parser/factory"
 	appMocks "github.com/bukka/wst/mocks/app"
 	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
+	parserMocks "github.com/bukka/wst/mocks/conf/parser"
 	factoryMocks "github.com/bukka/wst/mocks/conf/parser/factory"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -1477,20 +1478,29 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 }
 
 func TestCreateParser(t *testing.T) {
-	type args struct {
+	fndMock := &appMocks.MockFoundation{}
+	loaderMock := loaderMocks.NewMockLoader(t)
+	parserMock := parserMocks.NewMockParser(t)
+	factories := factory.CreateFactories(fndMock, parserMock.ParseStruct)
+
+	tests := []struct {
+		name   string
 		fnd    app.Foundation
 		loader loader.Loader
-	}
-	tests := []struct {
-		name string
-		args args
-		want Parser
 	}{
-		// TODO: Add test cases.
+		{
+			name:   "Testing CreateLoader",
+			fnd:    fndMock,
+			loader: loaderMock,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, CreateParser(tt.args.fnd, tt.args.loader), "CreateParser(%v, %v)", tt.args.fnd, tt.args.loader)
+			got := CreateParser(tt.fnd, tt.loader)
+			parser, ok := got.(*ConfigParser)
+			assert.True(t, ok)
+			assert.Equal(t, tt.fnd, parser.fnd)
+			assert.IsType(t, factories, parser.factories)
 		})
 	}
 }
