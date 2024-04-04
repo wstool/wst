@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"math"
 	"os"
 	"reflect"
 	"testing"
@@ -770,6 +771,11 @@ type AssignFieldTestStruct struct {
 	B int
 	C []string
 	D map[string]int
+	E int32
+	F int16
+	G int8
+	H int64
+	I []map[string]int
 }
 
 type AssignFieldAnotherStruct struct {
@@ -789,8 +795,9 @@ func Test_ConfigParser_assignField(t *testing.T) {
 		fieldName     string
 		data          interface{}
 		value         interface{}
-		wantErr       bool
 		expectedValue interface{}
+		wantErr       bool
+		errMsg        string
 	}{
 		{
 			name:      "assign struct string field",
@@ -813,7 +820,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			},
 		},
 		{
-			name:      "assign array field",
+			name:      "assign array field from array of string",
 			fieldName: "C",
 			data:      []interface{}{"TestA", "TestB"},
 			value:     &AssignFieldTestStruct{},
@@ -821,6 +828,38 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			expectedValue: &AssignFieldTestStruct{
 				C: []string{"TestA", "TestB"},
 			},
+		},
+		{
+			name:      "assign array field from array of map",
+			fieldName: "I",
+			data: []map[string]interface{}{
+				{
+					"a": 1,
+				},
+				{
+					"a": 2,
+				},
+			},
+			value:   &AssignFieldTestStruct{},
+			wantErr: false,
+			expectedValue: &AssignFieldTestStruct{
+				I: []map[string]int{
+					{
+						"a": 1,
+					},
+					{
+						"a": 2,
+					},
+				},
+			},
+		},
+		{
+			name:      "assign array field from invalid values",
+			fieldName: "C",
+			data:      []interface{}{"TestA", 1},
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "field C[1] is an integer and cannot be converted to string",
 		},
 		{
 			name:      "assign tuple in map field",
@@ -831,6 +870,22 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			expectedValue: &AssignFieldTestStruct{
 				D: map[string]int{"test": 7},
 			},
+		},
+		{
+			name:      "assign invalid data in map field",
+			fieldName: "D",
+			data:      map[string]interface{}{"test": "xy"},
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "field D could not be set due to type mismatch or non-convertible types",
+		},
+		{
+			name:      "assign invalid data to struct",
+			fieldName: "Child",
+			data:      "test",
+			value:     &AssignFieldParentStruct{},
+			wantErr:   true,
+			errMsg:    "unable to convert data for field Child to map[string]interface{}",
 		},
 		{
 			name:          "assign struct field with mismatched type should error",
@@ -853,20 +908,139 @@ func Test_ConfigParser_assignField(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:          "assign integer field to int64",
+			fieldName:     "H",
+			data:          123,
+			value:         &AssignFieldTestStruct{},
+			expectedValue: &AssignFieldTestStruct{H: 123},
+		},
+		{
+			name:          "assign integer field to int32",
+			fieldName:     "E",
+			data:          int64(123),
+			value:         &AssignFieldTestStruct{},
+			expectedValue: &AssignFieldTestStruct{E: 123},
+		},
+		{
+			name:      "assign integer field with overflow (int32 from int64)",
+			fieldName: "E",
+			data:      int64(math.MaxInt32 + 1), // This should overflow int32
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "overflow error",
+		},
+		{
+			name:          "assign integer field to int16",
+			fieldName:     "F",
+			data:          int64(123),
+			value:         &AssignFieldTestStruct{},
+			expectedValue: &AssignFieldTestStruct{F: 123},
+		},
+		{
+			name:      "assign integer field with overflow (int16 from int64)",
+			fieldName: "F",
+			data:      int64(math.MaxInt16 + 1), // This should overflow int16
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "overflow error",
+		},
+		{
+			name:          "assign integer field to int8",
+			fieldName:     "G",
+			data:          int64(123),
+			value:         &AssignFieldTestStruct{},
+			expectedValue: &AssignFieldTestStruct{G: 123},
+		},
+		{
+			name:      "assign integer field with overflow (int8 from int64)",
+			fieldName: "G",
+			data:      int64(math.MaxInt8 + 1), // This should overflow int8
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "overflow error",
+		},
+		{
+			name:      "assign float to integer field with fractional part",
+			fieldName: "B",
+			data:      12.34, // Has a fractional part, cannot be cleanly converted to int
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "float64 value has a fractional part",
+		},
+		{
+			name:          "assign float to integer field without fractional part",
+			fieldName:     "B",
+			data:          12.0, // Does not have a fractional part, can be cleanly converted to int
+			value:         &AssignFieldTestStruct{},
+			expectedValue: &AssignFieldTestStruct{B: 12},
+		},
+		{
+			name:      "assign incompatible type",
+			fieldName: "A",            // A is a string in AssignFieldTestStruct
+			data:      []int{1, 2, 3}, // Trying to assign a slice of ints to a string
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "type mismatch or non-convertible types",
+		},
+		{
+			name:      "assign field with unconvertible type",
+			fieldName: "B", // B is an integer field in AssignFieldTestStruct
+			data:      "incompatibleString",
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "could not be set due to type mismatch",
+		},
+		{
+			name:      "assign map field with incompatible key type",
+			fieldName: "D",
+			data:      map[int]interface{}{1: "one"}, // Assuming D expects map[string]int
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "unable to convert data for field D",
+		},
+		{
+			name:      "assign slice field with single incompatible element",
+			fieldName: "C",
+			data:      "test", // Mixed types, expecting []string
+			value:     &AssignFieldTestStruct{},
+			wantErr:   true,
+			errMsg:    "unable to convert data for field C",
+		},
+		{
+			name:      "assign non-struct/interface/ptr type",
+			fieldName: "NonStructField", // This test implies existence of such a field
+			data:      "value",
+			value:     new(int),
+			wantErr:   true,
+			errMsg:    "field NonStructField could not be set due to type mismatch or non-convertible types",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fieldValue := reflect.ValueOf(tt.value).Elem().FieldByName(tt.fieldName)
-			err := p.assignField(tt.data, fieldValue, tt.fieldName, "/var/www/config.yaml")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("assignField() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			assert := assert.New(t)
+
+			fieldValue := reflect.ValueOf(tt.value)
+			if fieldValue.Kind() == reflect.Ptr {
+				fieldValue = reflect.ValueOf(tt.value).Elem()
+				if fieldValue.Kind() == reflect.Struct {
+					fieldValue = fieldValue.FieldByName(tt.fieldName)
+				}
+				if !fieldValue.IsValid() {
+					t.Fatalf("Invalid test setup: field %s does not exist in %T", tt.fieldName, tt.value)
+				}
 			}
 
-			// Add a check to make sure value got updated to what was expected.
-			if !reflect.DeepEqual(tt.value, tt.expectedValue) {
-				t.Errorf("expected updated struct value to be %v, got %v", tt.expectedValue, tt.value)
+			err := p.assignField(tt.data, fieldValue, tt.fieldName, "/var/www/config.yaml")
+
+			if tt.wantErr {
+				assert.Error(err)
+				if tt.errMsg != "" {
+					assert.ErrorContains(err, tt.errMsg)
+				}
+			} else {
+				assert.Equal(tt.value, tt.expectedValue)
 			}
 		})
 	}

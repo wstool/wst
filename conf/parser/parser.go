@@ -442,7 +442,8 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				intVal = v.Int()
 			}
 
-			switch targetType.Kind() {
+			targetKind := targetType.Kind()
+			switch targetKind {
 			case reflect.Int64:
 				fieldValue.SetInt(intVal)
 				return nil
@@ -467,9 +468,9 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				fieldValue.SetInt(intVal)
 				return nil
 			case reflect.Int8:
-				if intVal < -1<<15 || intVal > 1<<15-1 {
+				if intVal < -1<<7 || intVal > 1<<7-1 {
 					return fmt.Errorf(
-						"field %s overflow error: int64 value %d is out of range for int16",
+						"field %s overflow error: int64 value %d is out of range for int8",
 						fieldName,
 						intVal,
 					)
