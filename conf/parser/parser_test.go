@@ -1367,6 +1367,7 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 		B           string `wst:"name=b,default=default_str"`
 		C           int    `wst:""`
 		D           bool   `wst:"d"`
+		E           int    `wst:"default=3"`
 		F           string
 		P           string `wst:"p,path"`
 		UnexportedE bool   `wst:"name=e"`
@@ -1411,14 +1412,14 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 			name:           "Test valid default data",
 			data:           map[string]interface{}{},
 			testStruct:     &parseValidTestStruct{},
-			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false},
+			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false, E: 3},
 			errMsg:         "",
 		},
 		{
 			name:           "Test path setting with new path",
-			data:           map[string]interface{}{"p": "test/path", "wst/path": "/opt/config/wst.yaml"},
+			data:           map[string]interface{}{"p": "test/path", "wst/path": "/opt/config/wst.yaml", "E": 2},
 			testStruct:     &parseValidTestStruct{},
-			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false, P: "/opt/config/test/path"},
+			expectedStruct: &parseValidTestStruct{A: 5, B: "default_str", C: 0, D: false, E: 2, P: "/opt/config/test/path"},
 			errMsg:         "",
 		},
 		{
