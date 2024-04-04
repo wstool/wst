@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
+	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
 	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
 	parserMocks "github.com/bukka/wst/mocks/conf/parser"
@@ -1472,6 +1473,398 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 				if !reflect.DeepEqual(tt.testStruct, tt.expectedStruct) {
 					t.Errorf("unexpected structure content: got %v, want %v", tt.testStruct, tt.expectedStruct)
 				}
+			}
+		})
+	}
+}
+
+func Test_ConfigParser_ParseConfig(t *testing.T) {
+	mockLoader := &loaderMocks.MockLoader{}
+
+	mockFs := afero.NewMemMapFs()
+	// mock app.Foundation
+	mockFnd := &appMocks.MockFoundation{}
+	mockFnd.On("Fs").Return(mockFs)
+
+	tests := []struct {
+		name           string
+		data           map[string]interface{}
+		expectedConfig *types.Config
+		path           string
+		errMsg         string
+	}{
+		{
+			name: "parse big compact config",
+			data: map[string]interface{}{
+				"version":     "1.0",
+				"name":        "WST Project",
+				"description": "A project to demonstrate JSON Schema representation in Go",
+				"spec": map[string]interface{}{
+					"environments": map[string]interface{}{
+						"common": map[string]interface{}{
+							"ports": map[string]interface{}{
+								"start": 8000,
+								"end":   9000,
+							},
+						},
+						"docker": map[string]interface{}{
+							"registry": map[string]interface{}{
+								"auth": map[string]interface{}{
+									"username": "user",
+									"password": "pass",
+								},
+							},
+							"name_prefix": "wst_",
+						},
+						"kubernetes": map[string]interface{}{
+							"namespace":  "default",
+							"kubeconfig": "/path/to/kubeconfig",
+						},
+					},
+					"sandboxes": map[string]interface{}{
+						"common": map[string]interface{}{
+							"available": true,
+							"dirs": map[string]interface{}{
+								"conf":   "/etc/common",
+								"run":    "/var/run/common",
+								"script": "/usr/local/bin",
+							},
+							"hooks": map[string]interface{}{
+								"start": map[string]interface{}{
+									"command": map[string]interface{}{
+										"executable": "/usr/local/bin/start-common",
+										"args":       []interface{}{"--config", "/etc/common/config.yaml"},
+									},
+								},
+								"stop": map[string]interface{}{
+									"signal": "SIGTERM",
+								},
+							},
+						},
+						"local": map[string]interface{}{
+							"available": true,
+							"dirs": map[string]interface{}{
+								"conf":   "/etc/local",
+								"run":    "/var/run/local",
+								"script": "/usr/local/bin",
+							},
+						},
+						"docker": map[string]interface{}{
+							"image": map[string]interface{}{
+								"name": "wst/docker-sandbox",
+								"tag":  "latest",
+							},
+							"registry": map[string]interface{}{
+								"auth": map[string]interface{}{
+									"username": "dockeruser",
+									"password": "dockerpass",
+								},
+							},
+							"hooks": map[string]interface{}{
+								"start": map[string]interface{}{
+									"native": map[string]interface{}{
+										"type": "start",
+									},
+								},
+							},
+						},
+						"kubernetes": map[string]interface{}{
+							"image": map[string]interface{}{
+								"name": "wst/k8s-sandbox",
+								"tag":  "v1.0",
+							},
+							"registry": map[string]interface{}{
+								"auth": map[string]interface{}{
+									"username": "k8suser",
+									"password": "k8spass",
+								},
+							},
+							"auth": map[string]interface{}{
+								"kubeconfig": "/home/user/.kube/config",
+							},
+						},
+					},
+					"servers": []map[string]interface{}{
+						{
+							"name": "web_server",
+							"user": "webuser",
+							"port": "8080",
+							"configs": map[string]interface{}{
+								"nginx.conf": map[string]interface{}{
+									"file": "/etc/nginx/nginx.conf",
+									"parameters": map[string]interface{}{
+										"worker_processes": "2",
+									},
+								},
+							},
+							"actions": map[string]interface{}{
+								"expect": map[string]interface{}{
+									"responseTime": map[string]interface{}{
+										"value":    200,
+										"operator": "lt",
+									},
+								},
+							},
+						},
+					},
+					"instances": []interface{}{
+						map[string]interface{}{
+							"name": "Instance 1",
+							"environments": map[string]interface{}{
+								"local": map[string]interface{}{
+									"ports": map[string]interface{}{
+										"start": 9500,
+										"end":   9600,
+									},
+								},
+							},
+							"resources": map[string]interface{}{
+								"scripts": map[string]interface{}{
+									"index_php": map[string]interface{}{
+										"content": "<?php echo 1; ?>",
+										"path":    "index.php",
+									},
+								},
+							},
+							"services": map[string]interface{}{
+								"web_service": map[string]interface{}{
+									"server": "web_server",
+									"resources": map[string]interface{}{
+										"scripts": []interface{}{
+											"init.sh",
+										},
+									},
+								},
+							},
+							"actions": []interface{}{
+								"start/web_service",
+								map[string]interface{}{
+									"request": map[string]interface{}{
+										"service": "web_service",
+										"path":    "/api/status",
+										"method":  "GET",
+									},
+								},
+								map[string]interface{}{
+									"expect": map[string]interface{}{
+										"response": map[string]interface{}{
+											"service": "web_service",
+											"body": map[string]interface{}{
+												"content": "OK",
+												"match":   "exact",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedConfig: &types.Config{
+				Version:     "1.0",
+				Name:        "WST Project",
+				Description: "A project to demonstrate JSON Schema representation in Go",
+				Spec: types.Spec{
+					Environments: map[string]types.Environment{
+						string(types.CommonEnvironmentType): types.CommonEnvironment{
+							Ports: types.CommonEnvironmentPorts{
+								Start: 8000,
+								End:   9000,
+							},
+						},
+						string(types.DockerEnvironmentType): types.DockerEnvironment{
+							ContainerEnvironment: types.ContainerEnvironment{
+								CommonEnvironment: types.CommonEnvironment{
+									Ports: types.CommonEnvironmentPorts{
+										Start: 8000,
+										End:   9000,
+									},
+								},
+								Registry: types.ContainerRegistry{
+									Auth: types.ContainerRegistryAuth{
+										Username: "user",
+										Password: "pass",
+									},
+								},
+							},
+							NamePrefix: "wst_",
+						},
+						string(types.KubernetesEnvironmentType): types.KubernetesEnvironment{
+							ContainerEnvironment: types.ContainerEnvironment{
+								CommonEnvironment: types.CommonEnvironment{
+									Ports: types.CommonEnvironmentPorts{
+										Start: 8000,
+										End:   9000,
+									},
+								},
+								Registry: types.ContainerRegistry{
+									Auth: types.ContainerRegistryAuth{
+										Username: "user",
+										Password: "pass",
+									},
+								},
+							},
+							Namespace:  "default",
+							Kubeconfig: "/path/to/kubeconfig",
+						},
+					},
+					Instances: []types.Instance{
+						{
+							Name: "Instance 1",
+							Resources: types.Resources{
+								Scripts: map[string]types.Script{
+									"index_php": {
+										Content:    "<?php echo 1; ?>",
+										Path:       "index.php",
+										Mode:       "0644",
+										Parameters: nil,
+									},
+								},
+							},
+							Services: map[string]types.Service{
+								"web_service": types.Service{
+									Server: types.ServiceServer{
+										Name: "web_server",
+									},
+									Resources: types.ServiceResources{
+										Scripts: types.ServiceScripts{
+											IncludeAll: true,
+										},
+									},
+									Requires: nil,
+									Public:   false,
+								},
+							},
+							Timeouts: types.InstanceTimeouts{},
+							Environments: map[string]types.Environment{
+								"local": types.LocalEnvironment{
+									CommonEnvironment: types.CommonEnvironment{
+										Ports: types.CommonEnvironmentPorts{
+											Start: 9500,
+											End:   9600,
+										},
+									},
+								},
+							},
+							Actions: nil,
+						},
+					},
+					Sandboxes: map[string]types.Sandbox{
+						"common": &types.CommonSandbox{
+							Available: true,
+							Dirs: map[string]string{
+								"conf":   "/etc/common",
+								"run":    "/var/run/common",
+								"script": "/usr/local/bin",
+							},
+							Hooks: map[string]types.SandboxHook{
+								"start": &types.SandboxHookShellCommand{
+									Command: "/usr/local/bin/start-common --config /etc/common/config.yaml",
+									Shell:   "/bin/sh", // Assuming shell if needed
+								},
+								"stop": &types.SandboxHookSignal{
+									IsString:    true,
+									StringValue: "SIGTERM",
+								},
+							},
+						},
+						"docker": &types.DockerSandbox{
+							ContainerSandbox: types.ContainerSandbox{
+								CommonSandbox: types.CommonSandbox{
+									Available: true,
+									Dirs: map[string]string{
+										"conf":   "/etc/docker",
+										"run":    "/var/run/docker",
+										"script": "/usr/local/bin",
+									},
+								},
+								Image: types.ContainerImage{
+									Name: "wst/docker-sandbox",
+									Tag:  "latest",
+								},
+								Registry: types.ContainerRegistry{
+									Auth: types.ContainerRegistryAuth{
+										Username: "dockeruser",
+										Password: "dockerpass",
+									},
+								},
+							},
+						},
+						"kubernetes": &types.KubernetesSandbox{
+							ContainerSandbox: types.ContainerSandbox{
+								CommonSandbox: types.CommonSandbox{
+									Available: true,
+									Dirs: map[string]string{
+										"conf":   "/etc/kubernetes",
+										"run":    "/var/run/kubernetes",
+										"script": "/usr/local/bin",
+									},
+								},
+								Image: types.ContainerImage{
+									Name: "wst/k8s-sandbox",
+									Tag:  "v1.0",
+								},
+								Registry: types.ContainerRegistry{
+									Auth: types.ContainerRegistryAuth{
+										Username: "k8suser",
+										Password: "k8spass",
+									},
+								},
+							},
+						},
+					},
+					Servers: []types.Server{
+						{
+							Name: "web_server",
+							User: "webuser",
+							Port: 8080,
+							Configs: map[string]types.ServerConfig{
+								"nginx.conf": {
+									File: "/etc/nginx/nginx.conf",
+									Parameters: types.Parameters{ // Assuming Parameters is a map[string]interface{} or similar
+										"worker_processes": "2",
+									},
+								},
+							},
+							Actions: types.ServerActions{
+								Expect: map[string]types.ServerExpectationAction{
+									"responseTime": types.ServerMetricsExpectation{ // If MetricsExpectation fits ServerExpectationAction
+										Parameters: types.Parameters{}, // Fill as needed
+										Metrics: types.MetricsExpectation{
+											Id: "last", // Example, adjust as needed
+											Rules: []types.MetricRule{
+												{
+													Metric:   "responseTime",
+													Operator: "lt",
+													Value:    200,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Workspace: "",
+				},
+			},
+			path: "/var/www/wst",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := CreateParser(mockFnd, mockLoader)
+			config := types.Config{}
+			err := p.ParseConfig(tt.data, &config, tt.path)
+
+			if tt.errMsg != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, &config, tt.expectedConfig)
 			}
 		})
 	}
