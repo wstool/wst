@@ -112,22 +112,23 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 	return nil
 }
 
-type typeMapFactory func(key string) interface{}
+type typeMapFactory[T any] func(key string) T
 
-func (f *FuncProvider) processTypeMap(
+func processTypeMap[T any](
 	name string,
 	data interface{},
-	factories map[string]typeMapFactory,
+	factories map[string]typeMapFactory[T],
+	structParser StructParser,
 	path string,
-) (map[string]interface{}, error) {
+) (map[string]T, error) {
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("data for %s must be a map, got %T", name, data)
 	}
 
-	result := make(map[string]interface{}, len(dataMap))
-	var factory typeMapFactory
+	result := make(map[string]T, len(dataMap))
+	var factory typeMapFactory[T]
 	var valMap map[string]interface{}
 	for key, val := range dataMap {
 		if factory, ok = factories[key]; ok {
@@ -136,7 +137,7 @@ func (f *FuncProvider) processTypeMap(
 				return nil, fmt.Errorf("data for value in %s must be a map, got %T", name, val)
 			}
 			structure := factory(key)
-			if err := f.structParser(valMap, structure, path); err != nil {
+			if err := structParser(valMap, structure, path); err != nil {
 				return nil, err
 			}
 			result[key] = structure
@@ -149,24 +150,24 @@ func (f *FuncProvider) processTypeMap(
 }
 
 func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.Value, path string) error {
-	environmentFactories := map[string]typeMapFactory{
-		"common": func(key string) interface{} {
+	environmentFactories := map[string]typeMapFactory[types.Environment]{
+		"common": func(key string) types.Environment {
 			return &types.CommonEnvironment{}
 		},
-		"local": func(key string) interface{} {
+		"local": func(key string) types.Environment {
 			return &types.LocalEnvironment{}
 		},
-		"container": func(key string) interface{} {
+		"container": func(key string) types.Environment {
 			return &types.ContainerEnvironment{}
 		},
-		"docker": func(key string) interface{} {
+		"docker": func(key string) types.Environment {
 			return &types.DockerEnvironment{}
 		},
-		"kubernetes": func(key string) interface{} {
+		"kubernetes": func(key string) types.Environment {
 			return &types.KubernetesEnvironment{}
 		},
 	}
-	environments, err := f.processTypeMap("environments", data, environmentFactories, path)
+	environments, err := processTypeMap("environments", data, environmentFactories, f.structParser, path)
 	if err != nil {
 		return err
 	}
@@ -176,7 +177,7 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 	return nil
 }
 
-type hooksMapFactory func(key string, hook interface{}) (interface{}, error)
+type hooksMapFactory func(key string, hook interface{}) (types.SandboxHook, error)
 
 func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, path string) error {
 	// Check if data is a map
@@ -186,7 +187,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 	}
 
 	hooksFactories := map[string]hooksMapFactory{
-		"command": func(key string, hook interface{}) (interface{}, error) {
+		"command": func(key string, hook interface{}) (types.SandboxHook, error) {
 			hookMap, ok := hook.(map[string]interface{})
 			if !ok {
 				return nil, fmt.Errorf("command hooks must be a map, got %T", hook)
@@ -228,7 +229,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 				return nil, fmt.Errorf("command hooks data is invalid")
 			}
 		},
-		"signal": func(key string, hook interface{}) (interface{}, error) {
+		"signal": func(key string, hook interface{}) (types.SandboxHook, error) {
 			if strHook, ok := hook.(string); ok {
 				return &types.SandboxHookSignal{
 					IsString:    true,
@@ -245,14 +246,14 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 		},
 	}
 
-	hooks := make(map[string]interface{}, len(dataMap))
-	for key, hook := range dataMap {
+	hooks := make(map[string]types.SandboxHook, len(dataMap))
+	for key, hookData := range dataMap {
 		if factory, ok := hooksFactories[key]; ok {
-			env, err := factory(key, hook)
+			hook, err := factory(key, hookData)
 			if err != nil {
 				return err
 			}
-			hooks[key] = env
+			hooks[key] = hook
 		} else {
 			return fmt.Errorf("unknown environment type: %s", key)
 		}
@@ -264,36 +265,66 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 
 }
 
+func convertParams(data map[string]interface{}) types.Parameters {
+	params := make(types.Parameters)
+	for key, val := range data {
+		switch v := val.(type) {
+		case map[string]interface{}:
+			// Recursively process nested maps.
+			params[key] = convertParams(v)
+		case []interface{}:
+			// Process each element in the slice.
+			var slice []interface{}
+			for _, item := range v {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					// Recursively process nested maps within slices.
+					slice = append(slice, convertParams(itemMap))
+				} else {
+					// Directly append other types.
+					slice = append(slice, item)
+				}
+			}
+			params[key] = slice
+		default:
+			// Directly assign all other types.
+			params[key] = val
+		}
+	}
+	return params
+}
+
 func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value, path string) error {
-	_, ok := data.(map[string]interface{})
+	dataMap, ok := data.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("data for parameters must be a map, got %T", data)
 	}
 
-	fieldValue.Set(reflect.ValueOf(data))
+	params := convertParams(dataMap)
+
+	fieldValue.Set(reflect.ValueOf(params))
 
 	return nil
 }
 
 func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Value, path string) error {
-	sandboxFactories := map[string]typeMapFactory{
-		"common": func(key string) interface{} {
+	sandboxFactories := map[string]typeMapFactory[types.Sandbox]{
+		"common": func(key string) types.Sandbox {
 			return &types.CommonSandbox{}
 		},
-		"local": func(key string) interface{} {
+		"local": func(key string) types.Sandbox {
 			return &types.LocalSandbox{}
 		},
-		"container": func(key string) interface{} {
+		"container": func(key string) types.Sandbox {
 			return &types.ContainerSandbox{}
 		},
-		"docker": func(key string) interface{} {
+		"docker": func(key string) types.Sandbox {
 			return &types.DockerSandbox{}
 		},
-		"kubernetes": func(key string) interface{} {
+		"kubernetes": func(key string) types.Sandbox {
 			return &types.KubernetesSandbox{}
 		},
 	}
-	sandboxes, err := f.processTypeMap("sandboxes", data, sandboxFactories, path)
+	sandboxes, err := processTypeMap("sandboxes", data, sandboxFactories, f.structParser, path)
 	if err != nil {
 		return err
 	}
@@ -309,7 +340,7 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 	if !ok {
 		return fmt.Errorf("data for server action expectations must be a map, got %T", data)
 	}
-	expectations := make(map[string]interface{})
+	expectations := make(map[string]types.ServerExpectationAction)
 	var structure interface{}
 	for key, val := range dataMap {
 		expData, ok := val.(map[string]interface{})

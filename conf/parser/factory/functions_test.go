@@ -211,7 +211,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					err:  nil,
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.Environment{
 				"common": &types.CommonEnvironment{},
 			},
 			wantErr: false,
@@ -251,7 +251,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					err:  nil,
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.Environment{
 				"common":     &types.CommonEnvironment{},
 				"local":      &types.LocalEnvironment{},
 				"container":  &types.ContainerEnvironment{},
@@ -317,7 +317,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					"shell":   "/bin/bash",
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.SandboxHook{
 				"command": &types.SandboxHookShellCommand{
 					Command: "echo 'Hello World'",
 					Shell:   "/bin/bash",
@@ -334,7 +334,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					"command": "echo 'Hello World'",
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.SandboxHook{
 				"command": &types.SandboxHookShellCommand{
 					Command: "echo 'Hello World'",
 					Shell:   "/bin/sh",
@@ -351,7 +351,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					"args":       []interface{}{"arg1", "arg2"},
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.SandboxHook{
 				"command": &types.SandboxHookArgsCommand{
 					Executable: "myApp",
 					Args:       []string{"arg1", "arg2"},
@@ -365,7 +365,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			data: map[string]interface{}{
 				"signal": "SIGHUP",
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.SandboxHook{
 				"signal": &types.SandboxHookSignal{
 					IsString:    true,
 					StringValue: "SIGHUP",
@@ -379,7 +379,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			data: map[string]interface{}{
 				"signal": 9, // Typically SIGKILL
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.SandboxHook{
 				"signal": &types.SandboxHookSignal{
 					IsString: false,
 					IntValue: 9,
@@ -393,7 +393,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			data: map[string]interface{}{
 				"unsupported": map[string]interface{}{},
 			},
-			expectedValue: map[string]interface{}{}, // No hooks should be created
+			expectedValue: map[string]types.SandboxHook{}, // No hooks should be created
 			wantErr:       true,
 			errMsg:        "unknown environment type: unsupported",
 		},
@@ -499,19 +499,37 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 				"param1": "value1",
 				"param2": 123,
 				"param3": true,
+				"param4": map[string]interface{}{
+					"param41": []interface{}{
+						map[string]interface{}{
+							"param5": 2,
+						},
+						5,
+					},
+					"param42": 3,
+				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: types.Parameters{
 				"param1": "value1",
 				"param2": 123,
 				"param3": true,
+				"param4": types.Parameters{
+					"param41": []interface{}{
+						types.Parameters{
+							"param5": 2,
+						},
+						5,
+					},
+					"param42": 3,
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name:          "createParameters fails on invalid data type (int)",
 			funcName:      "createParameters",
-			data:          123,                      // Invalid data type, expecting a map.
-			expectedValue: map[string]interface{}{}, // No parameters should be set due to error.
+			data:          123,                // Invalid data type, expecting a map.
+			expectedValue: types.Parameters{}, // No parameters should be set due to error.
 			wantErr:       true,
 			errMsg:        "data for parameters must be a map, got int",
 		},
@@ -551,7 +569,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					err:  nil,
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.Sandbox{
 				"common":     &types.CommonSandbox{},
 				"local":      &types.LocalSandbox{},
 				"container":  &types.ContainerSandbox{},
@@ -602,7 +620,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					err:  nil,
 				},
 			},
-			expectedValue: map[string]interface{}{
+			expectedValue: map[string]types.ServerExpectationAction{
 				"expectation1": &types.ServerMetricsExpectation{},
 				"expectation2": &types.ServerOutputExpectation{},
 				"expectation3": &types.ServerResponseExpectation{},

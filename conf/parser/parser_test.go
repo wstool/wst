@@ -15,7 +15,6 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
@@ -25,6 +24,7 @@ import (
 	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
 	parserMocks "github.com/bukka/wst/mocks/conf/parser"
 	factoryMocks "github.com/bukka/wst/mocks/conf/parser/factory"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1869,14 +1869,25 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 			err := p.ParseConfig(tt.data, &config, tt.path)
 
 			if tt.errMsg != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
+				if assert.Error(t, err) {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
 			} else {
-				require.NoError(t, err)
-				assert.Equal(t, &config, tt.expectedConfig)
+				if assert.NoError(t, err) {
+					assert.Equal(t, &config, tt.expectedConfig)
+				} else {
+					errExtra, ok := err.(stackTracer)
+					if ok {
+						fmt.Printf("An error occurred: %+v\n", errExtra)
+					}
+				}
 			}
 		})
 	}
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
 }
 
 func TestCreateParser(t *testing.T) {
