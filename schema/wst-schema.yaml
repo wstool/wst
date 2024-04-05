@@ -367,15 +367,17 @@ $defs:
       hooks:
         title: Sandbox hooks
         description: |
-          Those lifecycle hooks are called when even specified in the object key happens. Currently start, stop and
-          reload hooks can be defined.
+          Those lifecycle hooks are called when even specified in the object key happens. Currently start, stop, restart
+          and reload hooks can be defined.
         type: object
         properties:
+          reload:
+            $ref: '#/$defs/sandboxHook'
+          restart:
+            $ref: '#/$defs/sandboxHook'
           start:
             $ref: '#/$defs/sandboxHook'
           stop:
-            $ref: '#/$defs/sandboxHook'
-          reload:
             $ref: '#/$defs/sandboxHook'
 
   containerRegistry:

@@ -177,7 +177,7 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 	return nil
 }
 
-type hooksMapFactory func(key string, hook interface{}) (types.SandboxHook, error)
+type hooksMapFactory func(hook interface{}) (types.SandboxHook, map[string]interface{}, error)
 
 func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, path string) error {
 	// Check if data is a map
@@ -187,75 +187,72 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 	}
 
 	hooksFactories := map[string]hooksMapFactory{
-		"command": func(key string, hook interface{}) (types.SandboxHook, error) {
+		"native": func(hook interface{}) (types.SandboxHook, map[string]interface{}, error) {
+			hookNative, ok := hook.(map[string]interface{})
+			if !ok {
+				return nil, nil, errors.Errorf("native hook must be a map, got %T", hook)
+			}
+			return &types.SandboxHookNative{}, hookNative, nil
+		},
+		"command": func(hook interface{}) (types.SandboxHook, map[string]interface{}, error) {
 			hookMap, ok := hook.(map[string]interface{})
 			if !ok {
-				return nil, errors.Errorf("command hooks must be a map, got %T", hook)
+				return nil, nil, errors.Errorf("command hooks must be a map, got %T", hook)
 			}
 
-			if cmd, ok := hookMap["command"]; ok {
-				shell, shellOk := hookMap["shell"].(string)
-				command, commandOk := cmd.(string)
-				if !commandOk {
-					return nil, errors.Errorf("command must be a string")
-				}
-				if !shellOk {
-					shell = "/bin/sh" // Default to /bin/sh if not specified
-				}
-				return &types.SandboxHookShellCommand{Command: command, Shell: shell}, nil
-			} else if exe, ok := hookMap["executable"]; ok {
-				executable, exeOk := exe.(string)
-				if !exeOk {
-					return nil, errors.Errorf("executable must be a string")
-				}
-				argsInterface, argsOk := hookMap["args"]
-				var args []string
-				if argsOk {
-					switch v := argsInterface.(type) {
-					case []interface{}:
-						for _, arg := range v {
-							strArg, ok := arg.(string)
-							if !ok {
-								return nil, errors.Errorf("args must be an array of strings but its item is of type %T", arg)
-							}
-							args = append(args, strArg)
-						}
-					default:
-						return nil, errors.Errorf("args must be an array of strings but it is not an array")
-					}
-				}
-				return &types.SandboxHookArgsCommand{Executable: executable, Args: args}, nil
+			if _, ok := hookMap["command"]; ok {
+				return &types.SandboxHookShellCommand{}, hookMap, nil
+			} else if _, ok := hookMap["executable"]; ok {
+				return &types.SandboxHookArgsCommand{}, hookMap, nil
 			} else {
-				return nil, errors.Errorf("command hooks data is invalid")
+				return nil, nil, errors.Errorf("command hooks data is invalid")
 			}
 		},
-		"signal": func(key string, hook interface{}) (types.SandboxHook, error) {
+		"signal": func(hook interface{}) (types.SandboxHook, map[string]interface{}, error) {
 			if strHook, ok := hook.(string); ok {
 				return &types.SandboxHookSignal{
 					IsString:    true,
 					StringValue: strHook,
-				}, nil
+				}, nil, nil
 			}
 			if intHook, ok := hook.(int); ok {
 				return &types.SandboxHookSignal{
 					IsString: false,
 					IntValue: intHook,
-				}, nil
+				}, nil, nil
 			}
-			return nil, errors.Errorf("invalid signal hook type %t, only string and int is allowed", hook)
+			return nil, nil, errors.Errorf("invalid signal hook type %t, only string and int is allowed", hook)
 		},
 	}
 
 	hooks := make(map[string]types.SandboxHook, len(dataMap))
-	for key, hookData := range dataMap {
-		if factory, ok := hooksFactories[key]; ok {
-			hook, err := factory(key, hookData)
-			if err != nil {
-				return err
+	for hookEvent, hookData := range dataMap {
+		hookMap, ok := hookData.(map[string]interface{})
+		if !ok {
+			return errors.Errorf("hook data must be a map, got %T", hookData)
+		}
+		if hookMap == nil || len(hookMap) == 0 {
+			return errors.New("hook data cannot be an empty map")
+		}
+		if len(hookMap) > 1 {
+			return errors.New("hook data must have only one element")
+		}
+		for hookType, hook := range hookMap {
+			factory, ok := hooksFactories[hookType]
+			if ok {
+				hookStructure, hookTypeData, err := factory(hook)
+				if hookTypeData != nil {
+					if err := f.structParser(hookTypeData, hookStructure, path); err != nil {
+						return err
+					}
+				}
+				if err != nil {
+					return err
+				}
+				hooks[hookEvent] = hookStructure
+			} else {
+				return errors.Errorf("unknown hook type: %s", hookType)
 			}
-			hooks[key] = hook
-		} else {
-			return errors.Errorf("unknown environment type: %s", key)
 		}
 	}
 

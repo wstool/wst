@@ -312,13 +312,15 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createHooks with valid command hook (shell command)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"command": "echo 'Hello World'",
-					"shell":   "/bin/bash",
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{
+						"command": "echo 'Hello World'",
+						"shell":   "/bin/bash",
+					},
 				},
 			},
 			expectedValue: map[string]types.SandboxHook{
-				"command": &types.SandboxHookShellCommand{
+				"start": &types.SandboxHookShellCommand{
 					Command: "echo 'Hello World'",
 					Shell:   "/bin/bash",
 				},
@@ -330,8 +332,10 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createHooks with valid command hook (default shell command)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"command": "echo 'Hello World'",
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{
+						"command": "echo 'Hello World'",
+					},
 				},
 			},
 			expectedValue: map[string]types.SandboxHook{
@@ -767,8 +771,8 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 				totalCalls++
 			}
 
-			factoryFunc := f.GetFactoryFunc(tt.funcName)
-			if factoryFunc == nil {
+			factoryFunc, err := f.GetFactoryFunc(tt.funcName)
+			if err != nil {
 				if tt.expectedNoFunction {
 					return
 				}
@@ -777,7 +781,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 
 			// Prepare a reflect.Value that the factory function will operate on.
 			fieldValue := reflect.New(reflect.TypeOf(tt.expectedValue)).Elem()
-			err := factoryFunc(tt.data, fieldValue, path)
+			err = factoryFunc(tt.data, fieldValue, path)
 
 			if tt.wantErr {
 				assert.Error(err)
