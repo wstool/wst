@@ -80,7 +80,7 @@ func isValidParam(param string) bool {
 }
 
 // parseTag parses the 'wst' struct tag into a Field
-func (p ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
+func (p *ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
 	// split the tag into parts
 	parts := strings.Split(tag, ",")
 
@@ -121,7 +121,7 @@ func (p ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
 	return params, nil
 }
 
-func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string, fieldValue reflect.Value) error {
+func (p *ConfigParser) processDefaultParam(fieldName string, defaultValue string, fieldValue reflect.Value) error {
 	switch fieldValue.Kind() {
 	case reflect.Int, reflect.Int32, reflect.Int64:
 		intValue, err := strconv.Atoi(defaultValue)
@@ -146,20 +146,20 @@ func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string,
 	return nil
 }
 
-func (p ConfigParser) processFactoryParam(
+func (p *ConfigParser) processFactoryParam(
 	factory string,
 	data interface{},
 	fieldValue reflect.Value,
 	path string,
 ) error {
-	factoryFunc := p.factories.GetFactoryFunc(factory)
-	if factoryFunc == nil {
-		return errors.Errorf("factory function %s not found", factory)
+	factoryFunc, err := p.factories.GetFactoryFunc(factory)
+	if err != nil {
+		return err
 	}
 	return factoryFunc(data, fieldValue, path)
 }
 
-func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
+func (p *ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
 	enumList := strings.Split(enums, "|")
 	for _, enum := range enumList {
 		if enum == data {
@@ -170,7 +170,7 @@ func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName
 	return errors.Errorf("values %v are not valid for field %s", enums, fieldName)
 }
 
-func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
+func (p *ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
 	keysList := strings.Split(keys, "|")
 	for _, key := range keysList {
 		if _, ok := data.(map[string]interface{})[key]; ok {
@@ -181,7 +181,7 @@ func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName 
 	return errors.Errorf("keys %v are not valid for field %s", keys, fieldName)
 }
 
-func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
+func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
 	// Assert data is a string
 	path, ok := data.(string)
 	if !ok {
@@ -220,7 +220,7 @@ func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Valu
 	return nil
 }
 
-func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value) (interface{}, error) {
+func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value) (interface{}, error) {
 	loadableData, isString := data.(string)
 	if isString {
 		configs, err := p.loader.GlobConfigs(loadableData)
@@ -254,7 +254,7 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 	return data, nil
 }
 
-func (p ConfigParser) processStringParam(
+func (p *ConfigParser) processStringParam(
 	fieldName string,
 	data interface{},
 	fieldValue reflect.Value,
@@ -308,7 +308,7 @@ func (p ConfigParser) processStringParam(
 
 // setFieldByName sets the field of the struct v with the given name to the specified value.
 // The value v must be a pointer to a struct, and the field should be exported and settable.
-func (p ConfigParser) setFieldByName(v interface{}, name string, value string) error {
+func (p *ConfigParser) setFieldByName(v interface{}, name string, value string) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
 		// For struct:
@@ -327,7 +327,7 @@ func (p ConfigParser) setFieldByName(v interface{}, name string, value string) e
 
 // processMapValue processes a map[string]interface{} where value is a string
 // It goes through each value in map and if it's a string, sets it to a specified field.
-func (p ConfigParser) processMapValue(
+func (p *ConfigParser) processMapValue(
 	mapData map[string]interface{},
 	rv reflect.Value,
 	fieldName string,
@@ -378,7 +378,7 @@ func (p ConfigParser) processMapValue(
 }
 
 // assignField assigns the provided data to the fieldValue.
-func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fieldName string, path string) error {
+func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fieldName string, path string) error {
 	switch fieldValue.Kind() {
 	case reflect.Struct:
 		dataMap, ok := data.(map[string]interface{})
@@ -511,7 +511,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 }
 
 // parseField parses a struct field based on data and params
-func (p ConfigParser) parseField(
+func (p *ConfigParser) parseField(
 	data interface{},
 	fieldValue reflect.Value,
 	fieldName string,
@@ -568,7 +568,7 @@ func (p ConfigParser) parseField(
 }
 
 // ParseStruct parses a struct into a map of Fields
-func (p ConfigParser) ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error {
+func (p *ConfigParser) ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error {
 	structValuePtr := reflect.ValueOf(structure)
 	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
 		return errors.Errorf("expected a pointer to a struct, got %T", structure)
@@ -618,7 +618,7 @@ func (p ConfigParser) ParseStruct(data map[string]interface{}, structure interfa
 	return nil
 }
 
-func (p ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
+func (p *ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
 	return p.ParseStruct(data, config, configPath)
 }
 

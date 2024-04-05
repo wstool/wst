@@ -21,7 +21,7 @@ func (_m *MockFunctions) EXPECT() *MockFunctions_Expecter {
 }
 
 // GetFactoryFunc provides a mock function with given fields: funcName
-func (_m *MockFunctions) GetFactoryFunc(funcName string) factory.Func {
+func (_m *MockFunctions) GetFactoryFunc(funcName string) (factory.Func, error) {
 	ret := _m.Called(funcName)
 
 	if len(ret) == 0 {
@@ -29,6 +29,10 @@ func (_m *MockFunctions) GetFactoryFunc(funcName string) factory.Func {
 	}
 
 	var r0 factory.Func
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (factory.Func, error)); ok {
+		return rf(funcName)
+	}
 	if rf, ok := ret.Get(0).(func(string) factory.Func); ok {
 		r0 = rf(funcName)
 	} else {
@@ -37,7 +41,13 @@ func (_m *MockFunctions) GetFactoryFunc(funcName string) factory.Func {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(funcName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockFunctions_GetFactoryFunc_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFactoryFunc'
@@ -58,12 +68,12 @@ func (_c *MockFunctions_GetFactoryFunc_Call) Run(run func(funcName string)) *Moc
 	return _c
 }
 
-func (_c *MockFunctions_GetFactoryFunc_Call) Return(_a0 factory.Func) *MockFunctions_GetFactoryFunc_Call {
-	_c.Call.Return(_a0)
+func (_c *MockFunctions_GetFactoryFunc_Call) Return(_a0 factory.Func, _a1 error) *MockFunctions_GetFactoryFunc_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockFunctions_GetFactoryFunc_Call) RunAndReturn(run func(string) factory.Func) *MockFunctions_GetFactoryFunc_Call {
+func (_c *MockFunctions_GetFactoryFunc_Call) RunAndReturn(run func(string) (factory.Func, error)) *MockFunctions_GetFactoryFunc_Call {
 	_c.Call.Return(run)
 	return _c
 }

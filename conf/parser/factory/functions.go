@@ -28,7 +28,7 @@ type StructParser func(data map[string]interface{}, structure interface{}, path 
 
 // Functions define an interface for factory functions
 type Functions interface {
-	GetFactoryFunc(funcName string) Func
+	GetFactoryFunc(funcName string) (Func, error)
 }
 
 // FuncProvider contains the implementation of the FactoryFunctions
@@ -46,26 +46,26 @@ func CreateFactories(fnd app.Foundation, structParser StructParser) Functions {
 	}
 }
 
-func (f *FuncProvider) GetFactoryFunc(funcName string) Func {
+func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 	switch funcName {
 	case "createActions":
-		return f.createActions
+		return f.createActions, nil
 	case "createContainerImage":
-		return f.createContainerImage
+		return f.createContainerImage, nil
 	case "createEnvironments":
-		return f.createEnvironments
+		return f.createEnvironments, nil
 	case "createHooks":
-		return f.createHooks
+		return f.createHooks, nil
 	case "createParameters":
-		return f.createParameters
+		return f.createParameters, nil
 	case "createSandboxes":
-		return f.createSandboxes
+		return f.createSandboxes, nil
 	case "createServerExpectations":
-		return f.createServerExpectations
+		return f.createServerExpectations, nil
 	case "createServiceScripts":
-		return f.createServiceScripts
+		return f.createServiceScripts, nil
 	default:
-		return nil
+		return nil, errors.Errorf("unknown function %s", funcName)
 	}
 }
 

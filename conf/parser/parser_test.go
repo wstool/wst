@@ -228,12 +228,15 @@ func TestConfigParser_processFactoryParam(t *testing.T) {
 	factories.On("GetFactoryFunc", "mockFactory").Return(
 		factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 			return nil
-		}))
-	factories.On("GetFactoryFunc", "invalidFactory").Return(nil)
+		}), nil)
+	factories.On("GetFactoryFunc", "invalidFactory").Return(
+		nil,
+		errors.New("unknwon factory"),
+	)
 	factories.On("GetFactoryFunc", "errorMockFactory").Return(
 		factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 			return fmt.Errorf("forced error")
-		}))
+		}), nil)
 
 	p := ConfigParser{
 		fnd:       nil, // replace with necessary mock if necessary
