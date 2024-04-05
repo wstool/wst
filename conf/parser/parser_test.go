@@ -579,7 +579,8 @@ func TestProcessPathParam(t *testing.T) {
 }
 
 type StringParamTestStruct struct {
-	StringField string
+	StringField string `wst:"string_field"`
+	IntField    int    `wst:"int_field"`
 }
 
 type StringParamParentStruct struct {
@@ -625,16 +626,17 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 	var structVal StringParamParentStruct
 
 	// Testing data setup for map
-	mapDataVal := map[string]string{
+	mapDataVal := map[string]interface{}{
 		"key1": "value1",
 		"key2": "value2",
 	}
 
 	var mapStructVal StringParamTestMapStruct
-
 	var mapInvalidStructVal StringParamTestMapInvalidStruct
-
 	var invalidStruct StringParamInvalidParentStruct
+
+	msVal := reflect.ValueOf(&mapStructVal)
+	msField := msVal.Elem().FieldByName("MapField")
 
 	strVal := "test"
 
@@ -688,10 +690,13 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			errMsg:     "not a valid field name: NonexistentField",
 		},
 		{
-			name:       "process map param success",
-			fieldName:  "StringField",
-			data:       mapDataVal,
-			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			name:      "process map param with shallow fields",
+			fieldName: "StringField",
+			data: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			fieldValue: msField,
 			changed:    true,
 			want: map[string]StringParamTestStruct{
 				"key1": StringParamTestStruct{StringField: "value1"},
@@ -699,10 +704,52 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			},
 		},
 		{
+			name:      "process map param with shallow fields",
+			fieldName: "StringField",
+			data: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			fieldValue: msField,
+			changed:    true,
+			want: map[string]StringParamTestStruct{
+				"key1": StringParamTestStruct{StringField: "value1"},
+				"key2": StringParamTestStruct{StringField: "value2"},
+			},
+		},
+		{
+			name:      "process map param with shallow fields",
+			fieldName: "StringField",
+			data: map[string]interface{}{
+				"key1": map[string]interface{}{
+					"string_field": "str",
+					"int_field":    2,
+				},
+				"key2": "value2",
+			},
+			fieldValue: msField,
+			changed:    true,
+			want: map[string]StringParamTestStruct{
+				"key1": StringParamTestStruct{StringField: "str", IntField: 2},
+				"key2": StringParamTestStruct{StringField: "value2"},
+			},
+		},
+		{
+			name:      "process map param with invalid map value type",
+			fieldName: "StringField",
+			data: map[string]interface{}{
+				"key1": "value1",
+				"key2": 1,
+			},
+			fieldValue: msField,
+			wantErr:    true,
+			errMsg:     "invalid map value type for string param - expected string, got int",
+		},
+		{
 			name:       "process map param with non-existent field",
 			fieldName:  "NonExistentField",
-			data:       map[string]string{"NonExistentField": "someValue"},
-			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			data:       map[string]interface{}{"NonExistentField": "someValue"},
+			fieldValue: msField,
 			wantErr:    true,
 			errMsg:     "failed to set field NonExistentField: not a valid field name: NonExistentField",
 		},
@@ -710,7 +757,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			name:       "process map param with invalid struct field",
 			fieldName:  "InvalidField",
 			data:       mapDataVal,
-			fieldValue: reflect.ValueOf(&mapInvalidStructVal.MapField),
+			fieldValue: reflect.ValueOf(mapInvalidStructVal.MapField),
 			wantErr:    true,
 			errMsg:     "error parsing struct for string param: invalid parameter key: unknown",
 		},
@@ -718,7 +765,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			name:       "process map param with invalid data type",
 			fieldName:  "StringField",
 			data:       "data",
-			fieldValue: reflect.ValueOf(&mapStructVal.MapField),
+			fieldValue: msField,
 			changed:    false,
 		},
 		{

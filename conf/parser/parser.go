@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
 	"github.com/bukka/wst/conf/types"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"math"
 	"path/filepath"
@@ -113,7 +114,7 @@ func (p ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
 			}
 			params[ConfigParam(key)] = value
 		} else {
-			return nil, fmt.Errorf("invalid parameter key: %s", key)
+			return nil, errors.Errorf("invalid parameter key: %s", key)
 		}
 	}
 
@@ -125,21 +126,21 @@ func (p ConfigParser) processDefaultParam(fieldName string, defaultValue string,
 	case reflect.Int, reflect.Int32, reflect.Int64:
 		intValue, err := strconv.Atoi(defaultValue)
 		if err != nil {
-			return fmt.Errorf("default value %q for field %s can't be converted to int: %w",
+			return errors.Errorf("default value %q for field %s can't be converted to int: %v",
 				defaultValue, fieldName, err)
 		}
 		fieldValue.SetInt(int64(intValue))
 	case reflect.Bool:
 		boolValue, err := strconv.ParseBool(defaultValue)
 		if err != nil {
-			return fmt.Errorf("default value %q for field %s can't be converted to bool: %w",
+			return errors.Errorf("default value %q for field %s can't be converted to bool: %v",
 				defaultValue, fieldName, err)
 		}
 		fieldValue.SetBool(boolValue)
 	case reflect.String:
 		fieldValue.SetString(defaultValue)
 	default:
-		return fmt.Errorf("default value %v for field %s cannot be converted to type %v",
+		return errors.Errorf("default value %v for field %s cannot be converted to type %v",
 			defaultValue, fieldName, fieldValue.Type())
 	}
 	return nil
@@ -153,7 +154,7 @@ func (p ConfigParser) processFactoryParam(
 ) error {
 	factoryFunc := p.factories.GetFactoryFunc(factory)
 	if factoryFunc == nil {
-		return fmt.Errorf("factory function %s not found", factory)
+		return errors.Errorf("factory function %s not found", factory)
 	}
 	return factoryFunc(data, fieldValue, path)
 }
@@ -166,7 +167,7 @@ func (p ConfigParser) processEnumParam(enums string, data interface{}, fieldName
 		}
 	}
 
-	return fmt.Errorf("values %v are not valid for field %s", enums, fieldName)
+	return errors.Errorf("values %v are not valid for field %s", enums, fieldName)
 }
 
 func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
@@ -177,14 +178,14 @@ func (p ConfigParser) processKeysParam(keys string, data interface{}, fieldName 
 		}
 	}
 
-	return fmt.Errorf("keys %v are not valid for field %s", keys, fieldName)
+	return errors.Errorf("keys %v are not valid for field %s", keys, fieldName)
 }
 
 func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
 	// Assert data is a string
 	path, ok := data.(string)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for data, expected string", data)
+		return errors.Errorf("unexpected type %T for data, expected string", data)
 	}
 
 	fs := p.fnd.Fs()
@@ -199,18 +200,18 @@ func (p ConfigParser) processPathParam(data interface{}, fieldValue reflect.Valu
 	if err != nil {
 		return err
 	} else if !exists {
-		return fmt.Errorf("file path %s does not exist", path)
+		return errors.Errorf("file path %s does not exist", path)
 	}
 
 	// Check that fieldValue is settable (it is addressable and was not obtained by
 	// the use of unexported struct fields)
 	if !fieldValue.CanSet() {
-		return fmt.Errorf("field %s is not settable", fieldName)
+		return errors.Errorf("field %s is not settable", fieldName)
 	}
 
 	// Check if fieldValue is of type string
 	if fieldValue.Kind() != reflect.String {
-		return fmt.Errorf("field %s is not of type string", fieldName)
+		return errors.Errorf("field %s is not of type string", fieldName)
 	}
 
 	// If no errors so far, set the fieldValue to the resolved file path
@@ -224,7 +225,7 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 	if isString {
 		configs, err := p.loader.GlobConfigs(loadableData)
 		if err != nil {
-			return nil, fmt.Errorf("loading configs: %v", err)
+			return nil, errors.Errorf("loading configs: %v", err)
 		}
 
 		switch fieldValue.Kind() {
@@ -247,7 +248,7 @@ func (p ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.
 			return loadedData, nil
 
 		default:
-			return nil, fmt.Errorf("type of field is neither map nor slice (kind=%s)", fieldValue.Kind())
+			return nil, errors.Errorf("type of field is neither map nor slice (kind=%s)", fieldValue.Kind())
 		}
 	}
 	return data, nil
@@ -261,8 +262,8 @@ func (p ConfigParser) processStringParam(
 ) (bool, error) {
 	kind := fieldValue.Kind()
 
-	if kind != reflect.Struct && kind != reflect.Interface && kind != reflect.Ptr {
-		return false, fmt.Errorf("field %s must be a struct or interface type or a pointer to such", fieldName)
+	if kind != reflect.Struct && kind != reflect.Map && kind != reflect.Interface && kind != reflect.Ptr {
+		return false, errors.Errorf("field %s must be a struct or interface type or a pointer to such", fieldName)
 	}
 
 	if kind == reflect.Ptr || kind == reflect.Interface {
@@ -271,7 +272,7 @@ func (p ConfigParser) processStringParam(
 	fieldValueKind := fieldValue.Kind()
 
 	if fieldValueKind == reflect.Map {
-		mapData, ok := data.(map[string]string)
+		mapData, ok := data.(map[string]interface{})
 		if !ok {
 			// Data is not a map
 			return false, nil
@@ -291,16 +292,16 @@ func (p ConfigParser) processStringParam(
 		// Use an empty map as temporary data to populate the struct
 		err := p.ParseStruct(make(map[string]interface{}), fieldValuePtrInterface, path)
 		if err != nil {
-			return false, fmt.Errorf("error parsing struct for string param: %v", err)
+			return false, errors.Errorf("error parsing struct for string param: %v", err)
 		}
 
 		// Set the string value to the appropriate sub-field
 		err = p.setFieldByName(fieldValuePtrInterface, fieldName, strData)
 		if err != nil {
-			return false, fmt.Errorf("failed to set field %s : %v", fieldName, err)
+			return false, errors.Errorf("failed to set field %s : %v", fieldName, err)
 		}
 	} else {
-		return false, fmt.Errorf("field %s value must be a pointer to a struct or a map", fieldName)
+		return false, errors.Errorf("field %s value must be a pointer to a struct or a map", fieldName)
 	}
 	return true, nil
 }
@@ -313,10 +314,10 @@ func (p ConfigParser) setFieldByName(v interface{}, name string, value string) e
 		// For struct:
 		fv := rv.Elem().FieldByName(name)
 		if !fv.IsValid() {
-			return fmt.Errorf("not a valid field name: %s", name)
+			return errors.Errorf("not a valid field name: %s", name)
 		}
 		if !fv.CanSet() {
-			return fmt.Errorf("cannot set the field: %s", name)
+			return errors.Errorf("cannot set the field: %s", name)
 		}
 		fv.SetString(value)
 	}
@@ -327,7 +328,7 @@ func (p ConfigParser) setFieldByName(v interface{}, name string, value string) e
 // processMapValue processes a map[string]interface{} where value is a string
 // It goes through each value in map and if it's a string, sets it to a specified field.
 func (p ConfigParser) processMapValue(
-	mapData map[string]string,
+	mapData map[string]interface{},
 	rv reflect.Value,
 	fieldName string,
 	path string,
@@ -342,16 +343,30 @@ func (p ConfigParser) processMapValue(
 		// Create a new element of the appropriate type
 		newElem := reflect.New(elemType)
 
-		// Use an empty map as temporary data to populate the struct
-		err := p.ParseStruct(make(map[string]interface{}), newElem.Interface(), path)
-		if err != nil {
-			return fmt.Errorf("error parsing struct for string param: %v", err)
+		var elemData map[string]interface{}
+		mapVal, valIsMap := val.(map[string]interface{})
+		if valIsMap {
+			elemData = mapVal
+		} else {
+			elemData = make(map[string]interface{})
 		}
 
-		// Set the string value to the appropriate sub-field
-		err = p.setFieldByName(newElem.Interface(), fieldName, val)
+		// Use an empty map as temporary data to populate the struct
+		err := p.ParseStruct(elemData, newElem.Interface(), path)
 		if err != nil {
-			return fmt.Errorf("failed to set field %s: %v", fieldName, err)
+			return errors.Errorf("error parsing struct for string param: %v", err)
+		}
+
+		if !valIsMap {
+			// Set the string value to the appropriate sub-field
+			strVal, ok := val.(string)
+			if !ok {
+				return errors.Errorf("invalid map value type for string param - expected string, got %T", val)
+			}
+			err = p.setFieldByName(newElem.Interface(), fieldName, strVal)
+			if err != nil {
+				return errors.Errorf("failed to set field %s: %v", fieldName, err)
+			}
 		}
 
 		// Insert the new element into the result map
@@ -368,13 +383,13 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 	case reflect.Struct:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
+			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
 		}
 		return p.ParseStruct(dataMap, fieldValue.Addr().Interface(), path)
 	case reflect.Map:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
+			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", fieldName)
 		}
 		if fieldValue.IsNil() {
 			// Initialize a new map
@@ -400,7 +415,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				dataSlice[i] = v
 			}
 		} else {
-			return fmt.Errorf("unable to convert data for field %s to []interface{}", fieldName)
+			return errors.Errorf("unable to convert data for field %s to []interface{}", fieldName)
 		}
 		if fieldValue.IsNil() || fieldValue.Len() < len(dataSlice) {
 			// Make a new slice to accommodate all elements
@@ -435,7 +450,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				if floatVal == math.Floor(floatVal) {
 					intVal = int64(floatVal)
 				} else {
-					return fmt.Errorf("field %s could not be set: "+
+					return errors.Errorf("field %s could not be set: "+
 						"float64 value has a fractional part and cannot be converted to integer types", fieldName)
 				}
 			} else {
@@ -449,7 +464,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				return nil
 			case reflect.Int32:
 				if intVal < -1<<31 || intVal > 1<<31-1 {
-					return fmt.Errorf(
+					return errors.Errorf(
 						"field %s overflow error: int64 value %d is out of range for int32",
 						fieldName,
 						intVal,
@@ -459,7 +474,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				return nil
 			case reflect.Int16:
 				if intVal < -1<<15 || intVal > 1<<15-1 {
-					return fmt.Errorf(
+					return errors.Errorf(
 						"field %s overflow error: int64 value %d is out of range for int16",
 						fieldName,
 						intVal,
@@ -469,7 +484,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				return nil
 			case reflect.Int8:
 				if intVal < -1<<7 || intVal > 1<<7-1 {
-					return fmt.Errorf(
+					return errors.Errorf(
 						"field %s overflow error: int64 value %d is out of range for int8",
 						fieldName,
 						intVal,
@@ -478,7 +493,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 				fieldValue.SetInt(intVal)
 				return nil
 			case reflect.String:
-				return fmt.Errorf("field %s is an integer and cannot be converted to string", fieldName)
+				return errors.Errorf("field %s is an integer and cannot be converted to string", fieldName)
 			}
 		}
 
@@ -489,7 +504,7 @@ func (p ConfigParser) assignField(data interface{}, fieldValue reflect.Value, fi
 			return nil
 		}
 
-		return fmt.Errorf("field %s could not be set due to type mismatch or non-convertible types", fieldName)
+		return errors.Errorf("field %s could not be set due to type mismatch or non-convertible types", fieldName)
 
 	}
 	return nil
@@ -556,7 +571,7 @@ func (p ConfigParser) parseField(
 func (p ConfigParser) ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error {
 	structValuePtr := reflect.ValueOf(structure)
 	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("expected a pointer to a struct, got %T", structure)
+		return errors.Errorf("expected a pointer to a struct, got %T", structure)
 	}
 	structValue := structValuePtr.Elem()
 	structType := structValue.Type()
@@ -564,7 +579,7 @@ func (p ConfigParser) ParseStruct(data map[string]interface{}, structure interfa
 	if newPathInterface, newPathFound := data[pathKey]; newPathFound {
 		newPath, ok := newPathInterface.(string)
 		if !ok {
-			return fmt.Errorf("unexpected type %T for path", newPathInterface)
+			return errors.Errorf("unexpected type %T for path", newPathInterface)
 		}
 		configPath = newPath
 	}
