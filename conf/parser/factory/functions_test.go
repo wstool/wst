@@ -706,7 +706,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createServiceScripts with all scripts included (bool)",
 			funcName: "createServiceScripts",
 			data:     true,
-			expectedValue: &types.ServiceScripts{
+			expectedValue: types.ServiceScripts{
 				IncludeAll: true,
 			},
 			wantErr: false,
@@ -714,17 +714,25 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 		{
 			name:     "createServiceScripts with selected scripts included (string array)",
 			funcName: "createServiceScripts",
-			data:     []string{"script1.sh", "script2.sh"},
-			expectedValue: &types.ServiceScripts{
+			data:     []interface{}{"script1.sh", "script2.sh"},
+			expectedValue: types.ServiceScripts{
 				IncludeList: []string{"script1.sh", "script2.sh"},
 			},
 			wantErr: false,
 		},
 		{
+			name:          "createServiceScripts with non string item type",
+			funcName:      "createServiceScripts",
+			data:          []interface{}{"script1.sh", 1},
+			expectedValue: types.ServiceScripts{},
+			wantErr:       true,
+			errMsg:        "invalid services scripts item type at index 1, expected string but got int",
+		},
+		{
 			name:          "createServiceScripts with invalid data type (int)",
 			funcName:      "createServiceScripts",
-			data:          123,                     // Invalid type, expecting bool or []string
-			expectedValue: &types.ServiceScripts{}, // No scripts should be included due to error
+			data:          123,                    // Invalid type, expecting bool or []string
+			expectedValue: types.ServiceScripts{}, // No scripts should be included due to error
 			wantErr:       true,
 			errMsg:        "invalid services scripts type, expected bool or string array but got int",
 		},
@@ -732,7 +740,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:          "createServiceScripts with invalid data type (map)",
 			funcName:      "createServiceScripts",
 			data:          map[string]interface{}{"script1": "script1.sh"}, // Invalid type, expecting bool or []string
-			expectedValue: &types.ServiceScripts{},
+			expectedValue: types.ServiceScripts{},
 			wantErr:       true,
 			errMsg:        "invalid services scripts type, expected bool or string array but got map[string]interface {}",
 		},

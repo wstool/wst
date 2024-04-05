@@ -15,9 +15,9 @@
 package factory
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 )
@@ -74,7 +74,7 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value,
 	// Check if data is a slice
 	dataSlice, ok := data.([]interface{})
 	if !ok {
-		return fmt.Errorf("data must be an array, got %T", data)
+		return errors.Errorf("data must be an array, got %T", data)
 	}
 
 	actions, err := f.actionsFactory.ParseActions(dataSlice, path)
@@ -104,7 +104,7 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported type for image data")
+		return errors.Errorf("unsupported type for image data")
 	}
 
 	fieldValue.Set(reflect.ValueOf(img))
@@ -124,7 +124,7 @@ func processTypeMap[T any](
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("data for %s must be a map, got %T", name, data)
+		return nil, errors.Errorf("data for %s must be a map, got %T", name, data)
 	}
 
 	result := make(map[string]T, len(dataMap))
@@ -134,7 +134,7 @@ func processTypeMap[T any](
 		if factory, ok = factories[key]; ok {
 			valMap, ok = val.(map[string]interface{})
 			if !ok {
-				return nil, fmt.Errorf("data for value in %s must be a map, got %T", name, val)
+				return nil, errors.Errorf("data for value in %s must be a map, got %T", name, val)
 			}
 			structure := factory(key)
 			if err := structParser(valMap, structure, path); err != nil {
@@ -142,7 +142,7 @@ func processTypeMap[T any](
 			}
 			result[key] = structure
 		} else {
-			return nil, fmt.Errorf("unknown environment type: %s", key)
+			return nil, errors.Errorf("unknown environment type: %s", key)
 		}
 	}
 
@@ -183,21 +183,21 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("data for hooks must be a map, got %T", data)
+		return errors.Errorf("data for hooks must be a map, got %T", data)
 	}
 
 	hooksFactories := map[string]hooksMapFactory{
 		"command": func(key string, hook interface{}) (types.SandboxHook, error) {
 			hookMap, ok := hook.(map[string]interface{})
 			if !ok {
-				return nil, fmt.Errorf("command hooks must be a map, got %T", hook)
+				return nil, errors.Errorf("command hooks must be a map, got %T", hook)
 			}
 
 			if cmd, ok := hookMap["command"]; ok {
 				shell, shellOk := hookMap["shell"].(string)
 				command, commandOk := cmd.(string)
 				if !commandOk {
-					return nil, fmt.Errorf("command must be a string")
+					return nil, errors.Errorf("command must be a string")
 				}
 				if !shellOk {
 					shell = "/bin/sh" // Default to /bin/sh if not specified
@@ -206,7 +206,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 			} else if exe, ok := hookMap["executable"]; ok {
 				executable, exeOk := exe.(string)
 				if !exeOk {
-					return nil, fmt.Errorf("executable must be a string")
+					return nil, errors.Errorf("executable must be a string")
 				}
 				argsInterface, argsOk := hookMap["args"]
 				var args []string
@@ -216,17 +216,17 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 						for _, arg := range v {
 							strArg, ok := arg.(string)
 							if !ok {
-								return nil, fmt.Errorf("args must be an array of strings but its item is of type %T", arg)
+								return nil, errors.Errorf("args must be an array of strings but its item is of type %T", arg)
 							}
 							args = append(args, strArg)
 						}
 					default:
-						return nil, fmt.Errorf("args must be an array of strings but it is not an array")
+						return nil, errors.Errorf("args must be an array of strings but it is not an array")
 					}
 				}
 				return &types.SandboxHookArgsCommand{Executable: executable, Args: args}, nil
 			} else {
-				return nil, fmt.Errorf("command hooks data is invalid")
+				return nil, errors.Errorf("command hooks data is invalid")
 			}
 		},
 		"signal": func(key string, hook interface{}) (types.SandboxHook, error) {
@@ -242,7 +242,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 					IntValue: intHook,
 				}, nil
 			}
-			return nil, fmt.Errorf("invalid signal hook type %t, only string and int is allowed", hook)
+			return nil, errors.Errorf("invalid signal hook type %t, only string and int is allowed", hook)
 		},
 	}
 
@@ -255,7 +255,7 @@ func (f *FuncProvider) createHooks(data interface{}, fieldValue reflect.Value, p
 			}
 			hooks[key] = hook
 		} else {
-			return fmt.Errorf("unknown environment type: %s", key)
+			return errors.Errorf("unknown environment type: %s", key)
 		}
 	}
 
@@ -296,7 +296,7 @@ func convertParams(data map[string]interface{}) types.Parameters {
 func (f *FuncProvider) createParameters(data interface{}, fieldValue reflect.Value, path string) error {
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("data for parameters must be a map, got %T", data)
+		return errors.Errorf("data for parameters must be a map, got %T", data)
 	}
 
 	params := convertParams(dataMap)
@@ -338,14 +338,14 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("data for server action expectations must be a map, got %T", data)
+		return errors.Errorf("data for server action expectations must be a map, got %T", data)
 	}
 	expectations := make(map[string]types.ServerExpectationAction)
 	var structure interface{}
 	for key, val := range dataMap {
 		expData, ok := val.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("data for value in server action expectations must be a map, got %T", val)
+			return errors.Errorf("data for value in server action expectations must be a map, got %T", val)
 		}
 		parsed := false
 		for expKey, _ := range expData {
@@ -359,10 +359,10 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 			case "response":
 				structure = &types.ServerResponseExpectation{}
 			default:
-				return fmt.Errorf("invalid server expectation key %s", expKey)
+				return errors.Errorf("invalid server expectation key %s", expKey)
 			}
 			if parsed {
-				return fmt.Errorf("expectation cannot have multiple types - additional key %s", expKey)
+				return errors.Errorf("expectation cannot have multiple types - additional key %s", expKey)
 			}
 			if err := f.structParser(expData, structure, path); err != nil {
 				return err
@@ -378,16 +378,22 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 }
 
 func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value, path string) error {
-	serviceScripts := &types.ServiceScripts{}
+	serviceScripts := types.ServiceScripts{}
 	boolVal, ok := data.(bool)
 	if ok {
 		serviceScripts.IncludeAll = boolVal
 	} else {
-		arrVal, ok := data.([]string)
+		arrVal, ok := data.([]interface{})
 		if !ok {
-			return fmt.Errorf("invalid services scripts type, expected bool or string array but got %T", data)
+			return errors.Errorf("invalid services scripts type, expected bool or string array but got %T", data)
 		}
-		serviceScripts.IncludeList = arrVal
+		for idx, item := range arrVal {
+			strVal, ok := item.(string)
+			if !ok {
+				return errors.Errorf("invalid services scripts item type at index %d, expected string but got %T", idx, item)
+			}
+			serviceScripts.IncludeList = append(serviceScripts.IncludeList, strVal)
+		}
 	}
 
 	fieldValue.Set(reflect.ValueOf(serviceScripts))
