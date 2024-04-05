@@ -309,6 +309,32 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 		},
 		// Hooks
 		{
+			name:     "createHooks with valid native hook",
+			funcName: "createHooks",
+			data: map[string]interface{}{
+				"start": map[string]interface{}{
+					"native": map[string]interface{}{
+						"enabled": true,
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"enabled": true,
+					},
+					err: nil,
+				},
+			},
+			expectedValue: map[string]types.SandboxHook{
+				"start": &types.SandboxHookNative{},
+			},
+			wantErr: false,
+		},
+		{
 			name:     "createHooks with valid command hook (shell command)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
@@ -319,30 +345,20 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 					},
 				},
 			},
-			expectedValue: map[string]types.SandboxHook{
-				"start": &types.SandboxHookShellCommand{
-					Command: "echo 'Hello World'",
-					Shell:   "/bin/bash",
-				},
-			},
-			wantErr: false,
-		},
-
-		{
-			name:     "createHooks with valid command hook (default shell command)",
-			funcName: "createHooks",
-			data: map[string]interface{}{
-				"start": map[string]interface{}{
-					"command": map[string]interface{}{
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
 						"command": "echo 'Hello World'",
+						"shell":   "/bin/bash",
 					},
+					err: nil,
 				},
 			},
 			expectedValue: map[string]types.SandboxHook{
-				"command": &types.SandboxHookShellCommand{
-					Command: "echo 'Hello World'",
-					Shell:   "/bin/sh",
-				},
+				"start": &types.SandboxHookShellCommand{},
 			},
 			wantErr: false,
 		},
@@ -350,16 +366,27 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createHooks with valid command hook (executable)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"executable": "myApp",
-					"args":       []interface{}{"arg1", "arg2"},
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{
+						"executable": "myApp",
+						"args":       []interface{}{"arg1", "arg2"},
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"executable": "myApp",
+						"args":       []interface{}{"arg1", "arg2"},
+					},
+					err: nil,
 				},
 			},
 			expectedValue: map[string]types.SandboxHook{
-				"command": &types.SandboxHookArgsCommand{
-					Executable: "myApp",
-					Args:       []string{"arg1", "arg2"},
-				},
+				"start": &types.SandboxHookArgsCommand{},
 			},
 			wantErr: false,
 		},
@@ -367,10 +394,12 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createHooks with valid signal hook (string)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"signal": "SIGHUP",
+				"start": map[string]interface{}{
+					"signal": "SIGHUP",
+				},
 			},
 			expectedValue: map[string]types.SandboxHook{
-				"signal": &types.SandboxHookSignal{
+				"start": &types.SandboxHookSignal{
 					IsString:    true,
 					StringValue: "SIGHUP",
 				},
@@ -381,10 +410,12 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			name:     "createHooks with valid signal hook (int)",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"signal": 9, // Typically SIGKILL
+				"start": map[string]interface{}{
+					"signal": 9, // Typically SIGKILL
+				},
 			},
 			expectedValue: map[string]types.SandboxHook{
-				"signal": &types.SandboxHookSignal{
+				"start": &types.SandboxHookSignal{
 					IsString: false,
 					IntValue: 9,
 				},
@@ -392,14 +423,41 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:     "createHooks with signal hook invalid type",
+			funcName: "createHooks",
+			data: map[string]interface{}{
+				"start": map[string]interface{}{
+					"signal": map[string]interface{}{}, // Invalid type, expecting a string or int
+				},
+			},
+			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
+			wantErr:       true,
+			errMsg:        "invalid signal hook type map[], only string and int is allowed",
+		},
+		{
 			name:     "createHooks with unsupported hook type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"unsupported": map[string]interface{}{},
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{
+						"command": "invalid",
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"command": "invalid",
+					},
+					err: errors.New("invalid command"),
+				},
 			},
 			expectedValue: map[string]types.SandboxHook{}, // No hooks should be created
 			wantErr:       true,
-			errMsg:        "unknown environment type: unsupported",
+			errMsg:        "invalid command",
 		},
 		{
 			name:          "createHooks fails on invalid hook data structure",
@@ -409,13 +467,26 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "data for hooks must be a map, got string",
 		},
-
 		{
-			name:     "createHooks with command hook missing command",
+			name:     "createHooks with command hook invalid command hooks type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{ // Missing "command" or "executable" key
-					"shell": "/bin/bash",
+				"start": map[string]interface{}{
+					"command": 123,
+				},
+			},
+			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
+			wantErr:       true,
+			errMsg:        "command hooks must be a map, got int",
+		},
+		{
+			name:     "createHooks with command hook invalid command items",
+			funcName: "createHooks",
+			data: map[string]interface{}{
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{
+						"field": map[string]interface{}{},
+					},
 				},
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
@@ -423,77 +494,61 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			errMsg:        "command hooks data is invalid",
 		},
 		{
-			name:     "createHooks with command hook invalid command hooks type",
+			name:     "createHooks with command hook invalid native hooks type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": 123,
-			},
-			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
-			wantErr:       true,
-			errMsg:        "command hooks must be a map, got int",
-		},
-		{
-			name:     "createHooks with command hook invalid inner command type",
-			funcName: "createHooks",
-			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"command": 123, // Invalid type, expecting a string
-					"shell":   "/bin/bash",
+				"start": map[string]interface{}{
+					"native": 123,
 				},
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
 			wantErr:       true,
-			errMsg:        "command must be a string",
+			errMsg:        "native hook must be a map, got int",
 		},
-
 		{
-			name:     "createHooks with command hook invalid args item type",
+			name:     "createHooks with unknown type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"executable": 1,
-					"args":       []interface{}{"a"},
+				"start": map[string]interface{}{
+					"field": map[string]interface{}{},
 				},
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
 			wantErr:       true,
-			errMsg:        "executable must be a string",
+			errMsg:        "unknown hook type: field",
 		},
 		{
-			name:     "createHooks with command hook invalid args item type",
+			name:     "createHooks with more than one types",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"executable": "myApp",
-					"args":       []interface{}{1}, // Invalid type, expecting an array of strings
+				"start": map[string]interface{}{
+					"command": map[string]interface{}{},
+					"signal":  map[string]interface{}{},
 				},
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
 			wantErr:       true,
-			errMsg:        "args must be an array of strings but its item is of type int",
+			errMsg:        "hook data must have only one element",
 		},
 		{
-			name:     "createHooks with command hook invalid args type",
+			name:     "createHooks with no type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"command": map[string]interface{}{
-					"executable": "myApp",
-					"args":       "notAnArray", // Invalid type, expecting an array of strings
-				},
+				"start": map[string]interface{}{},
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
 			wantErr:       true,
-			errMsg:        "args must be an array of strings but it is not an array",
+			errMsg:        "hook data cannot be an empty map",
 		},
 		{
-			name:     "createHooks with signal hook invalid type",
+			name:     "createHooks with invalid type",
 			funcName: "createHooks",
 			data: map[string]interface{}{
-				"signal": map[string]interface{}{}, // Invalid type, expecting a string or int
+				"start": 1,
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no valid hooks due to error
 			wantErr:       true,
-			errMsg:        "invalid signal hook type map[], only string and int is allowed",
+			errMsg:        "hook data must be a map, got int",
 		},
 		// Parameters
 		{
