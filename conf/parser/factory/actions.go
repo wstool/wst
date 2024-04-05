@@ -128,42 +128,42 @@ func (f *NativeActionsFactory) parseAction(
 	var action types.Action
 	switch meta.actionName {
 	case "bench":
-		benchAction := types.BenchAction{Service: meta.serviceName}
+		benchAction := &types.BenchAction{Service: meta.serviceName}
 		err = f.structParser(data, benchAction, path)
-		action = &benchAction
+		action = benchAction
 	case "expect":
 		customNameAllowed = true
 		action, err = f.parseExpectationAction(meta, data, path)
 	case "not":
 		serviceNameAllowed = false
-		notAction := types.NotAction{}
+		notAction := &types.NotAction{}
 		err = f.structParser(data, notAction, path)
-		action = &notAction
+		action = notAction
 	case "parallel":
 		serviceNameAllowed = false
-		parallelAction := types.ParallelAction{}
+		parallelAction := &types.ParallelAction{}
 		err = f.structParser(data, parallelAction, path)
-		action = &parallelAction
+		action = parallelAction
 	case "reload":
-		reloadAction := types.ReloadAction{Service: meta.serviceName}
+		reloadAction := &types.ReloadAction{Service: meta.serviceName}
 		err = f.structParser(data, reloadAction, path)
-		action = &reloadAction
+		action = reloadAction
 	case "request":
-		requestAction := types.RequestAction{Service: meta.serviceName}
+		requestAction := &types.RequestAction{Service: meta.serviceName}
 		err = f.structParser(data, requestAction, path)
-		action = &requestAction
+		action = requestAction
 	case "restart":
-		restartAction := types.RestartAction{Service: meta.serviceName}
+		restartAction := &types.RestartAction{Service: meta.serviceName}
 		err = f.structParser(data, restartAction, path)
-		action = &restartAction
+		action = restartAction
 	case "start":
-		startAction := types.StartAction{Service: meta.serviceName}
+		startAction := &types.StartAction{Service: meta.serviceName}
 		err = f.structParser(data, startAction, path)
-		action = &startAction
+		action = startAction
 	case "stop":
-		stopAction := types.StopAction{Service: meta.serviceName}
+		stopAction := &types.StopAction{Service: meta.serviceName}
 		err = f.structParser(data, stopAction, path)
-		action = &stopAction
+		action = stopAction
 	default:
 		return nil, fmt.Errorf("unknown action %s", meta.actionName)
 	}
