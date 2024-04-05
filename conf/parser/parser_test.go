@@ -1676,7 +1676,9 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							"services": map[string]interface{}{
 								"web_service": map[string]interface{}{
-									"server": "web_server",
+									"server": map[string]interface{}{
+										"name": "web_server",
+									},
 									"resources": map[string]interface{}{
 										"scripts": []interface{}{
 											"init.sh",
