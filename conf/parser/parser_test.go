@@ -1835,7 +1835,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										Body: types.ResponseBody{
 											Content:        "OK",
 											Match:          "exact",
-											RenderTemplate: false,
+											RenderTemplate: true,
 										},
 									},
 								},

@@ -46,7 +46,7 @@ type ResponseBody struct {
 type ResponseExpectation struct {
 	Request string       `wst:"request,default=last"`
 	Headers Headers      `wst:"headers"`
-	Body    ResponseBody `wst:"content,string=Content"`
+	Body    ResponseBody `wst:"body,string=Content"`
 }
 
 type ResponseExpectationAction struct {
