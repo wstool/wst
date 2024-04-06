@@ -23,31 +23,33 @@ func EnvironmentTypes() []EnvironmentType {
 type Environment interface {
 }
 
-type CommonEnvironmentPorts struct {
+type EnvironmentPorts struct {
 	Start int32 `wst:"start"`
 	End   int32 `wst:"end"`
 }
 
 type CommonEnvironment struct {
-	Ports CommonEnvironmentPorts `wst:"ports"`
+	Ports EnvironmentPorts `wst:"ports"`
 }
 
 type LocalEnvironment struct {
-	CommonEnvironment
+	Ports EnvironmentPorts `wst:"ports"`
 }
 
 type ContainerEnvironment struct {
-	CommonEnvironment
+	Ports    EnvironmentPorts  `wst:"ports"`
 	Registry ContainerRegistry `wst:"registry"`
 }
 
 type DockerEnvironment struct {
-	ContainerEnvironment
-	NamePrefix string `wst:"name_prefix"`
+	Ports      EnvironmentPorts  `wst:"ports"`
+	Registry   ContainerRegistry `wst:"registry"`
+	NamePrefix string            `wst:"name_prefix"`
 }
 
 type KubernetesEnvironment struct {
-	ContainerEnvironment
-	Namespace  string `wst:"namespace"`
-	Kubeconfig string `wst:"kubeconfig,path"`
+	Ports      EnvironmentPorts  `wst:"ports"`
+	Registry   ContainerRegistry `wst:"registry"`
+	Namespace  string            `wst:"namespace"`
+	Kubeconfig string            `wst:"kubeconfig,path"`
 }

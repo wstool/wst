@@ -63,20 +63,10 @@ type CommonSandbox struct {
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
-func (s *CommonSandbox) Type() SandboxType {
-	return CommonSandboxType
-}
-
-func (s *CommonSandbox) IsAvailable() bool {
-	return s.Available
-}
-
 type LocalSandbox struct {
-	CommonSandbox
-}
-
-func (s *LocalSandbox) Type() SandboxType {
-	return KubernetesSandboxType
+	Available bool                   `wst:"available,default=true"`
+	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
 type ContainerImage struct {
@@ -94,32 +84,27 @@ type ContainerRegistry struct {
 }
 
 type ContainerSandbox struct {
-	CommonSandbox
-	Image    ContainerImage    `wst:"image,factory=createContainerImage"`
-	Registry ContainerRegistry `wst:"registry"`
-}
-
-func (s *ContainerSandbox) Type() SandboxType {
-	return KubernetesSandboxType
+	Available bool                   `wst:"available,default=true"`
+	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
+	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
+	Registry  ContainerRegistry      `wst:"registry"`
 }
 
 type DockerSandbox struct {
-	ContainerSandbox
-}
-
-func (s *DockerSandbox) Type() SandboxType {
-	return KubernetesSandboxType
+	Available bool                   `wst:"available,default=true"`
+	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
+	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
+	Registry  ContainerRegistry      `wst:"registry"`
 }
 
 type KubernetesSandbox struct {
-	ContainerSandbox
+	Available bool                   `wst:"available,default=true"`
+	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
+	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
+	Registry  ContainerRegistry      `wst:"registry"`
 }
 
-func (s *KubernetesSandbox) Type() SandboxType {
-	return KubernetesSandboxType
-}
-
-type Sandbox interface {
-	Type() SandboxType
-	IsAvailable() bool
-}
+type Sandbox interface{}

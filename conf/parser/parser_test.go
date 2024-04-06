@@ -1568,6 +1568,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							"name_prefix": "wst_",
 						},
 						"kubernetes": map[string]interface{}{
+							"ports": map[string]interface{}{
+								"start": 9500,
+								"end":   9800,
+							},
 							"namespace":  "default",
 							"kubeconfig": "/path/to/kubeconfig",
 						},
@@ -1738,43 +1742,25 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				Description: "A project to demonstrate JSON Schema representation in Go",
 				Spec: types.Spec{
 					Environments: map[string]types.Environment{
-						string(types.CommonEnvironmentType): types.CommonEnvironment{
-							Ports: types.CommonEnvironmentPorts{
+						string(types.CommonEnvironmentType): &types.CommonEnvironment{
+							Ports: types.EnvironmentPorts{
 								Start: 8000,
 								End:   9000,
 							},
 						},
-						string(types.DockerEnvironmentType): types.DockerEnvironment{
-							ContainerEnvironment: types.ContainerEnvironment{
-								CommonEnvironment: types.CommonEnvironment{
-									Ports: types.CommonEnvironmentPorts{
-										Start: 8000,
-										End:   9000,
-									},
-								},
-								Registry: types.ContainerRegistry{
-									Auth: types.ContainerRegistryAuth{
-										Username: "user",
-										Password: "pass",
-									},
+						string(types.DockerEnvironmentType): &types.DockerEnvironment{
+							Registry: types.ContainerRegistry{
+								Auth: types.ContainerRegistryAuth{
+									Username: "user",
+									Password: "pass",
 								},
 							},
 							NamePrefix: "wst_",
 						},
-						string(types.KubernetesEnvironmentType): types.KubernetesEnvironment{
-							ContainerEnvironment: types.ContainerEnvironment{
-								CommonEnvironment: types.CommonEnvironment{
-									Ports: types.CommonEnvironmentPorts{
-										Start: 8000,
-										End:   9000,
-									},
-								},
-								Registry: types.ContainerRegistry{
-									Auth: types.ContainerRegistryAuth{
-										Username: "user",
-										Password: "pass",
-									},
-								},
+						string(types.KubernetesEnvironmentType): &types.KubernetesEnvironment{
+							Ports: types.EnvironmentPorts{
+								Start: 9500,
+								End:   9800,
 							},
 							Namespace:  "default",
 							Kubeconfig: "/path/to/kubeconfig",
@@ -1809,12 +1795,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							Timeouts: types.InstanceTimeouts{},
 							Environments: map[string]types.Environment{
-								"local": types.LocalEnvironment{
-									CommonEnvironment: types.CommonEnvironment{
-										Ports: types.CommonEnvironmentPorts{
-											Start: 9500,
-											End:   9600,
-										},
+								"local": &types.LocalEnvironment{
+									Ports: types.EnvironmentPorts{
+										Start: 9500,
+										End:   9600,
 									},
 								},
 							},
@@ -1873,46 +1857,38 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 						},
 						"docker": &types.DockerSandbox{
-							ContainerSandbox: types.ContainerSandbox{
-								CommonSandbox: types.CommonSandbox{
-									Available: true,
-									Dirs: map[string]string{
-										"conf":   "/etc/docker",
-										"run":    "/var/run/docker",
-										"script": "/usr/local/bin",
-									},
-								},
-								Image: types.ContainerImage{
-									Name: "wst/docker-sandbox",
-									Tag:  "latest",
-								},
-								Registry: types.ContainerRegistry{
-									Auth: types.ContainerRegistryAuth{
-										Username: "dockeruser",
-										Password: "dockerpass",
-									},
+							Available: true,
+							Dirs: map[string]string{
+								"conf":   "/etc/docker",
+								"run":    "/var/run/docker",
+								"script": "/usr/local/bin",
+							},
+							Image: types.ContainerImage{
+								Name: "wst/docker-sandbox",
+								Tag:  "latest",
+							},
+							Registry: types.ContainerRegistry{
+								Auth: types.ContainerRegistryAuth{
+									Username: "dockeruser",
+									Password: "dockerpass",
 								},
 							},
 						},
 						"kubernetes": &types.KubernetesSandbox{
-							ContainerSandbox: types.ContainerSandbox{
-								CommonSandbox: types.CommonSandbox{
-									Available: true,
-									Dirs: map[string]string{
-										"conf":   "/etc/kubernetes",
-										"run":    "/var/run/kubernetes",
-										"script": "/usr/local/bin",
-									},
-								},
-								Image: types.ContainerImage{
-									Name: "wst/k8s-sandbox",
-									Tag:  "v1.0",
-								},
-								Registry: types.ContainerRegistry{
-									Auth: types.ContainerRegistryAuth{
-										Username: "k8suser",
-										Password: "k8spass",
-									},
+							Available: true,
+							Dirs: map[string]string{
+								"conf":   "/etc/kubernetes",
+								"run":    "/var/run/kubernetes",
+								"script": "/usr/local/bin",
+							},
+							Image: types.ContainerImage{
+								Name: "wst/k8s-sandbox",
+								Tag:  "v1.0",
+							},
+							Registry: types.ContainerRegistry{
+								Auth: types.ContainerRegistryAuth{
+									Username: "k8suser",
+									Password: "k8spass",
 								},
 							},
 						},
@@ -1976,7 +1952,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				}
 			} else {
 				if assert.NoError(t, err) {
-					assert.Equal(t, &config, tt.expectedConfig)
+					assert.Equal(t, tt.expectedConfig, &config)
 				} else {
 					errExtra, ok := err.(stackTracer)
 					if ok {

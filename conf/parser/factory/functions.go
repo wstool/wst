@@ -88,7 +88,7 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value,
 }
 
 func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect.Value, path string) error {
-	var img types.ContainerImage
+	img := types.ContainerImage{}
 	switch v := data.(type) {
 	case string:
 		parts := strings.SplitN(v, ":", 2)
@@ -99,7 +99,7 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 			img.Tag = "latest"
 		}
 	case map[string]interface{}:
-		err := f.structParser(v, img, path)
+		err := f.structParser(v, &img, path)
 		if err != nil {
 			return err
 		}
