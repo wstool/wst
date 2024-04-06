@@ -1650,9 +1650,18 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							"actions": map[string]interface{}{
 								"expect": map[string]interface{}{
-									"responseTime": map[string]interface{}{
-										"value":    200,
-										"operator": "lt",
+									"status": map[string]interface{}{
+										"parameters": map[string]interface{}{
+											"body": "1",
+										},
+										"response": map[string]interface{}{
+											"headers": map[string]interface{}{
+												"content-type": "application/json",
+											},
+											"body": map[string]interface{}{
+												"content": "{{ .Parameters.GetString \"body\" }}",
+											},
+										},
 									},
 								},
 							},
@@ -1696,6 +1705,11 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										"service": "web_service",
 										"path":    "/api/status",
 										"method":  "GET",
+									},
+								},
+								map[string]interface{}{
+									"expect/web_service/status": map[string]interface{}{
+										"body": "2",
 									},
 								},
 								map[string]interface{}{
@@ -1804,7 +1818,39 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									},
 								},
 							},
-							Actions: nil,
+							Actions: []types.Action{
+								types.StartAction{
+									Service:  "web_service",
+									Services: nil,
+									Timeout:  0,
+								},
+								types.RequestAction{
+									Service: "web_service",
+									Timeout: 0,
+									Id:      "last",
+									Path:    "/api/status",
+									Method:  "GET",
+								},
+								types.CustomExpectationAction{
+									Service: "web_service",
+									Timeout: 0,
+									Name:    "status",
+									Parameters: types.Parameters{
+										"body": "1",
+									},
+								},
+								types.ResponseExpectationAction{
+									Service: "web_service",
+									Timeout: 0,
+									Response: types.ResponseExpectation{
+										Body: types.ResponseBody{
+											Content:        "OK",
+											Match:          "exact",
+											RenderTemplate: false,
+										},
+									},
+								},
+							},
 						},
 					},
 					Sandboxes: map[string]types.Sandbox{
@@ -1886,16 +1932,19 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							Actions: types.ServerActions{
 								Expect: map[string]types.ServerExpectationAction{
-									"responseTime": types.ServerMetricsExpectation{ // If MetricsExpectation fits ServerExpectationAction
-										Parameters: types.Parameters{}, // Fill as needed
-										Metrics: types.MetricsExpectation{
-											Id: "last", // Example, adjust as needed
-											Rules: []types.MetricRule{
-												{
-													Metric:   "responseTime",
-													Operator: "lt",
-													Value:    200,
-												},
+									"status": types.ServerResponseExpectation{
+										Parameters: types.Parameters{
+											"body": "1",
+										},
+										Response: types.ResponseExpectation{
+											Request: "last",
+											Headers: map[string]string{
+												"content-type": "application/json",
+											},
+											Body: types.ResponseBody{
+												Content:        "{{ .Parameters.GetString \"body\" }}",
+												Match:          "exact",
+												RenderTemplate: true,
 											},
 										},
 									},
