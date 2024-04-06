@@ -1619,9 +1619,9 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 							"hooks": map[string]interface{}{
-								"start": map[string]interface{}{
+								"restart": map[string]interface{}{
 									"native": map[string]interface{}{
-										"type": "start",
+										"force": true,
 									},
 								},
 							},
@@ -1851,9 +1851,9 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								"script": "/usr/local/bin",
 							},
 							Hooks: map[string]types.SandboxHook{
-								"start": &types.SandboxHookShellCommand{
-									Command: "/usr/local/bin/start-common --config /etc/common/config.yaml",
-									Shell:   "/bin/sh", // Assuming shell if needed
+								"start": &types.SandboxHookArgsCommand{
+									Executable: "/usr/local/bin/start-common",
+									Args:       []string{"--config", "/etc/common/config.yaml"},
 								},
 								"stop": &types.SandboxHookSignal{
 									IsString:    true,
@@ -1861,12 +1861,21 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 						},
-						"docker": &types.DockerSandbox{
+						"local": &types.LocalSandbox{
 							Available: true,
 							Dirs: map[string]string{
-								"conf":   "/etc/docker",
-								"run":    "/var/run/docker",
+								"conf":   "/etc/local",
+								"run":    "/var/run/local",
 								"script": "/usr/local/bin",
+							},
+						},
+						"docker": &types.DockerSandbox{
+							Available: true,
+							Hooks: map[string]types.SandboxHook{
+								"restart": &types.SandboxHookNative{
+									Enabled: true,
+									Force:   true,
+								},
 							},
 							Image: types.ContainerImage{
 								Name: "wst/docker-sandbox",
@@ -1881,11 +1890,6 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 						},
 						"kubernetes": &types.KubernetesSandbox{
 							Available: true,
-							Dirs: map[string]string{
-								"conf":   "/etc/kubernetes",
-								"run":    "/var/run/kubernetes",
-								"script": "/usr/local/bin",
-							},
 							Image: types.ContainerImage{
 								Name: "wst/k8s-sandbox",
 								Tag:  "v1.0",
@@ -1913,7 +1917,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							Actions: types.ServerActions{
 								Expect: map[string]types.ServerExpectationAction{
-									"status": types.ServerResponseExpectation{
+									"status": &types.ServerResponseExpectation{
 										Parameters: types.Parameters{
 											"body": "1",
 										},
