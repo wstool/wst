@@ -1387,9 +1387,12 @@ func Test_ConfigParser_parseField(t *testing.T) {
 					factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
 						fieldValue.SetString("test_data")
 						return nil
-					}))
+					}), nil)
 			} else {
-				mockFactories.On("GetFactoryFunc", "test").Return(nil)
+				mockFactories.On("GetFactoryFunc", "test").Return(
+					nil,
+					errors.New("factory func not found"),
+				)
 			}
 
 			// Create a new ConfigParser for each test case
@@ -1437,7 +1440,7 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 	mockLoader := &loaderMocks.MockLoader{}
 
 	mockFactories := &factoryMocks.MockFunctions{}
-	mockFactories.On("GetFactoryFunc", "test").Return(nil)
+	mockFactories.On("GetFactoryFunc", "test").Return(nil, errors.New("unknown factory"))
 
 	mockFs := afero.NewMemMapFs()
 	// mock app.Foundation
@@ -1500,7 +1503,7 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 			data:           map[string]interface{}{"a": "data"},
 			testStruct:     &parseInvalidFactoryTestStruct{},
 			expectedStruct: nil,
-			errMsg:         "factory function test not found",
+			errMsg:         "unknown factory",
 		},
 		{
 			name:           "Test invalid default",
