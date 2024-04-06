@@ -17,7 +17,7 @@ package types
 type Script struct {
 	Content    string     `wst:"content"`
 	Path       string     `wst:"path"`
-	Mode       string     `wst:"mode"`
+	Mode       string     `wst:"mode,default=0644"`
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 }
 

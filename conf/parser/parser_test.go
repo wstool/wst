@@ -1782,11 +1782,12 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							Services: map[string]types.Service{
 								"web_service": types.Service{
 									Server: types.ServiceServer{
-										Name: "web_server",
+										Name:    "web_server",
+										Sandbox: "local",
 									},
 									Resources: types.ServiceResources{
 										Scripts: types.ServiceScripts{
-											IncludeAll: true,
+											IncludeList: []string{"init.sh"},
 										},
 									},
 									Requires: nil,
@@ -1803,30 +1804,31 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 							Actions: []types.Action{
-								types.StartAction{
+								&types.StartAction{
 									Service:  "web_service",
 									Services: nil,
 									Timeout:  0,
 								},
-								types.RequestAction{
+								&types.RequestAction{
 									Service: "web_service",
 									Timeout: 0,
 									Id:      "last",
 									Path:    "/api/status",
 									Method:  "GET",
 								},
-								types.CustomExpectationAction{
+								&types.CustomExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
 									Name:    "status",
 									Parameters: types.Parameters{
-										"body": "1",
+										"body": "2",
 									},
 								},
-								types.ResponseExpectationAction{
+								&types.ResponseExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
 									Response: types.ResponseExpectation{
+										Request: "last",
 										Body: types.ResponseBody{
 											Content:        "OK",
 											Match:          "exact",
