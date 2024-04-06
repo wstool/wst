@@ -1721,8 +1721,8 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 								map[string]interface{}{
 									"expect": map[string]interface{}{
+										"service": "web_service",
 										"response": map[string]interface{}{
-											"service": "web_service",
 											"body": map[string]interface{}{
 												"content": "OK",
 												"match":   "exact",

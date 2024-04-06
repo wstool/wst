@@ -601,16 +601,12 @@ func (p *ConfigParser) ParseStruct(data map[string]interface{}, structure interf
 		}
 		fieldValue := structValue.FieldByName(field.Name)
 		if fieldData, ok := data[fieldName]; ok {
-			if err := p.parseField(fieldData, fieldValue, fieldName, params, configPath); err != nil {
+			if err = p.parseField(fieldData, fieldValue, fieldName, params, configPath); err != nil {
 				return err
 			}
-		} else {
-			if defaultValue, found := params[paramDefault]; found {
-				if err := p.processDefaultParam(fieldName, defaultValue, fieldValue); err != nil {
-					return err
-				}
-			} else {
-				fieldValue.SetZero()
+		} else if defaultValue, found := params[paramDefault]; found {
+			if err = p.processDefaultParam(fieldName, defaultValue, fieldValue); err != nil {
+				return err
 			}
 		}
 	}
