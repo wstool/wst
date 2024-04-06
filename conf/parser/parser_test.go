@@ -1639,7 +1639,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 						{
 							"name": "web_server",
 							"user": "webuser",
-							"port": "8080",
+							"port": 8080,
 							"configs": map[string]interface{}{
 								"nginx.conf": map[string]interface{}{
 									"file": "/etc/nginx/nginx.conf",
@@ -1715,7 +1715,8 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				},
 			},
 			files: map[string]string{
-				"/path/to/kubeconfig": "kube: true",
+				"/path/to/kubeconfig":   "kube: true",
+				"/etc/nginx/nginx.conf": "nginx on",
 			},
 			expectedConfig: &types.Config{
 				Version:     "1.0",
