@@ -15,6 +15,7 @@
 package merger
 
 import (
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"reflect"
@@ -39,101 +40,110 @@ func (m *nativeMerger) MergeConfigs(configs []*types.Config, overwrites map[stri
 		return nil, nil // or return an empty config or an error
 	}
 
-	merged := &types.Config{}
+	mergedConfig := &types.Config{}
 	for _, config := range configs {
-		m.mergeStructs(reflect.ValueOf(merged).Elem(), reflect.ValueOf(config).Elem())
+		mergedStructValue := m.mergeStructs(reflect.ValueOf(mergedConfig).Elem(), reflect.ValueOf(config).Elem())
+		if newMergedConfig, ok := mergedStructValue.Interface().(types.Config); ok {
+			mergedConfig = &newMergedConfig
+		} else {
+			return nil, fmt.Errorf("failed to merge configs")
+		}
 	}
 
 	// TODO: Apply overwrites to merged here, if needed
 
-	return merged, nil
+	return mergedConfig, nil
 }
 
-func (m *nativeMerger) mergeStructs(dst, src reflect.Value) {
+func (m *nativeMerger) mergeStructs(dst, src reflect.Value) reflect.Value {
+	// Create a new instance of the struct based on dst's type.
+	mergedStruct := reflect.New(dst.Type()).Elem()
+
 	for i := 0; i < src.NumField(); i++ {
 		srcField := src.Field(i)
 		dstField := dst.Field(i)
 
+		// Dereference pointers if necessary.
 		if dstField.Kind() == reflect.Ptr && !dstField.IsNil() {
 			dstField = dstField.Elem()
 		}
-
 		if srcField.Kind() == reflect.Ptr && !srcField.IsNil() {
 			srcField = srcField.Elem()
 		}
 
+		// Perform merging based on the field's kind.
 		switch srcField.Kind() {
 		case reflect.Struct:
-			if dstField.CanAddr() {
-				m.mergeStructs(dstField.Addr().Elem(), srcField)
-			} else {
-				temp := reflect.New(dstField.Type()).Elem()
-				m.mergeStructs(temp, srcField)
-				dstField.Set(temp)
-			}
+			mergedField := m.mergeStructs(dstField, srcField) // Recursive call for nested structs.
+			mergedStruct.Field(i).Set(mergedField)            // Set the merged result to the corresponding field in the new struct.
 		case reflect.Map:
-			m.mergeMaps(dstField, srcField)
+			mergedMap := m.mergeMaps(dstField, srcField) // Assume mergeMaps also returns a reflect.Value now.
+			mergedStruct.Field(i).Set(mergedMap)
 		case reflect.Slice:
-			m.mergeSlices(dstField, srcField)
+			mergedSlice := m.mergeSlices(dstField, srcField) // Assume mergeSlices returns a reflect.Value.
+			mergedStruct.Field(i).Set(mergedSlice)
 		default:
+			// For simple types, use the source field if it's not zero, otherwise retain the destination field.
 			if !srcField.IsZero() {
-				dstField.Set(srcField)
+				mergedStruct.Field(i).Set(srcField)
+			} else {
+				mergedStruct.Field(i).Set(dstField)
 			}
 		}
 	}
+
+	return mergedStruct
 }
 
-func (m *nativeMerger) mergeMaps(dst, src reflect.Value) {
-	if dst.IsNil() {
-		dst.Set(reflect.MakeMap(src.Type()))
-	}
+func (m *nativeMerger) mergeMaps(dst, src reflect.Value) reflect.Value {
+	// Initialize a new map of the same type as src to hold the merged results.
+	mergedMap := reflect.MakeMap(src.Type())
 
 	for _, key := range src.MapKeys() {
 		srcValue := src.MapIndex(key)
-		dstValue := dst.MapIndex(key)
 
-		// Handle if the source value is a pointer and dereference if necessary
-		if srcValue.Kind() == reflect.Ptr && !srcValue.IsNil() {
+		// Attempt to get the corresponding value from dst, if it exists.
+		var dstValue reflect.Value
+		if !dst.IsNil() {
+			dstValue = dst.MapIndex(key)
+		}
+
+		// Handle if the source value is a pointer or interface and dereference if necessary.
+		if (srcValue.Kind() == reflect.Interface || srcValue.Kind() == reflect.Ptr) && !srcValue.IsNil() {
 			srcValue = srcValue.Elem()
 		}
 
-		// Create a new value if dstValue is not valid or both src and dst are maps
-		if !dstValue.IsValid() || (srcValue.Kind() == reflect.Map && (!dstValue.IsValid() || dstValue.Kind() == reflect.Map)) {
-			if srcValue.Kind() == reflect.Map {
-				if !dstValue.IsValid() || dstValue.Kind() == reflect.Map {
-					// Initialize new map or merge existing maps
-					newMap := reflect.MakeMap(srcValue.Type())
-					if dstValue.IsValid() {
-						m.mergeMaps(newMap, srcValue)
-						dst.SetMapIndex(key, newMap)
-					} else {
-						dst.SetMapIndex(key, srcValue)
-					}
-				}
-			} else {
-				// Directly set srcValue in dst for non-map types
-				dst.SetMapIndex(key, srcValue)
-			}
-		} else if srcValue.Kind() == reflect.Struct || (srcValue.Kind() == reflect.Ptr && srcValue.Elem().Kind() == reflect.Struct) {
-			// Handle merging of struct types, including handling pointers to structs
-			if dstValue.Kind() == reflect.Ptr && !dstValue.IsNil() {
-				// Merge into existing struct pointer
-				m.mergeStructs(dstValue.Elem(), srcValue.Elem())
-			} else if dstValue.Kind() == reflect.Struct {
-				// Merge into existing struct
-				m.mergeStructs(dstValue, srcValue)
-			} else {
-				// Replace destination with source value
-				dst.SetMapIndex(key, srcValue)
-			}
-		} else {
-			// For all other cases, replace destination with source value
-			dst.SetMapIndex(key, srcValue)
+		// Handle if the destination value is a pointer or interface and dereference if necessary.
+		if (dstValue.Kind() == reflect.Interface || dstValue.Kind() == reflect.Ptr) && !dstValue.IsNil() {
+			dstValue = dstValue.Elem()
+		}
+
+		// If there is no corresponding destination value or it's a different kind, simply copy the source value.
+		if !dstValue.IsValid() || dstValue.Kind() != srcValue.Kind() {
+			mergedMap.SetMapIndex(key, srcValue)
+			continue
+		}
+
+		// If both source and destination values exist and are of the same kind, merge them based on their type.
+		switch srcValue.Kind() {
+		case reflect.Map:
+			mergedValue := m.mergeMaps(dstValue, srcValue) // Recursively merge maps.
+			mergedMap.SetMapIndex(key, mergedValue)
+		case reflect.Struct:
+			mergedValue := m.mergeStructs(dstValue, srcValue) // Recursively merge structs.
+			mergedMap.SetMapIndex(key, mergedValue)
+		case reflect.Slice, reflect.Array:
+			mergedValue := m.mergeSlices(dstValue, srcValue) // Merge slices.
+			mergedMap.SetMapIndex(key, mergedValue)
+		default:
+			// For non-composite types or if types do not match, overwrite with source value.
+			mergedMap.SetMapIndex(key, srcValue)
 		}
 	}
+	return mergedMap
 }
 
-func (m *nativeMerger) mergeSlices(dst, src reflect.Value) {
+func (m *nativeMerger) mergeSlices(dst, src reflect.Value) reflect.Value {
 	maxLength := max(dst.Len(), src.Len())
 	newSlice := reflect.MakeSlice(dst.Type(), maxLength, maxLength)
 	reflect.Copy(newSlice, dst)
@@ -142,22 +152,25 @@ func (m *nativeMerger) mergeSlices(dst, src reflect.Value) {
 		srcElem := src.Index(i)
 		if i < dst.Len() {
 			dstElem := newSlice.Index(i)
+			// Merge elements based on their kind.
 			switch srcElem.Kind() {
 			case reflect.Struct:
 				m.mergeStructs(dstElem, srcElem)
 			case reflect.Map:
 				m.mergeMaps(dstElem, srcElem)
 			case reflect.Slice, reflect.Array:
-				m.mergeSlices(dstElem, srcElem)
+				mergedSlice := m.mergeSlices(dstElem, srcElem)
+				dstElem.Set(mergedSlice)
 			default:
 				dstElem.Set(srcElem)
 			}
 		} else {
+			// Copy srcElem to newSlice if it's beyond the original dst length.
 			newSlice.Index(i).Set(srcElem)
 		}
 	}
 
-	dst.Set(newSlice)
+	return newSlice // Return the merged slice.
 }
 
 // Helper function to find the maximum of two integers.

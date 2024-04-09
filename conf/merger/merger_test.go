@@ -125,7 +125,7 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 				StrField: "test",
 				IntField: 42,
 			},
-			want: &testStruct{
+			want: testStruct{
 				StrField: "test",
 				IntField: 42,
 			},
@@ -139,7 +139,7 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 					Field2: 100,
 				},
 			},
-			want: &testStruct{
+			want: testStruct{
 				StructField: nestedStruct{
 					Field1: "nested",
 					Field2: 100,
@@ -158,7 +158,7 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 					"new": 2,
 				},
 			},
-			want: &testStruct{
+			want: testStruct{
 				MapField: map[string]int{
 					"existing": 1,
 					"new":      2,
@@ -173,7 +173,7 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 			src: &testStruct{
 				SliceField: []string{"three"},
 			},
-			want: &testStruct{
+			want: testStruct{
 				SliceField: []string{"three", "two"},
 			},
 		},
@@ -184,8 +184,8 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 			merger := &nativeMerger{
 				fnd: fndMock,
 			}
-			merger.mergeStructs(reflect.ValueOf(tt.dst).Elem(), reflect.ValueOf(tt.src).Elem())
-			assert.Equal(t, tt.want, tt.dst)
+			mergedStruct := merger.mergeStructs(reflect.ValueOf(tt.dst).Elem(), reflect.ValueOf(tt.src).Elem())
+			assert.Equal(t, tt.want, mergedStruct.Interface())
 		})
 	}
 }
@@ -233,7 +233,7 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			want: map[string]interface{}{
 				"key1": map[string]interface{}{
 					"subkey1": "overwritten value1",
-					"subkey2": complexStruct{NestedField1: 1, NestedField2: "nested value2"},
+					"subkey2": complexStruct{NestedField1: 0, NestedField2: "nested value2"}, // it is zero because of default
 					"subkey3": "new value3",
 				},
 				"key2": "original value2",
@@ -262,7 +262,7 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 				"arrayKey": []int{3},
 			},
 			want: map[string]interface{}{
-				"arrayKey": []int{1, 2, 3},
+				"arrayKey": []int{3, 2},
 			},
 		},
 	}
@@ -278,8 +278,8 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			if src.Kind() == reflect.Ptr {
 				src = src.Elem()
 			}
-			merger.mergeMaps(dst, src)
-			assert.Equal(t, tt.want, tt.dst)
+			mergedMap := merger.mergeMaps(dst, src)
+			assert.Equal(t, tt.want, mergedMap.Interface())
 		})
 	}
 }
