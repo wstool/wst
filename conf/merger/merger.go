@@ -15,7 +15,6 @@
 package merger
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"reflect"
@@ -63,7 +62,7 @@ func mergeStructs(dst, src reflect.Value) {
 		case reflect.Slice:
 			mergeSlices(dstField, srcField)
 		default:
-			if !isEmptyValue(srcField) {
+			if !srcField.IsZero() {
 				dstField.Set(srcField)
 			}
 		}
@@ -86,21 +85,21 @@ func mergeMaps(dst, src reflect.Value) {
 				if dstValue.Kind() == reflect.Map {
 					mergeMaps(dstValue, srcValue)
 				} else {
-					// Inconsistent types - overwrite.
+					// Inconsistent types, overwrite.
 					dst.SetMapIndex(key, srcValue)
 				}
 			case reflect.Struct:
 				if dstValue.Kind() == reflect.Struct {
 					mergeStructs(dstValue, srcValue)
 				} else {
-					// Inconsistent types - overwrite.
+					// Inconsistent types, overwrite.
 					dst.SetMapIndex(key, srcValue)
 				}
 			case reflect.Slice, reflect.Array:
 				if dstValue.Kind() == reflect.Slice || dstValue.Kind() == reflect.Array {
 					mergeSlices(dstValue, srcValue)
 				} else {
-					// Inconsistent types - overwrite.
+					// Inconsistent types, overwrite.
 					dst.SetMapIndex(key, srcValue)
 				}
 			default:
@@ -115,13 +114,6 @@ func mergeMaps(dst, src reflect.Value) {
 }
 
 func mergeSlices(dst, src reflect.Value) {
-	// First, check if the destination is a slice.
-	// This check ensures we're only attempting to merge slices into slices.
-	if dst.Kind() != reflect.Slice {
-		fmt.Errorf("destination is not a slice, got %s", dst.Kind().String())
-		return // Optionally return an error instead of just exiting.
-	}
-
 	// Ensure dst slice is large enough to contain all src elements.
 	maxLength := src.Len()
 	if dst.Len() < maxLength {
@@ -160,21 +152,4 @@ func mergeSlices(dst, src reflect.Value) {
 			dstElem.Set(srcElem)
 		}
 	}
-}
-func isEmptyValue(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.String, reflect.Array, reflect.Map, reflect.Slice:
-		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
-		return v.IsNil()
-	}
-	return false
 }
