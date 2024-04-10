@@ -47,6 +47,7 @@ const pathKey = "wst/path"
 type Parser interface {
 	ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error
 	ParseStruct(data map[string]interface{}, structure interface{}, configPath string) error
+	ParseTag(tag string) (map[ConfigParam]string, error)
 }
 
 type ConfigParser struct {
