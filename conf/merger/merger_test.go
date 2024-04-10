@@ -202,7 +202,7 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 		want interface{}
 	}{
 		{
-			name: "simple struct merge",
+			name: "simple struct merge with single item",
 			dst: map[string]interface{}{
 				"key": complexStruct{NestedField1: 1},
 			},
@@ -211,6 +211,20 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			},
 			want: map[string]interface{}{
 				"key": complexStruct{NestedField1: 2},
+			},
+		},
+		{
+			name: "simple struct merge with different number of items",
+			dst: map[string]interface{}{
+				"key1": complexStruct{NestedField1: 1},
+				"key2": complexStruct{NestedField1: 2},
+			},
+			src: map[string]interface{}{
+				"key1": complexStruct{NestedField1: 3},
+			},
+			want: map[string]interface{}{
+				"key1": complexStruct{NestedField1: 3},
+				"key2": complexStruct{NestedField1: 2},
 			},
 		},
 		{
@@ -233,7 +247,7 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			want: map[string]interface{}{
 				"key1": map[string]interface{}{
 					"subkey1": "overwritten value1",
-					"subkey2": complexStruct{NestedField1: 0, NestedField2: "nested value2"}, // it is zero because of default
+					"subkey2": complexStruct{NestedField1: 1, NestedField2: "nested value2"},
 					"subkey3": "new value3",
 				},
 				"key2": "original value2",

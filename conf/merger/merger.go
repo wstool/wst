@@ -63,6 +63,10 @@ func (m *nativeMerger) mergeStructs(dst, src reflect.Value) reflect.Value {
 		srcField := src.Field(i)
 		dstField := dst.Field(i)
 
+		if srcField.IsZero() && dstField.IsZero() {
+			continue
+		}
+
 		// Dereference pointers if necessary.
 		if dstField.Kind() == reflect.Ptr && !dstField.IsNil() {
 			dstField = dstField.Elem()
@@ -140,6 +144,15 @@ func (m *nativeMerger) mergeMaps(dst, src reflect.Value) reflect.Value {
 			mergedMap.SetMapIndex(key, srcValue)
 		}
 	}
+
+	for _, key := range dst.MapKeys() {
+		srcValue := src.MapIndex(key)
+		if !srcValue.IsValid() {
+			dstValue := dst.MapIndex(key)
+			mergedMap.SetMapIndex(key, dstValue)
+		}
+	}
+
 	return mergedMap
 }
 
@@ -153,17 +166,18 @@ func (m *nativeMerger) mergeSlices(dst, src reflect.Value) reflect.Value {
 		if i < dst.Len() {
 			dstElem := newSlice.Index(i)
 			// Merge elements based on their kind.
+			var mergedVal reflect.Value
 			switch srcElem.Kind() {
 			case reflect.Struct:
-				m.mergeStructs(dstElem, srcElem)
+				mergedVal = m.mergeStructs(dstElem, srcElem)
 			case reflect.Map:
-				m.mergeMaps(dstElem, srcElem)
+				mergedVal = m.mergeMaps(dstElem, srcElem)
 			case reflect.Slice, reflect.Array:
-				mergedSlice := m.mergeSlices(dstElem, srcElem)
-				dstElem.Set(mergedSlice)
+				mergedVal = m.mergeSlices(dstElem, srcElem)
 			default:
-				dstElem.Set(srcElem)
+				mergedVal = srcElem
 			}
+			dstElem.Set(mergedVal)
 		} else {
 			// Copy srcElem to newSlice if it's beyond the original dst length.
 			newSlice.Index(i).Set(srcElem)
@@ -171,12 +185,4 @@ func (m *nativeMerger) mergeSlices(dst, src reflect.Value) reflect.Value {
 	}
 
 	return newSlice // Return the merged slice.
-}
-
-// Helper function to find the maximum of two integers.
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
