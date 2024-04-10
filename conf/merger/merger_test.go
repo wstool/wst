@@ -105,11 +105,12 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 		Field2 int
 	}
 	type testStruct struct {
-		StrField    string
-		IntField    int
-		StructField nestedStruct
-		MapField    map[string]int
-		SliceField  []string
+		StrField       string
+		IntField       int
+		StructField    nestedStruct
+		PtrStructField *nestedStruct
+		MapField       map[string]int
+		SliceField     []string
 	}
 
 	tests := []struct {
@@ -143,6 +144,28 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 				StructField: nestedStruct{
 					Field1: "nested",
 					Field2: 100,
+				},
+			},
+		},
+
+		{
+			name: "nested struct references",
+			dst: &testStruct{
+				PtrStructField: &nestedStruct{
+					Field1: "nested 1",
+					Field2: 100,
+				},
+			},
+			src: &testStruct{
+				PtrStructField: &nestedStruct{
+					Field1: "nested 2",
+					Field2: 200,
+				},
+			},
+			want: testStruct{
+				PtrStructField: &nestedStruct{
+					Field1: "nested 2",
+					Field2: 200,
 				},
 			},
 		},
@@ -197,9 +220,9 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		dst  interface{}
-		src  interface{}
-		want interface{}
+		dst  map[string]interface{}
+		src  map[string]interface{}
+		want map[string]interface{}
 	}{
 		{
 			name: "simple struct merge with single item",
@@ -286,12 +309,6 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			merger := nativeMerger{}
 			dst := reflect.ValueOf(tt.dst)
 			src := reflect.ValueOf(tt.src)
-			if dst.Kind() == reflect.Ptr {
-				dst = dst.Elem()
-			}
-			if src.Kind() == reflect.Ptr {
-				src = src.Elem()
-			}
 			mergedMap := merger.mergeMaps(dst, src)
 			assert.Equal(t, tt.want, mergedMap.Interface())
 		})
