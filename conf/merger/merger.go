@@ -37,17 +37,14 @@ func CreateMerger(fnd app.Foundation) Merger {
 
 func (m *nativeMerger) MergeConfigs(configs []*types.Config, overwrites map[string]string) (*types.Config, error) {
 	if len(configs) == 0 {
-		return nil, nil // or return an empty config or an error
+		return nil, fmt.Errorf("no config has been provided for merging")
 	}
 
 	mergedConfig := &types.Config{}
 	for _, config := range configs {
 		mergedStructValue := m.mergeStructs(reflect.ValueOf(mergedConfig).Elem(), reflect.ValueOf(config).Elem())
-		if newMergedConfig, ok := mergedStructValue.Interface().(types.Config); ok {
-			mergedConfig = &newMergedConfig
-		} else {
-			return nil, fmt.Errorf("failed to merge configs")
-		}
+		newMergedConfig := mergedStructValue.Interface().(types.Config)
+		mergedConfig = &newMergedConfig
 	}
 
 	// TODO: Apply overwrites to merged here, if needed

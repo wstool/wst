@@ -1,12 +1,34 @@
 package merger
 
 import (
+	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
+
+func TestCreateMerger(t *testing.T) {
+	fndMock := &appMocks.MockFoundation{}
+	tests := []struct {
+		name string
+		fnd  app.Foundation
+	}{
+		{
+			name: "create merger",
+			fnd:  fndMock,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			merger := CreateMerger(tt.fnd)
+			actualMerger, ok := merger.(*nativeMerger)
+			assert.True(t, ok)
+			assert.Equal(t, tt.fnd, actualMerger.fnd)
+		})
+	}
+}
 
 func Test_nativeMerger_MergeConfigs(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
@@ -19,6 +41,13 @@ func Test_nativeMerger_MergeConfigs(t *testing.T) {
 		wantErr        bool
 		errMsg         string
 	}{
+		{
+			name:           "Merge basic fields and complex structures",
+			configs:        []*types.Config{},
+			expectedConfig: nil,
+			wantErr:        true,
+			errMsg:         "no config has been provided for merging",
+		},
 		{
 			name: "Merge basic fields and complex structures",
 			configs: []*types.Config{
@@ -158,13 +187,12 @@ func Test_nativeMerger_mergeStructs(t *testing.T) {
 			},
 			src: &testStruct{
 				PtrStructField: &nestedStruct{
-					Field1: "nested 2",
 					Field2: 200,
 				},
 			},
 			want: testStruct{
 				PtrStructField: &nestedStruct{
-					Field1: "nested 2",
+					Field1: "nested 1",
 					Field2: 200,
 				},
 			},
@@ -278,6 +306,26 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			},
 		},
 		{
+			name: "recursive merge with nil sources",
+			dst: map[string]interface{}{
+				"key": "val",
+			},
+			src: nil,
+			want: map[string]interface{}{
+				"key": "val",
+			},
+		},
+		{
+			name: "recursive merge with nil destination",
+			dst:  nil,
+			src: map[string]interface{}{
+				"key": "val",
+			},
+			want: map[string]interface{}{
+				"key": "val",
+			},
+		},
+		{
 			name: "recursive merge with non-overlapping keys",
 			dst: map[string]interface{}{
 				"key1": "value1",
@@ -311,6 +359,130 @@ func Test_nativeMerger_mergeMaps(t *testing.T) {
 			src := reflect.ValueOf(tt.src)
 			mergedMap := merger.mergeMaps(dst, src)
 			assert.Equal(t, tt.want, mergedMap.Interface())
+		})
+	}
+}
+
+func Test_nativeMerger_mergeSlices(t *testing.T) {
+	type complexStruct struct {
+		NestedField1 int
+		NestedField2 string
+	}
+	tests := []struct {
+		name string
+		dst  []interface{}
+		src  []interface{}
+		want []interface{}
+	}{
+		{
+			name: "simple struct merge with single item",
+			dst: []interface{}{
+				complexStruct{NestedField1: 1},
+			},
+			src: []interface{}{
+				complexStruct{NestedField1: 2},
+			},
+			want: []interface{}{
+				complexStruct{NestedField1: 2},
+			},
+		},
+		{
+			name: "simple struct merge with single item",
+			dst: []interface{}{
+				&complexStruct{NestedField1: 1},
+				&complexStruct{NestedField1: 3},
+			},
+			src: []interface{}{
+				&complexStruct{NestedField1: 2},
+			},
+			want: []interface{}{
+				&complexStruct{NestedField1: 2},
+				&complexStruct{NestedField1: 3},
+			},
+		},
+		{
+			name: "merge maps",
+			dst: []interface{}{
+				map[string]interface{}{
+					"subkey1": "value1",
+					"subkey2": complexStruct{NestedField1: 1},
+				},
+				"original value2",
+			},
+			src: []interface{}{
+				map[string]interface{}{
+					"subkey1": "overwritten value1",
+					"subkey2": complexStruct{NestedField2: "nested value2"},
+					"subkey3": "new value3",
+				},
+				"new value3",
+			},
+			want: []interface{}{
+				map[string]interface{}{
+					"subkey1": "overwritten value1",
+					"subkey2": complexStruct{NestedField1: 1, NestedField2: "nested value2"},
+					"subkey3": "new value3",
+				},
+				"new value3",
+			},
+		},
+		{
+			name: "merge with more sources",
+			dst: []interface{}{
+				"val",
+			},
+			src: []interface{}{
+				"val1",
+				"val2",
+				"val3",
+			},
+			want: []interface{}{
+				"val1",
+				"val2",
+				"val3",
+			},
+		},
+		{
+			name: "merge with nil sources",
+			dst: []interface{}{
+				"val",
+			},
+			src: nil,
+			want: []interface{}{
+				"val",
+			},
+		},
+		{
+			name: "merge with nil destination",
+			dst:  nil,
+			src: []interface{}{
+				"val",
+			},
+			want: []interface{}{
+				"val",
+			},
+		},
+		{
+			name: "merge slices containing slices",
+			dst: []interface{}{
+				[]int{1, 2},
+			},
+			src: []interface{}{
+				[]int{3},
+			},
+			want: []interface{}{
+				[]int{3, 2},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			merger := nativeMerger{}
+			dst := reflect.ValueOf(tt.dst)
+			src := reflect.ValueOf(tt.src)
+			mergedSlice := merger.mergeSlices(dst, src)
+			assert.Equal(t, tt.want, mergedSlice.Interface())
 		})
 	}
 }
