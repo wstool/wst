@@ -22,7 +22,7 @@ import (
 )
 
 type Merger interface {
-	MergeConfigs(configs []*types.Config, overwrites map[string]string) (*types.Config, error)
+	MergeConfigs(configs []*types.Config) (*types.Config, error)
 }
 
 type nativeMerger struct {
@@ -35,7 +35,7 @@ func CreateMerger(fnd app.Foundation) Merger {
 	}
 }
 
-func (m *nativeMerger) MergeConfigs(configs []*types.Config, overwrites map[string]string) (*types.Config, error) {
+func (m *nativeMerger) MergeConfigs(configs []*types.Config) (*types.Config, error) {
 	if len(configs) == 0 {
 		return nil, fmt.Errorf("no config has been provided for merging")
 	}
@@ -46,8 +46,6 @@ func (m *nativeMerger) MergeConfigs(configs []*types.Config, overwrites map[stri
 		newMergedConfig := mergedStructValue.Interface().(types.Config)
 		mergedConfig = &newMergedConfig
 	}
-
-	// TODO: Apply overwrites to merged here, if needed
 
 	return mergedConfig, nil
 }

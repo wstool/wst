@@ -18,24 +18,28 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/merger"
+	"github.com/bukka/wst/conf/overwrites"
 	"github.com/bukka/wst/conf/parser"
 	"github.com/bukka/wst/conf/types"
 )
 
 type ConfigMaker struct {
-	env    app.Foundation
-	loader loader.Loader
-	parser parser.Parser
-	merger merger.Merger
+	env                   app.Foundation
+	loader                loader.Loader
+	parser                parser.Parser
+	merger                merger.Merger
+	overwritesTransformer overwrites.Transformer
 }
 
-func CreateConfigMaker(env app.Foundation) *ConfigMaker {
-	ld := loader.CreateLoader(env)
+func CreateConfigMaker(fnd app.Foundation) *ConfigMaker {
+	ld := loader.CreateLoader(fnd)
+	pr := parser.CreateParser(fnd, ld)
 	return &ConfigMaker{
-		env:    env,
-		loader: ld,
-		parser: parser.CreateParser(env, ld),
-		merger: merger.CreateMerger(env),
+		env:                   fnd,
+		loader:                ld,
+		parser:                pr,
+		merger:                merger.CreateMerger(fnd),
+		overwritesTransformer: overwrites.CreateTransformer(fnd, pr),
 	}
 }
 
@@ -55,7 +59,15 @@ func (m *ConfigMaker) Make(configPaths []string, overwrites map[string]string) (
 		configs = append(configs, config)
 	}
 
-	config, err := m.merger.MergeConfigs(configs, overwrites)
+	if len(overwrites) > 0 {
+		overwriteConfig, err := m.overwritesTransformer.Transform(overwrites)
+		if err != nil {
+			return nil, err
+		}
+		configs = append(configs, overwriteConfig)
+	}
+
+	config, err := m.merger.MergeConfigs(configs)
 	if err != nil {
 		return nil, err
 	}

@@ -42,42 +42,42 @@ func Test_isValidParam(t *testing.T) {
 	}{
 		{
 			name:  "valid parameter - name",
-			param: paramName,
+			param: ConfigParamName,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - loadable",
-			param: paramLoadable,
+			param: ConfigParamLoadable,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - default",
-			param: paramDefault,
+			param: ConfigParamDefault,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - factory",
-			param: paramFactory,
+			param: ConfigParamFactory,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - enum",
-			param: paramEnum,
+			param: ConfigParamEnum,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - keys",
-			param: paramKeys,
+			param: ConfigParamKeys,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - path",
-			param: paramPath,
+			param: ConfigParamPath,
 			want:  true,
 		},
 		{
 			name:  "valid parameter - string",
-			param: paramString,
+			param: ConfigParamString,
 			want:  true,
 		},
 		{
@@ -136,7 +136,7 @@ func TestConfigParser_ParseTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := ConfigParser{}
-			got, err := parser.parseTag(tt.tag)
+			got, err := parser.ParseTag(tt.tag)
 
 			// if an error is expected
 			if tt.errMsg != "" {

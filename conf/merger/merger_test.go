@@ -36,7 +36,6 @@ func Test_nativeMerger_MergeConfigs(t *testing.T) {
 	tests := []struct {
 		name           string
 		configs        []*types.Config
-		overwrites     map[string]string
 		expectedConfig *types.Config
 		wantErr        bool
 		errMsg         string
@@ -111,7 +110,7 @@ func Test_nativeMerger_MergeConfigs(t *testing.T) {
 			merger := &nativeMerger{
 				fnd: fndMock,
 			}
-			config, err := merger.MergeConfigs(tt.configs, tt.overwrites)
+			config, err := merger.MergeConfigs(tt.configs)
 
 			if tt.errMsg != "" {
 				if assert.Error(t, err) {

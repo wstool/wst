@@ -32,14 +32,14 @@ import (
 type ConfigParam string
 
 const (
-	paramName     ConfigParam = "name"
-	paramLoadable             = "loadable"
-	paramDefault              = "default"
-	paramFactory              = "factory"
-	paramEnum                 = "enum"
-	paramKeys                 = "keys"
-	paramPath                 = "path"
-	paramString               = "string"
+	ConfigParamName     ConfigParam = "name"
+	ConfigParamLoadable             = "loadable"
+	ConfigParamDefault              = "default"
+	ConfigParamFactory              = "factory"
+	ConfigParamEnum                 = "enum"
+	ConfigParamKeys                 = "keys"
+	ConfigParamPath                 = "path"
+	ConfigParamString               = "string"
 )
 
 const pathKey = "wst/path"
@@ -58,29 +58,29 @@ type ConfigParser struct {
 // check if param is a valid param (one of param* constants)
 func isValidParam(param string) bool {
 	switch ConfigParam(param) {
-	case paramName:
+	case ConfigParamName:
 		fallthrough
-	case paramLoadable:
+	case ConfigParamLoadable:
 		fallthrough
-	case paramDefault:
+	case ConfigParamDefault:
 		fallthrough
-	case paramFactory:
+	case ConfigParamFactory:
 		fallthrough
-	case paramEnum:
+	case ConfigParamEnum:
 		fallthrough
-	case paramKeys:
+	case ConfigParamKeys:
 		fallthrough
-	case paramPath:
+	case ConfigParamPath:
 		fallthrough
-	case paramString:
+	case ConfigParamString:
 		return true
 	default:
 		return false
 	}
 }
 
-// parseTag parses the 'wst' struct tag into a Field
-func (p *ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
+// ParseTag parses the 'wst' struct tag into a Field
+func (p *ConfigParser) ParseTag(tag string) (map[ConfigParam]string, error) {
 	// split the tag into parts
 	parts := strings.Split(tag, ",")
 
@@ -95,7 +95,7 @@ func (p *ConfigParser) parseTag(tag string) (map[ConfigParam]string, error) {
 	if strings.Contains(firstPart, "=") {
 		startIndex = 0
 	} else {
-		params[paramName] = firstPart
+		params[ConfigParamName] = firstPart
 	}
 
 	// parse the rest of the parts as key=value parameters
@@ -520,7 +520,7 @@ func (p *ConfigParser) parseField(
 ) error {
 	var err error
 
-	if factoryName, hasFactory := params[paramFactory]; hasFactory {
+	if factoryName, hasFactory := params[ConfigParamFactory]; hasFactory {
 		if err = p.processFactoryParam(factoryName, data, fieldValue, path); err != nil {
 			return err
 		}
@@ -528,7 +528,7 @@ func (p *ConfigParser) parseField(
 		return nil
 	}
 
-	if stringValue, hasString := params[paramString]; hasString {
+	if stringValue, hasString := params[ConfigParamString]; hasString {
 		var done bool
 		if done, err = p.processStringParam(stringValue, data, fieldValue, path); err != nil {
 			return err
@@ -538,25 +538,25 @@ func (p *ConfigParser) parseField(
 		}
 	}
 
-	if _, isLoadable := params[paramLoadable]; isLoadable {
+	if _, isLoadable := params[ConfigParamLoadable]; isLoadable {
 		if data, err = p.processLoadableParam(data, fieldValue); err != nil {
 			return err
 		}
 	}
 
-	if enums, hasEnum := params[paramEnum]; hasEnum {
+	if enums, hasEnum := params[ConfigParamEnum]; hasEnum {
 		if err = p.processEnumParam(enums, data, fieldName); err != nil {
 			return err
 		}
 	}
 
-	if keys, hasKeys := params[paramKeys]; hasKeys {
+	if keys, hasKeys := params[ConfigParamKeys]; hasKeys {
 		if err = p.processKeysParam(keys, data, fieldName); err != nil {
 			return err
 		}
 	}
 
-	if _, hasPath := params[paramPath]; hasPath {
+	if _, hasPath := params[ConfigParamPath]; hasPath {
 		if err = p.processPathParam(data, fieldValue, fieldName, path); err != nil {
 			return err
 		}
@@ -590,12 +590,12 @@ func (p *ConfigParser) ParseStruct(data map[string]interface{}, structure interf
 		if tag == "" {
 			continue
 		}
-		params, err := p.parseTag(tag)
+		params, err := p.ParseTag(tag)
 		if err != nil {
 			return err
 		}
 
-		fieldName, ok := params[paramName]
+		fieldName, ok := params[ConfigParamName]
 		if !ok {
 			fieldName = field.Name
 		}
@@ -604,7 +604,7 @@ func (p *ConfigParser) ParseStruct(data map[string]interface{}, structure interf
 			if err = p.parseField(fieldData, fieldValue, fieldName, params, configPath); err != nil {
 				return err
 			}
-		} else if defaultValue, found := params[paramDefault]; found {
+		} else if defaultValue, found := params[ConfigParamDefault]; found {
 			if err = p.processDefaultParam(fieldName, defaultValue, fieldValue); err != nil {
 				return err
 			}
