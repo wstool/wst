@@ -124,7 +124,13 @@ func (t *nativeOverwriter) overwriteMap(dst reflect.Value, ptrs []string, val st
 	}
 
 	// Ensure the dst is a map and is addressable
-	if dst.Kind() != reflect.Map || !dst.CanSet() {
+	dstKind := dst.Kind()
+	if (dstKind == reflect.Ptr || dstKind == reflect.Interface) && !dst.IsNil() {
+		dst = dst.Elem()
+		dstKind = dst.Kind()
+	}
+
+	if dst.Kind() != reflect.Map {
 		return errors.Errorf("destination is not a map or cannot be set")
 	}
 
@@ -182,13 +188,15 @@ func (t *nativeOverwriter) overwriteMap(dst reflect.Value, ptrs []string, val st
 }
 
 func (t *nativeOverwriter) overwriteSlice(dst reflect.Value, ptrs []string, index int, val string) error {
-	if len(ptrs) == 0 {
-		return errors.Errorf("pointer path is empty, cannot proceed with slice overwriteation")
+	// Ensure the dst is a map and is addressable
+	dstKind := dst.Kind()
+	if (dstKind == reflect.Ptr || dstKind == reflect.Interface) && !dst.IsNil() {
+		dst = dst.Elem()
+		dstKind = dst.Kind()
 	}
-
 	// Ensure the dst is a slice and is addressable
-	if dst.Kind() != reflect.Slice || !dst.CanSet() {
-		return errors.Errorf("destination is not a slice or cannot be set")
+	if dstKind != reflect.Slice {
+		return errors.Errorf("destination is not a slice")
 	}
 
 	if index < 0 || index >= dst.Len() {
@@ -224,11 +232,7 @@ func (t *nativeOverwriter) overwriteSlice(dst reflect.Value, ptrs []string, inde
 
 func (t *nativeOverwriter) overwriteScalar(dst reflect.Value, ptrs []string, val string) error {
 	switch dst.Kind() {
-	case reflect.Struct:
-		return t.overwriteStruct(dst, ptrs, val)
-	case reflect.Map:
-		return t.overwriteMap(dst, ptrs, val)
-	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16:
+	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
 		intVal, err := strconv.ParseInt(val, 10, 64) // Convert string to int64
 		if err != nil {
 			return errors.Errorf("failed to convert %s to integer: %v", val, err)

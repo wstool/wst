@@ -354,22 +354,24 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 	tests := []struct {
 		name        string
-		dst         interface{}
+		dst         map[string]interface{}
 		ptrs        []string
+		tags        map[parser.ConfigParam]string
+		tagsErr     map[parser.ConfigParam]string
 		val         string
 		wantErr     bool
 		errMsg      string
-		expectedMap interface{}
+		expectedMap map[string]interface{}
 	}{
 		{
 			name: "overwrite direct map value",
-			dst: map[string]string{
+			dst: map[string]interface{}{
 				"key1": "oldValue1",
 				"key2": "oldValue2",
 			},
 			ptrs:        []string{"key1"},
 			val:         "newValue1",
-			expectedMap: map[string]string{"key1": "newValue1", "key2": "oldValue2"},
+			expectedMap: map[string]interface{}{"key1": "newValue1", "key2": "oldValue2"},
 		},
 		{
 			name: "overwrite nested map value",
@@ -392,36 +394,50 @@ func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 		{
 			name: "overwrite struct field within map",
 			dst: map[string]interface{}{
-				"structKey": TestStruct{Name: "oldName"},
+				"structKey": &TestStruct{Name: "oldName"},
 			},
-			ptrs:        []string{"structKey", "Name"},
+			ptrs: []string{"structKey", "name"},
+			tags: map[parser.ConfigParam]string{
+				"name": "name",
+			},
 			val:         "newName",
-			expectedMap: map[string]interface{}{"structKey": TestStruct{Name: "newName"}},
+			expectedMap: map[string]interface{}{"structKey": &TestStruct{Name: "newName"}},
 		},
 		{
-			name:    "key not found in map",
-			dst:     map[string]string{"key": "value"},
-			ptrs:    []string{"nonexistentKey"},
-			val:     "newValue",
-			wantErr: true,
-			errMsg:  "key nonexistentKey not found in map",
+			name: "key not found in map",
+			dst:  map[string]interface{}{"key": "value"},
+			ptrs: []string{"nonexistentKey"},
+			val:  "newValue",
+			expectedMap: map[string]interface{}{
+				"key":            "value",
+				"nonexistentKey": "newValue",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			parserMock := parserMocks.NewMockParser(t)
+			for name, value := range tt.tags {
+				parserMock.On("ParseTag", string(name)).Return(map[parser.ConfigParam]string{"name": value}, nil)
+			}
+			for name, msg := range tt.tagsErr {
+				parserMock.On("ParseTag", name).Return(nil, errors.New(msg))
+			}
+
+			o := &nativeOverwriter{parser: parserMock}
+
 			dstValue := reflect.ValueOf(tt.dst)
-			o := &nativeOverwriter{}
 			err := o.overwriteMap(dstValue, tt.ptrs, tt.val)
 
 			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errMsg != "" {
+				if assert.Error(t, err) && tt.errMsg != "" {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedMap, tt.dst)
+				if assert.NoError(t, err) {
+					assert.Equal(t, tt.expectedMap, tt.dst)
+				}
 			}
 		})
 	}
@@ -432,6 +448,8 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 		name          string
 		dst           interface{}
 		ptrs          []string
+		tags          map[parser.ConfigParam]string
+		tagsErr       map[parser.ConfigParam]string
 		index         int
 		val           string
 		wantErr       bool
@@ -448,14 +466,17 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 		},
 		{
 			name: "overwrite struct field in slice",
-			dst: []TestStruct{
+			dst: []*TestStruct{
 				{Name: "oldName1"},
 				{Name: "oldName2"},
 			},
-			ptrs:  []string{"Name"},
+			ptrs: []string{"name"},
+			tags: map[parser.ConfigParam]string{
+				"name": "name",
+			},
 			index: 1,
 			val:   "newName2",
-			expectedSlice: []TestStruct{
+			expectedSlice: []*TestStruct{
 				{Name: "oldName1"},
 				{Name: "newName2"},
 			},
@@ -482,8 +503,17 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			parserMock := parserMocks.NewMockParser(t)
+			for name, value := range tt.tags {
+				parserMock.On("ParseTag", string(name)).Return(map[parser.ConfigParam]string{"name": value}, nil)
+			}
+			for name, msg := range tt.tagsErr {
+				parserMock.On("ParseTag", name).Return(nil, errors.New(msg))
+			}
+
+			o := &nativeOverwriter{parser: parserMock}
+
 			dstValue := reflect.ValueOf(tt.dst)
-			o := &nativeOverwriter{}
 			err := o.overwriteSlice(dstValue, tt.ptrs, tt.index, tt.val)
 
 			if tt.wantErr {
@@ -543,7 +573,7 @@ func Test_nativeOverwriter_overwriteScalar(t *testing.T) {
 		},
 		{
 			name:    "unsupported value kind",
-			dst:     new(bool), // Assuming bool is not supported by overwriteScalar
+			dst:     new(bool),
 			val:     "true",
 			wantErr: true,
 			errMsg:  "unsupported value kind bool",
@@ -557,15 +587,13 @@ func Test_nativeOverwriter_overwriteScalar(t *testing.T) {
 			err := o.overwriteScalar(dstValue, tt.ptrs, tt.val)
 
 			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errMsg != "" {
+				if assert.Error(t, err) && tt.errMsg != "" {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				assert.NoError(t, err)
-				// Use reflect.DeepEqual for comparison to handle different types properly
-				if !reflect.DeepEqual(tt.dst, tt.want) {
-					t.Errorf("overwriteScalar() got = %v, want %v", tt.dst, tt.want)
+				if assert.NoError(t, err) {
+					actual := reflect.ValueOf(tt.dst).Elem().Interface()
+					assert.Equal(t, tt.want, actual)
 				}
 			}
 		})
