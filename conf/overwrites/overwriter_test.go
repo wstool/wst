@@ -578,6 +578,42 @@ func Test_nativeOverwriter_overwriteScalar(t *testing.T) {
 			wantErr: true,
 			errMsg:  "unsupported value kind bool",
 		},
+		{
+			name:    "parse int error",
+			dst:     new(int),
+			val:     "not_an_int",
+			wantErr: true,
+			errMsg:  "failed to convert not_an_int to integer",
+		},
+		{
+			name:    "parse float error",
+			dst:     new(float64),
+			val:     "not_a_float",
+			wantErr: true,
+			errMsg:  "failed to convert not_a_float to float",
+		},
+		{
+			name:    "unsupported kind with non-empty ptrs",
+			dst:     new(string),
+			ptrs:    []string{"more", "paths"},
+			val:     "value",
+			wantErr: true,
+			errMsg:  "overwrite field is not nestable",
+		},
+		{
+			name: "valid integer conversion with ptrs",
+			dst:  new(int),
+			ptrs: []string{}, // Emulating direct value overwrite without nested paths
+			val:  "100",
+			want: 100,
+		},
+		{
+			name: "valid float conversion with ptrs",
+			dst:  new(float64),
+			ptrs: []string{}, // Emulating direct value overwrite without nested paths
+			val:  "99.99",
+			want: 99.99,
+		},
 	}
 
 	for _, tt := range tests {

@@ -254,7 +254,7 @@ func (t *nativeOverwriter) overwriteScalar(dst reflect.Value, ptrs []string, val
 
 	default:
 		if len(ptrs) > 0 {
-			return errors.Errorf("overwrite field %s is not nestable", dst)
+			return errors.Errorf("overwrite field is not nestable")
 		}
 		// For string fields, directly set the value
 		if dst.Kind() == reflect.String {
