@@ -24,22 +24,22 @@ import (
 )
 
 type ConfigMaker struct {
-	env                   app.Foundation
-	loader                loader.Loader
-	parser                parser.Parser
-	merger                merger.Merger
-	overwritesTransformer overwrites.Transformer
+	env        app.Foundation
+	loader     loader.Loader
+	parser     parser.Parser
+	merger     merger.Merger
+	overwriter overwrites.Overwriter
 }
 
 func CreateConfigMaker(fnd app.Foundation) *ConfigMaker {
 	ld := loader.CreateLoader(fnd)
 	pr := parser.CreateParser(fnd, ld)
 	return &ConfigMaker{
-		env:                   fnd,
-		loader:                ld,
-		parser:                pr,
-		merger:                merger.CreateMerger(fnd),
-		overwritesTransformer: overwrites.CreateTransformer(fnd, pr),
+		env:        fnd,
+		loader:     ld,
+		parser:     pr,
+		merger:     merger.CreateMerger(fnd),
+		overwriter: overwrites.CreateOverwriter(fnd, pr),
 	}
 }
 
@@ -59,17 +59,16 @@ func (m *ConfigMaker) Make(configPaths []string, overwrites map[string]string) (
 		configs = append(configs, config)
 	}
 
-	if len(overwrites) > 0 {
-		overwriteConfig, err := m.overwritesTransformer.Transform(overwrites)
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, overwriteConfig)
-	}
-
 	config, err := m.merger.MergeConfigs(configs)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(overwrites) > 0 {
+		err = m.overwriter.Overwrite(config, overwrites)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return config, nil

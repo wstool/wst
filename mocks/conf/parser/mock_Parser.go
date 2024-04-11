@@ -3,6 +3,7 @@
 package parser
 
 import (
+	parser "github.com/bukka/wst/conf/parser"
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/bukka/wst/conf/types"
@@ -113,6 +114,64 @@ func (_c *MockParser_ParseStruct_Call) Return(_a0 error) *MockParser_ParseStruct
 }
 
 func (_c *MockParser_ParseStruct_Call) RunAndReturn(run func(map[string]interface{}, interface{}, string) error) *MockParser_ParseStruct_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ParseTag provides a mock function with given fields: tag
+func (_m *MockParser) ParseTag(tag string) (map[parser.ConfigParam]string, error) {
+	ret := _m.Called(tag)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ParseTag")
+	}
+
+	var r0 map[parser.ConfigParam]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (map[parser.ConfigParam]string, error)); ok {
+		return rf(tag)
+	}
+	if rf, ok := ret.Get(0).(func(string) map[parser.ConfigParam]string); ok {
+		r0 = rf(tag)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[parser.ConfigParam]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(tag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockParser_ParseTag_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ParseTag'
+type MockParser_ParseTag_Call struct {
+	*mock.Call
+}
+
+// ParseTag is a helper method to define mock.On call
+//   - tag string
+func (_e *MockParser_Expecter) ParseTag(tag interface{}) *MockParser_ParseTag_Call {
+	return &MockParser_ParseTag_Call{Call: _e.mock.On("ParseTag", tag)}
+}
+
+func (_c *MockParser_ParseTag_Call) Run(run func(tag string)) *MockParser_ParseTag_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockParser_ParseTag_Call) Return(_a0 map[parser.ConfigParam]string, _a1 error) *MockParser_ParseTag_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockParser_ParseTag_Call) RunAndReturn(run func(string) (map[parser.ConfigParam]string, error)) *MockParser_ParseTag_Call {
 	_c.Call.Return(run)
 	return _c
 }
