@@ -65,14 +65,17 @@ func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environme
 	}
 
 	return &kubernetesEnvironment{
-		ContainerEnvironment: *m.MakeContainerEnvironment(&config.ContainerEnvironment),
-		kubeconfigPath:       config.Kubeconfig,
-		namespace:            config.Namespace,
-		useFullName:          false,
-		deploymentClient:     clientset.AppsV1().Deployments(config.Namespace),
-		configMapClient:      clientset.CoreV1().ConfigMaps(config.Namespace),
-		podClient:            clientset.CoreV1().Pods(config.Namespace),
-		serviceClient:        clientset.CoreV1().Services(config.Namespace),
+		ContainerEnvironment: *m.MakeContainerEnvironment(&types.ContainerEnvironment{
+			Ports:    config.Ports,
+			Registry: config.Registry,
+		}),
+		kubeconfigPath:   config.Kubeconfig,
+		namespace:        config.Namespace,
+		useFullName:      false,
+		deploymentClient: clientset.AppsV1().Deployments(config.Namespace),
+		configMapClient:  clientset.CoreV1().ConfigMaps(config.Namespace),
+		podClient:        clientset.CoreV1().Pods(config.Namespace),
+		serviceClient:    clientset.CoreV1().Services(config.Namespace),
 	}, nil
 }
 

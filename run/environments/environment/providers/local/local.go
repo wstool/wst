@@ -45,9 +45,11 @@ func (m *Maker) Make(
 	instanceWorkspace string,
 ) (environment.Environment, error) {
 	return &localEnvironment{
-		CommonEnvironment: *m.MakeCommonEnvironment(&config.CommonEnvironment),
-		workspace:         filepath.Join(instanceWorkspace, "envs", "local"),
-		initialized:       false,
+		CommonEnvironment: *m.MakeCommonEnvironment(&types.CommonEnvironment{
+			Ports: config.Ports,
+		}),
+		workspace:   filepath.Join(instanceWorkspace, "envs", "local"),
+		initialized: false,
 	}, nil
 }
 

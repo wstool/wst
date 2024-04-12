@@ -52,9 +52,12 @@ func (m *Maker) Make(config *types.DockerEnvironment) (environment.Environment, 
 	}
 
 	return &dockerEnvironment{
-		ContainerEnvironment: *m.MakeContainerEnvironment(&config.ContainerEnvironment),
-		cli:                  cli,
-		namePrefix:           config.NamePrefix,
+		ContainerEnvironment: *m.MakeContainerEnvironment(&types.ContainerEnvironment{
+			Ports:    config.Ports,
+			Registry: config.Registry,
+		}),
+		cli:        cli,
+		namePrefix: config.NamePrefix,
 	}, nil
 }
 
@@ -238,6 +241,25 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 
 	timeout := time.After(30 * time.Second)
+	statusCh, errCh := e.cli.ContainerWait(ctx, containerId, container.WaitConditionNotRunning)
+	select {
+	case err = <-errCh:
+		if err != nil {
+			return nil, err
+		}
+	case <-timeout:
+		return nil, fmt.Errorf("timed out waiting for container to be ready")
+	case <-statusCh:
+		ready, err := e.isContainerReady(context.Background(), containerId)
+		if err != nil {
+			return nil, fmt.Errorf("failed checking of container readiness: %v\n", err)
+		}
+		if ready {
+			dockTask.containerReady = true
+			return dockTask, nil
+		}
+	}
+
 	tick := time.Tick(1 * time.Second)
 
 	for {

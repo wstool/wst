@@ -122,7 +122,9 @@ type ContainerEnvironment struct {
 
 func (m *Maker) MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
 	return &ContainerEnvironment{
-		CommonEnvironment: *m.MakeCommonEnvironment(&config.CommonEnvironment),
+		CommonEnvironment: *m.MakeCommonEnvironment(&types.CommonEnvironment{
+			Ports: config.Ports,
+		}),
 		Registry: ContainerRegistry{
 			Auth: ContainerRegistryAuth{
 				Username: config.Registry.Auth.Username,

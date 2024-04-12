@@ -138,11 +138,18 @@ func (m *Maker) mergeLocalAndCommon(local, common types.Sandbox) (types.Sandbox,
 	if !localSandboxOk {
 		return nil, errors.New("type assertion to *LocalSandbox failed")
 	}
-	mergedCommon, err := m.mergeCommonSandbox(&localSandbox.CommonSandbox, common)
+	mergedCommon, err := m.mergeCommonSandbox(&types.CommonSandbox{
+		Available: localSandbox.Available,
+		Dirs:      localSandbox.Dirs,
+		Hooks:     localSandbox.Hooks,
+	}, common)
 	if err != nil {
 		return nil, err
 	}
-	localSandbox.CommonSandbox = *mergedCommon.(*types.CommonSandbox)
+	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
+	localSandbox.Available = mergedCommonDeref.Available
+	localSandbox.Dirs = mergedCommonDeref.Dirs
+	localSandbox.Hooks = mergedCommonDeref.Hooks
 
 	return localSandbox, nil
 }
@@ -152,11 +159,18 @@ func (m *Maker) mergeContainerAndCommon(container, common types.Sandbox) (types.
 	if !containerSandboxOk {
 		return nil, errors.New("type assertion to *ContainerSandbox failed")
 	}
-	mergedCommon, err := m.mergeCommonSandbox(&containerSandbox.CommonSandbox, common)
+	mergedCommon, err := m.mergeCommonSandbox(&types.CommonSandbox{
+		Available: containerSandbox.Available,
+		Dirs:      containerSandbox.Dirs,
+		Hooks:     containerSandbox.Hooks,
+	}, common)
 	if err != nil {
 		return nil, err
 	}
-	containerSandbox.CommonSandbox = *mergedCommon.(*types.CommonSandbox)
+	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
+	containerSandbox.Available = mergedCommonDeref.Available
+	containerSandbox.Dirs = mergedCommonDeref.Dirs
+	containerSandbox.Hooks = mergedCommonDeref.Hooks
 
 	return containerSandbox, nil
 }
@@ -166,11 +180,22 @@ func (m *Maker) mergeDockerAndContainer(docker, container types.Sandbox) (types.
 	if !dockerSandboxOk {
 		return nil, errors.New("type assertion to *DockerSandbox failed")
 	}
-	mergedContainer, err := m.mergeContainerSandbox(&dockerSandbox.ContainerSandbox, container)
+	mergedContainer, err := m.mergeContainerSandbox(&types.ContainerSandbox{
+		Available: dockerSandbox.Available,
+		Dirs:      dockerSandbox.Dirs,
+		Hooks:     dockerSandbox.Hooks,
+		Image:     dockerSandbox.Image,
+		Registry:  dockerSandbox.Registry,
+	}, container)
 	if err != nil {
 		return nil, err
 	}
-	dockerSandbox.ContainerSandbox = *mergedContainer.(*types.ContainerSandbox)
+	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
+	dockerSandbox.Available = mergedContainerDeref.Available
+	dockerSandbox.Dirs = mergedContainerDeref.Dirs
+	dockerSandbox.Hooks = mergedContainerDeref.Hooks
+	dockerSandbox.Image = mergedContainerDeref.Image
+	dockerSandbox.Registry = mergedContainerDeref.Registry
 
 	return dockerSandbox, nil
 }
@@ -180,11 +205,22 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox)
 	if !kubernetesSandboxOk {
 		return nil, errors.New("type assertion to *KubernetesSandbox failed")
 	}
-	mergedContainer, err := m.mergeContainerSandbox(&kubernetesSandbox.ContainerSandbox, container)
+	mergedContainer, err := m.mergeContainerSandbox(&types.ContainerSandbox{
+		Available: kubernetesSandbox.Available,
+		Dirs:      kubernetesSandbox.Dirs,
+		Hooks:     kubernetesSandbox.Hooks,
+		Image:     kubernetesSandbox.Image,
+		Registry:  kubernetesSandbox.Registry,
+	}, container)
 	if err != nil {
 		return nil, err
 	}
-	kubernetesSandbox.ContainerSandbox = *mergedContainer.(*types.ContainerSandbox)
+	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
+	kubernetesSandbox.Available = mergedContainerDeref.Available
+	kubernetesSandbox.Dirs = mergedContainerDeref.Dirs
+	kubernetesSandbox.Hooks = mergedContainerDeref.Hooks
+	kubernetesSandbox.Image = mergedContainerDeref.Image
+	kubernetesSandbox.Registry = mergedContainerDeref.Registry
 
 	return kubernetesSandbox, nil
 }
@@ -277,8 +313,11 @@ func (m *Maker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, er
 		return nil, err
 	}
 
+	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
 	mergedLocal := &types.LocalSandbox{
-		CommonSandbox: *mergedCommon.(*types.CommonSandbox),
+		Available: mergedCommonDeref.Available,
+		Dirs:      mergedCommonDeref.Dirs,
+		Hooks:     mergedCommonDeref.Hooks,
 	}
 
 	return mergedLocal, nil
@@ -296,10 +335,13 @@ func (m *Maker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox
 		return nil, err
 	}
 
+	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
 	mergedContainer := &types.ContainerSandbox{
-		CommonSandbox: *mergedCommon.(*types.CommonSandbox),
-		Image:         specContainer.Image,
-		Registry:      specContainer.Registry,
+		Available: mergedCommonDeref.Available,
+		Dirs:      mergedCommonDeref.Dirs,
+		Hooks:     mergedCommonDeref.Hooks,
+		Image:     specContainer.Image,
+		Registry:  specContainer.Registry,
 	}
 
 	if serverContainer.Image.Name != "" {
@@ -330,8 +372,13 @@ func (m *Maker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, e
 		return nil, err
 	}
 
+	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
 	mergedDocker := &types.DockerSandbox{
-		ContainerSandbox: *mergedContainer.(*types.ContainerSandbox),
+		Available: mergedContainerDeref.Available,
+		Dirs:      mergedContainerDeref.Dirs,
+		Hooks:     mergedContainerDeref.Hooks,
+		Image:     mergedContainerDeref.Image,
+		Registry:  mergedContainerDeref.Registry,
 	}
 
 	return mergedDocker, nil
@@ -349,8 +396,13 @@ func (m *Maker) mergeKubernetesSandbox(spec, server types.Sandbox) (types.Sandbo
 		return nil, err
 	}
 
+	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
 	mergedKubernetes := &types.KubernetesSandbox{
-		ContainerSandbox: *mergedContainer.(*types.ContainerSandbox),
+		Available: mergedContainerDeref.Available,
+		Dirs:      mergedContainerDeref.Dirs,
+		Hooks:     mergedContainerDeref.Hooks,
+		Image:     mergedContainerDeref.Image,
+		Registry:  mergedContainerDeref.Registry,
 	}
 
 	return mergedKubernetes, nil
