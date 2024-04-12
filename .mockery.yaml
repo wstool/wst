@@ -11,6 +11,16 @@ packages:
     interfaces:
       LoadedConfig: {}
       Loader: {}
+  github.com/bukka/wst/conf/merger:
+    config:
+      dir: mocks/conf/merger
+    interfaces:
+      Merger: {}
+  github.com/bukka/wst/conf/overwrites:
+    config:
+      dir: mocks/conf/overwrites
+    interfaces:
+      Overwriter: {}
   github.com/bukka/wst/conf/parser:
     config:
       dir: mocks/conf/parser

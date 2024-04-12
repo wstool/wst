@@ -10,16 +10,6 @@ const (
 	KubernetesEnvironmentType                 = "kubernetes"
 )
 
-func EnvironmentTypes() []EnvironmentType {
-	return []EnvironmentType{
-		CommonEnvironmentType,
-		LocalEnvironmentType,
-		ContainerEnvironmentType,
-		DockerEnvironmentType,
-		KubernetesEnvironmentType,
-	}
-}
-
 type Environment interface {
 }
 

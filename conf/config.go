@@ -24,7 +24,7 @@ import (
 )
 
 type ConfigMaker struct {
-	env        app.Foundation
+	fnd        app.Foundation
 	loader     loader.Loader
 	parser     parser.Parser
 	merger     merger.Merger
@@ -35,7 +35,7 @@ func CreateConfigMaker(fnd app.Foundation) *ConfigMaker {
 	ld := loader.CreateLoader(fnd)
 	pr := parser.CreateParser(fnd, ld)
 	return &ConfigMaker{
-		env:        fnd,
+		fnd:        fnd,
 		loader:     ld,
 		parser:     pr,
 		merger:     merger.CreateMerger(fnd),
