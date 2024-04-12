@@ -119,6 +119,13 @@ func Test_nativeOverwriter_Overwrite(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:       "overwrite config with fails",
+			overwrites: map[string]string{"spec": "/var/www"},
+			config:     &types.Config{},
+			wantErr:    true,
+			errMsg:     "overwrite cannot be done for object",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -138,93 +145,14 @@ func Test_nativeOverwriter_Overwrite(t *testing.T) {
 	}
 }
 
-func Test_nativeOverwriter_parseFieldNameAndIndex(t *testing.T) {
-	fndMock := &appMocks.MockFoundation{}
-	parserMock := parserMocks.NewMockParser(t)
-	tests := []struct {
-		name          string
-		ptr           string
-		wantFieldName string
-		wantIndex     int
-		wantIsSlice   bool
-		wantErr       bool
-		errMsg        string
-	}{
-		{
-			name:          "normal field",
-			ptr:           "instances",
-			wantFieldName: "instances",
-			wantIndex:     0,
-			wantIsSlice:   false,
-			wantErr:       false,
-		},
-		{
-			name:          "field with index",
-			ptr:           "instances[0]",
-			wantFieldName: "instances",
-			wantIndex:     0,
-			wantIsSlice:   true,
-			wantErr:       false,
-		},
-		{
-			name:          "field with negative index - invalid",
-			ptr:           "instances[-1]",
-			wantFieldName: "instances",
-			wantIndex:     -1,
-			wantIsSlice:   true,
-		},
-		{
-			name:          "field with non-integer index - invalid",
-			ptr:           "instances[abc]",
-			wantFieldName: "instances[abc]",
-			wantIndex:     0,
-			wantIsSlice:   false,
-		},
-		{
-			name:          "nested field with index",
-			ptr:           "config[3].setting",
-			wantFieldName: "config[3].setting",
-			wantIndex:     0,
-			wantIsSlice:   false,
-			wantErr:       false,
-		},
-		{
-			name:          "nested field with index",
-			ptr:           "config[-]",
-			wantFieldName: "",
-			wantIndex:     0,
-			wantIsSlice:   false,
-			wantErr:       true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			o := &nativeOverwriter{
-				fnd:    fndMock,
-				parser: parserMock,
-			}
-			gotFieldName, gotIndex, gotIsSlice, err := o.parseFieldNameAndIndex(tt.ptr)
-			if tt.wantErr {
-				if assert.Error(t, err) && tt.errMsg != "" {
-					assert.Contains(t, err.Error(), tt.errMsg)
-				}
-			} else {
-				if assert.NoError(t, err) {
-					assert.Equal(t, tt.wantFieldName, gotFieldName)
-					assert.Equal(t, tt.wantIndex, gotIndex)
-					assert.Equal(t, tt.wantIsSlice, gotIsSlice)
-				}
-			}
-		})
-	}
-}
-
 type TestStruct struct {
 	Name        string                  `wst:"name"`
 	Age         int                     `wst:"age"`
 	Nested      NestedStruct            `wst:"nested"`
 	NestedSlice []NestedStruct          `wst:"nestedSlice"`
 	NestedMap   map[string]NestedStruct `wst:"nestedMap"`
+	NestedPtr   *NestedStruct           `wst:"nestedPtr"`
+	NoTag       string
 }
 
 type NestedStruct struct {
@@ -236,15 +164,16 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
 
 	tests := []struct {
-		name       string
-		ptrs       []string
-		tags       map[parser.ConfigParam]string
-		tagsErr    map[parser.ConfigParam]string
-		val        string
-		dst        interface{}
-		wantErr    bool
-		errMsg     string
-		verifyFunc func(*testing.T, interface{})
+		name            string
+		ptrs            []string
+		tags            map[parser.ConfigParam]string
+		tagsErr         map[parser.ConfigParam]string
+		tagsWithoutName []string
+		val             string
+		dst             interface{}
+		wantErr         bool
+		errMsg          string
+		verifyFunc      func(*testing.T, interface{})
 	}{
 		{
 			name: "overwrite scalar field",
@@ -259,6 +188,18 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 			},
 		},
 		{
+			name: "overwrite scalar field invalid",
+			ptrs: []string{"age"},
+			val:  "John Doe",
+			tags: map[parser.ConfigParam]string{
+				"name": "name",
+				"age":  "age",
+			},
+			dst:     &TestStruct{},
+			wantErr: true,
+			errMsg:  "failed to convert John Doe to integer: strconv.ParseInt: parsing \"John Doe\": invalid syntax",
+		},
+		{
 			name: "overwrite nested struct field",
 			ptrs: []string{"nested", "field1"},
 			val:  "New Value",
@@ -271,6 +212,24 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 			dst: &TestStruct{Nested: NestedStruct{Field1: "Old Value"}},
 			verifyFunc: func(t *testing.T, dst interface{}) {
 				assert.Equal(t, "New Value", dst.(*TestStruct).Nested.Field1)
+			},
+		},
+		{
+			name: "overwrite nested  ptr struct field",
+			ptrs: []string{"nestedPtr", "field1"},
+			val:  "New Value",
+			tags: map[parser.ConfigParam]string{
+				"name":        "name",
+				"age":         "age",
+				"nested":      "nested",
+				"nestedSlice": "nestedSlice",
+				"nestedMap":   "nestedMap",
+				"nestedPtr":   "nestedPtr",
+				"field1":      "field1",
+			},
+			dst: &TestStruct{NestedPtr: &NestedStruct{Field1: "Old Value"}},
+			verifyFunc: func(t *testing.T, dst interface{}) {
+				assert.Equal(t, "New Value", dst.(*TestStruct).NestedPtr.Field1)
 			},
 		},
 		{
@@ -290,6 +249,21 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 				assert.Equal(t, 42, dst.(*TestStruct).NestedSlice[0].Field2)
 			},
 		},
+
+		{
+			name: "nested slice element without index",
+			ptrs: []string{"nestedSlice", "field2"},
+			tags: map[parser.ConfigParam]string{
+				"name":        "name",
+				"age":         "age",
+				"nested":      "nested",
+				"nestedSlice": "nestedSlice",
+			},
+			val:     "42",
+			dst:     &TestStruct{NestedSlice: []NestedStruct{{Field2: 0}}},
+			wantErr: true,
+			errMsg:  "array index is missing for the array nestedSlice",
+		},
 		{
 			name: "overwrite nested map element",
 			ptrs: []string{"nestedMap", "key1", "field1"},
@@ -307,6 +281,21 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 			errMsg:  "The value for field field1 cannot be set",
 		},
 		{
+			name: "overwrite nested map element containing index",
+			ptrs: []string{"nestedMap[0]", "key1", "field1"},
+			tags: map[parser.ConfigParam]string{
+				"name":        "name",
+				"age":         "age",
+				"nested":      "nested",
+				"nestedSlice": "nestedSlice",
+				"nestedMap":   "nestedMap",
+			},
+			val:     "Updated",
+			dst:     &TestStruct{NestedMap: map[string]NestedStruct{"key1": {Field1: "Original"}}},
+			wantErr: true,
+			errMsg:  "array index can be used for arrays only",
+		},
+		{
 			name: "overwrite nonexistent field",
 			ptrs: []string{"nonexistent"},
 			tags: map[parser.ConfigParam]string{
@@ -315,11 +304,51 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 				"nested":      "nested",
 				"nestedSlice": "nestedSlice",
 				"nestedMap":   "nestedMap",
+				"nestedPtr":   "nestedPtr",
 			},
 			val:     "Value",
 			dst:     &TestStruct{},
 			wantErr: true,
 			errMsg:  "overwrite for field nonexistent not found",
+		},
+		{
+			name:    "overwrite without ptrs",
+			ptrs:    []string{},
+			val:     "Value",
+			dst:     &TestStruct{},
+			wantErr: true,
+			errMsg:  "overwrite cannot be done for object",
+		},
+		{
+			name:    "overwrite with invalid index",
+			ptrs:    []string{"name[-]"},
+			val:     "Value",
+			dst:     &TestStruct{},
+			wantErr: true,
+			errMsg:  "invalid index value in name[-]",
+		},
+		{
+			name: "overwrite with invalid index",
+			ptrs: []string{"name"},
+			tagsErr: map[parser.ConfigParam]string{
+				"name": "invalid tag",
+			},
+			val:     "Value",
+			dst:     &TestStruct{},
+			wantErr: true,
+			errMsg:  "invalid tag",
+		},
+		{
+			name: "overwrite with tag without name",
+			ptrs: []string{"age"},
+			tags: map[parser.ConfigParam]string{
+				"age": "age",
+			},
+			tagsWithoutName: []string{
+				"name",
+			},
+			val: "3",
+			dst: &TestStruct{Age: 3},
 		},
 	}
 
@@ -330,7 +359,10 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 				parserMock.On("ParseTag", string(name)).Return(map[parser.ConfigParam]string{"name": value}, nil)
 			}
 			for name, msg := range tt.tagsErr {
-				parserMock.On("ParseTag", name).Return(nil, errors.New(msg))
+				parserMock.On("ParseTag", string(name)).Return(nil, errors.New(msg))
+			}
+			for _, name := range tt.tagsWithoutName {
+				parserMock.On("ParseTag", name).Return(map[parser.ConfigParam]string{"factory": "test"}, nil)
 			}
 
 			o := &nativeOverwriter{parser: parserMock, fnd: fndMock}
@@ -354,14 +386,14 @@ func Test_nativeOverwriter_overwriteStruct(t *testing.T) {
 func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 	tests := []struct {
 		name        string
-		dst         map[string]interface{}
+		dst         interface{}
 		ptrs        []string
 		tags        map[parser.ConfigParam]string
 		tagsErr     map[parser.ConfigParam]string
 		val         string
 		wantErr     bool
 		errMsg      string
-		expectedMap map[string]interface{}
+		expectedMap interface{}
 	}{
 		{
 			name: "overwrite direct map value",
@@ -392,8 +424,8 @@ func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 			expectedMap: map[string]interface{}{"sliceKey": []string{"sliceOldValue1", "sliceNewValue2"}},
 		},
 		{
-			name: "overwrite struct field within map",
-			dst: map[string]interface{}{
+			name: "overwrite struct field within map pointer",
+			dst: &map[string]interface{}{
 				"structKey": &TestStruct{Name: "oldName"},
 			},
 			ptrs: []string{"structKey", "name"},
@@ -401,7 +433,7 @@ func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 				"name": "name",
 			},
 			val:         "newName",
-			expectedMap: map[string]interface{}{"structKey": &TestStruct{Name: "newName"}},
+			expectedMap: &map[string]interface{}{"structKey": &TestStruct{Name: "newName"}},
 		},
 		{
 			name: "key not found in map",
@@ -412,6 +444,103 @@ func Test_nativeOverwriter_overwriteMap(t *testing.T) {
 				"key":            "value",
 				"nonexistentKey": "newValue",
 			},
+		},
+		{
+			name:    "invalid pointer path",
+			dst:     map[string]interface{}{"key1": "value1"},
+			ptrs:    []string{},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "pointer path is empty, cannot proceed with map overwriteation",
+		},
+		{
+			name:    "non-map destination",
+			dst:     "not a map",
+			ptrs:    []string{"key"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "destination is not a map or cannot be set",
+		},
+		{
+			name:    "invalid key",
+			dst:     map[string]interface{}{"key1": []string{"value1", "value2"}},
+			ptrs:    []string{"key3[0]"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "key key3[0] not found in map",
+		},
+		{
+			name:    "invalid index",
+			dst:     map[string]interface{}{"key1": []string{"value1", "value2"}},
+			ptrs:    []string{"key1[-]"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "invalid index value in key1[-]",
+		},
+		{
+			name:    "slice without index",
+			dst:     map[string]interface{}{"key1": []string{"value1", "value2"}},
+			ptrs:    []string{"key1", "value1"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "array index is missing for the array key1",
+		},
+		{
+			name:    "scalar not at the ned",
+			dst:     map[string]interface{}{"key1": "val1"},
+			ptrs:    []string{"key1", "value1"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "scalar cannot be used before the end of overwrite pointer",
+		},
+		//{
+		//	name:        "overwrite int value in map",
+		//	dst:         map[string]interface{}{"intKey": 10},
+		//	ptrs:        []string{"intKey"},
+		//	val:         "20",
+		//	expectedMap: map[string]interface{}{"intKey": 20},
+		//},
+		//{
+		//	name:    "overwrite int value overflow error",
+		//	dst:     map[string]interface{}{"intKey": int8(10)},
+		//	ptrs:    []string{"intKey"},
+		//	val:     "128", // value exceeds int8 range
+		//	wantErr: true,
+		//	errMsg:  "value 128 overflows",
+		//},
+		{
+			name: "overwrite in nested struct within map",
+			dst: map[string]interface{}{
+				"structKey": &TestStruct{Nested: NestedStruct{Field1: "oldName"}},
+			},
+			ptrs: []string{"structKey", "nested", "field1"},
+			tags: map[parser.ConfigParam]string{
+				"name":   "name",
+				"age":    "age",
+				"nested": "nested",
+				"field1": "field1",
+			},
+			val:         "newName",
+			expectedMap: map[string]interface{}{"structKey": &TestStruct{Nested: NestedStruct{Field1: "newName"}}},
+		},
+		{
+			name: "attempt to overwrite non-existent nested key",
+			dst: map[string]interface{}{
+				"existingKey": map[string]string{"existingNestedKey": "value"},
+			},
+			ptrs: []string{"existingKey", "nonexistentNestedKey"},
+			val:  "newValue",
+			expectedMap: map[string]interface{}{
+				"existingKey": map[string]string{"existingNestedKey": "value", "nonexistentNestedKey": "newValue"},
+			},
+		},
+		{
+			name:    "overwrite value with pointer in path",
+			dst:     map[string]interface{}{"key": "value"},
+			ptrs:    []string{"key[0]"},
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "array index can be used for arrays only",
 		},
 	}
 
@@ -465,6 +594,20 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 			expectedSlice: []string{"oldValue1", "newValue2"},
 		},
 		{
+			name: "overwrite map in slice",
+			dst: []map[string]string{
+				{"key1": "oldName1"},
+				{"key2": "oldName2"},
+			},
+			ptrs:  []string{"key2"},
+			index: 1,
+			val:   "newName2",
+			expectedSlice: []map[string]string{
+				{"key1": "oldName1"},
+				{"key2": "newName2"},
+			},
+		},
+		{
 			name: "overwrite struct field in slice",
 			dst: []*TestStruct{
 				{Name: "oldName1"},
@@ -482,8 +625,35 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 			},
 		},
 		{
+			name:          "overwrite with interface scalar value",
+			dst:           []interface{}{1, 2},
+			ptrs:          []string{},
+			index:         1,
+			val:           "3",
+			expectedSlice: []interface{}{1, 3},
+		},
+		{
+			name:    "overwrite with invalid interface scalar value",
+			dst:     []interface{}{1, 2},
+			ptrs:    []string{},
+			index:   1,
+			val:     "abc",
+			wantErr: true,
+			errMsg:  "failed to convert abc to integer: strconv.ParseInt: parsing \"abc\": invalid syntax",
+		},
+		{
+			name:    "overwrite with with nested scalar",
+			dst:     []interface{}{1, 2},
+			ptrs:    []string{"name"},
+			index:   1,
+			val:     "3",
+			wantErr: true,
+			errMsg:  "scalar cannot be used before the end of overwrite pointer",
+		},
+
+		{
 			name:    "index out of range",
-			dst:     []string{"value1", "value2"},
+			dst:     &[]string{"value1", "value2"},
 			ptrs:    []string{},
 			index:   3,
 			val:     "newValue",
@@ -498,6 +668,15 @@ func Test_nativeOverwriter_overwriteSlice(t *testing.T) {
 			val:     "newValue",
 			wantErr: true,
 			errMsg:  "array of arrays are not supported for overwrites",
+		},
+		{
+			name:    "destination is not a slice",
+			dst:     1,
+			ptrs:    []string{"0"},
+			index:   0,
+			val:     "newValue",
+			wantErr: true,
+			errMsg:  "destination is not a slice",
 		},
 	}
 
@@ -620,7 +799,7 @@ func Test_nativeOverwriter_overwriteScalar(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dstValue := reflect.ValueOf(tt.dst).Elem()
 			o := &nativeOverwriter{}
-			err := o.overwriteScalar(dstValue, tt.ptrs, tt.val)
+			result, err := o.overwriteScalar(dstValue, tt.ptrs, tt.val)
 
 			if tt.wantErr {
 				if assert.Error(t, err) && tt.errMsg != "" {
@@ -628,8 +807,89 @@ func Test_nativeOverwriter_overwriteScalar(t *testing.T) {
 				}
 			} else {
 				if assert.NoError(t, err) {
-					actual := reflect.ValueOf(tt.dst).Elem().Interface()
+					actual := result.Interface()
 					assert.Equal(t, tt.want, actual)
+				}
+			}
+		})
+	}
+}
+
+func Test_nativeOverwriter_parseFieldNameAndIndex(t *testing.T) {
+	fndMock := &appMocks.MockFoundation{}
+	parserMock := parserMocks.NewMockParser(t)
+	tests := []struct {
+		name          string
+		ptr           string
+		wantFieldName string
+		wantIndex     int
+		wantIsSlice   bool
+		wantErr       bool
+		errMsg        string
+	}{
+		{
+			name:          "normal field",
+			ptr:           "instances",
+			wantFieldName: "instances",
+			wantIndex:     0,
+			wantIsSlice:   false,
+			wantErr:       false,
+		},
+		{
+			name:          "field with index",
+			ptr:           "instances[0]",
+			wantFieldName: "instances",
+			wantIndex:     0,
+			wantIsSlice:   true,
+			wantErr:       false,
+		},
+		{
+			name:          "field with negative index - invalid",
+			ptr:           "instances[-1]",
+			wantFieldName: "instances",
+			wantIndex:     -1,
+			wantIsSlice:   true,
+		},
+		{
+			name:          "field with non-integer index - invalid",
+			ptr:           "instances[abc]",
+			wantFieldName: "instances[abc]",
+			wantIndex:     0,
+			wantIsSlice:   false,
+		},
+		{
+			name:          "nested field with index",
+			ptr:           "config[3].setting",
+			wantFieldName: "config[3].setting",
+			wantIndex:     0,
+			wantIsSlice:   false,
+			wantErr:       false,
+		},
+		{
+			name:          "nested field with index",
+			ptr:           "config[-]",
+			wantFieldName: "",
+			wantIndex:     0,
+			wantIsSlice:   false,
+			wantErr:       true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &nativeOverwriter{
+				fnd:    fndMock,
+				parser: parserMock,
+			}
+			gotFieldName, gotIndex, gotIsSlice, err := o.parseFieldNameAndIndex(tt.ptr)
+			if tt.wantErr {
+				if assert.Error(t, err) && tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				if assert.NoError(t, err) {
+					assert.Equal(t, tt.wantFieldName, gotFieldName)
+					assert.Equal(t, tt.wantIndex, gotIndex)
+					assert.Equal(t, tt.wantIsSlice, gotIsSlice)
 				}
 			}
 		})

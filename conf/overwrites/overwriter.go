@@ -59,7 +59,7 @@ func (t *nativeOverwriter) overwriteStruct(dst reflect.Value, ptrs []string, val
 	}
 
 	if len(ptrs) == 0 {
-		return errors.Errorf("overwrite canot be for object")
+		return errors.Errorf("overwrite cannot be done for object")
 	}
 
 	ptr := ptrs[0]
@@ -106,8 +106,13 @@ func (t *nativeOverwriter) overwriteStruct(dst reflect.Value, ptrs []string, val
 				case reflect.Map:
 					return t.overwriteMap(fieldValue, ptrs, val)
 				default:
-					if dst.CanSet() {
-						return t.overwriteScalar(fieldValue, ptrs, val)
+					newVal, err := t.overwriteScalar(fieldValue, []string{}, val)
+					if err != nil {
+						return err
+					}
+					if fieldValue.CanSet() {
+						fieldValue.Set(newVal)
+						return nil
 					} else {
 						return errors.Errorf("The value for field %s cannot be set", fieldName)
 					}
@@ -182,7 +187,7 @@ func (t *nativeOverwriter) overwriteMap(dst reflect.Value, ptrs []string, val st
 		case reflect.Map:
 			return t.overwriteMap(existingValue, ptrs, val)
 		default:
-			return t.overwriteScalar(existingValue, ptrs, val)
+			return errors.Errorf("scalar cannot be used before the end of overwrite pointer")
 		}
 	}
 }
@@ -204,10 +209,6 @@ func (t *nativeOverwriter) overwriteSlice(dst reflect.Value, ptrs []string, inde
 	}
 
 	existingValue := dst.Index(index)
-	if len(ptrs) == 0 {
-		return t.overwriteScalar(existingValue, ptrs, val)
-	}
-
 	existingValueKind := existingValue.Kind()
 	if existingValueKind == reflect.Interface && !existingValue.IsNil() {
 		existingValue = existingValue.Elem()
@@ -218,6 +219,16 @@ func (t *nativeOverwriter) overwriteSlice(dst reflect.Value, ptrs []string, inde
 		existingValueKind = existingValue.Kind()
 	}
 
+	if len(ptrs) == 0 {
+		newValue, err := t.overwriteScalar(existingValue, ptrs, val)
+		if err != nil {
+			return err
+		}
+		// Set the new value to the slice index
+		dst.Index(index).Set(newValue)
+		return nil
+	}
+
 	// Recursively overwrite the existing value
 	if existingValueKind == reflect.Map {
 		return t.overwriteMap(existingValue, ptrs, val)
@@ -226,45 +237,46 @@ func (t *nativeOverwriter) overwriteSlice(dst reflect.Value, ptrs []string, inde
 	} else if existingValueKind == reflect.Struct {
 		return t.overwriteStruct(existingValue, ptrs, val)
 	} else {
-		return t.overwriteScalar(existingValue, ptrs, val)
+		return errors.Errorf("scalar cannot be used before the end of overwrite pointer")
 	}
 }
 
-func (t *nativeOverwriter) overwriteScalar(dst reflect.Value, ptrs []string, val string) error {
+func (t *nativeOverwriter) overwriteScalar(dst reflect.Value, ptrs []string, val string) (reflect.Value, error) {
+	var newValue reflect.Value
+
+	if len(ptrs) > 0 {
+		return newValue, errors.Errorf("overwrite field is not nestable")
+	}
+
 	switch dst.Kind() {
 	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
 		intVal, err := strconv.ParseInt(val, 10, 64) // Convert string to int64
 		if err != nil {
-			return errors.Errorf("failed to convert %s to integer: %v", val, err)
+			return newValue, errors.Errorf("failed to convert %s to integer: %v", val, err)
 		}
 		if dst.OverflowInt(intVal) {
-			return errors.Errorf("value %s overflows", val)
+			return newValue, errors.Errorf("value %s overflows", val)
 		}
-		dst.SetInt(intVal) // Set the converted integer value
+		newValue = reflect.ValueOf(intVal).Convert(dst.Type())
 
 	case reflect.Float32, reflect.Float64:
 		floatVal, err := strconv.ParseFloat(val, 64) // Convert string to float64
 		if err != nil {
-			return errors.Errorf("failed to convert %s to float: %v", val, err)
+			return newValue, errors.Errorf("failed to convert %s to float: %v", val, err)
 		}
 		if dst.OverflowFloat(floatVal) {
-			return errors.Errorf("value %s overflows", val)
+			return newValue, errors.Errorf("value %s overflows", val)
 		}
-		dst.SetFloat(floatVal) // Set the converted float value
+		newValue = reflect.ValueOf(floatVal).Convert(dst.Type())
+
+	case reflect.String:
+		newValue = reflect.ValueOf(val)
 
 	default:
-		if len(ptrs) > 0 {
-			return errors.Errorf("overwrite field is not nestable")
-		}
-		// For string fields, directly set the value
-		if dst.Kind() == reflect.String {
-			dst.SetString(val)
-		} else {
-			return errors.Errorf("unsupported value kind %s", dst.Kind())
-		}
+		return newValue, errors.Errorf("unsupported value kind %s", dst.Kind())
 	}
 
-	return nil
+	return newValue, nil
 }
 
 func (t *nativeOverwriter) parseFieldNameAndIndex(ptr string) (fieldName string, index int, isSlice bool, err error) {
