@@ -34,6 +34,8 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 	assert.NoError(t, err)
 	err = afero.WriteFile(mockFs, "/test.toml", []byte("key = \"value\""), 0644)
 	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/test.unknown", []byte("key = \"value\""), 0644)
+	assert.NoError(t, err)
 
 	// mock app.Foundation
 	MockFnd := &appMocks.MockFoundation{}
@@ -74,6 +76,13 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			name:    "Testing LoadConfig - Unsupported file type",
 			fnd:     MockFnd,
 			args:    args{path: "/test.unknown"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "Testing LoadConfig - Not found file type",
+			fnd:     MockFnd,
+			args:    args{path: "/testx.json"},
 			want:    nil,
 			wantErr: true,
 		},
@@ -207,6 +216,12 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 			want:    []LoadedConfig{},
 			wantErr: false,
 		},
+		{
+			name:    "Testing GlobConfigs - Invalid patter",
+			fnd:     MockFnd,
+			args:    args{path: "/dir/test[.yaml"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -248,6 +263,66 @@ func TestCreateLoader(t *testing.T) {
 			got := CreateLoader(tt.fnd)
 			// Here we use testify library's require package to compare struct pointers by their values
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLoadedConfigData_Path(t *testing.T) {
+	type fields struct {
+		path string
+		data map[string]interface{}
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "test path",
+			fields: fields{
+				path: "/var/test",
+				data: nil,
+			},
+			want: "/var/test",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := LoadedConfigData{
+				path: tt.fields.path,
+				data: tt.fields.data,
+			}
+			assert.Equalf(t, tt.want, d.Path(), "Path()")
+		})
+	}
+}
+
+func TestLoadedConfigData_Data(t *testing.T) {
+	type fields struct {
+		path string
+		data map[string]interface{}
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   map[string]interface{}
+	}{
+		{
+			name: "test path",
+			fields: fields{
+				path: "/var/test",
+				data: map[string]interface{}{"test": "val"},
+			},
+			want: map[string]interface{}{"test": "val"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := LoadedConfigData{
+				path: tt.fields.path,
+				data: tt.fields.data,
+			}
+			assert.Equalf(t, tt.want, d.Data(), "Data()")
 		})
 	}
 }

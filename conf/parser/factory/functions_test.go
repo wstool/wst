@@ -5,7 +5,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
-	parserMocks "github.com/bukka/wst/mocks/conf/parser"
+	externalMocks "github.com/bukka/wst/mocks/external"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"reflect"
@@ -14,7 +14,7 @@ import (
 
 func TestCreateFactories(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
-	parserMock := parserMocks.NewMockParser(t)
+	parserMock := externalMocks.NewMockMiniParser(t)
 	testData := map[string]interface{}{"exampleKey": "exampleValue"}
 	testStructure := make(map[string]interface{})
 	testPath := "testPath"
@@ -816,7 +816,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			parserMock := parserMocks.NewMockParser(t)
+			parserMock := externalMocks.NewMockMiniParser(t)
 			f := CreateFactories(fndMock, parserMock.ParseStruct)
 
 			// Setup mock expectations

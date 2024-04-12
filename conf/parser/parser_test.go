@@ -22,7 +22,6 @@ import (
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
 	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
-	parserMocks "github.com/bukka/wst/mocks/conf/parser"
 	factoryMocks "github.com/bukka/wst/mocks/conf/parser/factory"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -1980,8 +1979,6 @@ type stackTracer interface {
 func TestCreateParser(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
 	loaderMock := loaderMocks.NewMockLoader(t)
-	parserMock := parserMocks.NewMockParser(t)
-	factories := factory.CreateFactories(fndMock, parserMock.ParseStruct)
 
 	tests := []struct {
 		name   string
@@ -2000,7 +1997,7 @@ func TestCreateParser(t *testing.T) {
 			parser, ok := got.(*ConfigParser)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, parser.fnd)
-			assert.IsType(t, factories, parser.factories)
+			assert.NotNil(t, parser.factories)
 		})
 	}
 }

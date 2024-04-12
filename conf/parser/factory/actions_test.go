@@ -5,7 +5,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
-	parserMocks "github.com/bukka/wst/mocks/conf/parser"
+	externalMocks "github.com/bukka/wst/mocks/external"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -13,7 +13,7 @@ import (
 
 func TestCreateActionsFactory(t *testing.T) {
 	fndMock := &appMocks.MockFoundation{}
-	parserMock := parserMocks.NewMockParser(t)
+	parserMock := externalMocks.NewMockMiniParser(t)
 	testData := map[string]interface{}{"exampleKey": "exampleValue"}
 	testStructure := make(map[string]interface{})
 	testPath := "testPath"
@@ -599,7 +599,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parserMock := parserMocks.NewMockParser(t)
+			parserMock := externalMocks.NewMockMiniParser(t)
 			assert := assert.New(t)
 
 			// Setup mock expectations
