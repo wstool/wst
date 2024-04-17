@@ -23,7 +23,6 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/instances"
 	"github.com/bukka/wst/run/services"
 	"io"
 	"os"
@@ -55,7 +54,6 @@ func (m *Maker) Make(
 
 type localEnvironment struct {
 	environment.CommonEnvironment
-	instance    instances.Instance
 	workspace   string
 	initialized bool
 }

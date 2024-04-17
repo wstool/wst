@@ -117,11 +117,11 @@ func (m *Maker) mergeLocalAndCommon(local, common types.Environment) (types.Envi
 	if !localEnvironmentOk {
 		return nil, errors.New("type assertion to *LocalEnvironment failed")
 	}
-	mergedCommon, err := m.mergeCommonEnvironment(&localEnvironment.CommonEnvironment, common)
+	mergedCommon, err := m.mergeCommonEnvironment(&types.CommonEnvironment{Ports: localEnvironment.Ports}, common)
 	if err != nil {
 		return nil, err
 	}
-	localEnvironment.CommonEnvironment = *mergedCommon.(*types.CommonEnvironment)
+	localEnvironment.Ports = mergedCommon.(*types.CommonEnvironment).Ports
 
 	return localEnvironment, nil
 }
@@ -131,11 +131,11 @@ func (m *Maker) mergeContainerAndCommon(container, common types.Environment) (ty
 	if !containerEnvironmentOk {
 		return nil, errors.New("type assertion to *ContainerEnvironment failed")
 	}
-	mergedCommon, err := m.mergeCommonEnvironment(&containerEnvironment.CommonEnvironment, common)
+	mergedCommon, err := m.mergeCommonEnvironment(&types.CommonEnvironment{Ports: containerEnvironment.Ports}, common)
 	if err != nil {
 		return nil, err
 	}
-	containerEnvironment.CommonEnvironment = *mergedCommon.(*types.CommonEnvironment)
+	containerEnvironment.Ports = mergedCommon.(*types.CommonEnvironment).Ports
 
 	return containerEnvironment, nil
 }
@@ -145,11 +145,16 @@ func (m *Maker) mergeDockerAndContainer(docker, container types.Environment) (ty
 	if !dockerEnvironmentOk {
 		return nil, errors.New("type assertion to *DockerEnvironment failed")
 	}
-	mergedContainer, err := m.mergeContainerEnvironment(&dockerEnvironment.ContainerEnvironment, container)
+	mergedContainer, err := m.mergeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:    dockerEnvironment.Ports,
+		Registry: dockerEnvironment.Registry,
+	}, container)
 	if err != nil {
 		return nil, err
 	}
-	dockerEnvironment.ContainerEnvironment = *mergedContainer.(*types.ContainerEnvironment)
+	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
+	dockerEnvironment.Ports = mergedContainerRef.Ports
+	dockerEnvironment.Registry = mergedContainerRef.Registry
 
 	return dockerEnvironment, nil
 }
@@ -159,11 +164,16 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Environm
 	if !kubernetesEnvironmentOk {
 		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
 	}
-	mergedContainer, err := m.mergeContainerEnvironment(&kubernetesEnvironment.ContainerEnvironment, container)
+	mergedContainer, err := m.mergeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:    kubernetesEnvironment.Ports,
+		Registry: kubernetesEnvironment.Registry,
+	}, container)
 	if err != nil {
 		return nil, err
 	}
-	kubernetesEnvironment.ContainerEnvironment = *mergedContainer.(*types.ContainerEnvironment)
+	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
+	kubernetesEnvironment.Ports = mergedContainerRef.Ports
+	kubernetesEnvironment.Registry = mergedContainerRef.Registry
 
 	return kubernetesEnvironment, nil
 }
@@ -242,9 +252,10 @@ func (m *Maker) mergeLocalEnvironment(spec, instance types.Environment) (types.E
 	if err != nil {
 		return nil, err
 	}
+	mergedCommonRef := mergedCommon.(*types.CommonEnvironment)
 
 	mergedLocal := &types.LocalEnvironment{
-		CommonEnvironment: *mergedCommon.(*types.CommonEnvironment),
+		Ports: mergedCommonRef.Ports,
 	}
 
 	return mergedLocal, nil
@@ -261,10 +272,11 @@ func (m *Maker) mergeContainerEnvironment(spec, instance types.Environment) (typ
 	if err != nil {
 		return nil, err
 	}
+	mergedCommonRef := mergedCommon.(*types.CommonEnvironment)
 
 	mergedContainer := &types.ContainerEnvironment{
-		CommonEnvironment: *mergedCommon.(*types.CommonEnvironment),
-		Registry:          specContainer.Registry,
+		Ports:    mergedCommonRef.Ports,
+		Registry: specContainer.Registry,
 	}
 
 	if instanceContainer.Registry.Auth.Username != "" {
@@ -288,10 +300,12 @@ func (m *Maker) mergeDockerEnvironment(spec, instance types.Environment) (types.
 	if err != nil {
 		return nil, err
 	}
+	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
 
 	mergedDocker := &types.DockerEnvironment{
-		ContainerEnvironment: *mergedContainer.(*types.ContainerEnvironment),
-		NamePrefix:           specDocker.NamePrefix,
+		Ports:      mergedContainerRef.Ports,
+		Registry:   mergedContainerRef.Registry,
+		NamePrefix: specDocker.NamePrefix,
 	}
 
 	if instanceDocker.NamePrefix != "" {
@@ -312,11 +326,13 @@ func (m *Maker) mergeKubernetesEnvironment(spec, instance types.Environment) (ty
 	if err != nil {
 		return nil, err
 	}
+	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
 
 	mergedKubernetes := &types.KubernetesEnvironment{
-		ContainerEnvironment: *mergedContainer.(*types.ContainerEnvironment),
-		Namespace:            specKubernetes.Namespace,
-		Kubeconfig:           specKubernetes.Kubeconfig,
+		Ports:      mergedContainerRef.Ports,
+		Registry:   mergedContainerRef.Registry,
+		Namespace:  specKubernetes.Namespace,
+		Kubeconfig: specKubernetes.Kubeconfig,
 	}
 
 	if instanceKubernetes.Namespace != "" {
