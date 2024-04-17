@@ -35,7 +35,11 @@ func CreateMaker(fnd app.Foundation, commonMaker *common.Maker) *Maker {
 }
 
 func (m *Maker) MakeSandbox(config *types.LocalSandbox) (*Sandbox, error) {
-	commonSandbox, err := m.commonMaker.MakeSandbox(&config.CommonSandbox)
+	commonSandbox, err := m.commonMaker.MakeSandbox(&types.CommonSandbox{
+		Dirs:      config.Dirs,
+		Hooks:     config.Hooks,
+		Available: config.Available,
+	})
 	if err != nil {
 		return nil, err
 	}
