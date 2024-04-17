@@ -22,7 +22,6 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services"
 	"os"
 	"syscall"
 )
@@ -143,7 +142,12 @@ func (m *Maker) MakeHook(config types.SandboxHook, hookType HookType) (Hook, err
 }
 
 type Hook interface {
-	Execute(ctx context.Context, service services.Service) (task.Task, error)
+	Execute(
+		ctx context.Context,
+		ss *environment.ServiceSettings,
+		env environment.Environment,
+		st task.Task,
+	) (task.Task, error)
 }
 
 type BaseHook struct {
@@ -155,16 +159,20 @@ type HookNative struct {
 	BaseHook
 }
 
-func (h *HookNative) Execute(ctx context.Context, service services.Service) (task.Task, error) {
-	serviceTask := service.Task()
+func (h *HookNative) Execute(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	env environment.Environment,
+	st task.Task,
+) (task.Task, error) {
 	var err error
 	if h.Type == StartHookType {
-		if serviceTask != nil {
+		if st != nil {
 			return nil, errors.New("task has already been created which is likely because start already done")
 		}
-		serviceTask, err = service.Environment().RunTask(ctx, service, nil)
+		st, err = env.RunTask(ctx, ss, nil)
 	} else {
-		if serviceTask == nil {
+		if st == nil {
 			return nil, errors.New("task has not been created which is likely because start is not done")
 		}
 	}
@@ -173,7 +181,7 @@ func (h *HookNative) Execute(ctx context.Context, service services.Service) (tas
 		return nil, err
 	}
 
-	return serviceTask, nil
+	return st, nil
 }
 
 type HookArgsCommand struct {
@@ -182,7 +190,7 @@ type HookArgsCommand struct {
 	Args       []string
 }
 
-func (h *HookArgsCommand) newCommand(service services.Service) (*environment.Command, error) {
+func (h *HookArgsCommand) newCommand(ss *environment.ServiceSettings) (*environment.Command, error) {
 	executable, err := service.RenderTemplate(h.Executable, service.ServerParameters())
 	if err != nil {
 		return nil, err
@@ -202,30 +210,34 @@ func (h *HookArgsCommand) newCommand(service services.Service) (*environment.Com
 	return cmd, nil
 }
 
-func (h *HookArgsCommand) Execute(ctx context.Context, service services.Service) (task.Task, error) {
-	serviceTask := service.Task()
-	command, err := h.newCommand(service)
+func (h *HookArgsCommand) Execute(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	env environment.Environment,
+	st task.Task,
+) (task.Task, error) {
+	command, err := h.newCommand(ss)
 	if err != nil {
 		return nil, err
 	}
 
 	if h.Type == StartHookType {
-		if serviceTask != nil {
+		if st != nil {
 			return nil, errors.New("task has already been created which is likely because start already done")
 		}
-		serviceTask, err = service.Environment().RunTask(ctx, service, command)
+		st, err = env.RunTask(ctx, ss, command)
 	} else {
-		if serviceTask == nil {
+		if st == nil {
 			return nil, errors.New("task has not been created which is likely because start is not done")
 		}
-		err = service.Environment().ExecTaskCommand(ctx, service, serviceTask, command)
+		err = env.ExecTaskCommand(ctx, ss, st, command)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return serviceTask, nil
+	return st, nil
 }
 
 type HookShellCommand struct {
@@ -234,13 +246,18 @@ type HookShellCommand struct {
 	Shell   string
 }
 
-func (h *HookShellCommand) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+func (h *HookShellCommand) Execute(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	env environment.Environment,
+	st task.Task,
+) (task.Task, error) {
 	argsCommand := &HookArgsCommand{
 		BaseHook:   h.BaseHook,
 		Executable: h.Shell,
 		Args:       []string{"-c", h.Command},
 	}
-	return argsCommand.Execute(ctx, service)
+	return argsCommand.Execute(ctx, ss, env, st)
 }
 
 type HookSignal struct {
@@ -248,19 +265,23 @@ type HookSignal struct {
 	Signal os.Signal
 }
 
-func (h *HookSignal) Execute(ctx context.Context, service services.Service) (task.Task, error) {
+func (h *HookSignal) Execute(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	env environment.Environment,
+	st task.Task,
+) (task.Task, error) {
 	if h.Type == StartHookType {
 		return nil, fmt.Errorf("signal hook cannot be executed on start")
 	}
-	task := service.Task()
-	if task == nil {
+	if st == nil {
 		return nil, errors.New("task does not exist for signal hook to execute")
 	}
 
-	err := service.Environment().ExecTaskSignal(ctx, service, task, h.Signal)
+	err := env.ExecTaskSignal(ctx, ss, st, h.Signal)
 	if err != nil {
 		return nil, err
 	}
 
-	return task, nil
+	return st, nil
 }

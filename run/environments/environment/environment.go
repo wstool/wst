@@ -20,7 +20,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"io"
 	"os"
 )
@@ -45,13 +45,25 @@ type ContainerRegistry struct {
 	Auth ContainerRegistryAuth
 }
 
+type ServiceSettings struct {
+	Name                   string
+	FullName               string
+	Port                   int32
+	Public                 bool
+	Sandbox                sandbox.Sandbox
+	EnvironmentConfigPaths map[string]string
+	EnvironmentScriptPaths map[string]string
+	WorkspaceConfigPaths   map[string]string
+	WorkspaceScriptPaths   map[string]string
+}
+
 type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
-	RootPath(service services.Service) string
-	RunTask(ctx context.Context, service services.Service, cmd *Command) (task.Task, error)
-	ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *Command) error
-	ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error
+	RootPath(workspace string) string
+	RunTask(ctx context.Context, ss *ServiceSettings, cmd *Command) (task.Task, error)
+	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command) error
+	ExecTaskSignal(ctx context.Context, ss *ServiceSettings, target task.Task, signal os.Signal) error
 	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error)
 	PortsStart() int32
 	PortsEnd() int32

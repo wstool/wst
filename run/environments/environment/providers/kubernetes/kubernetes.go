@@ -23,7 +23,6 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services"
 	"io"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
@@ -136,11 +135,11 @@ func int32Ptr(i int32) *int32 {
 	return &i
 }
 
-func (e *kubernetesEnvironment) serviceName(service services.Service) string {
+func (e *kubernetesEnvironment) serviceName(ss *environment.ServiceSettings) string {
 	if e.useFullName {
-		return service.FullName()
+		return ss.FullName
 	} else {
-		return service.Name()
+		return ss.Name
 	}
 }
 
@@ -239,10 +238,10 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 func (e *kubernetesEnvironment) createDeployment(
 	ctx context.Context,
 	serviceName string,
-	service services.Service,
+	ss *environment.ServiceSettings,
 	cmd *environment.Command,
 ) (*kubernetesTask, error) {
-	containerConfig, err := service.Sandbox().ContainerConfig()
+	containerConfig, err := ss.Sandbox.ContainerConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +252,8 @@ func (e *kubernetesEnvironment) createDeployment(
 	err = e.processWorkspacePaths(
 		ctx,
 		serviceName,
-		service.WorkspaceConfigPaths(),
-		service.EnvironmentConfigPaths(),
+		ss.WorkspaceConfigPaths,
+		ss.EnvironmentConfigPaths,
 		&volumeMounts,
 		&volumes,
 	)
@@ -264,8 +263,8 @@ func (e *kubernetesEnvironment) createDeployment(
 	err = e.processWorkspacePaths(
 		ctx,
 		serviceName,
-		service.WorkspaceScriptPaths(),
-		service.EnvironmentScriptPaths(),
+		ss.WorkspaceScriptPaths,
+		ss.EnvironmentScriptPaths,
 		&volumeMounts,
 		&volumes,
 	)
@@ -301,13 +300,13 @@ func (e *kubernetesEnvironment) createDeployment(
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:    service.Name(),
+							Name:    ss.Name,
 							Image:   containerConfig.Image(),
 							Command: command,
 							Args:    args,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: service.Port(),
+									ContainerPort: ss.Port,
 								},
 							},
 							VolumeMounts: volumeMounts,
@@ -368,10 +367,10 @@ func (e *kubernetesEnvironment) createService(
 	ctx context.Context,
 	kubeTask *kubernetesTask,
 	serviceName string,
-	service services.Service,
+	ss *environment.ServiceSettings,
 ) error {
 	var kubeServiceType corev1.ServiceType
-	if service.IsPublic() {
+	if ss.Public {
 		kubeServiceType = corev1.ServiceTypeLoadBalancer
 	} else {
 		kubeServiceType = corev1.ServiceTypeClusterIP
@@ -384,8 +383,8 @@ func (e *kubernetesEnvironment) createService(
 			Type: kubeServiceType,
 			Ports: []corev1.ServicePort{
 				{
-					Port:       service.Port(),
-					TargetPort: intstr.FromInt32(service.Port()),
+					Port:       ss.Port,
+					TargetPort: intstr.FromInt32(ss.Port),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -403,10 +402,10 @@ func (e *kubernetesEnvironment) createService(
 	kubeTask.service = kubeService
 
 	if e.Fnd.DryRun() {
-		if service.IsPublic() {
+		if ss.Public {
 			kubeTask.servicePublicUrl = "http://127.0.0.1"
 		}
-		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, service.Port())
+		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, ss.Port)
 		return nil
 	}
 
@@ -430,10 +429,10 @@ func (e *kubernetesEnvironment) createService(
 				}
 				if len(svc.Status.LoadBalancer.Ingress) > 0 {
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
-					if service.IsPublic() {
+					if ss.Public {
 						kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
 					}
-					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, service.Port())
+					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, ss.Port)
 					return nil
 				}
 			case watch.Deleted:
@@ -447,13 +446,13 @@ func (e *kubernetesEnvironment) createService(
 	}
 }
 
-func (e *kubernetesEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
-	serviceName := e.serviceName(service)
-	kubeTask, err := e.createDeployment(ctx, serviceName, service, cmd)
+func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
+	serviceName := e.serviceName(ss)
+	kubeTask, err := e.createDeployment(ctx, serviceName, ss, cmd)
 	if err != nil {
 		return nil, err
 	}
-	err = e.createService(ctx, kubeTask, serviceName, service)
+	err = e.createService(ctx, kubeTask, serviceName, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -461,11 +460,11 @@ func (e *kubernetesEnvironment) RunTask(ctx context.Context, service services.Se
 	return kubeTask, nil
 }
 
-func (e *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
+func (e *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
 	return fmt.Errorf("executing command is not currently supported in Kubernetes environment")
 }
 
-func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
+func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
 	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
@@ -504,7 +503,7 @@ func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, ou
 	return combinedReader, nil
 }
 
-func (e *kubernetesEnvironment) RootPath(service services.Service) string {
+func (e *kubernetesEnvironment) RootPath(workspace string) string {
 	return ""
 }
 

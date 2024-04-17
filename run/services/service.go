@@ -302,7 +302,7 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 }
 
 func (s *nativeService) configPaths(configPath string) (string, string, error) {
-	environmentRootPath := s.environment.RootPath(s)
+	environmentRootPath := s.environment.RootPath(s.workspace)
 	sandboxConfDir, err := s.sandbox.Dir(sandbox.ConfDirType)
 	if err != nil {
 		return "", "", err
@@ -386,13 +386,28 @@ func (s *nativeService) renderScripts() error {
 	return nil
 }
 
+func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
+	return &environment.ServiceSettings{
+		Name:                   s.name,
+		FullName:               s.fullName,
+		Port:                   s.Port(),
+		Public:                 s.IsPublic(),
+		Sandbox:                s.sandbox,
+		EnvironmentConfigPaths: s.environmentConfigPaths,
+		EnvironmentScriptPaths: s.environmentScriptPaths,
+		WorkspaceConfigPaths:   s.workspaceConfigPaths,
+		WorkspaceScriptPaths:   s.workspaceScriptPaths,
+	}
+}
+
 func (s *nativeService) Reload(ctx context.Context) error {
 	hook, err := s.sandbox.Hook(hooks.ReloadHookType)
 	if err != nil {
 		return err
 	}
 
-	_, err = hook.Execute(ctx, s)
+	ss := s.makeEnvServiceSettings()
+	_, err = hook.Execute(ctx, ss, s.environment, s.task)
 
 	return err
 }
@@ -403,7 +418,8 @@ func (s *nativeService) Restart(ctx context.Context) error {
 		return err
 	}
 
-	_, err = hook.Execute(ctx, s)
+	ss := s.makeEnvServiceSettings()
+	_, err = hook.Execute(ctx, ss, s.environment, s.task)
 
 	return err
 }
@@ -427,7 +443,8 @@ func (s *nativeService) Start(ctx context.Context) error {
 	}
 
 	// Execute start hook
-	t, err := hook.Execute(ctx, s)
+	ss := s.makeEnvServiceSettings()
+	t, err := hook.Execute(ctx, ss, s.environment, s.task)
 	if err != nil {
 		return err
 	}
@@ -442,7 +459,8 @@ func (s *nativeService) Stop(ctx context.Context) error {
 		return err
 	}
 
-	_, err = hook.Execute(ctx, s)
+	ss := s.makeEnvServiceSettings()
+	_, err = hook.Execute(ctx, ss, s.environment, s.task)
 	if err != nil {
 		s.task = nil
 	}

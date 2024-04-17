@@ -32,7 +32,6 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services"
 )
 
 type Maker struct {
@@ -129,8 +128,8 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context) error {
 	return nil
 }
 
-func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
-	sandboxContainerConfig, err := service.Sandbox().ContainerConfig()
+func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
+	sandboxContainerConfig, err := ss.Sandbox.ContainerConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -162,10 +161,10 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 
 	// Prepare host config with Port bindings
-	serverPort := string(service.Port())
+	serverPort := string(ss.Port)
 	hostUrl := ""
 	var hostConfig *container.HostConfig
-	if service.IsPublic() {
+	if ss.Public {
 		hostPort := string(e.ReservePort())
 		portMapName := nat.Port(serverPort + "/tcp")
 		hostConfig = &container.HostConfig{
@@ -179,17 +178,17 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 
 	// Bind configs and scripts to the host config
-	wsConfigPaths := service.WorkspaceConfigPaths()
-	wsScriptPaths := service.WorkspaceScriptPaths()
+	wsConfigPaths := ss.WorkspaceConfigPaths
+	wsScriptPaths := ss.WorkspaceScriptPaths
 	binds := make([]string, 0, len(wsConfigPaths)+len(wsScriptPaths))
-	for configName, envConfigPath := range service.EnvironmentConfigPaths() {
+	for configName, envConfigPath := range ss.EnvironmentConfigPaths {
 		wsConfigPath, found := wsConfigPaths[configName]
 		if !found {
 			return nil, fmt.Errorf("no workspace config for %s", configName)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsConfigPath, envConfigPath))
 	}
-	for scriptName, envScriptPath := range service.EnvironmentScriptPaths() {
+	for scriptName, envScriptPath := range ss.EnvironmentScriptPaths {
 		wsScriptPath, found := wsScriptPaths[scriptName]
 		if !found {
 			return nil, fmt.Errorf("no workspace script for %s", scriptName)
@@ -206,12 +205,12 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 
 	// Create the Docker container
-	containerName := fmt.Sprintf("%s-%s", e.namePrefix, service.Name())
+	containerName := fmt.Sprintf("%s-%s", e.namePrefix, ss.Name)
 	var containerId string
 	if !dryRun {
 		containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Docker container for service %s: %w", service.Name(), err)
+			return nil, fmt.Errorf("failed to create Docker container for service %s: %w", ss.Name, err)
 		}
 
 		// Start the Docker container
@@ -233,7 +232,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 		containerReady:      false,
 	}
 
-	e.tasks[service.FullName()] = dockTask
+	e.tasks[ss.FullName] = dockTask
 
 	if dryRun {
 		dockTask.containerReady = true
@@ -279,11 +278,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, service services.Servic
 	}
 }
 
-func (e *dockerEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
+func (e *dockerEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
 	return fmt.Errorf("executing command is not currently supported in Docker environment")
 }
 
-func (e *dockerEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
+func (e *dockerEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
 	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
@@ -305,7 +304,7 @@ func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, output
 	return reader, nil
 }
 
-func (e *dockerEnvironment) RootPath(service services.Service) string {
+func (e *dockerEnvironment) RootPath(workspace string) string {
 	return ""
 }
 

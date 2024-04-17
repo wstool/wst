@@ -23,7 +23,6 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services"
 	"io"
 	"os"
 	"path/filepath"
@@ -58,8 +57,8 @@ type localEnvironment struct {
 	initialized bool
 }
 
-func (l *localEnvironment) RootPath(service services.Service) string {
-	return service.Workspace()
+func (l *localEnvironment) RootPath(workspace string) string {
+	return workspace
 }
 
 func (l *localEnvironment) Init(ctx context.Context) error {
@@ -83,7 +82,7 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 	return nil
 }
 
-func (l *localEnvironment) RunTask(ctx context.Context, service services.Service, cmd *environment.Command) (task.Task, error) {
+func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
 	if !l.initialized {
 		err := l.Init(ctx)
 		if err != nil {
@@ -99,8 +98,8 @@ func (l *localEnvironment) RunTask(ctx context.Context, service services.Service
 
 	return &localTask{
 		cmd:         command,
-		serviceName: service.Name(),
-		serviceUrl:  fmt.Sprintf("http://localhost:%d", service.Port()),
+		serviceName: ss.Name,
+		serviceUrl:  fmt.Sprintf("http://localhost:%d", ss.Port),
 	}, nil
 }
 
@@ -119,7 +118,7 @@ func convertTask(target task.Task) (*localTask, error) {
 	return localTask, nil
 }
 
-func (l *localEnvironment) ExecTaskCommand(ctx context.Context, service services.Service, target task.Task, cmd *environment.Command) error {
+func (l *localEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
 	_, err := convertTask(target)
 	if err != nil {
 		return err
@@ -128,7 +127,7 @@ func (l *localEnvironment) ExecTaskCommand(ctx context.Context, service services
 	return l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args).Run()
 }
 
-func (l *localEnvironment) ExecTaskSignal(ctx context.Context, service services.Service, target task.Task, signal os.Signal) error {
+func (l *localEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
 	localTask, err := convertTask(target)
 	if err != nil {
 		return err
