@@ -548,6 +548,100 @@ func (_c *MockFoundation_UserHomeDir_Call) RunAndReturn(run func() (string, erro
 	return _c
 }
 
+// VegetaAttacker provides a mock function with given fields:
+func (_m *MockFoundation) VegetaAttacker() app.VegetaAttacker {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for VegetaAttacker")
+	}
+
+	var r0 app.VegetaAttacker
+	if rf, ok := ret.Get(0).(func() app.VegetaAttacker); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(app.VegetaAttacker)
+		}
+	}
+
+	return r0
+}
+
+// MockFoundation_VegetaAttacker_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VegetaAttacker'
+type MockFoundation_VegetaAttacker_Call struct {
+	*mock.Call
+}
+
+// VegetaAttacker is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) VegetaAttacker() *MockFoundation_VegetaAttacker_Call {
+	return &MockFoundation_VegetaAttacker_Call{Call: _e.mock.On("VegetaAttacker")}
+}
+
+func (_c *MockFoundation_VegetaAttacker_Call) Run(run func()) *MockFoundation_VegetaAttacker_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_VegetaAttacker_Call) Return(_a0 app.VegetaAttacker) *MockFoundation_VegetaAttacker_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_VegetaAttacker_Call) RunAndReturn(run func() app.VegetaAttacker) *MockFoundation_VegetaAttacker_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// VegetaMetrics provides a mock function with given fields:
+func (_m *MockFoundation) VegetaMetrics() app.VegetaMetrics {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for VegetaMetrics")
+	}
+
+	var r0 app.VegetaMetrics
+	if rf, ok := ret.Get(0).(func() app.VegetaMetrics); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(app.VegetaMetrics)
+		}
+	}
+
+	return r0
+}
+
+// MockFoundation_VegetaMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VegetaMetrics'
+type MockFoundation_VegetaMetrics_Call struct {
+	*mock.Call
+}
+
+// VegetaMetrics is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) VegetaMetrics() *MockFoundation_VegetaMetrics_Call {
+	return &MockFoundation_VegetaMetrics_Call{Call: _e.mock.On("VegetaMetrics")}
+}
+
+func (_c *MockFoundation_VegetaMetrics_Call) Run(run func()) *MockFoundation_VegetaMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_VegetaMetrics_Call) Return(_a0 app.VegetaMetrics) *MockFoundation_VegetaMetrics_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_VegetaMetrics_Call) RunAndReturn(run func() app.VegetaMetrics) *MockFoundation_VegetaMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockFoundation creates a new instance of MockFoundation. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockFoundation(t interface {

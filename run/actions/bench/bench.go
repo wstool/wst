@@ -94,9 +94,9 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		Method: a.method,
 		URL:    url,
 	})
-	attacker := vegeta.NewAttacker()
+	attacker := a.fnd.VegetaAttacker()
 
-	var metrics vegeta.Metrics
+	metrics := a.fnd.VegetaMetrics()
 	for res := range attacker.Attack(targeter, rate, a.duration, a.service.Name()) {
 		metrics.Add(res)
 	}

@@ -33,6 +33,8 @@ type Foundation interface {
 	LookupEnvVar(key string) (string, bool)
 	ExecCommand(ctx context.Context, name string, args []string) Command
 	HttpClient() HttpClient
+	VegetaAttacker() VegetaAttacker
+	VegetaMetrics() VegetaMetrics
 }
 
 type DefaultFoundation struct {
@@ -103,4 +105,15 @@ func (f *DefaultFoundation) HttpClient() HttpClient {
 		return NewDryRunHttpClient()
 	}
 	return NewRealHttpClient()
+}
+
+func (f *DefaultFoundation) VegetaMetrics() VegetaMetrics {
+	return NewDefaultVegetaMetrics()
+}
+
+func (f *DefaultFoundation) VegetaAttacker() VegetaAttacker {
+	if f.dryRun {
+		return NewDryRunVegetaAttacker()
+	}
+	return NewRealVegetaAttacker()
 }
