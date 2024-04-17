@@ -36,7 +36,7 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 
 func (m *ActionMaker) Make(
 	config *types.NotAction,
-	svcs services.Services,
+	sl services.ServiceLocator,
 	defaultTimeout int,
 	actionMaker *actions.ActionMaker,
 ) (actions.Action, error) {
@@ -44,7 +44,7 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
-	newAction, err := actionMaker.MakeAction(config.Action, svcs, config.Timeout)
+	newAction, err := actionMaker.MakeAction(config.Action, sl, config.Timeout)
 	if err != nil {
 		return nil, err
 	}

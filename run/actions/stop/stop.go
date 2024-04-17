@@ -36,7 +36,7 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 
 func (m *ActionMaker) Make(
 	config *types.StopAction,
-	svcs services.Services,
+	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (actions.Action, error) {
 	var stopServices services.Services
@@ -47,7 +47,7 @@ func (m *ActionMaker) Make(
 
 	if len(config.Services) > 0 {
 		for _, configService := range config.Services {
-			svc, err := svcs.FindService(configService)
+			svc, err := sl.Find(configService)
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +57,7 @@ func (m *ActionMaker) Make(
 			}
 		}
 	} else {
-		stopServices = svcs
+		stopServices = sl.Services()
 	}
 
 	if config.Timeout == 0 {

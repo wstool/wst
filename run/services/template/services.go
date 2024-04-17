@@ -34,13 +34,17 @@ func (s *Service) User() string {
 }
 
 type Services struct {
-	services services.Services
+	sl services.ServiceLocator
 }
 
-func (s *Services) Find(name string) Service {
-	return Service{service: s.services[name]}
+func (s *Services) Find(name string) (*Service, error) {
+	service, err := s.sl.Find(name)
+	if err != nil {
+		return nil, err
+	}
+	return &Service{service: service}, nil
 }
 
-func NewServices(services services.Services) *Services {
-	return &Services{services: services}
+func NewServices(sl services.ServiceLocator) *Services {
+	return &Services{sl: sl}
 }

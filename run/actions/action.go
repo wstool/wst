@@ -67,28 +67,28 @@ func CreateActionMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *A
 	}
 }
 
-func (m *ActionMaker) MakeAction(config types.Action, svcs services.Services, defaultTimeout int) (Action, error) {
+func (m *ActionMaker) MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (Action, error) {
 	switch action := config.(type) {
 	case *types.BenchAction:
-		return m.benchMaker.Make(action, svcs, defaultTimeout)
+		return m.benchMaker.Make(action, sl, defaultTimeout)
 	case *types.OutputExpectationAction:
-		return m.expectMaker.MakeOutputAction(action, svcs, defaultTimeout)
+		return m.expectMaker.MakeOutputAction(action, sl, defaultTimeout)
 	case *types.ResponseExpectationAction:
-		return m.expectMaker.MakeResponseAction(action, svcs, defaultTimeout)
+		return m.expectMaker.MakeResponseAction(action, sl, defaultTimeout)
 	case *types.NotAction:
-		return m.notMaker.Make(action, svcs, defaultTimeout, m)
+		return m.notMaker.Make(action, sl, defaultTimeout, m)
 	case *types.ParallelAction:
-		return m.parallelMaker.Make(action, svcs, defaultTimeout, m)
+		return m.parallelMaker.Make(action, sl, defaultTimeout, m)
 	case *types.RequestAction:
-		return m.requestMaker.Make(action, svcs, defaultTimeout)
+		return m.requestMaker.Make(action, sl, defaultTimeout)
 	case *types.ReloadAction:
-		return m.reloadMaker.Make(action, svcs, defaultTimeout)
+		return m.reloadMaker.Make(action, sl, defaultTimeout)
 	case *types.RestartAction:
-		return m.restartMaker.Make(action, svcs, defaultTimeout)
+		return m.restartMaker.Make(action, sl, defaultTimeout)
 	case *types.StartAction:
-		return m.startMaker.Make(action, svcs, defaultTimeout)
+		return m.startMaker.Make(action, sl, defaultTimeout)
 	case *types.StopAction:
-		return m.stopMaker.Make(action, svcs, defaultTimeout)
+		return m.stopMaker.Make(action, sl, defaultTimeout)
 	default:
 		return nil, fmt.Errorf("unsupported action type: %T", config)
 	}

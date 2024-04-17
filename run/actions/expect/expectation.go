@@ -34,12 +34,12 @@ func CreateExpectationActionMaker(fnd app.Foundation, parametersMaker *parameter
 }
 
 func (m *ExpectationActionMaker) MakeCommonExpectation(
-	svcs services.Services,
+	sl services.ServiceLocator,
 	serviceName string,
 	timeout,
 	defaultTimeout int,
 ) (*CommonExpectation, error) {
-	svc, err := svcs.FindService(serviceName)
+	svc, err := sl.Find(serviceName)
 	if err != nil {
 		return nil, err
 	}

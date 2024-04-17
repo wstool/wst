@@ -28,19 +28,19 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(svc services.Service, svcs services.Services) Template {
+func (m *Maker) Make(svc services.Service, sl services.ServiceLocator) Template {
 	return &nativeTemplate{
-		fnd:  m.fnd,
-		svc:  svc,
-		svcs: svcs,
+		fnd: m.fnd,
+		svc: svc,
+		sl:  sl,
 	}
 }
 
 type nativeTemplate struct {
 	// Fondation
 	fnd app.Foundation
-	// All services.
-	svcs services.Services
+	// Service locator.
+	sl services.ServiceLocator
 	// Current service.
 	svc services.Service
 }
@@ -65,7 +65,7 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	data := &Data{
 		Configs:    configs,
 		Service:    *NewService(t.svc),
-		Services:   *NewServices(t.svcs),
+		Services:   *NewServices(t.sl),
 		Parameters: NewParameters(params, t),
 	}
 	if err := mainTmpl.Execute(writer, data); err != nil {

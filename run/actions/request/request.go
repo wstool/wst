@@ -39,10 +39,10 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 
 func (m *ActionMaker) Make(
 	config *types.RequestAction,
-	svcs services.Services,
+	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (actions.Action, error) {
-	svc, err := svcs.FindService(config.Service)
+	svc, err := sl.Find(config.Service)
 	if err != nil {
 		return nil, err
 	}

@@ -82,6 +82,29 @@ func (s Services) AddService(service Service) error {
 	return nil
 }
 
+type ServiceLocator interface {
+	Find(name string) (Service, error)
+	Services() Services
+}
+
+type nativeServiceLocator struct {
+	services Services
+}
+
+func (sl *nativeServiceLocator) Services() Services {
+	return sl.services
+}
+
+func (sl *nativeServiceLocator) Find(name string) (Service, error) {
+	return sl.services.FindService(name)
+}
+
+func NewServiceLocator(services Services) ServiceLocator {
+	return &nativeServiceLocator{
+		services: services,
+	}
+}
+
 type Maker struct {
 	fnd             app.Foundation
 	parametersMaker *parameters.Maker
@@ -103,7 +126,7 @@ func (m *Maker) Make(
 	environments environments.Environments,
 	instanceName string,
 	instanceWorkspace string,
-) (Services, error) {
+) (ServiceLocator, error) {
 	svcs := make(Services)
 	for serviceName, serviceConfig := range config {
 		var includedScripts scripts.Scripts
@@ -185,11 +208,13 @@ func (m *Maker) Make(
 		svcs[serviceName] = service
 	}
 
+	sl := NewServiceLocator(svcs)
+
 	for _, svc := range svcs {
-		svc.SetTemplate(m.templateMaker.Make(svc, svcs))
+		svc.SetTemplate(m.templateMaker.Make(svc, sl))
 	}
 
-	return svcs, nil
+	return sl, nil
 }
 
 type nativeServiceConfig struct {

@@ -55,10 +55,10 @@ type ResponseExpectation struct {
 
 func (m *ExpectationActionMaker) MakeResponseAction(
 	config *types.ResponseExpectationAction,
-	svcs services.Services,
+	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (actions.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(svcs, config.Service, config.Timeout, defaultTimeout)
+	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
 	if err != nil {
 		return nil, err
 	}

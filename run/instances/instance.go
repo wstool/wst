@@ -72,14 +72,14 @@ func (m *InstanceMaker) Make(
 		return nil, err
 	}
 
-	svcs, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, name, instanceWorkspace)
+	sl, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, name, instanceWorkspace)
 	if err != nil {
 		return nil, err
 	}
 
 	instanceActions := make([]actions.Action, len(instanceConfig.Actions))
 	for i, actionConfig := range instanceConfig.Actions {
-		action, err := m.actionMaker.MakeAction(actionConfig, svcs, instanceConfig.Timeouts.Action)
+		action, err := m.actionMaker.MakeAction(actionConfig, sl, instanceConfig.Timeouts.Action)
 		if err != nil {
 			return nil, err
 		}
