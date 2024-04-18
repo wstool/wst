@@ -46,7 +46,7 @@ type Service interface {
 	FullName() string
 	User() string
 	Group() string
-	Dirs() map[sandbox.DirType]string
+	Dirs() map[dir.DirType]string
 	Port() int32
 	EnvironmentConfigPaths() map[string]string
 	WorkspaceConfigPaths() map[string]string
