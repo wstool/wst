@@ -19,6 +19,7 @@ package container
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/sandbox/common"
 )
@@ -47,7 +48,7 @@ func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
 
 	sandbox := &Sandbox{
 		Sandbox: *commonSandbox,
-		config: sandbox.ContainerConfig{
+		config: containers.ContainerConfig{
 			ImageName:        config.Image.Name,
 			ImageTag:         config.Image.Tag,
 			RegistryUsername: config.Registry.Auth.Username,
@@ -60,11 +61,11 @@ func (m *Maker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, error) {
 
 type Sandbox struct {
 	common.Sandbox
-	config sandbox.ContainerConfig
+	config containers.ContainerConfig
 }
 
-func (s *Sandbox) ContainerConfig() (*sandbox.ContainerConfig, error) {
-	return &s.config, nil
+func (s *Sandbox) ContainerConfig() *containers.ContainerConfig {
+	return &s.config
 }
 
 func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
@@ -72,10 +73,7 @@ func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
 	if err != nil {
 		return err
 	}
-	containerConfig, err := parentSandbox.ContainerConfig()
-	if err != nil {
-		return err
-	}
+	containerConfig := parentSandbox.ContainerConfig()
 
 	if s.config.ImageName == "" {
 		s.config.ImageName = containerConfig.ImageName

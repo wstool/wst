@@ -15,20 +15,10 @@
 package sandbox
 
 import (
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 )
-
-type ContainerConfig struct {
-	ImageName        string
-	ImageTag         string
-	RegistryUsername string
-	RegistryPassword string
-}
-
-func (c *ContainerConfig) Image() string {
-	return c.ImageName + ":" + c.ImageTag
-}
 
 type Sandbox interface {
 	Available() bool
@@ -36,6 +26,6 @@ type Sandbox interface {
 	Dir(dirType dir.DirType) (string, error)
 	Hooks() map[hooks.HookType]hooks.Hook
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
-	ContainerConfig() (*ContainerConfig, error)
+	ContainerConfig() *containers.ContainerConfig
 	Inherit(parentSandbox Sandbox) error
 }

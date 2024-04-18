@@ -15,10 +15,9 @@
 package local
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/bukka/wst/run/sandboxes/sandbox/common"
 )
 
@@ -55,6 +54,6 @@ type Sandbox struct {
 	common.Sandbox
 }
 
-func (s *Sandbox) ContainerConfig() (*sandbox.ContainerConfig, error) {
-	return nil, fmt.Errorf("local sandbox does not have a container config")
+func (s *Sandbox) ContainerConfig() *containers.ContainerConfig {
+	return nil
 }

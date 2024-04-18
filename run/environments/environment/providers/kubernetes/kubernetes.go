@@ -23,6 +23,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
@@ -241,15 +242,15 @@ func (e *kubernetesEnvironment) createDeployment(
 	ss *environment.ServiceSettings,
 	cmd *environment.Command,
 ) (*kubernetesTask, error) {
-	containerConfig, err := ss.Sandbox.ContainerConfig()
-	if err != nil {
-		return nil, err
+	containerConfig := ss.ContainerConfig
+	if containerConfig == nil {
+		return nil, errors.New("container config is not set")
 	}
 
 	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 
-	err = e.processWorkspacePaths(
+	err := e.processWorkspacePaths(
 		ctx,
 		serviceName,
 		ss.WorkspaceConfigPaths,

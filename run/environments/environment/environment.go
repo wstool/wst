@@ -21,7 +21,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"io"
 	"os"
 )
@@ -51,7 +51,7 @@ type ServiceSettings struct {
 	FullName               string
 	Port                   int32
 	Public                 bool
-	Sandbox                sandbox.Sandbox
+	ContainerConfig        *containers.ContainerConfig
 	ServerParameters       parameters.Parameters
 	EnvironmentConfigPaths map[string]string
 	EnvironmentScriptPaths map[string]string

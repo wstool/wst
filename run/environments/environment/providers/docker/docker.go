@@ -24,6 +24,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"time"
@@ -129,9 +130,9 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context) error {
 }
 
 func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
-	sandboxContainerConfig, err := ss.Sandbox.ContainerConfig()
-	if err != nil {
-		return nil, err
+	sandboxContainerConfig := ss.ContainerConfig
+	if sandboxContainerConfig == nil {
+		return nil, errors.New("container config is not set")
 	}
 	imageName := sandboxContainerConfig.Image()
 	var command []string
@@ -139,7 +140,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		command = append([]string{cmd.Name}, cmd.Args...)
 	}
 
-	if err = e.ensureNetwork(ctx); err != nil {
+	if err := e.ensureNetwork(ctx); err != nil {
 		return nil, err
 	}
 
@@ -242,7 +243,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	timeout := time.After(30 * time.Second)
 	statusCh, errCh := e.cli.ContainerWait(ctx, containerId, container.WaitConditionNotRunning)
 	select {
-	case err = <-errCh:
+	case err := <-errCh:
 		if err != nil {
 			return nil, err
 		}

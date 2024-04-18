@@ -395,7 +395,7 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 		FullName:               s.fullName,
 		Port:                   s.Port(),
 		Public:                 s.public,
-		Sandbox:                s.sandbox,
+		ContainerConfig:        s.sandbox.ContainerConfig(),
 		ServerParameters:       s.serverParameters,
 		EnvironmentConfigPaths: s.environmentConfigPaths,
 		EnvironmentScriptPaths: s.environmentScriptPaths,
