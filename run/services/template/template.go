@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/servers"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,21 +28,24 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(svc services.Service, sl services.ServiceLocator) Template {
+func (m *Maker) Make(service Service, services map[string]Service, server servers.Server) Template {
 	return &nativeTemplate{
-		fnd: m.fnd,
-		svc: svc,
-		sl:  sl,
+		fnd:      m.fnd,
+		service:  service,
+		services: services,
+		server:   server,
 	}
 }
 
 type nativeTemplate struct {
 	// Fondation
 	fnd app.Foundation
-	// Service locator.
-	sl services.ServiceLocator
+	// Services.
+	services Services
 	// Current service.
-	svc services.Service
+	service Service
+	// Current server.
+	server servers.Server
 }
 
 type Data struct {
@@ -57,15 +60,15 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	if err != nil {
 		return fmt.Errorf("error parsing main template: %v", err)
 	}
-	configs := t.svc.EnvironmentConfigPaths()
+	configs := t.service.EnvironmentConfigPaths()
 	if configs == nil {
 		return fmt.Errorf("configs are not set")
 	}
 
 	data := &Data{
 		Configs:    configs,
-		Service:    *NewService(t.svc),
-		Services:   *NewServices(t.sl),
+		Service:    t.service,
+		Services:   t.services,
 		Parameters: NewParameters(params, t),
 	}
 	if err := mainTmpl.Execute(writer, data); err != nil {

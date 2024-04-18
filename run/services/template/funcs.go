@@ -8,7 +8,7 @@ import (
 )
 
 func (t *nativeTemplate) include(tmplName string, data interface{}) (string, error) {
-	serverTemplate, found := t.svc.Server().Template(tmplName)
+	serverTemplate, found := t.server.Template(tmplName)
 	if !found {
 		return "", fmt.Errorf("failed to find template: %s", tmplName)
 	}

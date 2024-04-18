@@ -128,6 +128,7 @@ func (m *Maker) Make(
 	instanceWorkspace string,
 ) (ServiceLocator, error) {
 	svcs := make(Services)
+	tmplSvcs := make(map[string]template.Service)
 	for serviceName, serviceConfig := range config {
 		var includedScripts scripts.Scripts
 
@@ -206,12 +207,13 @@ func (m *Maker) Make(
 		}
 
 		svcs[serviceName] = service
+		tmplSvcs[serviceName] = service
 	}
 
 	sl := NewServiceLocator(svcs)
 
 	for _, svc := range svcs {
-		svc.SetTemplate(m.templateMaker.Make(svc, sl))
+		svc.SetTemplate(m.templateMaker.Make(svc, tmplSvcs, svc.Server()))
 	}
 
 	return sl, nil
