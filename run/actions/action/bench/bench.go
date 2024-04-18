@@ -96,20 +96,33 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	})
 	attacker := a.fnd.VegetaAttacker()
 
+	results := attacker.Attack(targeter, rate, a.duration, a.service.Name())
+
 	metrics := a.fnd.VegetaMetrics()
-	for res := range attacker.Attack(targeter, rate, a.duration, a.service.Name()) {
-		metrics.Add(res)
-	}
-	metrics.Close()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for res := range results {
+			metrics.Add(res)
+		}
+		metrics.Close()
 
-	key := fmt.Sprintf("metrics/%s", a.id)
-	metricsData := &Metrics{
-		metrics: metrics,
-	}
-	a.fnd.Logger().Debugf("Storing response %s: %v", key, metricsData)
-	if err = runData.Store(key, metricsData); err != nil {
-		return false, err
-	}
+		key := fmt.Sprintf("metrics/%s", a.id)
+		metricsData := &Metrics{
+			metrics: metrics,
+		}
+		a.fnd.Logger().Debugf("Storing response %s: %v", key, metricsData)
+		if err = runData.Store(key, metricsData); err != nil {
+			a.fnd.Logger().Errorf("Error storing metrics data: %v", err)
+		}
+	}()
 
-	return true, nil
+	select {
+	case <-ctx.Done():
+		a.fnd.Logger().Infof("Cancelling attack due to context cancellation.")
+		return false, ctx.Err()
+	case <-done:
+		// Attack completed
+		return true, nil
+	}
 }
