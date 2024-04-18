@@ -20,47 +20,13 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/environments/environment/output"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"regexp"
 	"time"
 )
-
-func (m *ExpectationActionMaker) MakeOutputExpectation(
-	config *types.OutputExpectation,
-) (*OutputExpectation, error) {
-	orderType := OrderType(config.Order)
-	if orderType != OrderTypeFixed && orderType != OrderTypeRandom {
-		return nil, fmt.Errorf("invalid order type: %v", config.Order)
-	}
-
-	matchType := MatchType(config.Match)
-	if matchType != MatchTypeExact && matchType != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid match type: %v", config.Match)
-	}
-
-	outputType := OutputType(config.Type)
-	if outputType != OutputTypeAny && outputType != OutputTypeStdout && outputType != OutputTypeStderr {
-		return nil, fmt.Errorf("invalid output type: %v", config.Type)
-	}
-
-	return &OutputExpectation{
-		orderType:      orderType,
-		matchType:      matchType,
-		outputType:     outputType,
-		messages:       config.Messages,
-		renderTemplate: config.RenderTemplate,
-	}, nil
-}
-
-type OutputExpectation struct {
-	orderType      OrderType
-	matchType      MatchType
-	outputType     OutputType
-	messages       []string
-	renderTemplate bool
-}
 
 func (m *ExpectationActionMaker) MakeOutputAction(
 	config *types.OutputExpectationAction,
@@ -72,7 +38,7 @@ func (m *ExpectationActionMaker) MakeOutputAction(
 		return nil, err
 	}
 
-	outputExpectation, err := m.MakeOutputExpectation(&config.Output)
+	outputExpectation, err := m.expectationsMaker.MakeOutputExpectation(&config.Output)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +52,7 @@ func (m *ExpectationActionMaker) MakeOutputAction(
 
 type outputAction struct {
 	*CommonExpectation
-	*OutputExpectation
+	*expectations.OutputExpectation
 	parameters parameters.Parameters
 }
 
@@ -96,11 +62,11 @@ func (a *outputAction) Timeout() time.Duration {
 
 func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
-	outputType, err := a.getServiceOutputType(a.outputType)
+	outputType, err := a.getServiceOutputType(a.OutputType)
 	if err != nil {
 		return false, err
 	}
-	messages, err := a.renderMessages(a.messages)
+	messages, err := a.renderMessages(a.Messages)
 	if err != nil {
 		return false, err
 	}
@@ -129,13 +95,13 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 	return false, nil
 }
 
-func (a *outputAction) getServiceOutputType(outputType OutputType) (output.Type, error) {
+func (a *outputAction) getServiceOutputType(outputType expectations.OutputType) (output.Type, error) {
 	switch outputType {
-	case OutputTypeStdout:
+	case expectations.OutputTypeStdout:
 		return output.Stdout, nil
-	case OutputTypeStderr:
+	case expectations.OutputTypeStderr:
 		return output.Stderr, nil
-	case OutputTypeAny:
+	case expectations.OutputTypeAny:
 		return output.Any, nil
 	default:
 		return output.Any, fmt.Errorf("unknow output type %s", string(outputType))
@@ -143,7 +109,7 @@ func (a *outputAction) getServiceOutputType(outputType OutputType) (output.Type,
 }
 
 func (a *outputAction) renderMessages(messages []string) ([]string, error) {
-	if !a.renderTemplate {
+	if !a.RenderTemplate {
 		return messages, nil
 	}
 	var renderedMessages []string
@@ -159,7 +125,7 @@ func (a *outputAction) renderMessages(messages []string) ([]string, error) {
 }
 
 func (a *outputAction) matchMessages(line string, messages []string) ([]string, error) {
-	if a.orderType == OrderTypeFixed {
+	if a.OrderType == expectations.OrderTypeFixed {
 		if len(messages) > 0 {
 			matched, err := a.matchMessage(line, messages[0])
 			if err != nil {
@@ -169,7 +135,7 @@ func (a *outputAction) matchMessages(line string, messages []string) ([]string, 
 				return messages[1:], nil
 			}
 		}
-	} else if a.orderType == OrderTypeRandom {
+	} else if a.OrderType == expectations.OrderTypeRandom {
 		for index, message := range messages {
 			matched, err := a.matchMessage(line, message)
 			if err != nil {
@@ -180,19 +146,19 @@ func (a *outputAction) matchMessages(line string, messages []string) ([]string, 
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("unknown order type %s", string(a.orderType))
+		return nil, fmt.Errorf("unknown order type %s", string(a.OrderType))
 	}
 	return messages, nil
 }
 
 func (a *outputAction) matchMessage(line, message string) (bool, error) {
-	if a.matchType == MatchTypeExact {
+	if a.MatchType == expectations.MatchTypeExact {
 		a.fnd.Logger().Debugf("Matching message '%s' against line: %s", message, line)
 		return line == message, nil
-	} else if a.matchType == MatchTypeRegexp {
+	} else if a.MatchType == expectations.MatchTypeRegexp {
 		a.fnd.Logger().Debugf("Matching pattern '%s' against line: %s", message, line)
 		return regexp.MatchString(message, line)
 	} else {
-		return false, fmt.Errorf("unknown match type %s", string(a.matchType))
+		return false, fmt.Errorf("unknown match type %s", string(a.MatchType))
 	}
 }

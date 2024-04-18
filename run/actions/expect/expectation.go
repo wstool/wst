@@ -16,20 +16,27 @@ package expect
 
 import (
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"time"
 )
 
 type ExpectationActionMaker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
+	fnd               app.Foundation
+	expectationsMaker *expectations.Maker
+	parametersMaker   *parameters.Maker
 }
 
-func CreateExpectationActionMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *ExpectationActionMaker {
+func CreateExpectationActionMaker(
+	fnd app.Foundation,
+	expectationsMaker *expectations.Maker,
+	parametersMaker *parameters.Maker,
+) *ExpectationActionMaker {
 	return &ExpectationActionMaker{
-		fnd:             fnd,
-		parametersMaker: parametersMaker,
+		fnd:               fnd,
+		parametersMaker:   parametersMaker,
+		expectationsMaker: expectationsMaker,
 	}
 }
 

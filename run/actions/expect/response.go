@@ -21,37 +21,13 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/request"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"regexp"
 	"time"
 )
-
-func (m *ExpectationActionMaker) MakeResponseExpectation(
-	config *types.ResponseExpectation,
-) (*ResponseExpectation, error) {
-	match := MatchType(config.Body.Match)
-	if match != MatchTypeExact && match != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid MatchType: %v", config.Body.Match)
-	}
-
-	return &ResponseExpectation{
-		request:            config.Request,
-		headers:            config.Headers,
-		bodyContent:        config.Body.Content,
-		bodyMatch:          match,
-		bodyRenderTemplate: config.Body.RenderTemplate,
-	}, nil
-}
-
-type ResponseExpectation struct {
-	request            string
-	headers            types.Headers
-	bodyContent        string
-	bodyMatch          MatchType
-	bodyRenderTemplate bool
-}
 
 func (m *ExpectationActionMaker) MakeResponseAction(
 	config *types.ResponseExpectationAction,
@@ -63,7 +39,7 @@ func (m *ExpectationActionMaker) MakeResponseAction(
 		return nil, err
 	}
 
-	responseExpectation, err := m.MakeResponseExpectation(&config.Response)
+	responseExpectation, err := m.expectationsMaker.MakeResponseExpectation(&config.Response)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +53,7 @@ func (m *ExpectationActionMaker) MakeResponseAction(
 
 type responseAction struct {
 	*CommonExpectation
-	*ResponseExpectation
+	*expectations.ResponseExpectation
 	parameters parameters.Parameters
 }
 
@@ -87,7 +63,7 @@ func (a *responseAction) Timeout() time.Duration {
 
 func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
-	data, ok := runData.Load(fmt.Sprintf("response/%s", a.request))
+	data, ok := runData.Load(fmt.Sprintf("response/%s", a.Request))
 	if !ok {
 		return false, errors.New("response data not found")
 	}
@@ -96,10 +72,10 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	if !ok {
 		return false, errors.New("invalid response data type")
 	}
-	a.fnd.Logger().Debugf("Checking response %s data: %v", a.request, responseData)
+	a.fnd.Logger().Debugf("Checking response %s data: %v", a.Request, responseData)
 
 	// Compare headers.
-	for key, expectedValue := range a.headers {
+	for key, expectedValue := range a.Headers {
 		value, ok := responseData.Headers[key]
 		a.fnd.Logger().Debugf("Comparing header %s with value %s against expected value %s", key, value, expectedValue)
 		if !ok || (len(value) > 0 && value[0] != expectedValue) {
@@ -117,13 +93,13 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	}
 
 	// Compare body content based on bodyMatch.
-	switch a.bodyMatch {
-	case MatchTypeExact:
+	switch a.BodyMatch {
+	case expectations.MatchTypeExact:
 		a.fnd.Logger().Debugf("Matching body %s with expected content %s", responseData.Body, content)
 		if responseData.Body != content {
 			return false, errors.New("body content mismatch")
 		}
-	case MatchTypeRegexp:
+	case expectations.MatchTypeRegexp:
 		a.fnd.Logger().Debugf("Matching body %s with expected pattern %s", responseData.Body, content)
 		matched, err := regexp.MatchString(content, responseData.Body)
 		if err != nil {
@@ -138,12 +114,12 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 }
 
 func (a *responseAction) renderBodyContent(ctx context.Context) (string, error) {
-	if a.bodyRenderTemplate {
+	if a.BodyRenderTemplate {
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
 		default:
-			content, err := a.service.RenderTemplate(a.bodyContent, a.parameters)
+			content, err := a.service.RenderTemplate(a.BodyContent, a.parameters)
 			if err != nil {
 				return "", err
 			}
@@ -151,5 +127,5 @@ func (a *responseAction) renderBodyContent(ctx context.Context) (string, error) 
 		}
 	}
 
-	return a.bodyContent, nil
+	return a.BodyContent, nil
 }

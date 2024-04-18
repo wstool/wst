@@ -19,6 +19,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/sandboxes"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
@@ -67,10 +68,14 @@ type Maker struct {
 	parametersMaker *parameters.Maker
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
+func CreateMaker(
+	fnd app.Foundation,
+	expectationsMaker *expectations.Maker,
+	parametersMaker *parameters.Maker,
+) *Maker {
 	return &Maker{
 		fnd:             fnd,
-		actionsMaker:    actions.CreateMaker(fnd, parametersMaker),
+		actionsMaker:    actions.CreateMaker(fnd, expectationsMaker, parametersMaker),
 		configsMaker:    configs.CreateMaker(fnd, parametersMaker),
 		sandboxesMaker:  sandboxes.CreateMaker(fnd),
 		templatesMaker:  templates.CreateMaker(fnd),

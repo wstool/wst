@@ -17,7 +17,7 @@ package actions
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions/expect"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 )
 
@@ -35,16 +35,20 @@ func (a *Actions) Inherit(parentActions *Actions) {
 }
 
 type Maker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
-	expectMaker     *expect.ExpectationActionMaker
+	fnd               app.Foundation
+	expectationsMaker *expectations.Maker
+	parametersMaker   *parameters.Maker
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
+func CreateMaker(
+	fnd app.Foundation,
+	expectationsMaker *expectations.Maker,
+	parametersMaker *parameters.Maker,
+) *Maker {
 	return &Maker{
-		fnd:             fnd,
-		parametersMaker: parametersMaker,
-		expectMaker:     expect.CreateExpectationActionMaker(fnd, parametersMaker),
+		fnd:               fnd,
+		parametersMaker:   parametersMaker,
+		expectationsMaker: expectationsMaker,
 	}
 }
 

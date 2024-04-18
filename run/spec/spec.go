@@ -17,6 +17,7 @@ package spec
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers"
@@ -35,10 +36,11 @@ type Maker struct {
 
 func CreateMaker(fnd app.Foundation) *Maker {
 	parametersMaker := parameters.CreateMaker(fnd)
+	expectationsMaker := expectations.CreateMaker(fnd, parametersMaker)
 	return &Maker{
 		fnd:           fnd,
-		instanceMaker: instances.CreateInstanceMaker(fnd, parametersMaker),
-		serversMaker:  servers.CreateMaker(fnd, parametersMaker),
+		instanceMaker: instances.CreateInstanceMaker(fnd, expectationsMaker, parametersMaker),
+		serversMaker:  servers.CreateMaker(fnd, expectationsMaker, parametersMaker),
 	}
 }
 

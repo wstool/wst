@@ -21,57 +21,24 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/bench"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
-	"github.com/bukka/wst/run/metrics"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"time"
 )
 
-func (m *ExpectationActionMaker) MakeMetricsExpectation(
-	config *types.MetricsExpectation,
-) (*MetricsExpectation, error) {
-	rules := make([]MetricRule, 0, len(config.Rules))
-	for _, configRule := range config.Rules {
-		operator, err := metrics.ConvertToOperator(configRule.Operator)
-		if err != nil {
-			return nil, err
-		}
-		rules = append(rules, MetricRule{
-			metric:   configRule.Metric,
-			operator: operator,
-			value:    configRule.Value,
-		})
-	}
-
-	return &MetricsExpectation{
-		id:    config.Id,
-		rules: rules,
-	}, nil
-}
-
-type MetricRule struct {
-	metric   string
-	operator metrics.MetricOperator
-	value    float64
-}
-
-type MetricsExpectation struct {
-	id    string
-	rules []MetricRule
-}
-
 func (m *ExpectationActionMaker) MakeMetricsAction(
 	config *types.MetricsExpectationAction,
-	svcs services.Services,
+	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (actions.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(svcs, config.Service, config.Timeout, defaultTimeout)
+	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
 	if err != nil {
 		return nil, err
 	}
 
-	metricsExpectation, err := m.MakeMetricsExpectation(&config.Metrics)
+	metricsExpectation, err := m.expectationsMaker.MakeMetricsExpectation(&config.Metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +52,7 @@ func (m *ExpectationActionMaker) MakeMetricsAction(
 
 type metricsAction struct {
 	*CommonExpectation
-	*MetricsExpectation
+	*expectations.MetricsExpectation
 	parameters parameters.Parameters
 }
 
@@ -96,7 +63,7 @@ func (a *metricsAction) Timeout() time.Duration {
 func (a *metricsAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
 
-	data, ok := runData.Load(fmt.Sprintf("metrics/%s", a.id))
+	data, ok := runData.Load(fmt.Sprintf("metrics/%s", a.Id))
 	if !ok {
 		return false, errors.New("metrics data not found")
 	}
@@ -105,17 +72,17 @@ func (a *metricsAction) Execute(ctx context.Context, runData runtime.Data) (bool
 	if !ok {
 		return false, errors.New("invalid metrics data type")
 	}
-	a.fnd.Logger().Debugf("Checking metrics %s data: %v", a.id, metricsData)
+	a.fnd.Logger().Debugf("Checking metrics %s data: %v", a.Id, metricsData)
 
-	for _, rule := range a.rules {
-		metric, err := metricsData.Find(rule.metric)
+	for _, rule := range a.Rules {
+		metric, err := metricsData.Find(rule.Metric)
 		if err != nil {
-			return false, fmt.Errorf("failed to find metric %s: %w", rule.metric, err)
+			return false, fmt.Errorf("failed to find metric %s: %w", rule.Metric, err)
 		}
 
-		result, err := metric.Compare(rule.operator, rule.value)
+		result, err := metric.Compare(rule.Operator, rule.Value)
 		if err != nil {
-			return false, fmt.Errorf("failed to compare metric %s: %w", rule.metric, err)
+			return false, fmt.Errorf("failed to compare metric %s: %w", rule.Metric, err)
 		}
 
 		if !result {

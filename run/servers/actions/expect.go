@@ -3,14 +3,14 @@ package actions
 import (
 	"fmt"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions/expect"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 )
 
 type ExpectAction interface {
 	Parameters() parameters.Parameters
-	OutputExpectation() *expect.OutputExpectation
-	ResponseExpectation() *expect.ResponseExpectation
+	OutputExpectation() *expectations.OutputExpectation
+	ResponseExpectation() *expectations.ResponseExpectation
 }
 
 func (m *Maker) makeExpectAction(configAction types.ServerExpectationAction) (ExpectAction, error) {
@@ -20,7 +20,7 @@ func (m *Maker) makeExpectAction(configAction types.ServerExpectationAction) (Ex
 		if err != nil {
 			return nil, err
 		}
-		outputExpectation, err := m.expectMaker.MakeOutputExpectation(&action.Output)
+		outputExpectation, err := m.expectationsMaker.MakeOutputExpectation(&action.Output)
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +33,7 @@ func (m *Maker) makeExpectAction(configAction types.ServerExpectationAction) (Ex
 		if err != nil {
 			return nil, err
 		}
-		responseExpectation, err := m.expectMaker.MakeResponseExpectation(&action.Response)
+		responseExpectation, err := m.expectationsMaker.MakeResponseExpectation(&action.Response)
 		if err != nil {
 			return nil, err
 		}
@@ -60,14 +60,14 @@ func (m *Maker) makeExpectActions(configActions map[string]types.ServerExpectati
 
 type expectOutputAction struct {
 	parameters        parameters.Parameters
-	outputExpectation *expect.OutputExpectation
+	outputExpectation *expectations.OutputExpectation
 }
 
-func (a *expectOutputAction) OutputExpectation() *expect.OutputExpectation {
+func (a *expectOutputAction) OutputExpectation() *expectations.OutputExpectation {
 	return a.outputExpectation
 }
 
-func (a *expectOutputAction) ResponseExpectation() *expect.ResponseExpectation {
+func (a *expectOutputAction) ResponseExpectation() *expectations.ResponseExpectation {
 	return nil
 }
 
@@ -77,14 +77,14 @@ func (a *expectOutputAction) Parameters() parameters.Parameters {
 
 type expectResponseAction struct {
 	parameters          parameters.Parameters
-	responseExpectation *expect.ResponseExpectation
+	responseExpectation *expectations.ResponseExpectation
 }
 
-func (a *expectResponseAction) OutputExpectation() *expect.OutputExpectation {
+func (a *expectResponseAction) OutputExpectation() *expectations.OutputExpectation {
 	return nil
 }
 
-func (a *expectResponseAction) ResponseExpectation() *expect.ResponseExpectation {
+func (a *expectResponseAction) ResponseExpectation() *expectations.ResponseExpectation {
 	return a.responseExpectation
 }
 

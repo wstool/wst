@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expect
+package expectations
 
-type MatchType string
-
-const (
-	MatchTypeExact  MatchType = "exact"
-	MatchTypeRegexp MatchType = "regexp"
+import (
+	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/run/parameters"
 )
 
-type OrderType string
+type Maker struct {
+	fnd             app.Foundation
+	parametersMaker *parameters.Maker
+}
 
-const (
-	OrderTypeFixed  OrderType = "fixed"
-	OrderTypeRandom OrderType = "random"
-)
-
-type OutputType string
-
-const (
-	OutputTypeStdout OutputType = "stdout"
-	OutputTypeStderr OutputType = "stderr"
-	OutputTypeAny    OutputType = "any"
-)
+func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
+	return &Maker{
+		fnd:             fnd,
+		parametersMaker: parametersMaker,
+	}
+}
