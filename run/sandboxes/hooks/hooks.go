@@ -22,6 +22,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/task"
+	"github.com/bukka/wst/run/services/template"
 	"os"
 	"syscall"
 )
@@ -145,6 +146,7 @@ type Hook interface {
 	Execute(
 		ctx context.Context,
 		ss *environment.ServiceSettings,
+		tmpl template.Template,
 		env environment.Environment,
 		st task.Task,
 	) (task.Task, error)
@@ -162,6 +164,7 @@ type HookNative struct {
 func (h *HookNative) Execute(
 	ctx context.Context,
 	ss *environment.ServiceSettings,
+	tmpl template.Template,
 	env environment.Environment,
 	st task.Task,
 ) (task.Task, error) {
@@ -190,14 +193,14 @@ type HookArgsCommand struct {
 	Args       []string
 }
 
-func (h *HookArgsCommand) newCommand(ss *environment.ServiceSettings) (*environment.Command, error) {
-	executable, err := service.RenderTemplate(h.Executable, service.ServerParameters())
+func (h *HookArgsCommand) newCommand(ss *environment.ServiceSettings, tmpl template.Template) (*environment.Command, error) {
+	executable, err := tmpl.RenderToString(h.Executable, ss.ServerParameters)
 	if err != nil {
 		return nil, err
 	}
 	args := make([]string, len(h.Args))
 	for i, arg := range h.Args {
-		args[i], err = service.RenderTemplate(arg, service.ServerParameters())
+		args[i], err = tmpl.RenderToString(arg, ss.ServerParameters)
 		if err != nil {
 			return nil, err
 		}
@@ -213,10 +216,11 @@ func (h *HookArgsCommand) newCommand(ss *environment.ServiceSettings) (*environm
 func (h *HookArgsCommand) Execute(
 	ctx context.Context,
 	ss *environment.ServiceSettings,
+	tmpl template.Template,
 	env environment.Environment,
 	st task.Task,
 ) (task.Task, error) {
-	command, err := h.newCommand(ss)
+	command, err := h.newCommand(ss, tmpl)
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +253,7 @@ type HookShellCommand struct {
 func (h *HookShellCommand) Execute(
 	ctx context.Context,
 	ss *environment.ServiceSettings,
+	tmpl template.Template,
 	env environment.Environment,
 	st task.Task,
 ) (task.Task, error) {
@@ -257,7 +262,7 @@ func (h *HookShellCommand) Execute(
 		Executable: h.Shell,
 		Args:       []string{"-c", h.Command},
 	}
-	return argsCommand.Execute(ctx, ss, env, st)
+	return argsCommand.Execute(ctx, ss, tmpl, env, st)
 }
 
 type HookSignal struct {
@@ -268,6 +273,7 @@ type HookSignal struct {
 func (h *HookSignal) Execute(
 	ctx context.Context,
 	ss *environment.ServiceSettings,
+	tmpl template.Template,
 	env environment.Environment,
 	st task.Task,
 ) (task.Task, error) {

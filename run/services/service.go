@@ -391,8 +391,9 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 		Name:                   s.name,
 		FullName:               s.fullName,
 		Port:                   s.Port(),
-		Public:                 s.IsPublic(),
+		Public:                 s.public,
 		Sandbox:                s.sandbox,
+		ServerParameters:       s.serverParameters,
 		EnvironmentConfigPaths: s.environmentConfigPaths,
 		EnvironmentScriptPaths: s.environmentScriptPaths,
 		WorkspaceConfigPaths:   s.workspaceConfigPaths,
@@ -407,7 +408,7 @@ func (s *nativeService) Reload(ctx context.Context) error {
 	}
 
 	ss := s.makeEnvServiceSettings()
-	_, err = hook.Execute(ctx, ss, s.environment, s.task)
+	_, err = hook.Execute(ctx, ss, s.template, s.environment, s.task)
 
 	return err
 }
@@ -419,7 +420,7 @@ func (s *nativeService) Restart(ctx context.Context) error {
 	}
 
 	ss := s.makeEnvServiceSettings()
-	_, err = hook.Execute(ctx, ss, s.environment, s.task)
+	_, err = hook.Execute(ctx, ss, s.template, s.environment, s.task)
 
 	return err
 }
@@ -444,7 +445,7 @@ func (s *nativeService) Start(ctx context.Context) error {
 
 	// Execute start hook
 	ss := s.makeEnvServiceSettings()
-	t, err := hook.Execute(ctx, ss, s.environment, s.task)
+	t, err := hook.Execute(ctx, ss, s.template, s.environment, s.task)
 	if err != nil {
 		return err
 	}
@@ -460,7 +461,7 @@ func (s *nativeService) Stop(ctx context.Context) error {
 	}
 
 	ss := s.makeEnvServiceSettings()
-	_, err = hook.Execute(ctx, ss, s.environment, s.task)
+	_, err = hook.Execute(ctx, ss, s.template, s.environment, s.task)
 	if err != nil {
 		s.task = nil
 	}
