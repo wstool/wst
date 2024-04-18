@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package stop
+package reload
 
 import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -35,11 +35,11 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.StopAction,
+	config *types.ReloadAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
-	var stopServices services.Services
+) (action.Action, error) {
+	var reloadServices services.Services
 
 	if config.Service != "" {
 		config.Services = append(config.Services, config.Service)
@@ -51,13 +51,13 @@ func (m *ActionMaker) Make(
 			if err != nil {
 				return nil, err
 			}
-			err = stopServices.AddService(svc)
+			err = reloadServices.AddService(svc)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else {
-		stopServices = sl.Services()
+		reloadServices = sl.Services()
 	}
 
 	if config.Timeout == 0 {
@@ -66,7 +66,7 @@ func (m *ActionMaker) Make(
 
 	return &Action{
 		fnd:      m.fnd,
-		services: stopServices,
+		services: reloadServices,
 		timeout:  time.Duration(config.Timeout * 1e6),
 	}, nil
 }
@@ -82,10 +82,10 @@ func (a *Action) Timeout() time.Duration {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing stop action")
+	a.fnd.Logger().Infof("Executing reload action")
 	for _, svc := range a.services {
-		a.fnd.Logger().Debugf("Stopping service %s", svc.Name())
-		err := svc.Stop(ctx)
+		a.fnd.Logger().Debugf("Reloading service %s", svc.Name())
+		err := svc.Reload(ctx)
 		if err != nil {
 			return false, err
 		}

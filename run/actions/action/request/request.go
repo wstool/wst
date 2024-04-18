@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"io"
@@ -41,7 +41,7 @@ func (m *ActionMaker) Make(
 	config *types.RequestAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
+) (action.Action, error) {
 	svc, err := sl.Find(config.Service)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
-	return &action{
+	return &Action{
 		fnd:     m.fnd,
 		service: svc,
 		timeout: time.Duration(config.Timeout * 1e6),
@@ -68,7 +68,7 @@ type ResponseData struct {
 	Headers http.Header
 }
 
-type action struct {
+type Action struct {
 	fnd     app.Foundation
 	service services.Service
 	timeout time.Duration
@@ -78,11 +78,11 @@ type action struct {
 	headers types.Headers
 }
 
-func (a *action) Timeout() time.Duration {
+func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing request action")
 
 	url, err := a.service.PublicUrl(a.path)

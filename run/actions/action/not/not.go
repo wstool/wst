@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package start
+package not
 
 import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -35,61 +35,47 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.StartAction,
+	config *types.NotAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
-	var startServices services.Services
-
-	if config.Service != "" {
-		config.Services = append(config.Services, config.Service)
-	}
-
-	if len(config.Services) > 0 {
-		for _, configService := range config.Services {
-			svc, err := sl.Find(configService)
-			if err != nil {
-				return nil, err
-			}
-			err = startServices.AddService(svc)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		startServices = sl.Services()
-	}
-
+	actionMaker action.ActionMaker,
+) (action.Action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	return &action{
-		fnd:      m.fnd,
-		services: startServices,
-		timeout:  time.Duration(config.Timeout * 1e6),
+	newAction, err := actionMaker.MakeAction(config.Action, sl, config.Timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Action{
+		fnd:     m.fnd,
+		action:  newAction,
+		timeout: time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 
-type action struct {
-	fnd      app.Foundation
-	services services.Services
-	timeout  time.Duration
+type Action struct {
+	fnd     app.Foundation
+	action  action.Action
+	timeout time.Duration
 }
 
-func (a *action) Timeout() time.Duration {
+func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing start action")
-	for _, svc := range a.services {
-		a.fnd.Logger().Debugf("Starting service %s", svc.Name())
-		err := svc.Start(ctx)
-		if err != nil {
-			return false, err
-		}
+func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing not action")
+	success, err := a.action.Execute(ctx, runData)
+	if err != nil {
+		return false, err
 	}
-
-	return true, nil
+	a.fnd.Logger().Infof("Executed action resulted to %t - inverting to %t", success, !success)
+	if a.fnd.DryRun() {
+		// always return success for dry run
+		return true, nil
+	}
+	return !success, nil
 }

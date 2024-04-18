@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
+	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
@@ -15,7 +16,7 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 	config *types.CustomExpectationAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
+) (action.Action, error) {
 	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
 	if err != nil {
 		return nil, err
@@ -42,8 +43,8 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 
 type customAction struct {
 	*CommonExpectation
-	*OutputExpectation
-	*ResponseExpectation
+	*expectations.OutputExpectation
+	*expectations.ResponseExpectation
 	parameters parameters.Parameters
 }
 
@@ -53,20 +54,20 @@ func (a *customAction) Timeout() time.Duration {
 
 func (a *customAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	if a.OutputExpectation != nil {
-		action := outputAction{
+		oa := outputAction{
 			CommonExpectation: a.CommonExpectation,
 			OutputExpectation: a.OutputExpectation,
 			parameters:        a.parameters,
 		}
-		return action.Execute(ctx, runData)
+		return oa.Execute(ctx, runData)
 	}
 	if a.ResponseExpectation != nil {
-		action := responseAction{
+		ra := responseAction{
 			CommonExpectation:   a.CommonExpectation,
 			ResponseExpectation: a.ResponseExpectation,
 			parameters:          a.parameters,
 		}
-		return action.Execute(ctx, runData)
+		return ra.Execute(ctx, runData)
 	}
 	return false, fmt.Errorf("no expectation set")
 }

@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
@@ -32,7 +32,7 @@ func (m *ExpectationActionMaker) MakeOutputAction(
 	config *types.OutputExpectationAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
+) (action.Action, error) {
 	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
 	if err != nil {
 		return nil, err

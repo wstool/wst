@@ -15,30 +15,23 @@
 package actions
 
 import (
-	"context"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions/bench"
-	"github.com/bukka/wst/run/actions/expect"
-	"github.com/bukka/wst/run/actions/not"
-	"github.com/bukka/wst/run/actions/parallel"
-	"github.com/bukka/wst/run/actions/reload"
-	"github.com/bukka/wst/run/actions/request"
-	"github.com/bukka/wst/run/actions/restart"
-	"github.com/bukka/wst/run/actions/start"
-	"github.com/bukka/wst/run/actions/stop"
+	"github.com/bukka/wst/run/actions/action"
+	"github.com/bukka/wst/run/actions/action/bench"
+	"github.com/bukka/wst/run/actions/action/expect"
+	"github.com/bukka/wst/run/actions/action/not"
+	"github.com/bukka/wst/run/actions/action/parallel"
+	"github.com/bukka/wst/run/actions/action/reload"
+	"github.com/bukka/wst/run/actions/action/request"
+	"github.com/bukka/wst/run/actions/action/restart"
+	"github.com/bukka/wst/run/actions/action/start"
+	"github.com/bukka/wst/run/actions/action/stop"
 	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
-	"time"
 )
-
-type Action interface {
-	Execute(ctx context.Context, runData runtime.Data) (bool, error)
-	Timeout() time.Duration
-}
 
 type ActionMaker struct {
 	fnd           app.Foundation
@@ -72,7 +65,7 @@ func CreateActionMaker(
 	}
 }
 
-func (m *ActionMaker) MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (Action, error) {
+func (m *ActionMaker) MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (action.Action, error) {
 	switch action := config.(type) {
 	case *types.BenchAction:
 		return m.benchMaker.Make(action, sl, defaultTimeout)

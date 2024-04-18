@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package reload
+package restart
 
 import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -35,11 +35,11 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.ReloadAction,
+	config *types.RestartAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
-	var reloadServices services.Services
+) (action.Action, error) {
+	var restartServices services.Services
 
 	if config.Service != "" {
 		config.Services = append(config.Services, config.Service)
@@ -51,41 +51,41 @@ func (m *ActionMaker) Make(
 			if err != nil {
 				return nil, err
 			}
-			err = reloadServices.AddService(svc)
+			err = restartServices.AddService(svc)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else {
-		reloadServices = sl.Services()
+		restartServices = sl.Services()
 	}
 
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	return &action{
+	return &Action{
 		fnd:      m.fnd,
-		services: reloadServices,
+		services: restartServices,
 		timeout:  time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 
-type action struct {
+type Action struct {
 	fnd      app.Foundation
 	services services.Services
 	timeout  time.Duration
 }
 
-func (a *action) Timeout() time.Duration {
+func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing reload action")
+func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing restart action")
 	for _, svc := range a.services {
-		a.fnd.Logger().Debugf("Reloading service %s", svc.Name())
-		err := svc.Reload(ctx)
+		a.fnd.Logger().Debugf("Restarting service %s", svc.Name())
+		err := svc.Restart(ctx)
 		if err != nil {
 			return false, err
 		}

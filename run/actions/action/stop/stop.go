@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package restart
+package stop
 
 import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"time"
@@ -35,11 +35,11 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.RestartAction,
+	config *types.StopAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-) (actions.Action, error) {
-	var restartServices services.Services
+) (action.Action, error) {
+	var stopServices services.Services
 
 	if config.Service != "" {
 		config.Services = append(config.Services, config.Service)
@@ -51,41 +51,41 @@ func (m *ActionMaker) Make(
 			if err != nil {
 				return nil, err
 			}
-			err = restartServices.AddService(svc)
+			err = stopServices.AddService(svc)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else {
-		restartServices = sl.Services()
+		stopServices = sl.Services()
 	}
 
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	return &action{
+	return &Action{
 		fnd:      m.fnd,
-		services: restartServices,
+		services: stopServices,
 		timeout:  time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 
-type action struct {
+type Action struct {
 	fnd      app.Foundation
 	services services.Services
 	timeout  time.Duration
 }
 
-func (a *action) Timeout() time.Duration {
+func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing restart action")
+func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+	a.fnd.Logger().Infof("Executing stop action")
 	for _, svc := range a.services {
-		a.fnd.Logger().Debugf("Restarting service %s", svc.Name())
-		err := svc.Restart(ctx)
+		a.fnd.Logger().Debugf("Stopping service %s", svc.Name())
+		err := svc.Stop(ctx)
 		if err != nil {
 			return false, err
 		}

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/services"
 	"sync"
@@ -40,13 +40,13 @@ func (m *ActionMaker) Make(
 	config *types.ParallelAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-	actionMaker *actions.ActionMaker,
-) (actions.Action, error) {
+	actionMaker action.ActionMaker,
+) (action.Action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
-	var parallelActions []actions.Action
+	var parallelActions []action.Action
 	for _, configAction := range config.Actions {
 		newAction, err := actionMaker.MakeAction(configAction, sl, config.Timeout)
 		if err != nil {
@@ -54,24 +54,24 @@ func (m *ActionMaker) Make(
 		}
 		parallelActions = append(parallelActions, newAction)
 	}
-	return &action{
+	return &Action{
 		fnd:     m.fnd,
 		actions: parallelActions,
 		timeout: time.Duration(config.Timeout * 1e6),
 	}, nil
 }
 
-type action struct {
+type Action struct {
 	fnd     app.Foundation
-	actions []actions.Action
+	actions []action.Action
 	timeout time.Duration
 }
 
-func (a *action) Timeout() time.Duration {
+func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing parallel action")
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
@@ -81,7 +81,7 @@ func (a *action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	errs := make(chan error, len(a.actions))
 
 	for pos, act := range a.actions {
-		go func(act actions.Action, pos int) {
+		go func(act action.Action, pos int) {
 			defer wg.Done()
 
 			// Execute the action, passing the context.
