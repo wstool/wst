@@ -57,6 +57,7 @@ func TestActionMaker_Make(t *testing.T) {
 func TestAction_Execute(t *testing.T) {
 	serviceName := "svc"
 	duration := time.Duration(5000000)
+	freq := 30
 	tests := []struct {
 		name          string
 		setupMocks    func(*testing.T, *appMocks.MockFoundation, *servicesMocks.MockService, *runtimeMocks.MockData)
@@ -72,6 +73,7 @@ func TestAction_Execute(t *testing.T) {
 				result := &vegeta.Result{}
 				results := make(chan *vegeta.Result)
 				go func() {
+					defer close(results)
 					results <- result
 				}()
 				vegetaAttackerMock.On(
@@ -80,14 +82,18 @@ func TestAction_Execute(t *testing.T) {
 						// We are checking the type using the argument type
 						return true
 					}),
+					mock.MatchedBy(func(rate vegeta.Rate) bool {
+						return assert.Equal(t, freq, rate.Freq) && assert.Equal(t, time.Second, rate.Per)
+					}),
 					duration,
 					serviceName,
-				).Return(results)
+				).Return((<-chan *vegeta.Result)(results))
 				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
 				vegetaMetricsMock.On("Add", result).Return()
 				vegetaMetricsMock.On("Close").Return()
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
+				svc.On("Name").Return(serviceName)
 				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
 				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
 					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
@@ -103,13 +109,38 @@ func TestAction_Execute(t *testing.T) {
 			name: "execution with context cancellation",
 			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, svc *servicesMocks.MockService, runData *runtimeMocks.MockData) {
 				vegetaAttackerMock := appMocks.NewMockVegetaAttacker(t)
-				fnd.On("VegetaAttacker").Return(vegetaAttackerMock) // Simulate attack results
+				result := &vegeta.Result{}
+				results := make(chan *vegeta.Result)
+				go func() {
+					defer close(results)
+					results <- result
+				}()
+				vegetaAttackerMock.On(
+					"Attack",
+					mock.MatchedBy(func(targeter vegeta.Targeter) bool {
+						// We are checking the type using the argument type
+						return true
+					}),
+					mock.MatchedBy(func(rate vegeta.Rate) bool {
+						return assert.Equal(t, freq, rate.Freq) && assert.Equal(t, time.Second, rate.Per)
+					}),
+					duration,
+					serviceName,
+				).Return((<-chan *vegeta.Result)(results))
+				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
+				vegetaMetricsMock.On("Add", result).Return()
+				vegetaMetricsMock.On("Close").Return()
+				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
+				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
+				svc.On("Name").Return(serviceName)
 				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
-				runData.On("Store", mock.Anything, mock.Anything).Return(nil)
+				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
+					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
+				})).Return(nil)
 			},
 			contextSetup: func() context.Context {
 				ctx, cancel := context.WithCancel(context.Background())
-				cancel() // Immediately cancel the context
+				cancel()
 				return ctx
 			},
 			expectSuccess: false,
@@ -119,8 +150,6 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name: "error fetching public URL",
 			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, svc *servicesMocks.MockService, runData *runtimeMocks.MockData) {
-				vegetaAttackerMock := appMocks.NewMockVegetaAttacker(t)
-				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				svc.On("PublicUrl", mock.Anything).Return("", errors.New("public url error"))
 			},
 			contextSetup: func() context.Context {
@@ -139,20 +168,20 @@ func TestAction_Execute(t *testing.T) {
 			runDataMock := runtimeMocks.NewMockData(t)
 			mockLogger := external.NewMockLogger()
 
-			svcMock.On("Name").Return(serviceName)
 			fndMock.On("Logger").Return(mockLogger.SugaredLogger)
 
 			tt.setupMocks(t, fndMock, svcMock, runDataMock)
 
-			action := &Action{
+			a := &Action{
 				fnd:      fndMock,
 				service:  svcMock,
 				duration: duration,
 				id:       "sid",
+				freq:     freq,
 			}
 
 			ctx := tt.contextSetup()
-			success, err := action.Execute(ctx, runDataMock)
+			success, err := a.Execute(ctx, runDataMock)
 
 			if tt.expectSuccess {
 				assert.True(t, success)
