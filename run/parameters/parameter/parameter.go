@@ -3,7 +3,6 @@ package parameter
 import (
 	"fmt"
 	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
 	"strconv"
 )
 
@@ -39,7 +38,7 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(config types.Parameter) (Parameter, error) {
+func (m *Maker) Make(config interface{}) (Parameter, error) {
 	p := &parameter{}
 
 	// Use a type switch to handle different types.

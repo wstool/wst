@@ -20,6 +20,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/environments"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
@@ -82,7 +83,7 @@ func (m *InstanceMaker) Make(
 		return nil, err
 	}
 
-	instanceActions := make([]actions.Action, len(instanceConfig.Actions))
+	instanceActions := make([]action.Action, len(instanceConfig.Actions))
 	for i, actionConfig := range instanceConfig.Actions {
 		action, err := m.actionMaker.MakeAction(actionConfig, sl, instanceConfig.Timeouts.Action)
 		if err != nil {
@@ -105,7 +106,7 @@ func (m *InstanceMaker) Make(
 type nativeInstance struct {
 	fnd       app.Foundation
 	name      string
-	actions   []actions.Action
+	actions   []action.Action
 	envs      environments.Environments
 	runData   runtime.Data
 	timeout   int
@@ -163,7 +164,7 @@ func (i *nativeInstance) Run() error {
 	return err
 }
 
-func (i *nativeInstance) executeAction(action actions.Action) error {
+func (i *nativeInstance) executeAction(action action.Action) error {
 	ctx, cancel := context.WithTimeout(context.Background(), action.Timeout())
 	defer cancel()
 	success, err := action.Execute(ctx, i.runData)
