@@ -10,10 +10,6 @@ in the future.
 
 ### Run
 
-- test config factories
-- config parser tests
-- config merging and test
-- finalize all config tests
 - actions tests
 - environments integration tests
 - instance tests
@@ -42,13 +38,13 @@ in the future.
 - [x] March 2: Docker and Kubernetes envs
 - [x] March 3: Dry run and finalization of all envs
 - [x] March 4: Benchmarking actions (wrk)
-- [ ] April 1: Config factories, clean up and extra checks and parser tests
-- [ ] April 2: Config merging and finalize tests
-- [ ] April 3: Actions tests
-- [ ] April 4: Environments tests
-- [ ] May 1: Instance, Spec and Parameters tests
-- [ ] May 2: Resources and sandboxes tests and clean up (move merging logic)
-- [ ] May 3: Servers tests
-- [ ] May 4: Services tests
-- [ ] June 1: Run tests
+- [x] April 1: Config factories, clean up and extra checks and parser tests
+- [x] April 2: Config merging and finalize tests
+- [x] April 3: Config overwrites and resolving all build issues
+- [ ] April 4: Actions tests
+- [ ] May 1: Environments tests
+- [ ] May 2: Instance, Spec and Parameters tests
+- [ ] May 3: Resources and sandboxes tests and clean up (move merging logic)
+- [ ] May 4: Servers tests
+- [ ] June 1: Services tests
 - [ ] June 2: Full tests
