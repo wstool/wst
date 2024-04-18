@@ -15,15 +15,8 @@
 package sandbox
 
 import (
+	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
-)
-
-type DirType string
-
-const (
-	ConfDirType   DirType = "conf"
-	RunDirType            = "run"
-	ScriptDirType         = "script"
 )
 
 type ContainerConfig struct {
@@ -39,8 +32,8 @@ func (c *ContainerConfig) Image() string {
 
 type Sandbox interface {
 	Available() bool
-	Dirs() map[DirType]string
-	Dir(dirType DirType) (string, error)
+	Dirs() map[dir.DirType]string
+	Dir(dirType dir.DirType) (string, error)
 	Hooks() map[hooks.HookType]hooks.Hook
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
 	ContainerConfig() (*ContainerConfig, error)

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 )
@@ -43,10 +44,10 @@ func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 		return nil, err
 	}
 
-	sandboxDirs := make(map[sandbox.DirType]string)
+	sandboxDirs := make(map[dir.DirType]string)
 	for dirTypeStr, dirPath := range config.Dirs {
-		dirType := sandbox.DirType(dirTypeStr)
-		if dirType != sandbox.ConfDirType && dirType != sandbox.RunDirType && dirType != sandbox.ScriptDirType {
+		dirType := dir.DirType(dirTypeStr)
+		if dirType != dir.ConfDirType && dirType != dir.RunDirType && dirType != dir.ScriptDirType {
 			return nil, fmt.Errorf("invalid dir type: %v", dirType)
 		}
 		sandboxDirs[dirType] = dirPath
@@ -61,7 +62,7 @@ func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 
 type Sandbox struct {
 	available bool
-	dirs      map[sandbox.DirType]string
+	dirs      map[dir.DirType]string
 	hooks     map[hooks.HookType]hooks.Hook
 }
 
@@ -69,11 +70,11 @@ func (s *Sandbox) Available() bool {
 	return s.available
 }
 
-func (s *Sandbox) Dirs() map[sandbox.DirType]string {
+func (s *Sandbox) Dirs() map[dir.DirType]string {
 	return s.dirs
 }
 
-func (s *Sandbox) Dir(dirType sandbox.DirType) (string, error) {
+func (s *Sandbox) Dir(dirType dir.DirType) (string, error) {
 	dir, ok := s.dirs[dirType]
 	if !ok {
 		return "", fmt.Errorf("directory not found for dir type: %v", dirType)

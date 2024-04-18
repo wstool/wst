@@ -2,13 +2,13 @@ package template
 
 import (
 	"errors"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/bukka/wst/run/sandboxes/dir"
 )
 
 type Service interface {
 	PrivateUrl() (string, error)
 	Pid() (int, error)
-	Dirs() map[sandbox.DirType]string
+	Dirs() map[dir.DirType]string
 	Group() string
 	User() string
 	EnvironmentConfigPaths() map[string]string

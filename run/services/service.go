@@ -27,6 +27,7 @@ import (
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/resources/scripts"
+	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/servers"
@@ -275,7 +276,7 @@ func (s *nativeService) Group() string {
 	return s.server.Group()
 }
 
-func (s *nativeService) Dirs() map[sandbox.DirType]string {
+func (s *nativeService) Dirs() map[dir.DirType]string {
 	return s.Sandbox().Dirs()
 }
 
@@ -305,7 +306,7 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 
 func (s *nativeService) configPaths(configPath string) (string, string, error) {
 	environmentRootPath := s.environment.RootPath(s.workspace)
-	sandboxConfDir, err := s.sandbox.Dir(sandbox.ConfDirType)
+	sandboxConfDir, err := s.sandbox.Dir(dir.ConfDirType)
 	if err != nil {
 		return "", "", err
 	}
@@ -356,7 +357,7 @@ func (s *nativeService) renderConfigs() error {
 }
 
 func (s *nativeService) renderScript(script scripts.Script) (string, string, error) {
-	sandboxScriptDir, err := s.sandbox.Dir(sandbox.ScriptDirType)
+	sandboxScriptDir, err := s.sandbox.Dir(dir.ScriptDirType)
 	if err != nil {
 		return "", "", err
 	}
