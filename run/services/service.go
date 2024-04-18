@@ -213,7 +213,7 @@ func (m *Maker) Make(
 	sl := NewServiceLocator(svcs)
 
 	for _, svc := range svcs {
-		svc.SetTemplate(m.templateMaker.Make(svc, tmplSvcs, svc.Server()))
+		svc.SetTemplate(m.templateMaker.Make(svc, tmplSvcs, svc.Server().Templates()))
 	}
 
 	return sl, nil

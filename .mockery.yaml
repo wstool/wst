@@ -33,3 +33,9 @@ packages:
       dir: mocks/conf/parser/factory
     interfaces:
       Functions: {}
+  github.com/bukka/wst/run/services:
+    config:
+      dir: mocks/run/services
+    interfaces:
+      ServiceLocator: {}
+      Service: {}
