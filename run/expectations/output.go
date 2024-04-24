@@ -19,7 +19,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 )
 
-func (m *Maker) MakeOutputExpectation(
+func (m *nativeMaker) MakeOutputExpectation(
 	config *types.OutputExpectation,
 ) (*OutputExpectation, error) {
 	orderType := OrderType(config.Order)

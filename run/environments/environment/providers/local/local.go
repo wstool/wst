@@ -28,17 +28,21 @@ import (
 	"path/filepath"
 )
 
-type Maker struct {
+type Maker interface {
+	Make(config *types.LocalEnvironment, instanceWorkspace string) (environment.Environment, error)
+}
+
+type nativeMaker struct {
 	environment.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
-		Maker: *environment.CreateMaker(fnd),
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
+		Maker: environment.CreateMaker(fnd),
 	}
 }
 
-func (m *Maker) Make(
+func (m *nativeMaker) Make(
 	config *types.LocalEnvironment,
 	instanceWorkspace string,
 ) (environment.Environment, error) {

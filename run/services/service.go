@@ -106,21 +106,32 @@ func NewServiceLocator(services Services) ServiceLocator {
 	}
 }
 
-type Maker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
-	templateMaker   *template.Maker
+type Maker interface {
+	Make(
+		config map[string]types.Service,
+		scriptResources scripts.Scripts,
+		srvs servers.Servers,
+		environments environments.Environments,
+		instanceName string,
+		instanceWorkspace string,
+	) (ServiceLocator, error)
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd             app.Foundation
+	parametersMaker parameters.Maker
+	templateMaker   template.Maker
+}
+
+func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
 		templateMaker:   template.CreateMaker(fnd),
 	}
 }
 
-func (m *Maker) Make(
+func (m *nativeMaker) Make(
 	config map[string]types.Service,
 	scriptResources scripts.Scripts,
 	srvs servers.Servers,

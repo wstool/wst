@@ -34,25 +34,29 @@ func (a *Actions) Inherit(parentActions *Actions) {
 	}
 }
 
-type Maker struct {
+type Maker interface {
+	Make(configActions *types.ServerActions) (*Actions, error)
+}
+
+type nativeMaker struct {
 	fnd               app.Foundation
-	expectationsMaker *expectations.Maker
-	parametersMaker   *parameters.Maker
+	expectationsMaker expectations.Maker
+	parametersMaker   parameters.Maker
 }
 
 func CreateMaker(
 	fnd app.Foundation,
-	expectationsMaker *expectations.Maker,
-	parametersMaker *parameters.Maker,
-) *Maker {
-	return &Maker{
+	expectationsMaker expectations.Maker,
+	parametersMaker parameters.Maker,
+) Maker {
+	return &nativeMaker{
 		fnd:               fnd,
 		parametersMaker:   parametersMaker,
 		expectationsMaker: expectationsMaker,
 	}
 }
 
-func (m *Maker) Make(configActions *types.ServerActions) (*Actions, error) {
+func (m *nativeMaker) Make(configActions *types.ServerActions) (*Actions, error) {
 	expectActions, err := m.makeExpectActions(configActions.Expect)
 	if err != nil {
 		return nil, err

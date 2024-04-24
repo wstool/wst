@@ -33,7 +33,11 @@ import (
 	"github.com/bukka/wst/run/services"
 )
 
-type ActionMaker struct {
+type ActionMaker interface {
+	MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (action.Action, error)
+}
+
+type nativeActionMaker struct {
 	fnd           app.Foundation
 	benchMaker    *bench.ActionMaker
 	expectMaker   *expect.ExpectationActionMaker
@@ -48,10 +52,10 @@ type ActionMaker struct {
 
 func CreateActionMaker(
 	fnd app.Foundation,
-	expectationsMaker *expectations.Maker,
-	parametersMaker *parameters.Maker,
-) *ActionMaker {
-	return &ActionMaker{
+	expectationsMaker expectations.Maker,
+	parametersMaker parameters.Maker,
+) ActionMaker {
+	return &nativeActionMaker{
 		fnd:           fnd,
 		benchMaker:    bench.CreateActionMaker(fnd),
 		expectMaker:   expect.CreateExpectationActionMaker(fnd, expectationsMaker, parametersMaker),
@@ -65,7 +69,11 @@ func CreateActionMaker(
 	}
 }
 
-func (m *ActionMaker) MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (action.Action, error) {
+func (m *nativeActionMaker) MakeAction(
+	config types.Action,
+	sl services.ServiceLocator,
+	defaultTimeout int,
+) (action.Action, error) {
 	switch action := config.(type) {
 	case *types.BenchAction:
 		return m.benchMaker.Make(action, sl, defaultTimeout)

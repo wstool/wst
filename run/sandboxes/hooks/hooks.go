@@ -38,17 +38,22 @@ const (
 
 type Hooks map[HookType]Hook
 
-type Maker struct {
+type Maker interface {
+	MakeHooks(config map[string]types.SandboxHook) (Hooks, error)
+	MakeHook(config types.SandboxHook, hookType HookType) (Hook, error)
+}
+
+type nativeMaker struct {
 	fnd app.Foundation
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd: fnd,
 	}
 }
 
-func (m *Maker) MakeHooks(config map[string]types.SandboxHook) (Hooks, error) {
+func (m *nativeMaker) MakeHooks(config map[string]types.SandboxHook) (Hooks, error) {
 	hooks := make(Hooks)
 	for configHookTypeStr, hookConfig := range config {
 		configHookType := types.SandboxHookType(configHookTypeStr)
@@ -101,7 +106,7 @@ func createBaseHook(enabled bool, hookType HookType) *BaseHook {
 	return &BaseHook{Enabled: enabled, Type: hookType}
 }
 
-func (m *Maker) MakeHook(config types.SandboxHook, hookType HookType) (Hook, error) {
+func (m *nativeMaker) MakeHook(config types.SandboxHook, hookType HookType) (Hook, error) {
 	var resultHook Hook
 	switch hook := config.(type) {
 	case *types.SandboxHookNative:

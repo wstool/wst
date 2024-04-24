@@ -35,17 +35,21 @@ import (
 	"github.com/bukka/wst/run/environments/task"
 )
 
-type Maker struct {
+type Maker interface {
+	Make(config *types.DockerEnvironment) (environment.Environment, error)
+}
+
+type nativeMaker struct {
 	environment.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
-		Maker: *environment.CreateMaker(fnd),
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
+		Maker: environment.CreateMaker(fnd),
 	}
 }
 
-func (m *Maker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
+func (m *nativeMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)

@@ -28,17 +28,21 @@ const (
 	MapType
 )
 
-type Maker struct {
+type Maker interface {
+	Make(config interface{}) (Parameter, error)
+}
+
+type nativeMaker struct {
 	fnd app.Foundation
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd: fnd,
 	}
 }
 
-func (m *Maker) Make(config interface{}) (Parameter, error) {
+func (m *nativeMaker) Make(config interface{}) (Parameter, error) {
 	p := &parameter{}
 
 	// Use a type switch to handle different types.

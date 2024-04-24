@@ -59,21 +59,24 @@ func (s Servers) GetServer(fullName string) (Server, bool) {
 	return server, ok
 }
 
-type Maker struct {
+type Maker interface {
+}
+
+type nativeMaker struct {
 	fnd             app.Foundation
-	actionsMaker    *actions.Maker
-	configsMaker    *configs.Maker
-	sandboxesMaker  *sandboxes.Maker
-	templatesMaker  *templates.Maker
-	parametersMaker *parameters.Maker
+	actionsMaker    actions.Maker
+	configsMaker    configs.Maker
+	sandboxesMaker  sandboxes.Maker
+	templatesMaker  templates.Maker
+	parametersMaker parameters.Maker
 }
 
 func CreateMaker(
 	fnd app.Foundation,
-	expectationsMaker *expectations.Maker,
-	parametersMaker *parameters.Maker,
-) *Maker {
-	return &Maker{
+	expectationsMaker expectations.Maker,
+	parametersMaker parameters.Maker,
+) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		actionsMaker:    actions.CreateMaker(fnd, expectationsMaker, parametersMaker),
 		configsMaker:    configs.CreateMaker(fnd, parametersMaker),
@@ -83,7 +86,7 @@ func CreateMaker(
 	}
 }
 
-func (m *Maker) Make(config *types.Spec) (Servers, error) {
+func (m *nativeMaker) Make(config *types.Spec) (Servers, error) {
 	srvs := make(map[string]map[string]Server)
 	for _, server := range config.Servers {
 		name, tag := splitFullName(server.Name)

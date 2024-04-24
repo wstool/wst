@@ -42,17 +42,21 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type Maker struct {
+type Maker interface {
+	Make(config *types.KubernetesEnvironment) (environment.Environment, error)
+}
+
+type nativeMaker struct {
 	environment.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
-		Maker: *environment.CreateMaker(fnd),
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
+		Maker: environment.CreateMaker(fnd),
 	}
 }
 
-func (m *Maker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
+func (m *nativeMaker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
 	if err != nil {
 		return nil, err

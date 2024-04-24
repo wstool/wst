@@ -19,7 +19,7 @@ import (
 	"github.com/bukka/wst/run/metrics"
 )
 
-func (m *Maker) MakeMetricsExpectation(
+func (m *nativeMaker) MakeMetricsExpectation(
 	config *types.MetricsExpectation,
 ) (*MetricsExpectation, error) {
 	rules := make([]MetricRule, 0, len(config.Rules))

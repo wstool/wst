@@ -37,20 +37,29 @@ type Instance interface {
 	Workspace() string
 }
 
-type InstanceMaker struct {
+type InstanceMaker interface {
+	Make(
+		instanceConfig types.Instance,
+		envsConfig map[string]types.Environment,
+		srvs servers.Servers,
+		specWorkspace string,
+	) (Instance, error)
+}
+
+type nativeInstanceMaker struct {
 	fnd              app.Foundation
-	actionMaker      *actions.ActionMaker
-	servicesMaker    *services.Maker
-	scriptsMaker     *scripts.Maker
-	environmentMaker *environments.Maker
+	actionMaker      actions.ActionMaker
+	servicesMaker    services.Maker
+	scriptsMaker     scripts.Maker
+	environmentMaker environments.Maker
 }
 
 func CreateInstanceMaker(
 	fnd app.Foundation,
-	expectationsMaker *expectations.Maker,
-	parametersMaker *parameters.Maker,
-) *InstanceMaker {
-	return &InstanceMaker{
+	expectationsMaker expectations.Maker,
+	parametersMaker parameters.Maker,
+) InstanceMaker {
+	return &nativeInstanceMaker{
 		fnd:              fnd,
 		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
@@ -59,7 +68,7 @@ func CreateInstanceMaker(
 	}
 }
 
-func (m *InstanceMaker) Make(
+func (m *nativeInstanceMaker) Make(
 	instanceConfig types.Instance,
 	envsConfig map[string]types.Environment,
 	srvs servers.Servers,

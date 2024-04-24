@@ -26,19 +26,23 @@ import (
 	"github.com/bukka/wst/run/sandboxes/sandbox"
 )
 
-type Maker struct {
-	fnd        app.Foundation
-	hooksMaker *hooks.Maker
+type Maker interface {
+	MakeSandbox(config *types.CommonSandbox) (*Sandbox, error)
 }
 
-func CreateMaker(fnd app.Foundation, hooksMaker *hooks.Maker) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd        app.Foundation
+	hooksMaker hooks.Maker
+}
+
+func CreateMaker(fnd app.Foundation, hooksMaker hooks.Maker) Maker {
+	return &nativeMaker{
 		fnd:        fnd,
 		hooksMaker: hooksMaker,
 	}
 }
 
-func (m *Maker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
+func (m *nativeMaker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error) {
 	sandboxHooks, err := m.hooksMaker.MakeHooks(config.Hooks)
 	if err != nil {
 		return nil, err

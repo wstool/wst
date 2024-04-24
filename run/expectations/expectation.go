@@ -19,13 +19,16 @@ import (
 	"github.com/bukka/wst/run/parameters"
 )
 
-type Maker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
+type Maker interface {
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd             app.Foundation
+	parametersMaker parameters.Maker
+}
+
+func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
 	}

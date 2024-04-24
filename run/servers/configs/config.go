@@ -36,19 +36,23 @@ func (a Configs) Inherit(parentConfigs Configs) {
 	}
 }
 
-type Maker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
+type Maker interface {
+	Make(config map[string]types.ServerConfig) (Configs, error)
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd             app.Foundation
+	parametersMaker parameters.Maker
+}
+
+func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
 	}
 }
 
-func (m *Maker) Make(config map[string]types.ServerConfig) (Configs, error) {
+func (m *nativeMaker) Make(config map[string]types.ServerConfig) (Configs, error) {
 	configs := make(Configs)
 	for name, serverConfig := range config {
 		params, err := m.parametersMaker.Make(serverConfig.Parameters)

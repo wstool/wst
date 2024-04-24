@@ -19,7 +19,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 )
 
-func (m *Maker) MakeResponseExpectation(
+func (m *nativeMaker) MakeResponseExpectation(
 	config *types.ResponseExpectation,
 ) (*ResponseExpectation, error) {
 	match := MatchType(config.Body.Match)

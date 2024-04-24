@@ -34,17 +34,21 @@ func (a Templates) Inherit(parentTemplates Templates) {
 	}
 }
 
-type Maker struct {
+type Maker interface {
+	Make(config map[string]types.ServerTemplate) (Templates, error)
+}
+
+type nativeMaker struct {
 	fnd app.Foundation
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd: fnd,
 	}
 }
 
-func (m *Maker) Make(config map[string]types.ServerTemplate) (Templates, error) {
+func (m *nativeMaker) Make(config map[string]types.ServerTemplate) (Templates, error) {
 	configs := make(Templates)
 	for name, serverTemplate := range config {
 		configs[name] = &nativeTemplate{

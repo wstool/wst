@@ -46,18 +46,25 @@ func (a Sandboxes) Inherit(parentSandboxes Sandboxes) error {
 	return nil
 }
 
-type Maker struct {
-	fnd             app.Foundation
-	localMaker      *local.Maker
-	dockerMaker     *docker.Maker
-	kubernetesMaker *kubernetes.Maker
+type Maker interface {
+	MakeSandboxes(
+		rootSandboxes map[string]types.Sandbox,
+		serverSandboxes map[string]types.Sandbox,
+	) (Sandboxes, error)
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
+type nativeMaker struct {
+	fnd             app.Foundation
+	localMaker      local.Maker
+	dockerMaker     docker.Maker
+	kubernetesMaker kubernetes.Maker
+}
+
+func CreateMaker(fnd app.Foundation) Maker {
 	hooksMaker := hooks.CreateMaker(fnd)
 	commonMaker := common.CreateMaker(fnd, hooksMaker)
 	containerMaker := container.CreateMaker(fnd, commonMaker)
-	return &Maker{
+	return &nativeMaker{
 		fnd:             fnd,
 		localMaker:      local.CreateMaker(fnd, commonMaker),
 		dockerMaker:     docker.CreateMaker(fnd, containerMaker),
@@ -65,7 +72,7 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) MakeSandboxes(
+func (m *nativeMaker) MakeSandboxes(
 	rootSandboxes map[string]types.Sandbox,
 	serverSandboxes map[string]types.Sandbox,
 ) (Sandboxes, error) {
@@ -133,7 +140,7 @@ func (m *Maker) MakeSandboxes(
 	return sandboxes, nil
 }
 
-func (m *Maker) mergeLocalAndCommon(local, common types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeLocalAndCommon(local, common types.Sandbox) (types.Sandbox, error) {
 	localSandbox, localSandboxOk := local.(*types.LocalSandbox)
 	if !localSandboxOk {
 		return nil, errors.New("type assertion to *LocalSandbox failed")
@@ -154,7 +161,7 @@ func (m *Maker) mergeLocalAndCommon(local, common types.Sandbox) (types.Sandbox,
 	return localSandbox, nil
 }
 
-func (m *Maker) mergeContainerAndCommon(container, common types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeContainerAndCommon(container, common types.Sandbox) (types.Sandbox, error) {
 	containerSandbox, containerSandboxOk := container.(*types.ContainerSandbox)
 	if !containerSandboxOk {
 		return nil, errors.New("type assertion to *ContainerSandbox failed")
@@ -175,7 +182,7 @@ func (m *Maker) mergeContainerAndCommon(container, common types.Sandbox) (types.
 	return containerSandbox, nil
 }
 
-func (m *Maker) mergeDockerAndContainer(docker, container types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Sandbox) (types.Sandbox, error) {
 	dockerSandbox, dockerSandboxOk := docker.(*types.DockerSandbox)
 	if !dockerSandboxOk {
 		return nil, errors.New("type assertion to *DockerSandbox failed")
@@ -200,7 +207,7 @@ func (m *Maker) mergeDockerAndContainer(docker, container types.Sandbox) (types.
 	return dockerSandbox, nil
 }
 
-func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox) (types.Sandbox, error) {
 	kubernetesSandbox, kubernetesSandboxOk := kubernetes.(*types.KubernetesSandbox)
 	if !kubernetesSandboxOk {
 		return nil, errors.New("type assertion to *KubernetesSandbox failed")
@@ -227,7 +234,7 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox)
 
 type mergeFunc func(root, server types.Sandbox) (types.Sandbox, error)
 
-func (m *Maker) mergeConfigMaps(
+func (m *nativeMaker) mergeConfigMaps(
 	rootSandboxes map[string]types.Sandbox,
 	serverSandboxes map[string]types.Sandbox,
 ) (map[types.SandboxType]types.Sandbox, error) {
@@ -263,7 +270,7 @@ func (m *Maker) mergeConfigMaps(
 	return mergedSandboxes, nil
 }
 
-func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, error) {
 	// Ensure both root and server are of the correct type, using type assertion to *CommonSandbox.
 	rootCommon, rootOk := root.(*types.CommonSandbox)
 	serverCommon, serverOk := server.(*types.CommonSandbox)
@@ -300,7 +307,7 @@ func (m *Maker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, e
 	return mergedCommon, nil
 }
 
-func (m *Maker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	// Ensure both spec and server are of the correct type, using type assertion to *CommonSandbox.
 	_, specOk := spec.(*types.LocalSandbox)
 	_, serverOk := server.(*types.LocalSandbox)
@@ -323,7 +330,7 @@ func (m *Maker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, er
 	return mergedLocal, nil
 }
 
-func (m *Maker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	specContainer, specOk := spec.(*types.ContainerSandbox)
 	serverContainer, serverOk := server.(*types.ContainerSandbox)
 	if !specOk || !serverOk {
@@ -360,7 +367,7 @@ func (m *Maker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox
 	return mergedContainer, nil
 }
 
-func (m *Maker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	_, specOk := spec.(*types.DockerSandbox)
 	_, serverOk := server.(*types.DockerSandbox)
 	if !specOk || !serverOk {
@@ -384,7 +391,7 @@ func (m *Maker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, e
 	return mergedDocker, nil
 }
 
-func (m *Maker) mergeKubernetesSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeKubernetesSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	_, specOk := spec.(*types.KubernetesSandbox)
 	_, serverOk := server.(*types.KubernetesSandbox)
 	if !specOk || !serverOk {

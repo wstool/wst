@@ -24,14 +24,14 @@ import (
 
 type ExpectationActionMaker struct {
 	fnd               app.Foundation
-	expectationsMaker *expectations.Maker
-	parametersMaker   *parameters.Maker
+	expectationsMaker expectations.Maker
+	parametersMaker   parameters.Maker
 }
 
 func CreateExpectationActionMaker(
 	fnd app.Foundation,
-	expectationsMaker *expectations.Maker,
-	parametersMaker *parameters.Maker,
+	expectationsMaker expectations.Maker,
+	parametersMaker parameters.Maker,
 ) *ExpectationActionMaker {
 	return &ExpectationActionMaker{
 		fnd:               fnd,

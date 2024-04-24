@@ -27,15 +27,23 @@ import (
 
 type Environments map[providers.Type]environment.Environment
 
-type Maker struct {
+type Maker interface {
+	Make(
+		specConfig,
+		instanceConfig map[string]types.Environment,
+		instanceWorkspace string,
+	) (Environments, error)
+}
+
+type nativeMaker struct {
 	fnd             app.Foundation
 	localMaker      *local.Maker
 	dockerMaker     *docker.Maker
 	kubernetesMaker *kubernetes.Maker
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		localMaker:      local.CreateMaker(fnd),
 		dockerMaker:     docker.CreateMaker(fnd),
@@ -43,7 +51,7 @@ func CreateMaker(fnd app.Foundation) *Maker {
 	}
 }
 
-func (m *Maker) Make(
+func (m *nativeMaker) Make(
 	specConfig,
 	instanceConfig map[string]types.Environment,
 	instanceWorkspace string,
@@ -112,7 +120,7 @@ func (m *Maker) Make(
 	return Environments, nil
 }
 
-func (m *Maker) mergeLocalAndCommon(local, common types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeLocalAndCommon(local, common types.Environment) (types.Environment, error) {
 	localEnvironment, localEnvironmentOk := local.(*types.LocalEnvironment)
 	if !localEnvironmentOk {
 		return nil, errors.New("type assertion to *LocalEnvironment failed")
@@ -126,7 +134,7 @@ func (m *Maker) mergeLocalAndCommon(local, common types.Environment) (types.Envi
 	return localEnvironment, nil
 }
 
-func (m *Maker) mergeContainerAndCommon(container, common types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeContainerAndCommon(container, common types.Environment) (types.Environment, error) {
 	containerEnvironment, containerEnvironmentOk := container.(*types.ContainerEnvironment)
 	if !containerEnvironmentOk {
 		return nil, errors.New("type assertion to *ContainerEnvironment failed")
@@ -140,7 +148,7 @@ func (m *Maker) mergeContainerAndCommon(container, common types.Environment) (ty
 	return containerEnvironment, nil
 }
 
-func (m *Maker) mergeDockerAndContainer(docker, container types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Environment) (types.Environment, error) {
 	dockerEnvironment, dockerEnvironmentOk := docker.(*types.DockerEnvironment)
 	if !dockerEnvironmentOk {
 		return nil, errors.New("type assertion to *DockerEnvironment failed")
@@ -159,7 +167,7 @@ func (m *Maker) mergeDockerAndContainer(docker, container types.Environment) (ty
 	return dockerEnvironment, nil
 }
 
-func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Environment) (types.Environment, error) {
 	kubernetesEnvironment, kubernetesEnvironmentOk := kubernetes.(*types.KubernetesEnvironment)
 	if !kubernetesEnvironmentOk {
 		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
@@ -180,7 +188,7 @@ func (m *Maker) mergeKubernetesAndContainer(kubernetes, container types.Environm
 
 type mergeFunc func(spec, instance types.Environment) (types.Environment, error)
 
-func (m *Maker) mergeConfigMaps(
+func (m *nativeMaker) mergeConfigMaps(
 	specEnvironments map[string]types.Environment,
 	instanceEnvironments map[string]types.Environment,
 ) (map[types.EnvironmentType]types.Environment, error) {
@@ -216,7 +224,7 @@ func (m *Maker) mergeConfigMaps(
 	return mergedEnvironments, nil
 }
 
-func (m *Maker) mergeCommonEnvironment(spec, instance types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
 	specCommon, specOk := spec.(*types.CommonEnvironment)
 	instanceCommon, instanceOk := instance.(*types.CommonEnvironment)
@@ -240,7 +248,7 @@ func (m *Maker) mergeCommonEnvironment(spec, instance types.Environment) (types.
 	return mergedCommon, nil
 }
 
-func (m *Maker) mergeLocalEnvironment(spec, instance types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeLocalEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
 	_, specOk := spec.(*types.LocalEnvironment)
 	_, instanceOk := instance.(*types.LocalEnvironment)
@@ -261,7 +269,7 @@ func (m *Maker) mergeLocalEnvironment(spec, instance types.Environment) (types.E
 	return mergedLocal, nil
 }
 
-func (m *Maker) mergeContainerEnvironment(spec, instance types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeContainerEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	specContainer, specOk := spec.(*types.ContainerEnvironment)
 	instanceContainer, instanceOk := instance.(*types.ContainerEnvironment)
 	if !specOk || !instanceOk {
@@ -289,7 +297,7 @@ func (m *Maker) mergeContainerEnvironment(spec, instance types.Environment) (typ
 	return mergedContainer, nil
 }
 
-func (m *Maker) mergeDockerEnvironment(spec, instance types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeDockerEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	specDocker, specOk := spec.(*types.DockerEnvironment)
 	instanceDocker, instanceOk := instance.(*types.DockerEnvironment)
 	if !specOk || !instanceOk {
@@ -315,7 +323,7 @@ func (m *Maker) mergeDockerEnvironment(spec, instance types.Environment) (types.
 	return mergedDocker, nil
 }
 
-func (m *Maker) mergeKubernetesEnvironment(spec, instance types.Environment) (types.Environment, error) {
+func (m *nativeMaker) mergeKubernetesEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	specKubernetes, specOk := spec.(*types.KubernetesEnvironment)
 	instanceKubernetes, instanceOk := instance.(*types.KubernetesEnvironment)
 	if !specOk || !instanceOk {

@@ -75,12 +75,17 @@ type Environment interface {
 	IsUsed() bool
 }
 
-type Maker struct {
+type Maker interface {
+	MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment
+	MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment
+}
+
+type nativeMaker struct {
 	Fnd app.Foundation
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		Fnd: fnd,
 	}
 }
@@ -91,7 +96,7 @@ type CommonEnvironment struct {
 	Ports Ports
 }
 
-func (m *Maker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
+func (m *nativeMaker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
 	return &CommonEnvironment{
 		Fnd:  m.Fnd,
 		Used: false,
@@ -134,7 +139,7 @@ type ContainerEnvironment struct {
 	Registry ContainerRegistry
 }
 
-func (m *Maker) MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
+func (m *nativeMaker) MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
 	return &ContainerEnvironment{
 		CommonEnvironment: *m.MakeCommonEnvironment(&types.CommonEnvironment{
 			Ports: config.Ports,

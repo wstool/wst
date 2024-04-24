@@ -32,19 +32,23 @@ type Script interface {
 
 type Scripts map[string]Script
 
-type Maker struct {
-	fnd             app.Foundation
-	parametersMaker *parameters.Maker
+type Maker interface {
+	Make(config map[string]types.Script) (Scripts, error)
 }
 
-func CreateMaker(fnd app.Foundation, parametersMaker *parameters.Maker) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd             app.Foundation
+	parametersMaker parameters.Maker
+}
+
+func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
+	return &nativeMaker{
 		fnd:             fnd,
 		parametersMaker: parametersMaker,
 	}
 }
 
-func (m *Maker) Make(config map[string]types.Script) (Scripts, error) {
+func (m *nativeMaker) Make(config map[string]types.Script) (Scripts, error) {
 	scripts := make(Scripts)
 	for scriptName, scriptConfig := range config {
 		mode, err := strconv.ParseUint(scriptConfig.Mode, 8, 32)

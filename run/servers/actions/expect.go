@@ -13,7 +13,7 @@ type ExpectAction interface {
 	ResponseExpectation() *expectations.ResponseExpectation
 }
 
-func (m *Maker) makeExpectAction(configAction types.ServerExpectationAction) (ExpectAction, error) {
+func (m *nativeMaker) makeExpectAction(configAction types.ServerExpectationAction) (ExpectAction, error) {
 	switch action := configAction.(type) {
 	case *types.ServerOutputExpectation:
 		params, err := m.parametersMaker.Make(action.Parameters)
@@ -46,7 +46,7 @@ func (m *Maker) makeExpectAction(configAction types.ServerExpectationAction) (Ex
 	}
 }
 
-func (m *Maker) makeExpectActions(configActions map[string]types.ServerExpectationAction) (map[string]ExpectAction, error) {
+func (m *nativeMaker) makeExpectActions(configActions map[string]types.ServerExpectationAction) (map[string]ExpectAction, error) {
 	expectActions := make(map[string]ExpectAction, len(configActions))
 	var err error
 	for key, configAction := range configActions {

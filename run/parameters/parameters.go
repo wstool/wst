@@ -8,19 +8,23 @@ import (
 
 type Parameters map[string]parameter.Parameter
 
-type Maker struct {
-	fnd            app.Foundation
-	parameterMaker *parameter.Maker
+type Maker interface {
+	Make(config types.Parameters) (Parameters, error)
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+type nativeMaker struct {
+	fnd            app.Foundation
+	parameterMaker parameter.Maker
+}
+
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd:            fnd,
 		parameterMaker: parameter.CreateMaker(fnd),
 	}
 }
 
-func (m *Maker) Make(config types.Parameters) (Parameters, error) {
+func (m *nativeMaker) Make(config types.Parameters) (Parameters, error) {
 	params := make(map[string]parameter.Parameter)
 	for key, elem := range config {
 		if paramElem, err := m.parameterMaker.Make(elem); err == nil {

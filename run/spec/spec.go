@@ -28,23 +28,27 @@ type Spec interface {
 	Run(filteredInstances []string) error
 }
 
-type Maker struct {
-	fnd           app.Foundation
-	instanceMaker *instances.InstanceMaker
-	serversMaker  *servers.Maker
+type Maker interface {
+	Make(config *types.Spec) (Spec, error)
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
+type nativeMaker struct {
+	fnd           app.Foundation
+	instanceMaker instances.InstanceMaker
+	serversMaker  servers.Maker
+}
+
+func CreateMaker(fnd app.Foundation) Maker {
 	parametersMaker := parameters.CreateMaker(fnd)
 	expectationsMaker := expectations.CreateMaker(fnd, parametersMaker)
-	return &Maker{
+	return &nativeMaker{
 		fnd:           fnd,
 		instanceMaker: instances.CreateInstanceMaker(fnd, expectationsMaker, parametersMaker),
 		serversMaker:  servers.CreateMaker(fnd, expectationsMaker, parametersMaker),
 	}
 }
 
-func (m *Maker) Make(config *types.Spec) (Spec, error) {
+func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 	serversMap, err := m.serversMaker.Make(config)
 	if err != nil {
 		return nil, err

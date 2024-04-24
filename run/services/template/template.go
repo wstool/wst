@@ -18,17 +18,21 @@ type Template interface {
 	RenderToString(content string, parameters parameters.Parameters) (string, error)
 }
 
-type Maker struct {
+type Maker interface {
+	Make(service Service, services map[string]Service, serverTemplates templates.Templates) Template
+}
+
+type nativeMaker struct {
 	fnd app.Foundation
 }
 
-func CreateMaker(fnd app.Foundation) *Maker {
-	return &Maker{
+func CreateMaker(fnd app.Foundation) Maker {
+	return &nativeMaker{
 		fnd: fnd,
 	}
 }
 
-func (m *Maker) Make(service Service, services map[string]Service, serverTemplates templates.Templates) Template {
+func (m *nativeMaker) Make(service Service, services map[string]Service, serverTemplates templates.Templates) Template {
 	return &nativeTemplate{
 		fnd:             m.fnd,
 		service:         service,
