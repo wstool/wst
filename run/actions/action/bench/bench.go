@@ -100,6 +100,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 
 	metrics := a.fnd.VegetaMetrics()
 	done := make(chan struct{})
+	errChan := make(chan error)
 	go func() {
 		defer close(done)
 		for res := range results {
@@ -114,6 +115,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		a.fnd.Logger().Debugf("Storing response %s: %v", key, metricsData)
 		if err = runData.Store(key, metricsData); err != nil {
 			a.fnd.Logger().Errorf("Error storing metrics data: %v", err)
+			errChan <- err
 		}
 	}()
 
@@ -121,6 +123,8 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	case <-ctx.Done():
 		a.fnd.Logger().Infof("Cancelling attack due to context cancellation.")
 		return false, ctx.Err()
+	case err = <-errChan:
+		return false, err
 	case <-done:
 		// Attack completed
 		return true, nil

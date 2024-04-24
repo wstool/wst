@@ -8,47 +8,113 @@ import (
 	"github.com/bukka/wst/mocks/external"
 	runtimeMocks "github.com/bukka/wst/mocks/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/run/services"
-	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
-	"reflect"
 	"testing"
 	"time"
 )
 
-func TestActionMaker_Make(t *testing.T) {
-	type fields struct {
-		fnd app.Foundation
-	}
-	type args struct {
-		config         *types.BenchAction
-		sl             services.ServiceLocator
-		defaultTimeout int
-	}
+func TestCreateActionMaker(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    action.Action
-		wantErr bool
+		name string
+		fnd  app.Foundation
 	}{
-		// TODO: Add test cases.
+		{
+			name: "create maker",
+			fnd:  fndMock,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			got := CreateActionMaker(tt.fnd)
+			assert.Equal(t, tt.fnd, got.fnd)
+		})
+	}
+}
+
+func TestActionMaker_Make(t *testing.T) {
+	tests := []struct {
+		name             string
+		config           *types.BenchAction
+		defaultTimeout   int
+		expectedTimeout  time.Duration
+		locatorErr       error
+		expectError      bool
+		expectedErrorMsg string
+	}{
+		{
+			name: "successful action creation with default timeout",
+			config: &types.BenchAction{
+				Service:   "validService",
+				Duration:  3000,
+				Frequency: 1,
+				Id:        "testAction",
+				Path:      "/test",
+				Method:    "GET",
+				Headers:   types.Headers{"Content-Type": "application/json"},
+			},
+			defaultTimeout:  5000,
+			expectedTimeout: time.Duration(5000 * 1e6),
+		},
+		{
+			name: "successful action creation with calculated timeout",
+			config: &types.BenchAction{
+				Service:   "validService",
+				Duration:  6000,
+				Frequency: 1,
+				Id:        "testAction",
+				Path:      "/test",
+				Method:    "GET",
+				Headers:   types.Headers{"Content-Type": "application/json"},
+			},
+			defaultTimeout:  5000,
+			expectedTimeout: time.Duration(11000 * 1e6), // Duration + 5000
+		},
+		{
+			name:             "service locator failure",
+			config:           &types.BenchAction{Service: "invalidService"},
+			defaultTimeout:   5000,
+			locatorErr:       errors.New("service not found"),
+			expectError:      true,
+			expectedErrorMsg: "service not found",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
 			m := &ActionMaker{
-				fnd: tt.fields.fnd,
+				fnd: fndMock,
 			}
-			got, err := m.Make(tt.args.config, tt.args.sl, tt.args.defaultTimeout)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Make() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			svcMock := servicesMocks.NewMockService(t)
+			slMock := servicesMocks.NewMockServiceLocator(t)
+			if tt.locatorErr != nil {
+				svcMock = nil
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Make() got = %v, want %v", got, tt.want)
+			slMock.On("Find", tt.config.Service).Return(svcMock, tt.locatorErr)
+			got, err := m.Make(tt.config, slMock, tt.defaultTimeout)
+			assert := assert.New(t)
+			if tt.expectError {
+				assert.Error(err)
+				assert.Nil(got)
+				assert.Contains(err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(err)
+				assert.NotNil(got)
+
+				action, ok := got.(*Action)
+				assert.True(ok)
+				assert.Equal(svcMock, action.service)
+				assert.Equal(tt.expectedTimeout, action.Timeout())
+				assert.Equal(time.Duration(tt.config.Duration*1e6), action.duration)
+				assert.Equal(tt.config.Frequency, action.freq)
+				assert.Equal(tt.config.Id, action.id)
+				assert.Equal(tt.config.Path, action.path)
+				assert.Equal(tt.config.Method, action.method)
+				assert.Equal(tt.config.Headers, action.headers)
 			}
 		})
 	}
@@ -128,15 +194,15 @@ func TestAction_Execute(t *testing.T) {
 					serviceName,
 				).Return((<-chan *vegeta.Result)(results))
 				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
-				vegetaMetricsMock.On("Add", result).Return()
-				vegetaMetricsMock.On("Close").Return()
+				vegetaMetricsMock.On("Add", result).Maybe().Return()
+				vegetaMetricsMock.On("Close").Maybe().Return()
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
 				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
 				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
 					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
-				})).Return(nil)
+				})).Maybe().Return(nil)
 			},
 			contextSetup: func() context.Context {
 				ctx, cancel := context.WithCancel(context.Background())
@@ -146,6 +212,46 @@ func TestAction_Execute(t *testing.T) {
 			expectSuccess: false,
 			expectErr:     true,
 			expectedErr:   "context canceled",
+		},
+		{
+			name: "execution with store failure",
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, svc *servicesMocks.MockService, runData *runtimeMocks.MockData) {
+				vegetaAttackerMock := appMocks.NewMockVegetaAttacker(t)
+				result := &vegeta.Result{}
+				results := make(chan *vegeta.Result)
+				go func() {
+					defer close(results)
+					results <- result
+				}()
+				vegetaAttackerMock.On(
+					"Attack",
+					mock.MatchedBy(func(targeter vegeta.Targeter) bool {
+						// We are checking the type using the argument type
+						return true
+					}),
+					mock.MatchedBy(func(rate vegeta.Rate) bool {
+						return assert.Equal(t, freq, rate.Freq) && assert.Equal(t, time.Second, rate.Per)
+					}),
+					duration,
+					serviceName,
+				).Return((<-chan *vegeta.Result)(results))
+				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
+				vegetaMetricsMock.On("Add", result).Return()
+				vegetaMetricsMock.On("Close").Return()
+				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
+				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
+				svc.On("Name").Return(serviceName)
+				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
+				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
+					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
+				})).Return(errors.New("stored failed"))
+			},
+			contextSetup: func() context.Context {
+				return context.Background()
+			},
+			expectSuccess: false,
+			expectErr:     true,
+			expectedErr:   "stored failed",
 		},
 		{
 			name: "error fetching public URL",
@@ -234,26 +340,6 @@ func TestAction_Timeout(t *testing.T) {
 			}
 			if got := a.Timeout(); got != tt.want {
 				t.Errorf("Timeout() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCreateActionMaker(t *testing.T) {
-	type args struct {
-		fnd app.Foundation
-	}
-	tests := []struct {
-		name string
-		args args
-		want *ActionMaker
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := CreateActionMaker(tt.args.fnd); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateActionMaker() = %v, want %v", got, tt.want)
 			}
 		})
 	}
