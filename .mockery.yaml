@@ -33,11 +33,36 @@ packages:
       dir: mocks/conf/parser/factory
     interfaces:
       Functions: {}
+  github.com/bukka/wst/run/expectations:
+    config:
+      dir: mocks/run/expectations
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/instances/runtime:
     config:
       dir: mocks/run/instances/runtime
     interfaces:
       Data: {}
+  github.com/bukka/wst/run/parameters:
+    config:
+      dir: mocks/run/parameters
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/parameters/parameter:
+    config:
+      dir: mocks/run/parameters/parameter
+    interfaces:
+      Parameter: {}
+  github.com/bukka/wst/run/servers:
+    config:
+      dir: mocks/run/servers
+    interfaces:
+      Server: {}
+  github.com/bukka/wst/run/servers/actions:
+    config:
+      dir: mocks/run/servers/actions
+    interfaces:
+      ExpectAction: {}
   github.com/bukka/wst/run/services:
     config:
       dir: mocks/run/services

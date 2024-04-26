@@ -60,6 +60,7 @@ func (s Servers) GetServer(fullName string) (Server, bool) {
 }
 
 type Maker interface {
+	Make(config *types.Spec) (Servers, error)
 }
 
 type nativeMaker struct {

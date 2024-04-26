@@ -37,9 +37,9 @@ type Maker interface {
 
 type nativeMaker struct {
 	fnd             app.Foundation
-	localMaker      *local.Maker
-	dockerMaker     *docker.Maker
-	kubernetesMaker *kubernetes.Maker
+	localMaker      local.Maker
+	dockerMaker     docker.Maker
+	kubernetesMaker kubernetes.Maker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {

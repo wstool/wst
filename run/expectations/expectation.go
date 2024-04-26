@@ -16,10 +16,14 @@ package expectations
 
 import (
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/parameters"
 )
 
 type Maker interface {
+	MakeMetricsExpectation(config *types.MetricsExpectation) (*MetricsExpectation, error)
+	MakeOutputExpectation(config *types.OutputExpectation) (*OutputExpectation, error)
+	MakeResponseExpectation(config *types.ResponseExpectation) (*ResponseExpectation, error)
 }
 
 type nativeMaker struct {
