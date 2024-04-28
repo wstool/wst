@@ -1,20 +1,24 @@
 package expect
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/app"
+	"github.com/bukka/wst/mocks/external"
+	runtimeMocks "github.com/bukka/wst/mocks/run/instances/runtime"
 	parametersMocks "github.com/bukka/wst/mocks/run/parameters"
 	parameterMocks "github.com/bukka/wst/mocks/run/parameters/parameter"
 	serversMocks "github.com/bukka/wst/mocks/run/servers"
 	actionsMocks "github.com/bukka/wst/mocks/run/servers/actions"
 	servicesMocks "github.com/bukka/wst/mocks/run/services"
+	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 	"time"
 )
@@ -148,40 +152,87 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 }
 
 func Test_customAction_Execute(t *testing.T) {
-	type fields struct {
-		CommonExpectation   *CommonExpectation
-		OutputExpectation   *expectations.OutputExpectation
-		ResponseExpectation *expectations.ResponseExpectation
-		parameters          parameters.Parameters
-	}
-	type args struct {
-		ctx     context.Context
-		runData runtime.Data
-	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    bool
-		wantErr bool
+		name       string
+		setupMocks func(
+			*testing.T,
+			*appMocks.MockFoundation,
+			context.Context,
+			*runtimeMocks.MockData,
+			*servicesMocks.MockService,
+			parameters.Parameters,
+			output.Type,
+		)
+		outputExpectation   *expectations.OutputExpectation
+		responseExpectation *expectations.ResponseExpectation
+		parameters          parameters.Parameters
+		want                bool
+		expectedOutputType  output.Type
+		expectErr           bool
+		expectedErrorMsg    string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "output expectation set",
+			outputExpectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeExact,
+				OutputType:     expectations.OutputTypeAny,
+				Messages:       []string{"test"},
+				RenderTemplate: true,
+			},
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
+				r := strings.NewReader("test tmp")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectedOutputType: output.Any,
+			want:               true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			params := parameters.Parameters{
+				"test": parameterMocks.NewMockParameter(t),
+			}
+			fndMock := appMocks.NewMockFoundation(t)
+			dataMock := runtimeMocks.NewMockData(t)
+			svcMock := servicesMocks.NewMockService(t)
+			ctx := context.Background()
+
+			tt.setupMocks(t, fndMock, ctx, dataMock, svcMock, params, tt.expectedOutputType)
+
 			a := &customAction{
-				CommonExpectation:   tt.fields.CommonExpectation,
-				OutputExpectation:   tt.fields.OutputExpectation,
-				ResponseExpectation: tt.fields.ResponseExpectation,
-				parameters:          tt.fields.parameters,
+				CommonExpectation: &CommonExpectation{
+					fnd:     fndMock,
+					service: svcMock,
+					timeout: 20 * 1e6,
+				},
+				OutputExpectation:   tt.outputExpectation,
+				ResponseExpectation: tt.responseExpectation,
+				parameters:          params,
 			}
-			got, err := a.Execute(tt.args.ctx, tt.args.runData)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Execute() got = %v, want %v", got, tt.want)
+
+			got, err := a.Execute(ctx, dataMock)
+
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Nil(t, got)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}
