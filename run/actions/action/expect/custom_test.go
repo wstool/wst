@@ -14,10 +14,12 @@ import (
 	serversMocks "github.com/bukka/wst/mocks/run/servers"
 	actionsMocks "github.com/bukka/wst/mocks/run/servers/actions"
 	servicesMocks "github.com/bukka/wst/mocks/run/services"
+	"github.com/bukka/wst/run/actions/action/request"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -152,7 +154,6 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 }
 
 func Test_customAction_Execute(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		setupMocks func(
@@ -200,6 +201,54 @@ func Test_customAction_Execute(t *testing.T) {
 			expectedOutputType: output.Any,
 			want:               true,
 		},
+		{
+			name: "output expectation set",
+			responseExpectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "test",
+				BodyMatch:          expectations.MatchTypeExact,
+				BodyRenderTemplate: true,
+			},
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:    "test tmp",
+					Headers: http.Header{"content-type": []string{"application/json"}},
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
+			},
+			expectedOutputType: output.Any,
+			want:               true,
+		},
+		{
+			name: "unknown expectation set",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+			},
+			expectedOutputType: output.Any,
+			want:               false,
+			expectErr:          true,
+			expectedErrorMsg:   "no expectation set",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -228,7 +277,7 @@ func Test_customAction_Execute(t *testing.T) {
 
 			if tt.expectErr {
 				assert.Error(t, err)
-				assert.Nil(t, got)
+				assert.False(t, got)
 				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
 			} else {
 				assert.NoError(t, err)
@@ -239,30 +288,13 @@ func Test_customAction_Execute(t *testing.T) {
 }
 
 func Test_customAction_Timeout(t *testing.T) {
-	type fields struct {
-		CommonExpectation   *CommonExpectation
-		OutputExpectation   *expectations.OutputExpectation
-		ResponseExpectation *expectations.ResponseExpectation
-		parameters          parameters.Parameters
+	timeout := time.Duration(50 * 1e6)
+	a := &customAction{
+		CommonExpectation: &CommonExpectation{
+			fnd:     nil,
+			service: nil,
+			timeout: timeout,
+		},
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   time.Duration
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &customAction{
-				CommonExpectation:   tt.fields.CommonExpectation,
-				OutputExpectation:   tt.fields.OutputExpectation,
-				ResponseExpectation: tt.fields.ResponseExpectation,
-				parameters:          tt.fields.parameters,
-			}
-			if got := a.Timeout(); got != tt.want {
-				t.Errorf("Timeout() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	assert.Equal(t, timeout, a.Timeout())
 }
