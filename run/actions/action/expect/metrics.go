@@ -16,15 +16,15 @@ package expect
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions/action"
-	"github.com/bukka/wst/run/actions/action/bench"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
+	"github.com/bukka/wst/run/metrics"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -63,12 +63,13 @@ func (a *metricsAction) Timeout() time.Duration {
 func (a *metricsAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
 
-	data, ok := runData.Load(fmt.Sprintf("metrics/%s", a.Id))
+	metricsKey := fmt.Sprintf("metrics/%s", a.Id)
+	data, ok := runData.Load(metricsKey)
 	if !ok {
-		return false, errors.New("metrics data not found")
+		return false, errors.Errorf("metrics data for key %s not found", metricsKey)
 	}
 
-	metricsData, ok := data.(bench.Metrics)
+	metricsData, ok := data.(metrics.Metrics)
 	if !ok {
 		return false, errors.New("invalid metrics data type")
 	}

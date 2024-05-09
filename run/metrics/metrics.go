@@ -24,11 +24,11 @@ type MetricOperator string
 
 const (
 	MetricEqOperator MetricOperator = "eq"
-	MetricNeOperator                = "ne"
-	MetricGtOperator                = "gt"
-	MetricGeOperator                = "ge"
-	MetricLtOperator                = "lt"
-	MetricLeOperator                = "le"
+	MetricNeOperator MetricOperator = "ne"
+	MetricGtOperator MetricOperator = "gt"
+	MetricGeOperator MetricOperator = "ge"
+	MetricLtOperator MetricOperator = "lt"
+	MetricLeOperator MetricOperator = "le"
 )
 
 func ConvertToOperator(op string) (MetricOperator, error) {
@@ -47,7 +47,7 @@ func ConvertToOperator(op string) (MetricOperator, error) {
 	case MetricNeOperator:
 		return mop, nil
 	default:
-		return MetricOperator(""), fmt.Errorf("invalid operator %s", op)
+		return "", fmt.Errorf("invalid operator %s", op)
 	}
 }
 

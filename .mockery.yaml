@@ -43,6 +43,12 @@ packages:
       dir: mocks/run/instances/runtime
     interfaces:
       Data: {}
+  github.com/bukka/wst/run/metrics:
+    config:
+      dir: mocks/run/metrics
+    interfaces:
+      Metric: {}
+      Metrics: {}
   github.com/bukka/wst/run/parameters:
     config:
       dir: mocks/run/parameters
