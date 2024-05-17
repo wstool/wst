@@ -33,7 +33,7 @@ type Options struct {
 type Runner struct {
 	fnd         app.Foundation
 	configMaker *conf.ConfigMaker
-	specMaker   *spec.Maker
+	specMaker   spec.Maker
 }
 
 func CreateRunner(fnd app.Foundation) *Runner {
