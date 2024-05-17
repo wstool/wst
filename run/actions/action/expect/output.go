@@ -104,7 +104,7 @@ func (a *outputAction) getServiceOutputType(outputType expectations.OutputType) 
 	case expectations.OutputTypeAny:
 		return output.Any, nil
 	default:
-		return output.Any, fmt.Errorf("unknow output type %s", string(outputType))
+		return output.Any, fmt.Errorf("unknown output type %s", string(outputType))
 	}
 }
 
