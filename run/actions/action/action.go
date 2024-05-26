@@ -27,6 +27,6 @@ type Action interface {
 	Timeout() time.Duration
 }
 
-type ActionMaker interface {
+type Maker interface {
 	MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (Action, error)
 }

@@ -38,7 +38,7 @@ func (m *ActionMaker) Make(
 	config *types.NotAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
-	actionMaker action.ActionMaker,
+	actionMaker action.Maker,
 ) (action.Action, error) {
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
