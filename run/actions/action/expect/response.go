@@ -61,7 +61,7 @@ func (a *responseAction) Timeout() time.Duration {
 	return a.timeout
 }
 
-func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
+func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing expectation output action")
 	data, ok := runData.Load(fmt.Sprintf("response/%s", a.Request))
 	if !ok {
@@ -74,22 +74,24 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	}
 	a.fnd.Logger().Debugf("Checking response %s data: %v", a.Request, responseData)
 
+	noMatchResult := false
+	if a.fnd.DryRun() {
+		noMatchResult = true
+	}
+
 	// Compare headers.
 	for key, expectedValue := range a.Headers {
 		value, ok := responseData.Headers[key]
 		a.fnd.Logger().Debugf("Comparing header %s with value %s against expected value %s", key, value, expectedValue)
 		if !ok || (len(value) > 0 && value[0] != expectedValue) {
-			return false, errors.New("header mismatch")
+			a.fnd.Logger().Debugf("Headers did not match")
+			return noMatchResult, nil
 		}
 	}
 
-	content, err := a.renderBodyContent(ctx)
+	content, err := a.renderBodyContent()
 	if err != nil {
 		return false, err
-	}
-
-	if a.fnd.DryRun() {
-		return true, nil
 	}
 
 	// Compare body content based on bodyMatch.
@@ -97,34 +99,31 @@ func (a *responseAction) Execute(ctx context.Context, runData runtime.Data) (boo
 	case expectations.MatchTypeExact:
 		a.fnd.Logger().Debugf("Matching body %s with expected content %s", responseData.Body, content)
 		if responseData.Body != content {
-			return false, errors.New("body content mismatch")
+			a.fnd.Logger().Debugf("Body did not exactly match")
+			return noMatchResult, nil
 		}
 	case expectations.MatchTypeRegexp:
 		a.fnd.Logger().Debugf("Matching body %s with expected pattern %s", responseData.Body, content)
 		matched, err := regexp.MatchString(content, responseData.Body)
 		if err != nil {
-			return false, err
+			return noMatchResult, err
 		}
 		if !matched {
-			return false, errors.New("body content does not match type regexp")
+			a.fnd.Logger().Debugf("Body did not match the pattern")
+			return noMatchResult, nil
 		}
 	}
 
 	return true, nil
 }
 
-func (a *responseAction) renderBodyContent(ctx context.Context) (string, error) {
+func (a *responseAction) renderBodyContent() (string, error) {
 	if a.BodyRenderTemplate {
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		default:
-			content, err := a.service.RenderTemplate(a.BodyContent, a.parameters)
-			if err != nil {
-				return "", err
-			}
-			return content, nil
+		content, err := a.service.RenderTemplate(a.BodyContent, a.parameters)
+		if err != nil {
+			return "", err
 		}
+		return content, nil
 	}
 
 	return a.BodyContent, nil

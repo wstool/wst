@@ -202,7 +202,7 @@ func Test_customAction_Execute(t *testing.T) {
 			want:               true,
 		},
 		{
-			name: "output expectation set",
+			name: "response expectation set",
 			responseExpectation: &expectations.ResponseExpectation{
 				Request:            "last",
 				Headers:            types.Headers{"content-type": "application/json"},
