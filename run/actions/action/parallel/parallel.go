@@ -72,23 +72,28 @@ func (a *Action) Timeout() time.Duration {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing parallel action")
+	logger := a.fnd.Logger()
+	logger.Infof("Executing parallel action")
 	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
 	wg.Add(len(a.actions))
 
 	// Use an error channel to collect potential errors from actions.
-	errs := make(chan error, len(a.actions))
+	al := len(a.actions)
+	errs := make(chan error, al)
+	fails := make(chan int, al)
 
 	for pos, act := range a.actions {
 		go func(act action.Action, pos int) {
 			defer wg.Done()
 
 			// Execute the action, passing the context.
-			a.fnd.Logger().Debugf("Executing parallel action %d", pos)
+			logger.Debugf("Executing parallel action %d", pos)
 			success, err := act.Execute(ctx, runData)
-			if err != nil || !success {
+			if err != nil {
 				errs <- fmt.Errorf("parallel action %d failed with error %v", pos, err)
+			} else if !success {
+				fails <- pos
 			}
 		}(act, pos)
 	}
@@ -96,22 +101,32 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	// Wait for all actions to complete.
 	wg.Wait()
 	close(errs)
+	close(fails)
 
 	// Check if there were any errors.
-	failedActionsCount := 0
+	errActionsCount := 0
 	for err := range errs {
-		if err != nil {
-			failedActionsCount++
-			a.fnd.Logger().Errorf("Parallel execution error: %v", err)
-		}
+		errActionsCount++
+		logger.Errorf("Parallel execution error: %v", err)
 	}
-	if failedActionsCount > 0 {
+	if errActionsCount > 0 {
 		multipleSuffix := ""
-		if failedActionsCount > 1 {
+		if errActionsCount > 1 {
 			multipleSuffix = "s"
 		}
-		return false, fmt.Errorf("failed %d parallel action%s", failedActionsCount, multipleSuffix)
+		return false, fmt.Errorf("failed %d parallel action%s", errActionsCount, multipleSuffix)
+	}
+	failedActionsCount := 0
+	for range fails {
+		failedActionsCount++
+	}
+	result := true
+	if failedActionsCount > 0 {
+		logger.Debugf("Executing parallel action failed on %d actions", failedActionsCount)
+		if !a.fnd.DryRun() {
+			result = false
+		}
 	}
 
-	return true, nil
+	return result, nil
 }
