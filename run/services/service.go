@@ -78,9 +78,8 @@ func (s Services) FindService(name string) (Service, error) {
 	return svc, nil
 }
 
-func (s Services) AddService(service Service) error {
+func (s Services) AddService(service Service) {
 	s[service.Name()] = service
-	return nil
 }
 
 type ServiceLocator interface {

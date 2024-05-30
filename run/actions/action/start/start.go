@@ -46,15 +46,13 @@ func (m *ActionMaker) Make(
 	}
 
 	if len(config.Services) > 0 {
+		startServices = make(services.Services, len(config.Services))
 		for _, configService := range config.Services {
 			svc, err := sl.Find(configService)
 			if err != nil {
 				return nil, err
 			}
-			err = startServices.AddService(svc)
-			if err != nil {
-				return nil, err
-			}
+			startServices.AddService(svc)
 		}
 	} else {
 		startServices = sl.Services()

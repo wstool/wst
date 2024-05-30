@@ -8,7 +8,6 @@ import (
 	"github.com/bukka/wst/mocks/external"
 	runtimeMocks "github.com/bukka/wst/mocks/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/run/services"
-	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -307,40 +306,10 @@ func TestAction_Execute(t *testing.T) {
 }
 
 func TestAction_Timeout(t *testing.T) {
-	type fields struct {
-		fnd      app.Foundation
-		service  services.Service
-		timeout  time.Duration
-		duration time.Duration
-		freq     int
-		id       string
-		path     string
-		method   string
-		headers  types.Headers
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:     fndMock,
+		timeout: 2000 * time.Millisecond,
 	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   time.Duration
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &Action{
-				fnd:      tt.fields.fnd,
-				service:  tt.fields.service,
-				timeout:  tt.fields.timeout,
-				duration: tt.fields.duration,
-				freq:     tt.fields.freq,
-				id:       tt.fields.id,
-				path:     tt.fields.path,
-				method:   tt.fields.method,
-				headers:  tt.fields.headers,
-			}
-			if got := a.Timeout(); got != tt.want {
-				t.Errorf("Timeout() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
 }
