@@ -3,7 +3,7 @@ package merger
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/app"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"

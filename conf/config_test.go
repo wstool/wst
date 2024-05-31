@@ -6,11 +6,11 @@ import (
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser"
 	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/app"
-	loaderMocks "github.com/bukka/wst/mocks/conf/loader"
-	mergerMocks "github.com/bukka/wst/mocks/conf/merger"
-	overwritesMocks "github.com/bukka/wst/mocks/conf/overwrites"
-	parserMocks "github.com/bukka/wst/mocks/conf/parser"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
+	loader2 "github.com/bukka/wst/mocks/generated/conf/loader"
+	mergerMocks "github.com/bukka/wst/mocks/generated/conf/merger"
+	overwritesMocks "github.com/bukka/wst/mocks/generated/conf/overwrites"
+	parserMocks "github.com/bukka/wst/mocks/generated/conf/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -58,11 +58,11 @@ func TestConfigMaker_Make(t *testing.T) {
 			configPaths: []string{"path/to/config1.yaml", "path/to/config2.yaml"},
 			overwrites:  map[string]string{"path.to.value": "new value"},
 			loadedConfigsMocksSetup: func() []loader.LoadedConfig {
-				config1Mock := loaderMocks.NewMockLoadedConfig(t)
+				config1Mock := loader2.NewMockLoadedConfig(t)
 				config1Mock.On("Path").Return("path/to/config1.yaml")
 				config1Mock.On("Data").Return(map[string]interface{}{"config1Key": "config1Value"})
 
-				config2Mock := loaderMocks.NewMockLoadedConfig(t)
+				config2Mock := loader2.NewMockLoadedConfig(t)
 				config2Mock.On("Path").Return("path/to/config2.yaml")
 				config2Mock.On("Data").Return(map[string]interface{}{"config2Key": "config2Value"})
 
@@ -93,7 +93,7 @@ func TestConfigMaker_Make(t *testing.T) {
 			configPaths: []string{"path/to/config1.yaml"},
 			wantErr:     true,
 			loadedConfigsMocksSetup: func() []loader.LoadedConfig {
-				config1Mock := loaderMocks.NewMockLoadedConfig(t)
+				config1Mock := loader2.NewMockLoadedConfig(t)
 				config1Mock.On("Path").Return("path/to/config1.yaml")
 				config1Mock.On("Data").Return(map[string]interface{}{"config1Key": "config1Value"})
 				return []loader.LoadedConfig{config1Mock}
@@ -109,11 +109,11 @@ func TestConfigMaker_Make(t *testing.T) {
 			configPaths: []string{"path/to/config1.yaml", "path/to/config2.yaml"},
 			wantErr:     true,
 			loadedConfigsMocksSetup: func() []loader.LoadedConfig {
-				config1Mock := loaderMocks.NewMockLoadedConfig(t)
+				config1Mock := loader2.NewMockLoadedConfig(t)
 				config1Mock.On("Path").Return("path/to/config1.yaml")
 				config1Mock.On("Data").Return(map[string]interface{}{"config1Key": "config1Value"})
 
-				config2Mock := loaderMocks.NewMockLoadedConfig(t)
+				config2Mock := loader2.NewMockLoadedConfig(t)
 				config2Mock.On("Path").Return("path/to/config2.yaml")
 				config2Mock.On("Data").Return(map[string]interface{}{"config2Key": "config2Value"})
 
@@ -131,7 +131,7 @@ func TestConfigMaker_Make(t *testing.T) {
 			overwrites:  map[string]string{"invalid.path": "value"},
 			wantErr:     true,
 			loadedConfigsMocksSetup: func() []loader.LoadedConfig {
-				config1Mock := loaderMocks.NewMockLoadedConfig(t)
+				config1Mock := loader2.NewMockLoadedConfig(t)
 				config1Mock.On("Path").Return("path/to/config1.yaml")
 				config1Mock.On("Data").Return(map[string]interface{}{"config1Key": "config1Value"})
 
@@ -147,7 +147,7 @@ func TestConfigMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
-			loaderMock := loaderMocks.NewMockLoader(t)
+			loaderMock := loader2.NewMockLoader(t)
 			parserMock := parserMocks.NewMockParser(t)
 			mergerMock := mergerMocks.NewMockMerger(t)
 			overwriterMock := overwritesMocks.NewMockOverwriter(t)

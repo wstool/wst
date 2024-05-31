@@ -2,10 +2,10 @@ package expect
 
 import (
 	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/app"
-	expectationsMocks "github.com/bukka/wst/mocks/run/expectations"
-	parametersMocks "github.com/bukka/wst/mocks/run/parameters"
-	servicesMocks "github.com/bukka/wst/mocks/run/services"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
+	expectationsMocks "github.com/bukka/wst/mocks/generated/run/expectations"
+	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
+	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/pkg/errors"

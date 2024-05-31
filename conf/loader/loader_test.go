@@ -16,7 +16,7 @@ package loader
 
 import (
 	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/app"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

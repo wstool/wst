@@ -2,7 +2,7 @@ with-expecter: true
 packages:
   github.com/bukka/wst/app:
     config:
-      dir: mocks/app
+      dir: mocks/generated/app
     interfaces:
       Foundation: {}
       HttpClient: {}
@@ -10,75 +10,75 @@ packages:
       VegetaMetrics: {}
   github.com/bukka/wst/conf/loader:
     config:
-      dir: mocks/conf/loader
+      dir: mocks/generated/conf/loader
     interfaces:
       LoadedConfig: {}
       Loader: {}
   github.com/bukka/wst/conf/merger:
     config:
-      dir: mocks/conf/merger
+      dir: mocks/generated/conf/merger
     interfaces:
       Merger: {}
   github.com/bukka/wst/conf/overwrites:
     config:
-      dir: mocks/conf/overwrites
+      dir: mocks/generated/conf/overwrites
     interfaces:
       Overwriter: {}
   github.com/bukka/wst/conf/parser:
     config:
-      dir: mocks/conf/parser
+      dir: mocks/generated/conf/parser
     interfaces:
       Parser: {}
   github.com/bukka/wst/conf/parser/factory:
     config:
-      dir: mocks/conf/parser/factory
+      dir: mocks/generated/conf/parser/factory
     interfaces:
       Functions: {}
   github.com/bukka/wst/run/actions/action:
     config:
-      dir: mocks/run/actions/action
+      dir: mocks/generated/run/actions/action
     interfaces:
       Action: {}
       Maker: {}
   github.com/bukka/wst/run/expectations:
     config:
-      dir: mocks/run/expectations
+      dir: mocks/generated/run/expectations
     interfaces:
       Maker: {}
   github.com/bukka/wst/run/instances/runtime:
     config:
-      dir: mocks/run/instances/runtime
+      dir: mocks/generated/run/instances/runtime
     interfaces:
       Data: {}
   github.com/bukka/wst/run/metrics:
     config:
-      dir: mocks/run/metrics
+      dir: mocks/generated/run/metrics
     interfaces:
       Metric: {}
       Metrics: {}
   github.com/bukka/wst/run/parameters:
     config:
-      dir: mocks/run/parameters
+      dir: mocks/generated/run/parameters
     interfaces:
       Maker: {}
   github.com/bukka/wst/run/parameters/parameter:
     config:
-      dir: mocks/run/parameters/parameter
+      dir: mocks/generated/run/parameters/parameter
     interfaces:
       Parameter: {}
   github.com/bukka/wst/run/servers:
     config:
-      dir: mocks/run/servers
+      dir: mocks/generated/run/servers
     interfaces:
       Server: {}
   github.com/bukka/wst/run/servers/actions:
     config:
-      dir: mocks/run/servers/actions
+      dir: mocks/generated/run/servers/actions
     interfaces:
       ExpectAction: {}
   github.com/bukka/wst/run/services:
     config:
-      dir: mocks/run/services
+      dir: mocks/generated/run/services
     interfaces:
       ServiceLocator: {}
       Service: {}

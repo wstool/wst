@@ -1,4 +1,4 @@
-package external
+package local
 
 import "github.com/stretchr/testify/mock"
 
