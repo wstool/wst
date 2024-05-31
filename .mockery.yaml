@@ -40,6 +40,51 @@ packages:
     interfaces:
       Action: {}
       Maker: {}
+  github.com/bukka/wst/run/actions/action/bench:
+    config:
+      dir: mocks/generated/run/actions/action/bench
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/expect:
+    config:
+      dir: mocks/generated/run/actions/action/expect
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/not:
+    config:
+      dir: mocks/generated/run/actions/action/not
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/parallel:
+    config:
+      dir: mocks/generated/run/actions/action/parallel
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/reload:
+    config:
+      dir: mocks/generated/run/actions/action/reload
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/request:
+    config:
+      dir: mocks/generated/run/actions/action/request
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/restart:
+    config:
+      dir: mocks/generated/run/actions/action/restart
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/start:
+    config:
+      dir: mocks/generated/run/actions/action/start
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/actions/action/stop:
+    config:
+      dir: mocks/generated/run/actions/action/stop
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/expectations:
     config:
       dir: mocks/generated/run/expectations

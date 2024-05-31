@@ -39,15 +39,15 @@ type ActionMaker interface {
 
 type nativeActionMaker struct {
 	fnd           app.Foundation
-	benchMaker    *bench.ActionMaker
-	expectMaker   *expect.ExpectationActionMaker
-	notMaker      *not.ActionMaker
-	parallelMaker *parallel.ActionMaker
-	requestMaker  *request.ActionMaker
-	reloadMaker   *reload.ActionMaker
-	restartMaker  *restart.ActionMaker
-	startMaker    *start.ActionMaker
-	stopMaker     *stop.ActionMaker
+	benchMaker    bench.Maker
+	expectMaker   expect.Maker
+	notMaker      not.Maker
+	parallelMaker parallel.Maker
+	requestMaker  request.Maker
+	reloadMaker   reload.Maker
+	restartMaker  restart.Maker
+	startMaker    start.Maker
+	stopMaker     stop.Maker
 }
 
 func CreateActionMaker(
@@ -77,6 +77,10 @@ func (m *nativeActionMaker) MakeAction(
 	switch action := config.(type) {
 	case *types.BenchAction:
 		return m.benchMaker.Make(action, sl, defaultTimeout)
+	case *types.CustomExpectationAction:
+		return m.expectMaker.MakeCustomAction(action, sl, defaultTimeout)
+	case *types.MetricsExpectationAction:
+		return m.expectMaker.MakeMetricsAction(action, sl, defaultTimeout)
 	case *types.OutputExpectationAction:
 		return m.expectMaker.MakeOutputAction(action, sl, defaultTimeout)
 	case *types.ResponseExpectationAction:

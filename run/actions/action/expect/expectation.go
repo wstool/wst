@@ -16,11 +16,36 @@ package expect
 
 import (
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"time"
 )
+
+type Maker interface {
+	MakeCustomAction(
+		config *types.CustomExpectationAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+	) (action.Action, error)
+	MakeMetricsAction(
+		config *types.MetricsExpectationAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+	) (action.Action, error)
+	MakeOutputAction(
+		config *types.OutputExpectationAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+	) (action.Action, error)
+	MakeResponseAction(
+		config *types.ResponseExpectationAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+	) (action.Action, error)
+}
 
 type ExpectationActionMaker struct {
 	fnd               app.Foundation

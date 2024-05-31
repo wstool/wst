@@ -26,6 +26,15 @@ import (
 	"time"
 )
 
+type Maker interface {
+	Make(
+		config *types.ParallelAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+		actionMaker action.Maker,
+	) (action.Action, error)
+}
+
 type ActionMaker struct {
 	fnd app.Foundation
 }

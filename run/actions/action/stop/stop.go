@@ -24,6 +24,14 @@ import (
 	"time"
 )
 
+type Maker interface {
+	Make(
+		config *types.StopAction,
+		sl services.ServiceLocator,
+		defaultTimeout int,
+	) (action.Action, error)
+}
+
 type ActionMaker struct {
 	fnd app.Foundation
 }
