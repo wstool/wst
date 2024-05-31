@@ -5,6 +5,7 @@ packages:
       dir: mocks/app
     interfaces:
       Foundation: {}
+      HttpClient: {}
       VegetaAttacker: {}
       VegetaMetrics: {}
   github.com/bukka/wst/conf/loader:
