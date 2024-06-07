@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/environments/environment/providers/docker/client"
 	apitypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"io"
@@ -41,16 +41,18 @@ type Maker interface {
 
 type nativeMaker struct {
 	environment.Maker
+	clientMaker client.Maker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {
 	return &nativeMaker{
-		Maker: environment.CreateMaker(fnd),
+		Maker:       environment.CreateMaker(fnd),
+		clientMaker: client.CreateMaker(fnd),
 	}
 }
 
 func (m *nativeMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := m.clientMaker.Make()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
@@ -67,7 +69,7 @@ func (m *nativeMaker) Make(config *types.DockerEnvironment) (environment.Environ
 
 type dockerEnvironment struct {
 	environment.ContainerEnvironment
-	cli         *client.Client
+	cli         client.Client
 	namePrefix  string
 	networkName string
 	tasks       map[string]*dockerTask

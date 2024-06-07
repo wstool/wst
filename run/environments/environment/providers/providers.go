@@ -7,7 +7,3 @@ const (
 	DockerType          = "docker"
 	KubernetesType      = "kubernetes"
 )
-
-func Types() []Type {
-	return []Type{LocalType, DockerType, KubernetesType}
-}
