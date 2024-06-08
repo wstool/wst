@@ -29,6 +29,7 @@ in the future.
   - add health probes setup
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
+  - custom docker 
 - support metrics server expectation
 
 ### Config

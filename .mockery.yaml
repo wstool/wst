@@ -85,6 +85,12 @@ packages:
       dir: mocks/generated/run/actions/action/stop
     interfaces:
       Maker: {}
+  github.com/bukka/wst/run/environments/environment/providers/docker/client:
+    config:
+      dir: mocks/generated/run/environments/environment/providers/docker/client
+    interfaces:
+      Client: {}
+      Maker: {}
   github.com/bukka/wst/run/expectations:
     config:
       dir: mocks/generated/run/expectations

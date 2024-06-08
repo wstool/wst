@@ -27,6 +27,8 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/bukka/wst/app"
@@ -39,19 +41,19 @@ type Maker interface {
 	Make(config *types.DockerEnvironment) (environment.Environment, error)
 }
 
-type nativeMaker struct {
-	environment.Maker
+type dockerMaker struct {
+	*environment.CommonMaker
 	clientMaker client.Maker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {
-	return &nativeMaker{
-		Maker:       environment.CreateMaker(fnd),
+	return &dockerMaker{
+		CommonMaker: environment.CreateCommonMaker(fnd),
 		clientMaker: client.CreateMaker(fnd),
 	}
 }
 
-func (m *nativeMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
+func (m *dockerMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
 	cli, err := m.clientMaker.Make()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
@@ -62,17 +64,21 @@ func (m *nativeMaker) Make(config *types.DockerEnvironment) (environment.Environ
 			Ports:    config.Ports,
 			Registry: config.Registry,
 		}),
-		cli:        cli,
-		namePrefix: config.NamePrefix,
+		cli:              cli,
+		namePrefix:       config.NamePrefix,
+		tasks:            make(map[string]*dockerTask),
+		waitTickDuration: 1 * time.Second,
 	}, nil
 }
 
 type dockerEnvironment struct {
 	environment.ContainerEnvironment
-	cli         client.Client
-	namePrefix  string
-	networkName string
-	tasks       map[string]*dockerTask
+	cli              client.Client
+	namePrefix       string
+	networkName      string
+	networkMutex     sync.Mutex
+	tasks            map[string]*dockerTask
+	waitTickDuration time.Duration
 }
 
 func (e *dockerEnvironment) Init(ctx context.Context) error {
@@ -83,18 +89,21 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 	if e.Fnd.DryRun() {
 		return nil
 	}
-	// TODO: do not return after first error but try to destroy as much as possible (continue destroying)
+	hasError := false
 	for _, dockTask := range e.tasks {
 		containerId := dockTask.containerId
 		// Stop the container
 		err := e.cli.ContainerStop(ctx, containerId, container.StopOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to stop container %s: %w", containerId, err)
+			e.Fnd.Logger().Errorf("failed to stop container %s: %v", containerId, err)
+			hasError = true
+			continue
 		}
 		// Remove the container
 		err = e.cli.ContainerRemove(ctx, containerId, container.RemoveOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to remove container %s: %w", containerId, err)
+			e.Fnd.Logger().Errorf("failed to remove container %s: %v", containerId, err)
+			hasError = true
 		}
 	}
 
@@ -103,9 +112,13 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 
 	// Delete network
 	if err := e.cli.NetworkRemove(ctx, e.networkName); err != nil {
-		return fmt.Errorf("failed to remove network %s: %w", e.networkName, err)
+		e.Fnd.Logger().Errorf("failed to remove network %s: %v", e.networkName, err)
+		hasError = true
 	}
 
+	if hasError {
+		return errors.New("Destroying docker environment failed")
+	}
 	return nil
 }
 
@@ -119,12 +132,15 @@ func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID st
 }
 
 // Function to create network if it doesn't exist
-func (e *dockerEnvironment) ensureNetwork(ctx context.Context) error {
+func (e *dockerEnvironment) ensureNetwork(ctx context.Context, dryRun bool) error {
+	e.networkMutex.Lock()
+	defer e.networkMutex.Unlock()
+
 	if e.networkName != "" {
 		return nil
 	}
 	e.networkName = e.namePrefix
-	if !e.Fnd.DryRun() {
+	if !dryRun {
 		_, err := e.cli.NetworkCreate(ctx, e.networkName, apitypes.NetworkCreate{
 			Driver: "bridge",
 		})
@@ -146,11 +162,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		command = append([]string{cmd.Name}, cmd.Args...)
 	}
 
-	if err := e.ensureNetwork(ctx); err != nil {
+	dryRun := e.Fnd.DryRun()
+
+	if err := e.ensureNetwork(ctx, dryRun); err != nil {
 		return nil, err
 	}
-
-	dryRun := e.Fnd.DryRun()
 
 	// Pull the Docker image if not already present
 	if !dryRun {
@@ -168,11 +184,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	}
 
 	// Prepare host config with Port bindings
-	serverPort := string(ss.Port)
+	serverPort := strconv.Itoa(int(ss.Port))
 	hostUrl := ""
 	var hostConfig *container.HostConfig
 	if ss.Public {
-		hostPort := string(e.ReservePort())
+		hostPort := strconv.Itoa(int(e.ReservePort()))
 		portMapName := nat.Port(serverPort + "/tcp")
 		hostConfig = &container.HostConfig{
 			PortBindings: nat.PortMap{
@@ -246,19 +262,18 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		return dockTask, nil
 	}
 
-	timeout := time.After(30 * time.Second)
 	statusCh, errCh := e.cli.ContainerWait(ctx, containerId, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed waiting on container to run: %v", err)
 		}
-	case <-timeout:
+	case <-ctx.Done():
 		return nil, fmt.Errorf("timed out waiting for container to be ready")
 	case <-statusCh:
-		ready, err := e.isContainerReady(context.Background(), containerId)
+		ready, err := e.isContainerReady(ctx, containerId)
 		if err != nil {
-			return nil, fmt.Errorf("failed checking of container readiness: %v\n", err)
+			return nil, fmt.Errorf("failed checking of container readiness: %v", err)
 		}
 		if ready {
 			dockTask.containerReady = true
@@ -266,16 +281,16 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		}
 	}
 
-	tick := time.Tick(1 * time.Second)
+	tick := time.Tick(e.waitTickDuration)
 
 	for {
 		select {
-		case <-timeout:
+		case <-ctx.Done():
 			return nil, fmt.Errorf("timed out waiting for container to be ready")
 		case <-tick:
-			ready, err := e.isContainerReady(context.Background(), containerId)
+			ready, err := e.isContainerReady(ctx, containerId)
 			if err != nil {
-				return nil, fmt.Errorf("failed checking of container readiness: %v\n", err)
+				return nil, fmt.Errorf("failed checking of container readiness: %v", err)
 			}
 			if ready {
 				dockTask.containerReady = true
