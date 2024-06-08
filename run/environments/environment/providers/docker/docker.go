@@ -125,7 +125,7 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID string) (bool, error) {
 	resp, err := e.cli.ContainerInspect(ctx, containerID)
 	if err != nil {
-		return false, fmt.Errorf("failed to inspect container %s: %w", containerID, err)
+		return false, fmt.Errorf("failed to inspect container: %w", err)
 	}
 
 	return resp.State.Running, nil
@@ -145,7 +145,7 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context, dryRun bool) erro
 			Driver: "bridge",
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create network %s - %w", e.networkName, err)
 		}
 	}
 	return nil
@@ -172,7 +172,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	if !dryRun {
 		pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to pull Docker image %s: %w", imageName, err)
+			return nil, fmt.Errorf("failed to pull Docker image %s - %w", imageName, err)
 		}
 		defer pullOut.Close()
 	}
@@ -207,14 +207,14 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	for configName, envConfigPath := range ss.EnvironmentConfigPaths {
 		wsConfigPath, found := wsConfigPaths[configName]
 		if !found {
-			return nil, fmt.Errorf("no workspace config for %s", configName)
+			return nil, fmt.Errorf("failed to bind config %s for service %s", configName, ss.Name)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsConfigPath, envConfigPath))
 	}
 	for scriptName, envScriptPath := range ss.EnvironmentScriptPaths {
 		wsScriptPath, found := wsScriptPaths[scriptName]
 		if !found {
-			return nil, fmt.Errorf("no workspace script for %s", scriptName)
+			return nil, fmt.Errorf("failed to bind script %s for service %s", scriptName, ss.Name)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsScriptPath, envScriptPath))
 	}
@@ -239,7 +239,8 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		// Start the Docker container
 		err = e.cli.ContainerStart(ctx, containerResp.ID, container.StartOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to start Docker container %s: %w", containerResp.ID, err)
+			return nil, fmt.Errorf("failed to start Docker container %s %s: %w",
+				containerName, containerResp.ID, err)
 		}
 
 		containerId = containerResp.ID
@@ -266,14 +267,17 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return nil, fmt.Errorf("failed waiting on container to run: %v", err)
+			return nil, fmt.Errorf("failed waiting on container %s %s to run: %v",
+				containerName, containerId, err)
 		}
 	case <-ctx.Done():
-		return nil, fmt.Errorf("timed out waiting for container to be ready")
+		return nil, fmt.Errorf("timed out waiting for container %s %s to be ready",
+			containerName, containerId)
 	case <-statusCh:
 		ready, err := e.isContainerReady(ctx, containerId)
 		if err != nil {
-			return nil, fmt.Errorf("failed checking of container readiness: %v", err)
+			return nil, fmt.Errorf("failed checking of container %s %s readiness: %v",
+				containerName, containerId, err)
 		}
 		if ready {
 			dockTask.containerReady = true
@@ -286,11 +290,13 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for container to be ready")
+			return nil, fmt.Errorf("timed out waiting for container %s %s to be ready",
+				containerName, containerId)
 		case <-tick:
 			ready, err := e.isContainerReady(ctx, containerId)
 			if err != nil {
-				return nil, fmt.Errorf("failed checking of container readiness: %v", err)
+				return nil, fmt.Errorf("failed checking of container %s %s readiness: %v",
+					containerName, containerId, err)
 			}
 			if ready {
 				dockTask.containerReady = true
