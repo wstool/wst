@@ -56,7 +56,7 @@ func CreateMaker(fnd app.Foundation) Maker {
 func (m *dockerMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
 	cli, err := m.clientMaker.Make()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %w", err)
+		return nil, fmt.Errorf("failed to create docker client: %v", err)
 	}
 
 	return &dockerEnvironment{
@@ -125,7 +125,7 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID string) (bool, error) {
 	resp, err := e.cli.ContainerInspect(ctx, containerID)
 	if err != nil {
-		return false, fmt.Errorf("failed to inspect container: %w", err)
+		return false, errors.Errorf("failed to inspect container: %v", err)
 	}
 
 	return resp.State.Running, nil
@@ -145,7 +145,7 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context, dryRun bool) erro
 			Driver: "bridge",
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create network %s - %w", e.networkName, err)
+			return errors.Errorf("failed to create network %s - %v", e.networkName, err)
 		}
 	}
 	return nil
@@ -172,7 +172,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	if !dryRun {
 		pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to pull Docker image %s - %w", imageName, err)
+			return nil, errors.Errorf("failed to pull Docker image %s - %v", imageName, err)
 		}
 		defer pullOut.Close()
 	}
@@ -207,14 +207,14 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	for configName, envConfigPath := range ss.EnvironmentConfigPaths {
 		wsConfigPath, found := wsConfigPaths[configName]
 		if !found {
-			return nil, fmt.Errorf("failed to bind config %s for service %s", configName, ss.Name)
+			return nil, errors.Errorf("failed to bind config %s for service %s", configName, ss.Name)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsConfigPath, envConfigPath))
 	}
 	for scriptName, envScriptPath := range ss.EnvironmentScriptPaths {
 		wsScriptPath, found := wsScriptPaths[scriptName]
 		if !found {
-			return nil, fmt.Errorf("failed to bind script %s for service %s", scriptName, ss.Name)
+			return nil, errors.Errorf("failed to bind script %s for service %s", scriptName, ss.Name)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsScriptPath, envScriptPath))
 	}
@@ -233,17 +233,20 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	if !dryRun {
 		containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Docker container for service %s: %w", ss.Name, err)
+			return nil, errors.Errorf("failed to create Docker container for service %s: %v", ss.Name, err)
 		}
+		containerId = containerResp.ID
 
 		// Start the Docker container
-		err = e.cli.ContainerStart(ctx, containerResp.ID, container.StartOptions{})
+		err = e.cli.ContainerStart(ctx, containerId, container.StartOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to start Docker container %s %s: %w",
+			removeErr := e.cli.ContainerRemove(ctx, containerId, container.RemoveOptions{})
+			if removeErr != nil {
+				e.Fnd.Logger().Errorf("failed to remove container %s: %v", containerId, removeErr)
+			}
+			return nil, errors.Errorf("failed to start Docker container %s %s: %v",
 				containerName, containerResp.ID, err)
 		}
-
-		containerId = containerResp.ID
 	} else {
 		containerId = "container"
 	}
@@ -267,16 +270,16 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return nil, fmt.Errorf("failed waiting on container %s %s to run: %v",
+			return nil, errors.Errorf("failed waiting on container %s %s to run: %v",
 				containerName, containerId, err)
 		}
 	case <-ctx.Done():
-		return nil, fmt.Errorf("timed out waiting for container %s %s to be ready",
+		return nil, errors.Errorf("timed out waiting for container %s %s to be ready",
 			containerName, containerId)
 	case <-statusCh:
 		ready, err := e.isContainerReady(ctx, containerId)
 		if err != nil {
-			return nil, fmt.Errorf("failed checking of container %s %s readiness: %v",
+			return nil, errors.Errorf("failed checking of container %s %s readiness: %v",
 				containerName, containerId, err)
 		}
 		if ready {
@@ -290,12 +293,12 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for container %s %s to be ready",
+			return nil, errors.Errorf("timed out waiting for container %s %s to be ready",
 				containerName, containerId)
 		case <-tick:
 			ready, err := e.isContainerReady(ctx, containerId)
 			if err != nil {
-				return nil, fmt.Errorf("failed checking of container %s %s readiness: %v",
+				return nil, errors.Errorf("failed checking of container %s %s readiness: %v",
 					containerName, containerId, err)
 			}
 			if ready {
@@ -307,11 +310,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 }
 
 func (e *dockerEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
-	return fmt.Errorf("executing command is not currently supported in Docker environment")
+	return errors.Errorf("executing command is not currently supported in Docker environment")
 }
 
 func (e *dockerEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
-	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
+	return errors.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
 func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
@@ -326,7 +329,7 @@ func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, output
 		Follow:     true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get container logs: %w", err)
+		return nil, errors.Errorf("failed to get container logs: %v", err)
 	}
 
 	return reader, nil

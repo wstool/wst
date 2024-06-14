@@ -22,24 +22,21 @@ import (
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/environments/environment/providers/kubernetes/clients"
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"io"
-	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
-	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Maker interface {
@@ -48,22 +45,30 @@ type Maker interface {
 
 type nativeMaker struct {
 	environment.Maker
+	clientsMaker clients.Maker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {
 	return &nativeMaker{
-		Maker: environment.CreateMaker(fnd),
+		Maker:        environment.CreateCommonMaker(fnd),
+		clientsMaker: clients.CreateMaker(fnd),
 	}
 }
 
 func (m *nativeMaker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
+	configMapClient, err := m.clientsMaker.MakeConfigMapClient(config)
 	if err != nil {
 		return nil, err
 	}
-
-	// Create a clientset for interacting with the Kubernetes API
-	clientset, err := kubernetes.NewForConfig(kubeConfig)
+	deploymentClient, err := m.clientsMaker.MakeDeploymentClient(config)
+	if err != nil {
+		return nil, err
+	}
+	podClient, err := m.clientsMaker.MakePodClient(config)
+	if err != nil {
+		return nil, err
+	}
+	serviceClient, err := m.clientsMaker.MakeServiceClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +81,10 @@ func (m *nativeMaker) Make(config *types.KubernetesEnvironment) (environment.Env
 		kubeconfigPath:   config.Kubeconfig,
 		namespace:        config.Namespace,
 		useFullName:      false,
-		deploymentClient: clientset.AppsV1().Deployments(config.Namespace),
-		configMapClient:  clientset.CoreV1().ConfigMaps(config.Namespace),
-		podClient:        clientset.CoreV1().Pods(config.Namespace),
-		serviceClient:    clientset.CoreV1().Services(config.Namespace),
+		configMapClient:  configMapClient,
+		deploymentClient: deploymentClient,
+		podClient:        podClient,
+		serviceClient:    serviceClient,
 	}, nil
 }
 
@@ -89,10 +94,10 @@ type kubernetesEnvironment struct {
 	kubeconfigPath   string
 	namespace        string
 	useFullName      bool
-	deploymentClient clientappsv1.DeploymentInterface
-	configMapClient  clientcorev1.ConfigMapInterface
-	podClient        clientcorev1.PodInterface
-	serviceClient    clientcorev1.ServiceInterface
+	deploymentClient clients.DeploymentClient
+	configMapClient  clients.ConfigMapClient
+	podClient        clients.PodClient
+	serviceClient    clients.ServiceClient
 	tasks            map[string]*kubernetesTask
 }
 
@@ -107,32 +112,102 @@ func (e *kubernetesEnvironment) Init(ctx context.Context) error {
 	return nil
 }
 
+func (e *kubernetesEnvironment) destroyConfigMaps(
+	ctx context.Context,
+	configMaps []*corev1.ConfigMap,
+	opts metav1.DeleteOptions,
+) error {
+	hasError := false
+	for _, configMap := range configMaps {
+		if err := e.configMapClient.Delete(ctx, configMap.Name, opts); err != nil {
+			e.Fnd.Logger().Errorf("failed to remove config map %s: %v", configMap.Name, err)
+			hasError = true
+		}
+	}
+	if hasError {
+		return errors.Errorf("Failed to delete config maps")
+	}
+	return nil
+}
+
+func (e *kubernetesEnvironment) destroyDeployment(
+	ctx context.Context,
+	deployment *appsv1.Deployment,
+	opts metav1.DeleteOptions,
+) error {
+	if deployment != nil {
+		err := e.deploymentClient.Delete(ctx, deployment.Name, opts)
+		if err != nil {
+			e.Fnd.Logger().Errorf("failed to delete deployment %s: %v", deployment.Name, err)
+			return errors.Errorf("Failed to delete deployment")
+		}
+	}
+	return nil
+}
+
+func (e *kubernetesEnvironment) destroyService(
+	ctx context.Context,
+	service *corev1.Service,
+	opts metav1.DeleteOptions,
+) error {
+	if service != nil {
+		err := e.serviceClient.Delete(ctx, service.Name, opts)
+		if err != nil {
+			e.Fnd.Logger().Errorf("failed to delete service %s: %v", service.Name, err)
+			return errors.Errorf("Failed to delete service")
+		}
+	}
+	return nil
+}
+
+func (e *kubernetesEnvironment) destroyTask(
+	ctx context.Context,
+	kubeTask *kubernetesTask,
+	deleteOptions metav1.DeleteOptions,
+) error {
+	hasError := false
+	var err error
+	// Delete the service
+	if err = e.destroyService(ctx, kubeTask.service, deleteOptions); err != nil {
+		hasError = true
+	}
+
+	// Delete the deployment
+	if err = e.destroyDeployment(ctx, kubeTask.deployment, deleteOptions); err != nil {
+		hasError = true
+	}
+
+	// Delete config maps
+	if err = e.destroyConfigMaps(ctx, kubeTask.configMaps, deleteOptions); err != nil {
+		hasError = true
+	}
+
+	if hasError {
+		return errors.Errorf("Failed to delete task")
+	}
+
+	return nil
+}
+
 func (e *kubernetesEnvironment) Destroy(ctx context.Context) error {
 	var err error
 
 	deleteOptions := metav1.DeleteOptions{DryRun: e.dryRunOption()}
+	hasError := false
 	// Iterate over all tasks to delete services and deployments
 	for _, kubeTask := range e.tasks {
-		// Delete the service
-		if kubeTask.service != nil {
-			err = e.serviceClient.Delete(ctx, kubeTask.serviceName, deleteOptions)
-			if err != nil {
-				return fmt.Errorf("failed to delete service %s: %w", kubeTask.serviceName, err)
-			}
-		}
-
-		// Delete the deployment
-		if kubeTask.deployment != nil {
-			err = e.deploymentClient.Delete(ctx, kubeTask.deployment.Name, deleteOptions)
-			if err != nil {
-				return fmt.Errorf("failed to delete deployment %s: %w", kubeTask.deployment.Name, err)
-			}
+		// Delete the tasks
+		if err = e.destroyTask(ctx, kubeTask, deleteOptions); err != nil {
+			hasError = true
 		}
 	}
 
 	// Clear the tasks map for potential reuse of the environment
 	e.tasks = make(map[string]*kubernetesTask)
 
+	if hasError {
+		return errors.Errorf("Failed to destroy environment")
+	}
 	return nil
 }
 
@@ -175,10 +250,10 @@ func (e *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapNa
 }
 
 // loadFileContent reads the content of the file at the given path.
-func loadFileContent(filePath string) (string, error) {
-	content, err := ioutil.ReadFile(filePath)
+func (e *kubernetesEnvironment) loadFileContent(filePath string) (string, error) {
+	content, err := afero.ReadFile(e.fnd.Fs(), filePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read file at %s: %w", filePath, err)
+		return "", errors.Errorf("failed to read file at %s: %v", filePath, err)
 	}
 	return string(content), nil
 }
@@ -194,17 +269,18 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 	envPaths map[string]string,
 	volumeMounts *[]corev1.VolumeMount,
 	volumes *[]corev1.Volume,
-) error {
+) ([]*corev1.ConfigMap, error) {
+	configMaps := make([]*corev1.ConfigMap, 0, len(workspacePaths))
 	for name, hostPath := range workspacePaths {
 		envPath, found := envPaths[name]
 		if !found {
-			return fmt.Errorf("environment path not found for %s", name)
+			return configMaps, errors.Errorf("environment path not found for %s", name)
 		}
 
 		// Load the content of the file at hostPath
-		content, err := loadFileContent(hostPath)
+		content, err := e.loadFileContent(hostPath)
 		if err != nil {
-			return err
+			return configMaps, err
 		}
 
 		// Create a ConfigMap for the file content
@@ -213,10 +289,11 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 			filepath.Base(hostPath): content, // Use the file name as the key
 		}
 
-		_, err = e.createConfigMap(ctx, configMapName, data)
+		configMap, err := e.createConfigMap(ctx, configMapName, data)
 		if err != nil {
-			return fmt.Errorf("failed to create configMap %s: %w", configMapName, err)
+			return configMaps, errors.Errorf("failed to create configMap %s: %v", configMapName, err)
 		}
+		configMaps = append(configMaps, configMap)
 
 		// Prepare volume and volume mount for this ConfigMap
 		volumeName := configMapName + "-volume"
@@ -237,7 +314,7 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 		})
 	}
 
-	return nil
+	return configMaps, nil
 }
 
 func (e *kubernetesEnvironment) createDeployment(
@@ -253,8 +330,9 @@ func (e *kubernetesEnvironment) createDeployment(
 
 	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
+	deleteOptions := metav1.DeleteOptions{DryRun: e.dryRunOption()}
 
-	err := e.processWorkspacePaths(
+	configConfigMaps, err := e.processWorkspacePaths(
 		ctx,
 		serviceName,
 		ss.WorkspaceConfigPaths,
@@ -265,7 +343,7 @@ func (e *kubernetesEnvironment) createDeployment(
 	if err != nil {
 		return nil, err
 	}
-	err = e.processWorkspacePaths(
+	scriptConfigMaps, err := e.processWorkspacePaths(
 		ctx,
 		serviceName,
 		ss.WorkspaceScriptPaths,
@@ -274,8 +352,10 @@ func (e *kubernetesEnvironment) createDeployment(
 		&volumes,
 	)
 	if err != nil {
+		_ = e.destroyConfigMaps(ctx, configConfigMaps, deleteOptions)
 		return nil, err
 	}
+	configMaps := append(configConfigMaps, scriptConfigMaps...)
 
 	var command []string
 	var args []string
@@ -325,6 +405,7 @@ func (e *kubernetesEnvironment) createDeployment(
 
 	result, err := e.deploymentClient.Create(ctx, deployment, metav1.CreateOptions{DryRun: e.dryRunOption()})
 	if err != nil {
+		_ = e.destroyConfigMaps(ctx, configMaps, deleteOptions)
 		return nil, err
 	}
 	kubeTask := &kubernetesTask{deployment: result}
@@ -351,7 +432,7 @@ func (e *kubernetesEnvironment) createDeployment(
 			case watch.Added, watch.Modified:
 				deployment, ok := event.Object.(*appsv1.Deployment)
 				if !ok {
-					return nil, fmt.Errorf("expected Deployment object, but got something else")
+					return nil, errors.Errorf("expected Deployment object, but got something else")
 				}
 				if deployment.Status.ReadyReplicas == *deployment.Spec.Replicas {
 					kubeTask.deploymentReady = true
@@ -360,10 +441,10 @@ func (e *kubernetesEnvironment) createDeployment(
 			case watch.Deleted:
 				fallthrough
 			case watch.Error:
-				return nil, fmt.Errorf("watch error: %v", event.Object)
+				return nil, errors.Errorf("watch error: %v", event.Object)
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("context canceled or timed out when waiting on deployment to be ready")
+			return nil, errors.Errorf("context canceled or timed out when waiting on deployment to be ready")
 		}
 	}
 }
@@ -401,7 +482,7 @@ func (e *kubernetesEnvironment) createService(
 
 	kubeService, err := e.serviceClient.Create(ctx, kubeServiceSpec, metav1.CreateOptions{DryRun: e.dryRunOption()})
 	if err != nil {
-		return fmt.Errorf("failed to create service: %w", err)
+		return errors.Errorf("failed to create service: %v", err)
 	}
 
 	kubeTask.service = kubeService
@@ -430,7 +511,7 @@ func (e *kubernetesEnvironment) createService(
 			case watch.Added, watch.Modified:
 				svc, ok := event.Object.(*corev1.Service)
 				if !ok {
-					return fmt.Errorf("expected Service object, but got something else")
+					return errors.Errorf("expected Service object, but got something else")
 				}
 				if len(svc.Status.LoadBalancer.Ingress) > 0 {
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
@@ -443,10 +524,10 @@ func (e *kubernetesEnvironment) createService(
 			case watch.Deleted:
 				fallthrough
 			case watch.Error:
-				return fmt.Errorf("watch error: %v", event.Object)
+				return errors.Errorf("watch error: %v", event.Object)
 			}
 		case <-ctx.Done():
-			return fmt.Errorf("context canceled or timed out when waiting on service IP")
+			return errors.Errorf("context canceled or timed out when waiting on service IP")
 		}
 	}
 }
@@ -466,11 +547,11 @@ func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.Ser
 }
 
 func (e *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
-	return fmt.Errorf("executing command is not currently supported in Kubernetes environment")
+	return errors.Errorf("executing command is not currently supported in Kubernetes environment")
 }
 
 func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
-	return fmt.Errorf("executing signal is not currently supported in Kubernetes environment")
+	return errors.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
 func (e *kubernetesEnvironment) logsStream(ctx context.Context, pod corev1.Pod) (io.ReadCloser, error) {
@@ -482,20 +563,20 @@ func (e *kubernetesEnvironment) logsStream(ctx context.Context, pod corev1.Pod) 
 
 func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
 	if outputType != output.Any {
-		return nil, fmt.Errorf("only any output type is supported by Kubernetes environment")
+		return nil, errors.Errorf("only any output type is supported by Kubernetes environment")
 	}
 	pods, err := e.podClient.List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("app=%s", target.Name()),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pods: %w", err)
+		return nil, errors.Errorf("failed to list pods: %v", err)
 	}
 
 	readers := make([]io.Reader, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		podLogs, err := e.logsStream(ctx, pod)
 		if err != nil {
-			return nil, fmt.Errorf("error in opening stream: %w", err)
+			return nil, errors.Errorf("error in opening stream: %v", err)
 		}
 		defer podLogs.Close()
 
@@ -515,6 +596,7 @@ func (e *kubernetesEnvironment) RootPath(workspace string) string {
 type kubernetesTask struct {
 	deployment        *appsv1.Deployment
 	service           *corev1.Service
+	configMaps        []*corev1.ConfigMap
 	serviceName       string
 	servicePublicUrl  string
 	servicePrivateUrl string
