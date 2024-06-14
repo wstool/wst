@@ -43,34 +43,34 @@ type Maker interface {
 	Make(config *types.KubernetesEnvironment) (environment.Environment, error)
 }
 
-type nativeMaker struct {
-	environment.Maker
+type kubernetesMaker struct {
+	*environment.CommonMaker
 	clientsMaker clients.Maker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {
-	return &nativeMaker{
-		Maker:        environment.CreateCommonMaker(fnd),
+	return &kubernetesMaker{
+		CommonMaker:  environment.CreateCommonMaker(fnd),
 		clientsMaker: clients.CreateMaker(fnd),
 	}
 }
 
-func (m *nativeMaker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
+func (m *kubernetesMaker) Make(config *types.KubernetesEnvironment) (environment.Environment, error) {
 	configMapClient, err := m.clientsMaker.MakeConfigMapClient(config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
 	deploymentClient, err := m.clientsMaker.MakeDeploymentClient(config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
 	podClient, err := m.clientsMaker.MakePodClient(config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
 	serviceClient, err := m.clientsMaker.MakeServiceClient(config)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
 
 	return &kubernetesEnvironment{
@@ -85,12 +85,12 @@ func (m *nativeMaker) Make(config *types.KubernetesEnvironment) (environment.Env
 		deploymentClient: deploymentClient,
 		podClient:        podClient,
 		serviceClient:    serviceClient,
+		tasks:            make(map[string]*kubernetesTask),
 	}, nil
 }
 
 type kubernetesEnvironment struct {
 	environment.ContainerEnvironment
-	fnd              app.Foundation
 	kubeconfigPath   string
 	namespace        string
 	useFullName      bool
@@ -120,12 +120,12 @@ func (e *kubernetesEnvironment) destroyConfigMaps(
 	hasError := false
 	for _, configMap := range configMaps {
 		if err := e.configMapClient.Delete(ctx, configMap.Name, opts); err != nil {
-			e.Fnd.Logger().Errorf("failed to remove config map %s: %v", configMap.Name, err)
+			e.Fnd.Logger().Errorf("Failed to remove config map %s: %v", configMap.Name, err)
 			hasError = true
 		}
 	}
 	if hasError {
-		return errors.Errorf("Failed to delete config maps")
+		return errors.Errorf("failed to delete config maps")
 	}
 	return nil
 }
@@ -138,8 +138,8 @@ func (e *kubernetesEnvironment) destroyDeployment(
 	if deployment != nil {
 		err := e.deploymentClient.Delete(ctx, deployment.Name, opts)
 		if err != nil {
-			e.Fnd.Logger().Errorf("failed to delete deployment %s: %v", deployment.Name, err)
-			return errors.Errorf("Failed to delete deployment")
+			e.Fnd.Logger().Errorf("Failed to delete deployment %s: %v", deployment.Name, err)
+			return errors.Errorf("failed to delete deployment")
 		}
 	}
 	return nil
@@ -153,8 +153,8 @@ func (e *kubernetesEnvironment) destroyService(
 	if service != nil {
 		err := e.serviceClient.Delete(ctx, service.Name, opts)
 		if err != nil {
-			e.Fnd.Logger().Errorf("failed to delete service %s: %v", service.Name, err)
-			return errors.Errorf("Failed to delete service")
+			e.Fnd.Logger().Errorf("Failed to delete service %s: %v", service.Name, err)
+			return errors.Errorf("failed to delete service")
 		}
 	}
 	return nil
@@ -183,7 +183,7 @@ func (e *kubernetesEnvironment) destroyTask(
 	}
 
 	if hasError {
-		return errors.Errorf("Failed to delete task")
+		return errors.Errorf("failed to delete task")
 	}
 
 	return nil
@@ -206,7 +206,7 @@ func (e *kubernetesEnvironment) Destroy(ctx context.Context) error {
 	e.tasks = make(map[string]*kubernetesTask)
 
 	if hasError {
-		return errors.Errorf("Failed to destroy environment")
+		return errors.Errorf("failed to destroy kubernetes environment")
 	}
 	return nil
 }
@@ -251,7 +251,7 @@ func (e *kubernetesEnvironment) createConfigMap(ctx context.Context, configMapNa
 
 // loadFileContent reads the content of the file at the given path.
 func (e *kubernetesEnvironment) loadFileContent(filePath string) (string, error) {
-	content, err := afero.ReadFile(e.fnd.Fs(), filePath)
+	content, err := afero.ReadFile(e.Fnd.Fs(), filePath)
 	if err != nil {
 		return "", errors.Errorf("failed to read file at %s: %v", filePath, err)
 	}
@@ -491,7 +491,7 @@ func (e *kubernetesEnvironment) createService(
 		if ss.Public {
 			kubeTask.servicePublicUrl = "http://127.0.0.1"
 		}
-		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, ss.Port)
+		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
 		return nil
 	}
 
@@ -518,7 +518,7 @@ func (e *kubernetesEnvironment) createService(
 					if ss.Public {
 						kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
 					}
-					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%s", serviceName, ss.Port)
+					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
 					return nil
 				}
 			case watch.Deleted:

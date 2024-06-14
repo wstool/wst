@@ -56,7 +56,7 @@ func CreateMaker(fnd app.Foundation) Maker {
 func (m *dockerMaker) Make(config *types.DockerEnvironment) (environment.Environment, error) {
 	cli, err := m.clientMaker.Make()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %v", err)
+		return nil, errors.Errorf("failed to create docker client: %v", err)
 	}
 
 	return &dockerEnvironment{
