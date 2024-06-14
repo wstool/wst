@@ -1020,7 +1020,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			expectedErrorMsg: "failed waiting on container wt-svc dcid to run: wait err",
 		},
 		{
-			name:          "failed docker run on container start",
+			name:          "failed docker run on container start with success container remove",
 			envNamePrefix: "wt",
 			envStartPort:  8080,
 			networkName:   "wt",
@@ -1082,6 +1082,75 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					"wt-svc",
 				).Return(container.CreateResponse{ID: "dcid"}, nil)
 				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(errors.New("start err"))
+				cli.On("ContainerRemove", ctx, "dcid", container.RemoveOptions{}).Return(nil)
+			},
+			expectError:      true,
+			expectedErrorMsg: "failed to start Docker container wt-svc dcid: start err",
+		},
+		{
+			name:          "failed docker run on container start with failed container remove",
+			envNamePrefix: "wt",
+			envStartPort:  8080,
+			networkName:   "wt",
+			ss: &environment.ServiceSettings{
+				Name:     "svc",
+				FullName: "mysvc",
+				Port:     1234,
+				Public:   false,
+				ContainerConfig: &containers.ContainerConfig{
+					ImageName:        "wst",
+					ImageTag:         "test",
+					RegistryUsername: "u1",
+					RegistryPassword: "p1",
+				},
+				EnvironmentConfigPaths: map[string]string{
+					"main_conf": "/etc/main.conf",
+				},
+				EnvironmentScriptPaths: map[string]string{
+					"test_php": "/www/test.php",
+				},
+				WorkspaceConfigPaths: map[string]string{
+					"main_conf": "/tmp/wst/main.conf",
+				},
+				WorkspaceScriptPaths: map[string]string{
+					"test_php": "/tmp/wst/test.php",
+				},
+			},
+			cmd: &environment.Command{
+				Name: "php",
+				Args: []string{"test.php", "run"},
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				cancel context.CancelFunc,
+				fnd *appMocks.MockFoundation,
+				cli *dockerClientMocks.MockClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				pullOut := &pullReaderCloser{}
+				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				var platform *v1.Platform = nil
+				cli.On(
+					"ContainerCreate",
+					ctx,
+					&container.Config{
+						Image: "wst:test",
+						Cmd:   []string{"php", "test.php", "run"},
+					},
+					&container.HostConfig{
+						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+					},
+					&network.NetworkingConfig{
+						EndpointsConfig: map[string]*network.EndpointSettings{
+							"wt": {},
+						},
+					},
+					platform,
+					"wt-svc",
+				).Return(container.CreateResponse{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(errors.New("start err"))
+				cli.On("ContainerRemove", ctx, "dcid", container.RemoveOptions{}).Return(errors.New("failed rem"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to start Docker container wt-svc dcid: start err",
