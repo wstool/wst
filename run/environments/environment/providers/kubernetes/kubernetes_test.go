@@ -9,6 +9,7 @@ import (
 	k8sClientMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/providers/kubernetes/clients"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -635,7 +636,156 @@ func Test_kubernetesEnvironment_Destroy(t *testing.T) {
 }
 
 func Test_kubernetesEnvironment_RunTask(t *testing.T) {
-	// TODO: implement
+	tests := []struct {
+		name           string
+		namespace      string
+		kubeconfigPath string
+		useFullName    bool
+		envStartPort   int32
+		ss             *environment.ServiceSettings
+		cmd            *environment.Command
+		setupMocks     func(
+			*testing.T,
+			context.Context,
+			context.CancelFunc,
+			*appMocks.MockFoundation,
+			*k8sClientMocks.MockConfigMapClient,
+			*k8sClientMocks.MockDeploymentClient,
+			*k8sClientMocks.MockServiceClient,
+		)
+		contextSetup     func() (context.Context, context.CancelFunc)
+		expectedTask     *kubernetesTask
+		expectError      bool
+		expectedErrorMsg string
+	}{
+		{
+			name:           "successful kubernetes public run",
+			namespace:      "wt",
+			kubeconfigPath: "/home/kubeconfig/config.yml",
+			useFullName:    true,
+			envStartPort:   8080,
+			ss: &environment.ServiceSettings{
+				Name:     "svc",
+				FullName: "mysvc",
+				Port:     1234,
+				Public:   true,
+				ContainerConfig: &containers.ContainerConfig{
+					ImageName:        "wst",
+					ImageTag:         "test",
+					RegistryUsername: "u1",
+					RegistryPassword: "p1",
+				},
+				EnvironmentConfigPaths: map[string]string{
+					"main_conf": "/etc/main.conf",
+				},
+				EnvironmentScriptPaths: map[string]string{
+					"test_php": "/www/test.php",
+				},
+				WorkspaceConfigPaths: map[string]string{
+					"main_conf": "/tmp/wst/main.conf",
+				},
+				WorkspaceScriptPaths: map[string]string{
+					"test_php": "/tmp/wst/test.php",
+				},
+			},
+			cmd: &environment.Command{
+				Name: "php",
+				Args: []string{"test.php", "run"},
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				cancel context.CancelFunc,
+				fnd *appMocks.MockFoundation,
+				cmc *k8sClientMocks.MockConfigMapClient,
+				dc *k8sClientMocks.MockDeploymentClient,
+				sc *k8sClientMocks.MockServiceClient,
+			) {
+				fnd.On("DryRun").Return(false)
+
+			},
+			expectedTask: &kubernetesTask{
+				configMaps: []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "c11",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "c12",
+						},
+					},
+				},
+				deployment: &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "d1",
+					},
+				},
+				service: &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "s1",
+					},
+				},
+				serviceName:       "kubes",
+				servicePublicUrl:  "http://localhost:1234",
+				servicePrivateUrl: "http://kubes:8080",
+				deploymentReady:   true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			mockLogger := external.NewMockLogger()
+			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
+			cmc := k8sClientMocks.NewMockConfigMapClient(t)
+			dc := k8sClientMocks.NewMockDeploymentClient(t)
+			sc := k8sClientMocks.NewMockServiceClient(t)
+			var ctx context.Context
+			var cancel context.CancelFunc
+			if tt.contextSetup == nil {
+				ctx, cancel = context.WithCancel(context.Background())
+			} else {
+				ctx, cancel = tt.contextSetup()
+			}
+			e := &kubernetesEnvironment{
+				ContainerEnvironment: environment.ContainerEnvironment{
+					CommonEnvironment: environment.CommonEnvironment{
+						Fnd: fndMock,
+						Ports: environment.Ports{
+							Start: tt.envStartPort,
+							Used:  tt.envStartPort,
+							End:   tt.envStartPort + 100,
+						},
+					},
+					Registry: environment.ContainerRegistry{},
+				},
+				kubeconfigPath:   tt.kubeconfigPath,
+				namespace:        tt.namespace,
+				useFullName:      tt.useFullName,
+				deploymentClient: dc,
+				configMapClient:  cmc,
+				serviceClient:    sc,
+				tasks:            make(map[string]*kubernetesTask),
+			}
+
+			tt.setupMocks(t, ctx, cancel, fndMock, cmc, dc, sc)
+
+			got, err := e.RunTask(ctx, tt.ss, tt.cmd)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				actualTask, ok := got.(*kubernetesTask)
+				assert.True(t, ok)
+				assert.Equal(t, tt.expectedTask, actualTask)
+			}
+		})
+	}
 }
 
 func Test_kubernetesEnvironment_ExecTaskCommand(t *testing.T) {
