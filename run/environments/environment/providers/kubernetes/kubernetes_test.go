@@ -11,6 +11,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -642,6 +643,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 		kubeconfigPath string
 		useFullName    bool
 		envStartPort   int32
+		fs             map[string]string
 		ss             *environment.ServiceSettings
 		cmd            *environment.Command
 		setupMocks     func(
@@ -664,6 +666,10 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			kubeconfigPath: "/home/kubeconfig/config.yml",
 			useFullName:    true,
 			envStartPort:   8080,
+			fs: map[string]string{
+				"/tmp/wst/main.conf": "main: data",
+				"/tmp/wst/test.php":  "<?php echo 1; ?>",
+			},
 			ss: &environment.ServiceSettings{
 				Name:     "svc",
 				FullName: "mysvc",
@@ -702,7 +708,103 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				sc *k8sClientMocks.MockServiceClient,
 			) {
 				fnd.On("DryRun").Return(false)
-
+				cmc.On(
+					"Create",
+					ctx,
+					&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "svc-main_conf",
+						},
+						Data: map[string]string{
+							"main.conf": "main: data",
+						},
+					},
+					metav1.CreateOptions{DryRun: nil},
+				)
+				cmc.On(
+					"Create",
+					ctx,
+					&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "svc-test_php",
+						},
+						Data: map[string]string{
+							"test.php": "<?php echo 1; ?>",
+						},
+					},
+					metav1.CreateOptions{DryRun: nil},
+				)
+				dc.On(
+					"Create",
+					ctx,
+					&appsv1.Deployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "svc",
+						},
+						Spec: appsv1.DeploymentSpec{
+							Replicas: int32Ptr(2), // Specify the number of replicas
+							Selector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app": "svc",
+								},
+							},
+							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"app": "svc",
+									},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:    "svc",
+											Image:   "wst:test",
+											Command: []string{"php"},
+											Args:    []string{"test.php", "run"},
+											Ports: []corev1.ContainerPort{
+												{
+													ContainerPort: 1234,
+												},
+											},
+											VolumeMounts: []corev1.VolumeMount{
+												{
+													Name:      "svc-main_conf-volume",
+													MountPath: "/etc/",
+												},
+												{
+													Name:      "svc-test_php-volume",
+													MountPath: "/www/",
+												},
+											},
+										},
+									},
+									Volumes: []corev1.Volume{
+										{
+											Name: "svc-main_conf-volume",
+											VolumeSource: corev1.VolumeSource{
+												ConfigMap: &corev1.ConfigMapVolumeSource{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "svc-main_conf",
+													},
+												},
+											},
+										},
+										{
+											Name: "svc-test_php-volume",
+											VolumeSource: corev1.VolumeSource{
+												ConfigMap: &corev1.ConfigMapVolumeSource{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "svc-test_php",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				)
 			},
 			expectedTask: &kubernetesTask{
 				configMaps: []*corev1.ConfigMap{
@@ -740,6 +842,12 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			mockLogger := external.NewMockLogger()
 			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
+			mockFs := afero.NewMemMapFs()
+			for fn, fd := range tt.fs {
+				err := afero.WriteFile(mockFs, fn, []byte(fd), 0644)
+				assert.NoError(t, err)
+			}
+			fndMock.On("Fs").Return(mockFs)
 			cmc := k8sClientMocks.NewMockConfigMapClient(t)
 			dc := k8sClientMocks.NewMockDeploymentClient(t)
 			sc := k8sClientMocks.NewMockServiceClient(t)

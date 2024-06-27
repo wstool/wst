@@ -285,8 +285,9 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 
 		// Create a ConfigMap for the file content
 		configMapName := sanitizeName(fmt.Sprintf("%s-%s", serviceName, name))
+		baseHostPath := filepath.Base(hostPath)
 		data := map[string]string{
-			filepath.Base(hostPath): content, // Use the file name as the key
+			baseHostPath: content, // Use the file name as the key
 		}
 
 		configMap, err := e.createConfigMap(ctx, configMapName, data)
@@ -297,7 +298,7 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 
 		// Prepare volume and volume mount for this ConfigMap
 		volumeName := configMapName + "-volume"
-		*volumes = append(*volumes, corev1.Volume{
+		volume := corev1.Volume{
 			Name: volumeName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -306,11 +307,22 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 					},
 				},
 			},
-		})
+		}
+		baseEnvPath := filepath.Base(envPath)
+		if baseEnvPath != baseHostPath {
+			volume.VolumeSource.ConfigMap.Items = []corev1.KeyToPath{
+				{
+					Key:  baseHostPath,
+					Path: baseEnvPath,
+				},
+			}
+		}
+
+		*volumes = append(*volumes, volume)
 
 		*volumeMounts = append(*volumeMounts, corev1.VolumeMount{
 			Name:      volumeName,
-			MountPath: envPath,
+			MountPath: filepath.Dir(envPath),
 		})
 	}
 
