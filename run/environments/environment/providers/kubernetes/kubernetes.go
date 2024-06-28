@@ -420,7 +420,11 @@ func (e *kubernetesEnvironment) createDeployment(
 		_ = e.destroyConfigMaps(ctx, configMaps, deleteOptions)
 		return nil, err
 	}
-	kubeTask := &kubernetesTask{deployment: result}
+	kubeTask := &kubernetesTask{
+		serviceName: serviceName,
+		configMaps:  configMaps,
+		deployment:  result,
+	}
 	e.tasks[serviceName] = kubeTask
 
 	if e.Fnd.DryRun() {

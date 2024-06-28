@@ -16,6 +16,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"os"
 	"testing"
 )
@@ -636,6 +638,18 @@ func Test_kubernetesEnvironment_Destroy(t *testing.T) {
 	}
 }
 
+type MockWatchResult struct {
+	Events chan watch.Event
+}
+
+func (m *MockWatchResult) Stop() {
+	close(m.Events)
+}
+
+func (m *MockWatchResult) ResultChan() <-chan watch.Event {
+	return m.Events
+}
+
 func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -654,9 +668,9 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			*k8sClientMocks.MockConfigMapClient,
 			*k8sClientMocks.MockDeploymentClient,
 			*k8sClientMocks.MockServiceClient,
-		)
+		) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service)
 		contextSetup     func() (context.Context, context.CancelFunc)
-		expectedTask     *kubernetesTask
+		getExpectedTask  func([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) *kubernetesTask
 		expectError      bool
 		expectedErrorMsg string
 	}{
@@ -664,11 +678,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "successful kubernetes public run",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    true,
+			useFullName:    false,
 			envStartPort:   8080,
 			fs: map[string]string{
-				"/tmp/wst/main.conf": "main: data",
-				"/tmp/wst/test.php":  "<?php echo 1; ?>",
+				"/tmp/wst/main.conf":   "main: data",
+				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
 				Name:     "svc",
@@ -691,7 +705,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					"main_conf": "/tmp/wst/main.conf",
 				},
 				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/test.php",
+					"test_php": "/tmp/wst/my_test.php",
 				},
 			},
 			cmd: &environment.Command{
@@ -706,95 +720,91 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				cmc *k8sClientMocks.MockConfigMapClient,
 				dc *k8sClientMocks.MockDeploymentClient,
 				sc *k8sClientMocks.MockServiceClient,
-			) {
+			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
 				fnd.On("DryRun").Return(false)
-				cmc.On(
-					"Create",
-					ctx,
-					&corev1.ConfigMap{
+				cm := []*corev1.ConfigMap{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "svc-main_conf",
+							Name: "svc-main-conf",
 						},
 						Data: map[string]string{
 							"main.conf": "main: data",
 						},
 					},
-					metav1.CreateOptions{DryRun: nil},
-				)
-				cmc.On(
-					"Create",
-					ctx,
-					&corev1.ConfigMap{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "svc-test_php",
+							Name: "svc-test-php",
 						},
 						Data: map[string]string{
-							"test.php": "<?php echo 1; ?>",
+							"my_test.php": "<?php echo 1; ?>",
 						},
 					},
-					metav1.CreateOptions{DryRun: nil},
-				)
-				dc.On(
-					"Create",
-					ctx,
-					&appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "svc",
+				}
+				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
+				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
+				d := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "svc",
+					},
+					Spec: appsv1.DeploymentSpec{
+						Replicas: int32Ptr(2), // Specify the number of replicas
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "svc",
+							},
 						},
-						Spec: appsv1.DeploymentSpec{
-							Replicas: int32Ptr(2), // Specify the number of replicas
-							Selector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
 									"app": "svc",
 								},
 							},
-							Template: corev1.PodTemplateSpec{
-								ObjectMeta: metav1.ObjectMeta{
-									Labels: map[string]string{
-										"app": "svc",
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "svc",
+										Image:   "wst:test",
+										Command: []string{"php"},
+										Args:    []string{"test.php", "run"},
+										Ports: []corev1.ContainerPort{
+											{
+												ContainerPort: 1234,
+											},
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "svc-main-conf-volume",
+												MountPath: "/etc",
+											},
+											{
+												Name:      "svc-test-php-volume",
+												MountPath: "/www",
+											},
+										},
 									},
 								},
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:    "svc",
-											Image:   "wst:test",
-											Command: []string{"php"},
-											Args:    []string{"test.php", "run"},
-											Ports: []corev1.ContainerPort{
-												{
-													ContainerPort: 1234,
-												},
-											},
-											VolumeMounts: []corev1.VolumeMount{
-												{
-													Name:      "svc-main_conf-volume",
-													MountPath: "/etc/",
-												},
-												{
-													Name:      "svc-test_php-volume",
-													MountPath: "/www/",
+								Volumes: []corev1.Volume{
+									{
+										Name: "svc-main-conf-volume",
+										VolumeSource: corev1.VolumeSource{
+											ConfigMap: &corev1.ConfigMapVolumeSource{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "svc-main-conf",
 												},
 											},
 										},
 									},
-									Volumes: []corev1.Volume{
-										{
-											Name: "svc-main_conf-volume",
-											VolumeSource: corev1.VolumeSource{
-												ConfigMap: &corev1.ConfigMapVolumeSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "svc-main_conf",
-													},
+									{
+										Name: "svc-test-php-volume",
+										VolumeSource: corev1.VolumeSource{
+											ConfigMap: &corev1.ConfigMapVolumeSource{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "svc-test-php",
 												},
-											},
-										},
-										{
-											Name: "svc-test_php-volume",
-											VolumeSource: corev1.VolumeSource{
-												ConfigMap: &corev1.ConfigMapVolumeSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "svc-test_php",
+												Items: []corev1.KeyToPath{
+													{
+														Key:  "my_test.php",
+														Path: "test.php",
 													},
 												},
 											},
@@ -804,35 +814,86 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 							},
 						},
 					},
-				)
+				}
+				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
+
+				mockDeploymentWatchResult := &MockWatchResult{
+					Events: make(chan watch.Event),
+				}
+				dc.On("Watch", ctx, metav1.ListOptions{
+					FieldSelector: "metadata.name=svc",
+				}).Return(mockDeploymentWatchResult, nil)
+				go func() {
+					mockDeploymentWatchResult.Events <- watch.Event{
+						Type: watch.Added,
+						Object: &appsv1.Deployment{
+							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
+							Status: appsv1.DeploymentStatus{
+								ReadyReplicas: 3,
+							},
+							Spec: appsv1.DeploymentSpec{
+								Replicas: int32Ptr(3),
+							},
+						},
+					}
+				}()
+
+				s := &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "svc",
+					},
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeLoadBalancer,
+						Ports: []corev1.ServicePort{
+							{
+								Port:       1234,
+								TargetPort: intstr.FromInt32(1234),
+								Protocol:   corev1.ProtocolTCP,
+							},
+						},
+						Selector: map[string]string{
+							"app": "svc",
+						},
+					},
+				}
+				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
+
+				mockServiceWatchResult := &MockWatchResult{
+					Events: make(chan watch.Event, 1),
+				}
+				sc.On("Watch", ctx, metav1.ListOptions{
+					FieldSelector: "metadata.name=svc",
+				}).Return(mockServiceWatchResult, nil)
+				go func() {
+					mockServiceWatchResult.Events <- watch.Event{
+						Type: watch.Added,
+						Object: &corev1.Service{
+							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
+							Status: corev1.ServiceStatus{
+								LoadBalancer: corev1.LoadBalancerStatus{
+									Ingress: []corev1.LoadBalancerIngress{
+										{
+											IP: "10.0.0.1",
+										},
+									},
+								},
+							},
+						},
+					}
+				}()
+
+				return cm, d, s
 			},
-			expectedTask: &kubernetesTask{
-				configMaps: []*corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "c11",
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "c12",
-						},
-					},
-				},
-				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "d1",
-					},
-				},
-				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "s1",
-					},
-				},
-				serviceName:       "kubes",
-				servicePublicUrl:  "http://localhost:1234",
-				servicePrivateUrl: "http://kubes:8080",
-				deploymentReady:   true,
+			getExpectedTask: func(cm []*corev1.ConfigMap, d *appsv1.Deployment, s *corev1.Service) *kubernetesTask {
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					serviceName:       "svc",
+					servicePublicUrl:  "http://10.0.0.1",
+					servicePrivateUrl: "http://svc:1234",
+					deploymentReady:   true,
+				}
 			},
 		},
 	}
@@ -879,7 +940,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				tasks:            make(map[string]*kubernetesTask),
 			}
 
-			tt.setupMocks(t, ctx, cancel, fndMock, cmc, dc, sc)
+			cm, d, s := tt.setupMocks(t, ctx, cancel, fndMock, cmc, dc, sc)
 
 			got, err := e.RunTask(ctx, tt.ss, tt.cmd)
 
@@ -890,7 +951,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				assert.NoError(t, err)
 				actualTask, ok := got.(*kubernetesTask)
 				assert.True(t, ok)
-				assert.Equal(t, tt.expectedTask, actualTask)
+				assert.Equal(t, tt.getExpectedTask(cm, d, s), actualTask)
 			}
 		})
 	}
