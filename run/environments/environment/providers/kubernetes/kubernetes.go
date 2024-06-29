@@ -457,7 +457,7 @@ func (e *kubernetesEnvironment) createDeployment(
 			case watch.Deleted:
 				fallthrough
 			case watch.Error:
-				return nil, errors.Errorf("watch error: %v", event.Object)
+				return nil, errors.New("watching deployment did not result to addition and modification")
 			}
 		case <-ctx.Done():
 			return nil, errors.Errorf("context canceled or timed out when waiting on deployment to be ready")
@@ -529,18 +529,16 @@ func (e *kubernetesEnvironment) createService(
 				if !ok {
 					return errors.Errorf("expected Service object, but got something else")
 				}
-				if len(svc.Status.LoadBalancer.Ingress) > 0 {
+				if ss.Public && len(svc.Status.LoadBalancer.Ingress) > 0 {
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
-					if ss.Public {
-						kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
-					}
-					kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
-					return nil
+					kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
 				}
+				kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
+				return nil
 			case watch.Deleted:
 				fallthrough
 			case watch.Error:
-				return errors.Errorf("watch error: %v", event.Object)
+				return errors.Errorf("watching service did not result to addition and modification")
 			}
 		case <-ctx.Done():
 			return errors.Errorf("context canceled or timed out when waiting on service IP")
