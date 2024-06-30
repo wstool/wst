@@ -8,13 +8,16 @@ import (
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	k8sClientMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/providers/kubernetes/clients"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -337,6 +340,7 @@ func Test_kubernetesEnvironment_Destroy(t *testing.T) {
 							Name: "s1",
 						},
 					},
+					outputReader: &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}},
 				},
 				"t2": {
 					configMaps: []*corev1.ConfigMap{
@@ -530,7 +534,7 @@ func Test_kubernetesEnvironment_Destroy(t *testing.T) {
 			expectedErrorMsg: "failed to destroy kubernetes environment",
 		},
 		{
-			name: "failed kubernetes env destroying with single error",
+			name: "failed kubernetes env destroying with multiple errors",
 			tasks: map[string]*kubernetesTask{
 				"t1": {
 					configMaps: []*corev1.ConfigMap{
@@ -555,6 +559,7 @@ func Test_kubernetesEnvironment_Destroy(t *testing.T) {
 							Name: "s1",
 						},
 					},
+					outputReader: &CombinedReader{readers: []io.ReadCloser{&failingReader{}}},
 				},
 				"t2": {
 					configMaps: []*corev1.ConfigMap{
@@ -2249,8 +2254,219 @@ func Test_kubernetesEnvironment_ExecTaskSignal(t *testing.T) {
 	assert.Contains(t, err.Error(), "executing signal is not currently supported in Kubernetes environment")
 }
 
+type pullReaderCloser struct {
+	msg string
+	err string
+}
+
+func (b *pullReaderCloser) Read(p []byte) (n int, err error) {
+	if len(b.err) > 0 {
+		return 0, errors.New(b.err)
+	}
+	if len(b.msg) > 0 {
+		n = copy(p, b.msg)
+		b.msg = b.msg[n:]
+		return n, nil
+	}
+	return 0, io.EOF
+}
+
+func (b *pullReaderCloser) Close() error {
+	return nil
+}
+
+type invalidTask struct{}
+
+func (t *invalidTask) Pid() int {
+	return 1
+}
+
+func (t *invalidTask) Id() string {
+	return ""
+}
+
+func (t *invalidTask) Name() string {
+	return ""
+}
+
+func (t *invalidTask) Type() providers.Type {
+	return providers.KubernetesType
+}
+
+func (t *invalidTask) PublicUrl() string {
+	return ""
+}
+
+func (t *invalidTask) PrivateUrl() string {
+	return ""
+}
+
 func Test_kubernetesEnvironment_Output(t *testing.T) {
-	// TODO: implement
+	tests := []struct {
+		name       string
+		outputType output.Type
+		target     task.Task
+		setupMocks func(
+			*testing.T,
+			context.Context,
+			*appMocks.MockFoundation,
+			*k8sClientMocks.MockPodClient,
+		)
+		expectedLogData  string
+		expectError      bool
+		expectedErrorMsg string
+	}{
+		{
+			name:       "successful output for any type",
+			outputType: output.Any,
+			target: &kubernetesTask{
+				serviceName: "sn1",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fnd *appMocks.MockFoundation,
+				pc *k8sClientMocks.MockPodClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				p := corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "p1",
+					},
+				}
+				pl := &corev1.PodList{Items: []corev1.Pod{p}}
+				reader := &pullReaderCloser{
+					msg: "data",
+				}
+				pc.On("List", ctx, metav1.ListOptions{
+					LabelSelector: "app=sn1",
+				}).Return(pl, nil)
+				pc.On("StreamLogs", ctx, "p1", &corev1.PodLogOptions{}).Return(reader, nil)
+			},
+			expectedLogData: "data",
+		},
+		{
+			name:       "successful output for dry run",
+			outputType: output.Any,
+			target: &kubernetesTask{
+				serviceName: "sn1",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fnd *appMocks.MockFoundation,
+				pc *k8sClientMocks.MockPodClient,
+			) {
+				fnd.On("DryRun").Return(true)
+			},
+			expectedLogData: "",
+		},
+		{
+			name:       "successful output when combined reader already set",
+			outputType: output.Any,
+			target: &kubernetesTask{
+				serviceName:  "sn1",
+				outputReader: &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}},
+			},
+			expectedLogData: "",
+		},
+		{
+			name:       "failed output due to failed log streaming",
+			outputType: output.Any,
+			target: &kubernetesTask{
+				serviceName: "sn1",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fnd *appMocks.MockFoundation,
+				pc *k8sClientMocks.MockPodClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				p := corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "p1",
+					},
+				}
+				pl := &corev1.PodList{Items: []corev1.Pod{p}}
+				pc.On("List", ctx, metav1.ListOptions{
+					LabelSelector: "app=sn1",
+				}).Return(pl, nil)
+				pc.On("StreamLogs", ctx, "p1", &corev1.PodLogOptions{}).Return(nil, errors.New("stream fail"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "error in opening stream: stream fail",
+		},
+		{
+			name:       "failed output due to failed listing of pods",
+			outputType: output.Any,
+			target: &kubernetesTask{
+				serviceName: "sn1",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fnd *appMocks.MockFoundation,
+				pc *k8sClientMocks.MockPodClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				pc.On("List", ctx, metav1.ListOptions{
+					LabelSelector: "app=sn1",
+				}).Return(nil, errors.New("pod listing fail"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "failed to list pods: pod listing fail",
+		},
+		{
+			name:             "failed output due to invalid task type",
+			outputType:       output.Any,
+			target:           &invalidTask{},
+			expectError:      true,
+			expectedErrorMsg: "task in not a Kubernetes task",
+		},
+		{
+			name:             "failed output due to unsupported output type",
+			outputType:       output.Stderr,
+			target:           &invalidTask{},
+			expectError:      true,
+			expectedErrorMsg: "only any output type is supported by Kubernetes environment",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			mockLogger := external.NewMockLogger()
+			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
+			podClientMock := k8sClientMocks.NewMockPodClient(t)
+			ctx := context.Background()
+			e := &kubernetesEnvironment{
+				ContainerEnvironment: environment.ContainerEnvironment{
+					CommonEnvironment: environment.CommonEnvironment{
+						Fnd: fndMock,
+					},
+					Registry: environment.ContainerRegistry{},
+				},
+				podClient: podClientMock,
+			}
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(t, ctx, fndMock, podClientMock)
+			}
+			actualReader, err := e.Output(ctx, tt.target, tt.outputType)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				buf := new(strings.Builder)
+				_, err := io.Copy(buf, actualReader)
+				require.Nil(t, err)
+				assert.Equal(t, tt.expectedLogData, buf.String())
+			}
+		})
+	}
 }
 
 func Test_kubernetesEnvironment_RootPath(t *testing.T) {

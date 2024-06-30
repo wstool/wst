@@ -167,6 +167,11 @@ func (e *kubernetesEnvironment) destroyTask(
 ) error {
 	hasError := false
 	var err error
+	// Close output
+	if kubeTask.outputReader != nil && kubeTask.outputReader.Close() != nil {
+		hasError = true
+	}
+
 	// Delete the service
 	if err = e.destroyService(ctx, kubeTask.service, deleteOptions); err != nil {
 		hasError = true
@@ -568,38 +573,42 @@ func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, ss *environm
 	return errors.Errorf("executing signal is not currently supported in Kubernetes environment")
 }
 
-func (e *kubernetesEnvironment) logsStream(ctx context.Context, pod corev1.Pod) (io.ReadCloser, error) {
-	if e.Fnd.DryRun() {
-		return &app.DummyReaderCloser{}, nil
-	}
-	return e.podClient.GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream(ctx)
-}
-
 func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
 	if outputType != output.Any {
 		return nil, errors.Errorf("only any output type is supported by Kubernetes environment")
 	}
+	kubeTask, ok := target.(*kubernetesTask)
+	if !ok {
+		return nil, errors.Errorf("task in not a Kubernetes task")
+	}
+	if kubeTask.outputReader != nil {
+		return kubeTask.outputReader, nil
+	}
+
+	if e.Fnd.DryRun() {
+		kubeTask.outputReader = &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}}
+		return kubeTask.outputReader, nil
+	}
+
 	pods, err := e.podClient.List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("app=%s", target.Name()),
+		LabelSelector: fmt.Sprintf("app=%s", kubeTask.Name()),
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to list pods: %v", err)
 	}
 
-	readers := make([]io.Reader, 0, len(pods.Items))
+	readers := make([]io.ReadCloser, 0, len(pods.Items))
+	combinedReader := &CombinedReader{readers: readers}
 	for _, pod := range pods.Items {
-		podLogs, err := e.logsStream(ctx, pod)
+		podLogs, err := e.podClient.StreamLogs(ctx, pod.Name, &corev1.PodLogOptions{})
 		if err != nil {
+			combinedReader.Close()
 			return nil, errors.Errorf("error in opening stream: %v", err)
 		}
-		defer podLogs.Close()
-
-		readers = append(readers, podLogs)
+		combinedReader.readers = append(combinedReader.readers, podLogs)
 	}
 
-	// Combine all readers into a single one
-	combinedReader := io.MultiReader(readers...)
-
+	kubeTask.outputReader = combinedReader
 	return combinedReader, nil
 }
 
@@ -611,6 +620,7 @@ type kubernetesTask struct {
 	deployment        *appsv1.Deployment
 	service           *corev1.Service
 	configMaps        []*corev1.ConfigMap
+	outputReader      *CombinedReader
 	serviceName       string
 	servicePublicUrl  string
 	servicePrivateUrl string

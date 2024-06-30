@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -95,7 +95,7 @@ type DeploymentClient interface {
 }
 
 type PodClient interface {
-	GetLogs(name string, opts *corev1.PodLogOptions) *restclient.Request
+	StreamLogs(ctx context.Context, name string, opts *corev1.PodLogOptions) (io.ReadCloser, error)
 	List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error)
 }
 
@@ -145,8 +145,8 @@ type podClient struct {
 	client clientcorev1.PodInterface
 }
 
-func (p *podClient) GetLogs(name string, opts *corev1.PodLogOptions) *restclient.Request {
-	return p.GetLogs(name, opts)
+func (p *podClient) StreamLogs(ctx context.Context, name string, opts *corev1.PodLogOptions) (io.ReadCloser, error) {
+	return p.client.GetLogs(name, opts).Stream(ctx)
 }
 
 func (p *podClient) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error) {
