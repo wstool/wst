@@ -227,6 +227,51 @@ func (_c *MockFoundation_Fs_Call) RunAndReturn(run func() afero.Fs) *MockFoundat
 	return _c
 }
 
+// GenerateUuid provides a mock function with given fields:
+func (_m *MockFoundation) GenerateUuid() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GenerateUuid")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockFoundation_GenerateUuid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateUuid'
+type MockFoundation_GenerateUuid_Call struct {
+	*mock.Call
+}
+
+// GenerateUuid is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) GenerateUuid() *MockFoundation_GenerateUuid_Call {
+	return &MockFoundation_GenerateUuid_Call{Call: _e.mock.On("GenerateUuid")}
+}
+
+func (_c *MockFoundation_GenerateUuid_Call) Run(run func()) *MockFoundation_GenerateUuid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_GenerateUuid_Call) Return(_a0 string) *MockFoundation_GenerateUuid_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_GenerateUuid_Call) RunAndReturn(run func() string) *MockFoundation_GenerateUuid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HttpClient provides a mock function with given fields:
 func (_m *MockFoundation) HttpClient() app.HttpClient {
 	ret := _m.Called()

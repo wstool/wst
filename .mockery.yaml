@@ -4,7 +4,9 @@ packages:
     config:
       dir: mocks/generated/app
     interfaces:
+      Command: {}
       Foundation: {}
+      Fs: {}
       HttpClient: {}
       VegetaAttacker: {}
       VegetaMetrics: {}

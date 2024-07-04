@@ -16,6 +16,7 @@ package app
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"os"
@@ -35,6 +36,7 @@ type Foundation interface {
 	HttpClient() HttpClient
 	VegetaAttacker() VegetaAttacker
 	VegetaMetrics() VegetaMetrics
+	GenerateUuid() string
 }
 
 type DefaultFoundation struct {
@@ -116,4 +118,8 @@ func (f *DefaultFoundation) VegetaAttacker() VegetaAttacker {
 		return NewDryRunVegetaAttacker()
 	}
 	return NewRealVegetaAttacker()
+}
+
+func (f *DefaultFoundation) GenerateUuid() string {
+	return uuid.New().String()
 }

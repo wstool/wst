@@ -5,9 +5,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"syscall"
 )
 
 type Command interface {
+	IsRunning() bool
 	Start() error
 	Run() error
 	ProcessPid() int
@@ -24,6 +26,17 @@ func NewExecCommand(ctx context.Context, name string, args []string) Command {
 
 type ExecCommand struct {
 	cmd *exec.Cmd
+}
+
+func (c ExecCommand) IsRunning() bool {
+	if c.cmd.Process == nil {
+		return false
+	}
+	process, err := os.FindProcess(c.cmd.Process.Pid)
+	if err != nil {
+		return false
+	}
+	return process.Signal(syscall.Signal(0)) == nil
 }
 
 func (c ExecCommand) Start() error {
@@ -55,6 +68,10 @@ func NewDryRunCommand() Command {
 }
 
 type DryRunCommand struct {
+}
+
+func (c DryRunCommand) IsRunning() bool {
+	return true
 }
 
 func (c DryRunCommand) Start() error {

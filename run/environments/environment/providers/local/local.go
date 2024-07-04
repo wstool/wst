@@ -23,6 +23,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,17 +33,17 @@ type Maker interface {
 	Make(config *types.LocalEnvironment, instanceWorkspace string) (environment.Environment, error)
 }
 
-type nativeMaker struct {
-	environment.Maker
+type localMaker struct {
+	*environment.CommonMaker
 }
 
 func CreateMaker(fnd app.Foundation) Maker {
-	return &nativeMaker{
-		Maker: environment.CreateMaker(fnd),
+	return &localMaker{
+		CommonMaker: environment.CreateCommonMaker(fnd),
 	}
 }
 
-func (m *nativeMaker) Make(
+func (m *localMaker) Make(
 	config *types.LocalEnvironment,
 	instanceWorkspace string,
 ) (environment.Environment, error) {
@@ -52,6 +53,7 @@ func (m *nativeMaker) Make(
 		}),
 		workspace:   filepath.Join(instanceWorkspace, "envs", "local"),
 		initialized: false,
+		tasks:       make(map[string]*localTask),
 	}, nil
 }
 
@@ -59,6 +61,7 @@ type localEnvironment struct {
 	environment.CommonEnvironment
 	workspace   string
 	initialized bool
+	tasks       map[string]*localTask
 }
 
 func (l *localEnvironment) RootPath(workspace string) string {
@@ -77,10 +80,24 @@ func (l *localEnvironment) Init(ctx context.Context) error {
 }
 
 func (l *localEnvironment) Destroy(ctx context.Context) error {
+	hasError := false
+	for _, t := range l.tasks {
+		if t.cmd.IsRunning() {
+			if err := t.cmd.ProcessSignal(os.Kill); err != nil {
+				l.Fnd.Logger().Errorf("Failed to kill process: %v", err)
+				hasError = true
+			}
+		}
+	}
+
 	fs := l.Fnd.Fs()
-	err := fs.RemoveAll(l.workspace)
-	if err != nil {
+
+	if err := fs.RemoveAll(l.workspace); err != nil {
 		return err
+	}
+
+	if hasError {
+		return errors.New("failed to kill local environment tasks")
 	}
 
 	return nil
@@ -100,11 +117,15 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 		return nil, err
 	}
 
-	return &localTask{
+	t := &localTask{
+		id:          l.Fnd.GenerateUuid(),
 		cmd:         command,
 		serviceName: ss.Name,
 		serviceUrl:  fmt.Sprintf("http://localhost:%d", ss.Port),
-	}, nil
+	}
+	l.tasks[t.id] = t
+
+	return t, nil
 }
 
 func convertTask(target task.Task) (*localTask, error) {
@@ -132,12 +153,12 @@ func (l *localEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.
 }
 
 func (l *localEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
-	localTask, err := convertTask(target)
+	t, err := convertTask(target)
 	if err != nil {
 		return err
 	}
 
-	err = localTask.cmd.ProcessSignal(signal)
+	err = t.cmd.ProcessSignal(signal)
 	if err != nil {
 		return err
 	}
@@ -183,6 +204,7 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 }
 
 type localTask struct {
+	id          string
 	cmd         app.Command
 	serviceName string
 	serviceUrl  string
