@@ -2,15 +2,23 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/authored/external"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
+	taskMocks "github.com/bukka/wst/mocks/generated/run/environments/task"
 	"github.com/bukka/wst/run/environments/environment"
+	"github.com/bukka/wst/run/environments/environment/output"
+	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/environments/task"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -242,36 +250,471 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 	}
 }
 
-func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
+func Test_localEnvironment_RunTask(t *testing.T) {
+	tests := []struct {
+		name              string
+		workspace         string
+		mkdirAllError     error
+		commandStartError error
+		expectedError     error
+		expectTask        bool
+		uuid              string // UUID for each task
+	}{
+		{
+			name:          "successfully runs task",
+			workspace:     "/fake/path",
+			expectedError: nil,
+			expectTask:    true,
+			uuid:          "uuid-123",
+		},
+		{
+			name:          "initialization error due to filesystem",
+			workspace:     "/fake/path",
+			mkdirAllError: fmt.Errorf("filesystem error"),
+			expectedError: fmt.Errorf("filesystem error"),
+			expectTask:    false,
+			uuid:          "uuid-456",
+		},
+		{
+			name:              "command start error",
+			workspace:         "/fake/path",
+			commandStartError: fmt.Errorf("command start error"),
+			expectedError:     fmt.Errorf("command start error"),
+			expectTask:        false,
+			uuid:              "uuid-789",
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			fsMock := appMocks.NewMockFs(t)
+			mockCommand := appMocks.NewMockCommand(t)
+			ctx := context.Background()
+
+			fsMock.On("MkdirAll", tt.workspace, os.FileMode(0644)).Return(tt.mkdirAllError)
+			fndMock.On("Fs").Return(fsMock)
+
+			if tt.mkdirAllError == nil {
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				mockCommand.On("Start").Return(tt.commandStartError)
+				fndMock.On("GenerateUuid").Maybe().Return(tt.uuid)
+			}
+
+			env := &localEnvironment{
+				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock},
+				workspace:         tt.workspace,
+				initialized:       false,
+				tasks:             make(map[string]*localTask),
+			}
+
+			ss := &environment.ServiceSettings{
+				Name: "test-service",
+				Port: 8080,
+			}
+			cmd := &environment.Command{
+				Name: "test-command",
+				Args: []string{"arg1"},
+			}
+
+			resultTask, err := env.RunTask(ctx, ss, cmd)
+
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError.Error())
+				assert.Nil(t, resultTask)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, resultTask)
+				locTask, ok := resultTask.(*localTask)
+				assert.True(t, ok)
+				assert.Equal(t, "test-service", locTask.serviceName)
+				assert.Equal(t, fmt.Sprintf("http://localhost:%d", ss.Port), locTask.serviceUrl)
+				assert.Equal(t, mockCommand, locTask.cmd)
+				assert.Equal(t, tt.uuid, locTask.id) // Checking the UUID
+			}
+
+			fndMock.AssertExpectations(t)
+			fsMock.AssertExpectations(t)
+			if tt.mkdirAllError == nil && mockCommand.AssertNumberOfCalls(t, "Start", 1) {
+				mockCommand.AssertExpectations(t)
+			}
+		})
+	}
+}
+
+func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
+	tests := []struct {
+		name             string
+		setupMocks       func(*testing.T, *appMocks.MockFoundation, *appMocks.MockCommand)
+		target           func() task.Task // Using a function allows setup of the task per test case
+		command          *environment.Command
+		expectError      bool
+		expectedErrorMsg string
+	}{
+		{
+			name: "successful command execution",
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand) {
+				cmd.On("Run").Return(nil) // Simulating a successful command run
+				fnd.On("ExecCommand", mock.Anything, "echo", []string{"hello"}).Return(cmd)
+			},
+			target: func() task.Task {
+				localTask := &localTask{
+					serviceName: "local-service",
+					cmd:         &app.ExecCommand{}, // Using a valid local task type
+				}
+				localTask.cmd = &app.ExecCommand{} // Stubbing the command to be returned
+				return localTask
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			expectError: false,
+		},
+		{
+			name: "error during command execution",
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand) {
+				cmd.On("Run").Return(fmt.Errorf("execution failed")) // Simulating a command failure
+				fnd.On("ExecCommand", mock.Anything, "echo", []string{"error"}).Return(cmd)
+			},
+			target: func() task.Task {
+				localTask := &localTask{
+					serviceName: "local-service",
+					cmd:         &app.ExecCommand{}, // Using a valid local task type
+				}
+				localTask.cmd = &app.ExecCommand{} // Stubbing the command to be returned
+				return localTask
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"error"},
+			},
+			expectError:      true,
+			expectedErrorMsg: "execution failed",
+		},
+		{
+			name: "error wrong task type",
+			target: func() task.Task {
+				wrongTypeTask := &taskMocks.MockTask{}
+				wrongTypeTask.On("Type").Return(providers.DockerType) // Incorrect task type
+				return wrongTypeTask
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			expectError:      true,
+			expectedErrorMsg: "local environment can process only local task",
+		},
+		{
+			name: "error invalid task casting",
+			target: func() task.Task {
+				wrongTypeTask := &taskMocks.MockTask{}
+				wrongTypeTask.On("Type").Return(providers.LocalType) // Incorrect task type
+				return wrongTypeTask
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			expectError:      true,
+			expectedErrorMsg: "target task is not of type *localTask",
+		},
+		{
+			name: "error for nil task",
+			target: func() task.Task {
+				return nil
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			expectError:      true,
+			expectedErrorMsg: "target task is not set",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			cmdMock := appMocks.NewMockCommand(t)
+			if tt.setupMocks != nil {
+				tt.setupMocks(t, fndMock, cmdMock)
+			}
+			ctx := context.Background()
+			targetTask := tt.target()
+
+			env := &localEnvironment{
+				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock},
+			}
+
+			err := env.ExecTaskCommand(ctx, &environment.ServiceSettings{}, targetTask, tt.command)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			fndMock.AssertExpectations(t)
+			cmdMock.AssertExpectations(t)
+		})
+	}
 }
 
 func Test_localEnvironment_ExecTaskSignal(t *testing.T) {
+	tests := []struct {
+		name             string
+		target           func(*testing.T) task.Task
+		signal           os.Signal
+		expectError      bool
+		expectedErrorMsg string
+	}{
+		{
+			name: "successful signal execution",
+			target: func(t *testing.T) task.Task {
+				cmdMock := appMocks.NewMockCommand(t)
+				cmdMock.On("ProcessSignal", os.Interrupt).Return(nil)
+				return &localTask{
+					serviceName: "local-service",
+					cmd:         cmdMock,
+				}
+			},
+			signal:      os.Interrupt,
+			expectError: false,
+		},
+		{
+			name: "error during signal execution",
+			target: func(t *testing.T) task.Task {
+				cmdMock := appMocks.NewMockCommand(t)
+				cmdMock.On("ProcessSignal", os.Kill).Return(fmt.Errorf("failed to send signal"))
+				return &localTask{
+					serviceName: "local-service",
+					cmd:         cmdMock,
+				}
+			},
+			signal:           os.Kill,
+			expectError:      true,
+			expectedErrorMsg: "failed to send signal",
+		},
+		{
+			name: "task is nil",
+			target: func(t *testing.T) task.Task {
+				return nil
+			},
+			signal:           os.Interrupt,
+			expectError:      true,
+			expectedErrorMsg: "target task is not set",
+		},
+		{
+			name: "task type mismatch",
+			target: func(t *testing.T) task.Task {
+				wrongTask := &taskMocks.MockTask{}
+				wrongTask.On("Type").Return(providers.DockerType) // Return an unexpected task type
+				return wrongTask
+			},
+			signal:           os.Interrupt,
+			expectError:      true,
+			expectedErrorMsg: "local environment can process only local task",
+		},
+		{
+			name: "casting error",
+			target: func(t *testing.T) task.Task {
+				// Correct type but wrong implementation
+				wrongTask := &taskMocks.MockTask{}
+				wrongTask.On("Type").Return(providers.LocalType)
+				return wrongTask
+			},
+			signal:           os.Interrupt,
+			expectError:      true,
+			expectedErrorMsg: "target task is not of type *localTask",
+		},
+	}
 
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			targetTask := tt.target(t)
 
-func Test_localEnvironment_RunTask(t *testing.T) {
+			env := &localEnvironment{
+				CommonEnvironment: environment.CommonEnvironment{Fnd: appMocks.NewMockFoundation(t)},
+			}
 
+			err := env.ExecTaskSignal(ctx, &environment.ServiceSettings{}, targetTask, tt.signal)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// Assert expectations on the command mock within the task, if it is a valid local task
+			if convertedTask, ok := targetTask.(*localTask); ok {
+				cmdMock, _ := convertedTask.cmd.(*appMocks.MockCommand)
+				cmdMock.AssertExpectations(t)
+			}
+		})
+	}
 }
 
 func Test_localEnvironment_Output(t *testing.T) {
+	tests := []struct {
+		name             string
+		outputType       output.Type
+		setupMocks       func(*testing.T, *appMocks.MockCommand)
+		nilTask          bool
+		expectError      bool
+		expectedOutput   string
+		expectedErrorMsg string
+	}{
+		{
+			name:       "successful stdout output collection",
+			outputType: output.Stdout,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
+				cmd.On("StdoutPipe").Return(stdout, nil)
+			},
+			expectedOutput: "Hello, stdout!",
+		},
+		{
+			name:       "successful stderr output collection",
+			outputType: output.Stderr,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
+				cmd.On("StderrPipe").Return(stderr, nil)
+			},
+			expectedOutput: "Hello, stderr!",
+		},
+		{
+			name:       "successful any output collection",
+			outputType: output.Any,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				stdout := io.NopCloser(strings.NewReader("out"))
+				stderr := io.NopCloser(strings.NewReader("out"))
+				cmd.On("StdoutPipe").Return(stdout, nil)
+				cmd.On("StderrPipe").Return(stderr, nil)
+			},
+			expectedOutput: "outout",
+		},
+		{
+			name:       "error on stdout pipe",
+			outputType: output.Stdout,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				cmd.On("StdoutPipe").Return(nil, fmt.Errorf("stdout error"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "stdout error",
+		},
+		{
+			name:       "error on stderr pipe",
+			outputType: output.Stderr,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				cmd.On("StderrPipe").Return(nil, fmt.Errorf("stderr error"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "stderr error",
+		},
+		{
+			name:       "error on stdout pipe in any type",
+			outputType: output.Any,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				cmd.On("StdoutPipe").Return(nil, fmt.Errorf("stdout error"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "stdout error", // Assuming first error encountered is returned
+		},
+		{
+			name:       "error on stderr pipe in any type",
+			outputType: output.Any,
+			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+				stdout := io.NopCloser(strings.NewReader("out"))
+				cmd.On("StdoutPipe").Return(stdout, nil)
+				cmd.On("StderrPipe").Return(nil, fmt.Errorf("stderr error"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "stderr error", // Assuming first error encountered is returned
+		},
+		{
+			name:             "unsupported output type",
+			outputType:       output.Type(999), // Invalid output type
+			setupMocks:       func(t *testing.T, cmd *appMocks.MockCommand) {},
+			expectError:      true,
+			expectedErrorMsg: "unsupported output type",
+		},
+		{
+			name:             "nil task",
+			outputType:       output.Any, // Invalid output type
+			setupMocks:       func(t *testing.T, cmd *appMocks.MockCommand) {},
+			nilTask:          true,
+			expectError:      true,
+			expectedErrorMsg: "target task is not set",
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			cmdMock := appMocks.NewMockCommand(t)
+			tt.setupMocks(t, cmdMock)
+
+			var testTask task.Task = nil
+			if !tt.nilTask {
+				testTask = &localTask{
+					cmd: cmdMock,
+				}
+			}
+
+			env := &localEnvironment{}
+
+			reader, err := env.Output(ctx, testTask, tt.outputType)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				buf := new(strings.Builder)
+				_, err = io.Copy(buf, reader)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedOutput, buf.String())
+			}
+		})
+	}
 }
 
-func Test_localTask_Id(t1 *testing.T) {
+func getTestTask(t *testing.T) *localTask {
+	cmdMock := appMocks.NewMockCommand(t)
+	cmdMock.On("ProcessPid").Maybe().Return(22)
+	return &localTask{
+		id:          "lid",
+		cmd:         cmdMock,
+		serviceName: "lids",
+		serviceUrl:  "http://localhost:1234",
+	}
 }
 
-func Test_localTask_Name(t1 *testing.T) {
+func Test_localTask_Id(t *testing.T) {
+	assert.Equal(t, "lid", getTestTask(t).Id())
 }
 
-func Test_localTask_Pid(t1 *testing.T) {
+func Test_localTask_Name(t *testing.T) {
+	assert.Equal(t, "lids", getTestTask(t).Name())
 }
 
-func Test_localTask_PrivateUrl(t1 *testing.T) {
+func Test_localTask_Pid(t *testing.T) {
+	assert.Equal(t, 22, getTestTask(t).Pid())
 }
 
-func Test_localTask_PublicUrl(t1 *testing.T) {
+func Test_localTask_PrivateUrl(t *testing.T) {
+	assert.Equal(t, "http://localhost:1234", getTestTask(t).PrivateUrl())
 }
 
-func Test_localTask_Type(t1 *testing.T) {
+func Test_localTask_PublicUrl(t *testing.T) {
+	assert.Equal(t, "http://localhost:1234", getTestTask(t).PublicUrl())
+}
+
+func Test_localTask_Type(t *testing.T) {
+	assert.Equal(t, providers.LocalType, getTestTask(t).Type())
 }

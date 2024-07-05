@@ -135,12 +135,12 @@ func convertTask(target task.Task) (*localTask, error) {
 	if target.Type() != providers.LocalType {
 		return nil, fmt.Errorf("local environment can process only local task")
 	}
-	localTask, ok := target.(*localTask)
+	t, ok := target.(*localTask)
 	if !ok {
 		// this should not happen
 		return nil, fmt.Errorf("target task is not of type *localTask")
 	}
-	return localTask, nil
+	return t, nil
 }
 
 func (l *localEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
@@ -167,7 +167,7 @@ func (l *localEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.S
 }
 
 func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
-	localTask, err := convertTask(target)
+	t, err := convertTask(target)
 	if err != nil {
 		return nil, err
 	}
@@ -175,23 +175,23 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 	outputCollector := NewBufferedOutputCollector()
 	switch outputType {
 	case output.Stdout:
-		stdoutPipe, err := localTask.cmd.StdoutPipe()
+		stdoutPipe, err := t.cmd.StdoutPipe()
 		if err != nil {
 			return nil, err
 		}
 		outputCollector.collectOutput(stdoutPipe)
 	case output.Stderr:
-		stderrPipe, err := localTask.cmd.StderrPipe()
+		stderrPipe, err := t.cmd.StderrPipe()
 		if err != nil {
 			return nil, err
 		}
 		outputCollector.collectOutput(stderrPipe)
 	case output.Any:
-		stdoutPipe, err := localTask.cmd.StdoutPipe()
+		stdoutPipe, err := t.cmd.StdoutPipe()
 		if err != nil {
 			return nil, err
 		}
-		stderrPipe, err := localTask.cmd.StderrPipe()
+		stderrPipe, err := t.cmd.StderrPipe()
 		if err != nil {
 			return nil, err
 		}
@@ -215,7 +215,7 @@ func (t *localTask) Pid() int {
 }
 
 func (t *localTask) Id() string {
-	return t.serviceName
+	return t.id
 }
 
 func (t *localTask) Name() string {
