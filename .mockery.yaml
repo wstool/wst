@@ -87,11 +87,26 @@ packages:
       dir: mocks/generated/run/actions/action/stop
     interfaces:
       Maker: {}
+  github.com/bukka/wst/run/environments/environment:
+    config:
+      dir: mocks/generated/run/environments/environment
+    interfaces:
+      Environment: {}
+  github.com/bukka/wst/run/environments/environment/providers/docker:
+    config:
+      dir: mocks/generated/run/environments/environment/providers/docker
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/environments/environment/providers/docker/client:
     config:
       dir: mocks/generated/run/environments/environment/providers/docker/client
     interfaces:
       Client: {}
+      Maker: {}
+  github.com/bukka/wst/run/environments/environment/providers/kubernetes:
+    config:
+      dir: mocks/generated/run/environments/environment/providers/kubernetes
+    interfaces:
       Maker: {}
   github.com/bukka/wst/run/environments/environment/providers/kubernetes/clients:
     config:
@@ -101,6 +116,11 @@ packages:
       DeploymentClient: {}
       PodClient: {}
       ServiceClient: {}
+      Maker: {}
+  github.com/bukka/wst/run/environments/environment/providers/local:
+    config:
+      dir: mocks/generated/run/environments/environment/providers/local
+    interfaces:
       Maker: {}
   github.com/bukka/wst/run/environments/task:
     config:

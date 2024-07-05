@@ -65,8 +65,8 @@ func (m *nativeMaker) Make(
 	commonSb, commonFound := mergedEnvironments[types.CommonEnvironmentType]
 	localSb, localFound := mergedEnvironments[types.LocalEnvironmentType]
 	containerSb, containerFound := mergedEnvironments[types.ContainerEnvironmentType]
-	dockerSb, dockerFound := mergedEnvironments[types.ContainerEnvironmentType]
-	kubernetesSb, kubernetesFound := mergedEnvironments[types.ContainerEnvironmentType]
+	dockerSb, dockerFound := mergedEnvironments[types.DockerEnvironmentType]
+	kubernetesSb, kubernetesFound := mergedEnvironments[types.KubernetesEnvironmentType]
 	if commonFound {
 		// Local merging
 		localSb, err = m.mergeLocalAndCommon(localSb, commonSb)
@@ -75,7 +75,7 @@ func (m *nativeMaker) Make(
 		}
 		localFound = true
 		// Container merging
-		containerSb, err = m.mergeLocalAndCommon(containerSb, commonSb)
+		containerSb, err = m.mergeContainerAndCommon(containerSb, commonSb)
 		if err != nil {
 			return nil, err
 		}
@@ -96,31 +96,36 @@ func (m *nativeMaker) Make(
 		kubernetesFound = true
 	}
 
-	Environments := make(Environments)
+	envs := make(Environments)
 
 	if localFound {
-		Environments[providers.LocalType], err = m.localMaker.Make(localSb.(*types.LocalEnvironment), instanceWorkspace)
+		envs[providers.LocalType], err = m.localMaker.Make(localSb.(*types.LocalEnvironment), instanceWorkspace)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if dockerFound {
-		Environments[providers.DockerType], err = m.dockerMaker.Make(dockerSb.(*types.DockerEnvironment))
+		envs[providers.DockerType], err = m.dockerMaker.Make(dockerSb.(*types.DockerEnvironment))
 		if err != nil {
 			return nil, err
 		}
 	}
 	if kubernetesFound {
-		Environments[providers.KubernetesType], err = m.kubernetesMaker.Make(dockerSb.(*types.KubernetesEnvironment))
+		envs[providers.KubernetesType], err = m.kubernetesMaker.Make(dockerSb.(*types.KubernetesEnvironment))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return Environments, nil
+	return envs, nil
 }
 
 func (m *nativeMaker) mergeLocalAndCommon(local, common types.Environment) (types.Environment, error) {
+	if local == nil {
+		return &types.LocalEnvironment{
+			Ports: common.(*types.CommonEnvironment).Ports,
+		}, nil
+	}
 	localEnvironment, localEnvironmentOk := local.(*types.LocalEnvironment)
 	if !localEnvironmentOk {
 		return nil, errors.New("type assertion to *LocalEnvironment failed")
@@ -135,6 +140,11 @@ func (m *nativeMaker) mergeLocalAndCommon(local, common types.Environment) (type
 }
 
 func (m *nativeMaker) mergeContainerAndCommon(container, common types.Environment) (types.Environment, error) {
+	if container == nil {
+		return &types.CommonEnvironment{
+			Ports: common.(*types.CommonEnvironment).Ports,
+		}, nil
+	}
 	containerEnvironment, containerEnvironmentOk := container.(*types.ContainerEnvironment)
 	if !containerEnvironmentOk {
 		return nil, errors.New("type assertion to *ContainerEnvironment failed")
@@ -149,6 +159,14 @@ func (m *nativeMaker) mergeContainerAndCommon(container, common types.Environmen
 }
 
 func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Environment) (types.Environment, error) {
+	if docker == nil {
+		containerEnv := container.(*types.ContainerEnvironment)
+		return &types.DockerEnvironment{
+			Ports:    containerEnv.Ports,
+			Registry: containerEnv.Registry,
+		}, nil
+	}
+
 	dockerEnvironment, dockerEnvironmentOk := docker.(*types.DockerEnvironment)
 	if !dockerEnvironmentOk {
 		return nil, errors.New("type assertion to *DockerEnvironment failed")
@@ -168,6 +186,14 @@ func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Environmen
 }
 
 func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Environment) (types.Environment, error) {
+	if kubernetes == nil {
+		containerEnv := container.(*types.ContainerEnvironment)
+		return &types.KubernetesEnvironment{
+			Ports:    containerEnv.Ports,
+			Registry: containerEnv.Registry,
+		}, nil
+	}
+
 	kubernetesEnvironment, kubernetesEnvironmentOk := kubernetes.(*types.KubernetesEnvironment)
 	if !kubernetesEnvironmentOk {
 		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
@@ -201,10 +227,10 @@ func (m *nativeMaker) mergeConfigMaps(
 	}
 	mergedEnvironments := make(map[types.EnvironmentType]types.Environment)
 
-	for sandboxType, merge := range mergeFuncs {
-		sandboxTypeStr := string(sandboxType)
-		specEnvironment, specExists := specEnvironments[sandboxTypeStr]
-		instanceEnvironment, instanceExists := instanceEnvironments[sandboxTypeStr]
+	for envType, merge := range mergeFuncs {
+		envTypeStr := string(envType)
+		specEnvironment, specExists := specEnvironments[envTypeStr]
+		instanceEnvironment, instanceExists := instanceEnvironments[envTypeStr]
 
 		if specExists && instanceExists {
 			// Use the merge function, now handling errors.
@@ -213,15 +239,26 @@ func (m *nativeMaker) mergeConfigMaps(
 				// Handle the error, e.g., by returning it or logging it.
 				return nil, err // Return an error if merging fails.
 			}
-			mergedEnvironments[sandboxType] = mergedEnvironment
+			mergedEnvironments[envType] = mergedEnvironment
 		} else if !specExists && instanceExists {
-			mergedEnvironments[sandboxType] = instanceEnvironment
-		} else {
-			mergedEnvironments[sandboxType] = specEnvironment
+			mergedEnvironments[envType] = instanceEnvironment
+		} else if specExists {
+			mergedEnvironments[envType] = specEnvironment
 		}
 	}
 
 	return mergedEnvironments, nil
+}
+
+func (m *nativeMaker) mergePorts(specPorts, instancePorts *types.EnvironmentPorts) types.EnvironmentPorts {
+	mergedPorts := *specPorts
+	if instancePorts.Start > 0 {
+		mergedPorts.Start = instancePorts.Start
+	}
+	if instancePorts.End > 0 {
+		mergedPorts.End = instancePorts.End
+	}
+	return mergedPorts
 }
 
 func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (types.Environment, error) {
@@ -234,14 +271,7 @@ func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (
 
 	// Create a new instance of CommonEnvironment for the merged result.
 	mergedCommon := &types.CommonEnvironment{
-		Ports: specCommon.Ports,
-	}
-
-	if instanceCommon.Ports.Start > 0 {
-		mergedCommon.Ports.Start = instanceCommon.Ports.Start
-	}
-	if instanceCommon.Ports.End > 0 {
-		mergedCommon.Ports.End = instanceCommon.Ports.End
+		Ports: m.mergePorts(&specCommon.Ports, &instanceCommon.Ports),
 	}
 
 	// Return the new, merged CommonEnvironment as an Environment interface.
@@ -250,23 +280,28 @@ func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (
 
 func (m *nativeMaker) mergeLocalEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
-	_, specOk := spec.(*types.LocalEnvironment)
-	_, instanceOk := instance.(*types.LocalEnvironment)
+	specLocal, specOk := spec.(*types.LocalEnvironment)
+	instanceLocal, instanceOk := instance.(*types.LocalEnvironment)
 	if !specOk || !instanceOk {
 		return nil, errors.New("type assertion to *LocalEnvironment failed")
 	}
 
-	mergedCommon, err := m.mergeCommonEnvironment(spec, instance)
-	if err != nil {
-		return nil, err
-	}
-	mergedCommonRef := mergedCommon.(*types.CommonEnvironment)
-
 	mergedLocal := &types.LocalEnvironment{
-		Ports: mergedCommonRef.Ports,
+		Ports: m.mergePorts(&specLocal.Ports, &instanceLocal.Ports),
 	}
 
 	return mergedLocal, nil
+}
+
+func (m *nativeMaker) mergeContainerRegistry(specRegistry, instanceRegistry *types.ContainerRegistry) types.ContainerRegistry {
+	mergedRegistry := *specRegistry
+	if instanceRegistry.Auth.Username != "" {
+		mergedRegistry.Auth.Username = instanceRegistry.Auth.Username
+	}
+	if instanceRegistry.Auth.Password != "" {
+		mergedRegistry.Auth.Password = instanceRegistry.Auth.Password
+	}
+	return mergedRegistry
 }
 
 func (m *nativeMaker) mergeContainerEnvironment(spec, instance types.Environment) (types.Environment, error) {
@@ -276,22 +311,9 @@ func (m *nativeMaker) mergeContainerEnvironment(spec, instance types.Environment
 		return nil, errors.New("type assertion to *ContainerEnvironment failed")
 	}
 
-	mergedCommon, err := m.mergeCommonEnvironment(spec, instance)
-	if err != nil {
-		return nil, err
-	}
-	mergedCommonRef := mergedCommon.(*types.CommonEnvironment)
-
 	mergedContainer := &types.ContainerEnvironment{
-		Ports:    mergedCommonRef.Ports,
-		Registry: specContainer.Registry,
-	}
-
-	if instanceContainer.Registry.Auth.Username != "" {
-		mergedContainer.Registry.Auth.Username = instanceContainer.Registry.Auth.Username
-	}
-	if instanceContainer.Registry.Auth.Password != "" {
-		mergedContainer.Registry.Auth.Password = instanceContainer.Registry.Auth.Password
+		Ports:    m.mergePorts(&specContainer.Ports, &instanceContainer.Ports),
+		Registry: m.mergeContainerRegistry(&specContainer.Registry, &instanceContainer.Registry),
 	}
 
 	return mergedContainer, nil
@@ -304,15 +326,9 @@ func (m *nativeMaker) mergeDockerEnvironment(spec, instance types.Environment) (
 		return nil, errors.New("type assertion to *DockerEnvironment failed")
 	}
 
-	mergedContainer, err := m.mergeContainerEnvironment(spec, instance)
-	if err != nil {
-		return nil, err
-	}
-	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
-
 	mergedDocker := &types.DockerEnvironment{
-		Ports:      mergedContainerRef.Ports,
-		Registry:   mergedContainerRef.Registry,
+		Ports:      m.mergePorts(&specDocker.Ports, &instanceDocker.Ports),
+		Registry:   m.mergeContainerRegistry(&specDocker.Registry, &instanceDocker.Registry),
 		NamePrefix: specDocker.NamePrefix,
 	}
 
@@ -330,15 +346,9 @@ func (m *nativeMaker) mergeKubernetesEnvironment(spec, instance types.Environmen
 		return nil, errors.New("type assertion to *KubernetesEnvironment failed")
 	}
 
-	mergedContainer, err := m.mergeContainerEnvironment(spec, instance)
-	if err != nil {
-		return nil, err
-	}
-	mergedContainerRef := mergedContainer.(*types.ContainerEnvironment)
-
 	mergedKubernetes := &types.KubernetesEnvironment{
-		Ports:      mergedContainerRef.Ports,
-		Registry:   mergedContainerRef.Registry,
+		Ports:      m.mergePorts(&specKubernetes.Ports, &instanceKubernetes.Ports),
+		Registry:   m.mergeContainerRegistry(&specKubernetes.Registry, &instanceKubernetes.Registry),
 		Namespace:  specKubernetes.Namespace,
 		Kubeconfig: specKubernetes.Kubeconfig,
 	}
