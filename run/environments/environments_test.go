@@ -90,13 +90,10 @@ func TestNativeMaker_Make(t *testing.T) {
 			},
 		},
 		{
-			name: "successful merge of all environments",
+			name: "successful merge of more environments",
 			specConfig: map[string]types.Environment{
 				"common": &types.CommonEnvironment{
 					Ports: types.EnvironmentPorts{Start: 2000, End: 3000},
-				},
-				"local": &types.LocalEnvironment{
-					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
 				},
 				"container": &types.ContainerEnvironment{
 					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
@@ -178,6 +175,177 @@ func TestNativeMaker_Make(t *testing.T) {
 			},
 		},
 		{
+			name: "successful merge of all environments",
+			specConfig: map[string]types.Environment{
+				"common": &types.CommonEnvironment{
+					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+				},
+				"local": &types.LocalEnvironment{
+					Ports: types.EnvironmentPorts{Start: 500, End: 1000},
+				},
+				"container": &types.ContainerEnvironment{
+					Ports: types.EnvironmentPorts{Start: 10000, End: 20000},
+					Registry: types.ContainerRegistry{
+						Auth: types.ContainerRegistryAuth{
+							Username: "testx",
+							Password: "pwdx",
+						},
+					},
+				},
+				"docker": &types.DockerEnvironment{
+					Ports: types.EnvironmentPorts{Start: 2000, End: 3000},
+					Registry: types.ContainerRegistry{
+						Auth: types.ContainerRegistryAuth{
+							Username: "userx",
+							Password: "1234x",
+						},
+					},
+					NamePrefix: "t",
+				},
+				"kubernetes": &types.KubernetesEnvironment{
+					Namespace:  "kube",
+					Kubeconfig: "tmp/k.conf",
+				},
+			},
+			instanceConfig: map[string]types.Environment{
+				"common": &types.CommonEnvironment{
+					Ports: types.EnvironmentPorts{Start: 2000, End: 3000},
+				},
+				"local": &types.LocalEnvironment{
+					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+				},
+				"container": &types.ContainerEnvironment{
+					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					Registry: types.ContainerRegistry{
+						Auth: types.ContainerRegistryAuth{
+							Username: "test",
+							Password: "pwd",
+						},
+					},
+				},
+				"docker": &types.DockerEnvironment{
+					Ports: types.EnvironmentPorts{Start: 3000, End: 4000},
+					Registry: types.ContainerRegistry{
+						Auth: types.ContainerRegistryAuth{
+							Username: "user",
+							Password: "1234",
+						},
+					},
+					NamePrefix: "tnp",
+				},
+				"kubernetes": &types.KubernetesEnvironment{
+					Namespace:  "kubetest",
+					Kubeconfig: "tmp/kube.conf",
+				},
+			},
+			instanceWorkspace: "/workspace",
+			setupMocks: func(
+				t *testing.T,
+				localMock *localMocks.MockMaker,
+				dockerMock *dockerMocks.MockMaker,
+				kubernetesMock *kubernetesMocks.MockMaker,
+			) Environments {
+				// Setup local environment maker
+				localEnv := envMocks.NewMockEnvironment(t)
+				localMock.On(
+					"Make",
+					&types.LocalEnvironment{
+						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					},
+					"/workspace",
+				).Return(localEnv, nil)
+
+				// Setup Docker environment maker
+				dockerEnv := envMocks.NewMockEnvironment(t)
+				dockerMock.On(
+					"Make",
+					&types.DockerEnvironment{
+						Ports: types.EnvironmentPorts{Start: 3000, End: 4000},
+						Registry: types.ContainerRegistry{
+							Auth: types.ContainerRegistryAuth{
+								Username: "user",
+								Password: "1234",
+							},
+						},
+						NamePrefix: "tnp",
+					},
+				).Return(dockerEnv, nil)
+
+				// Setup Kubernetes environment maker
+				kubernetesEnv := envMocks.NewMockEnvironment(t)
+				kubernetesMock.On(
+					"Make",
+					&types.KubernetesEnvironment{
+						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+						Registry: types.ContainerRegistry{
+							Auth: types.ContainerRegistryAuth{
+								Username: "test",
+								Password: "pwd",
+							},
+						},
+						Namespace:  "kubetest",
+						Kubeconfig: "tmp/kube.conf",
+					},
+				).Return(kubernetesEnv, nil)
+
+				return Environments{
+					providers.LocalType:      localEnv,
+					providers.DockerType:     dockerEnv,
+					providers.KubernetesType: kubernetesEnv,
+				}
+			},
+		},
+		{
+			name: "successful merge of common only environment",
+			specConfig: map[string]types.Environment{
+				"common": &types.CommonEnvironment{
+					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+				},
+			},
+			instanceConfig:    map[string]types.Environment{},
+			instanceWorkspace: "/workspace",
+			setupMocks: func(
+				t *testing.T,
+				localMock *localMocks.MockMaker,
+				dockerMock *dockerMocks.MockMaker,
+				kubernetesMock *kubernetesMocks.MockMaker,
+			) Environments {
+				// Setup local environment maker
+				localEnv := envMocks.NewMockEnvironment(t)
+				localMock.On(
+					"Make",
+					&types.LocalEnvironment{
+						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					},
+					"/workspace",
+				).Return(localEnv, nil)
+
+				// Setup Docker environment maker
+				dockerEnv := envMocks.NewMockEnvironment(t)
+				dockerMock.On(
+					"Make",
+					&types.DockerEnvironment{
+						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					},
+				).Return(dockerEnv, nil)
+
+				// Setup Kubernetes environment maker
+				kubernetesEnv := envMocks.NewMockEnvironment(t)
+				kubernetesMock.On(
+					"Make",
+					&types.KubernetesEnvironment{
+						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					},
+				).Return(kubernetesEnv, nil)
+
+				return Environments{
+					providers.LocalType:      localEnv,
+					providers.DockerType:     dockerEnv,
+					providers.KubernetesType: kubernetesEnv,
+				}
+			},
+		},
+		{
 			name: "partial configuration with only local defined",
 			specConfig: map[string]types.Environment{
 				"local": &types.LocalEnvironment{
@@ -215,7 +383,7 @@ func TestNativeMaker_Make(t *testing.T) {
 			},
 		},
 		{
-			name: "mixed success and errors in environment creation",
+			name: "mixed success and errors in docker environment creation",
 			specConfig: map[string]types.Environment{
 				"local":  &types.LocalEnvironment{},
 				"docker": &types.DockerEnvironment{},
@@ -229,6 +397,22 @@ func TestNativeMaker_Make(t *testing.T) {
 			},
 			expectError:      true,
 			expectedErrorMsg: "docker creation failed",
+		},
+		{
+			name: "mixed success and errors in kubernetes environment creation",
+			specConfig: map[string]types.Environment{
+				"local":      &types.LocalEnvironment{},
+				"kubernetes": &types.KubernetesEnvironment{},
+			},
+			instanceWorkspace: "/workspace",
+			setupMocks: func(t *testing.T, localMock *localMocks.MockMaker, dockerMock *dockerMocks.MockMaker, kubernetesMock *kubernetesMocks.MockMaker) Environments {
+				localEnv := envMocks.NewMockEnvironment(t)
+				localMock.On("Make", mock.AnythingOfType("*types.LocalEnvironment"), "/workspace").Return(localEnv, nil)
+				kubernetesMock.On("Make", mock.AnythingOfType("*types.KubernetesEnvironment")).Return(nil, errors.New("k8s creation failed"))
+				return Environments{providers.LocalType: localEnv}
+			},
+			expectError:      true,
+			expectedErrorMsg: "k8s creation failed",
 		},
 		{
 			name: "error during environment creation",
@@ -254,6 +438,61 @@ func TestNativeMaker_Make(t *testing.T) {
 			expectError:      true,
 			expectedErrorMsg: "local err",
 		},
+		{
+			name: "error during common env merging",
+			specConfig: map[string]types.Environment{
+				"common": &types.LocalEnvironment{},
+			},
+			instanceConfig: map[string]types.Environment{
+				"common": &types.LocalEnvironment{},
+			},
+			expectError:      true,
+			expectedErrorMsg: "common environment is not set in common field",
+		},
+		{
+			name: "error during local env merging",
+			specConfig: map[string]types.Environment{
+				"local": &types.CommonEnvironment{},
+			},
+			instanceConfig: map[string]types.Environment{
+				"local": &types.CommonEnvironment{},
+			},
+			expectError:      true,
+			expectedErrorMsg: "local environment is not set in local field",
+		},
+		{
+			name: "error during container env merging",
+			specConfig: map[string]types.Environment{
+				"container": &types.LocalEnvironment{},
+			},
+			instanceConfig: map[string]types.Environment{
+				"container": &types.LocalEnvironment{},
+			},
+			expectError:      true,
+			expectedErrorMsg: "container environment is not set in container field",
+		},
+		{
+			name: "error during docker env merging",
+			specConfig: map[string]types.Environment{
+				"docker": &types.LocalEnvironment{},
+			},
+			instanceConfig: map[string]types.Environment{
+				"docker": &types.LocalEnvironment{},
+			},
+			expectError:      true,
+			expectedErrorMsg: "docker environment is not set in docker field",
+		},
+		{
+			name: "error during kubernetes env merging",
+			specConfig: map[string]types.Environment{
+				"kubernetes": &types.LocalEnvironment{},
+			},
+			instanceConfig: map[string]types.Environment{
+				"kubernetes": &types.LocalEnvironment{},
+			},
+			expectError:      true,
+			expectedErrorMsg: "kubernetes environment is not set in kubernetes field",
+		},
 	}
 
 	for _, tt := range tests {
@@ -268,7 +507,10 @@ func TestNativeMaker_Make(t *testing.T) {
 			nm.dockerMaker = dockerMock
 			nm.kubernetesMaker = kubernetesMock
 
-			expectEnvironments := tt.setupMocks(t, localMock, dockerMock, kubernetesMock)
+			var expectEnvironments types.Environment
+			if tt.setupMocks != nil {
+				expectEnvironments = tt.setupMocks(t, localMock, dockerMock, kubernetesMock)
+			}
 
 			environments, err := nm.Make(tt.specConfig, tt.instanceConfig, tt.instanceWorkspace)
 
