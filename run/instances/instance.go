@@ -29,6 +29,7 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/services"
 	"path/filepath"
+	"time"
 )
 
 type Instance interface {
@@ -52,6 +53,7 @@ type nativeInstanceMaker struct {
 	servicesMaker    services.Maker
 	scriptsMaker     scripts.Maker
 	environmentMaker environments.Maker
+	runtimeMaker     runtime.Maker
 }
 
 func CreateInstanceMaker(
@@ -65,6 +67,7 @@ func CreateInstanceMaker(
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
 		scriptsMaker:     scripts.CreateMaker(fnd, parametersMaker),
 		environmentMaker: environments.CreateMaker(fnd),
+		runtimeMaker:     runtime.CreateMaker(fnd),
 	}
 }
 
@@ -94,17 +97,17 @@ func (m *nativeInstanceMaker) Make(
 
 	instanceActions := make([]action.Action, len(instanceConfig.Actions))
 	for i, actionConfig := range instanceConfig.Actions {
-		action, err := m.actionMaker.MakeAction(actionConfig, sl, instanceConfig.Timeouts.Action)
+		act, err := m.actionMaker.MakeAction(actionConfig, sl, instanceConfig.Timeouts.Action)
 		if err != nil {
 			return nil, err
 		}
-		instanceActions[i] = action
+		instanceActions[i] = act
 	}
-	runData := runtime.CreateData()
+	runData := m.runtimeMaker.Make()
 	return &nativeInstance{
 		fnd:       m.fnd,
 		name:      name,
-		timeout:   instanceConfig.Timeouts.Actions,
+		timeout:   time.Duration(instanceConfig.Timeouts.Actions * 1e6),
 		actions:   instanceActions,
 		envs:      envs,
 		runData:   runData,
@@ -118,7 +121,7 @@ type nativeInstance struct {
 	actions   []action.Action
 	envs      environments.Environments
 	runData   runtime.Data
-	timeout   int
+	timeout   time.Duration
 	workspace string
 }
 
@@ -152,9 +155,9 @@ func (i *nativeInstance) Run() error {
 			}
 		}
 	}
-	for pos, action := range i.actions {
+	for pos, act := range i.actions {
 		i.fnd.Logger().Debugf("Executing action number %d", pos)
-		if err = i.executeAction(action); err != nil {
+		if err = i.executeAction(act); err != nil {
 			break
 		}
 	}

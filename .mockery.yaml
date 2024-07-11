@@ -36,6 +36,11 @@ packages:
       dir: mocks/generated/conf/parser/factory
     interfaces:
       Functions: {}
+  github.com/bukka/wst/run/actions:
+    config:
+      dir: mocks/generated/run/actions
+    interfaces:
+      ActionMaker: {}
   github.com/bukka/wst/run/actions/action:
     config:
       dir: mocks/generated/run/actions/action
@@ -85,6 +90,11 @@ packages:
   github.com/bukka/wst/run/actions/action/stop:
     config:
       dir: mocks/generated/run/actions/action/stop
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/environments:
+    config:
+      dir: mocks/generated/run/environments
     interfaces:
       Maker: {}
   github.com/bukka/wst/run/environments/environment:
@@ -137,6 +147,7 @@ packages:
       dir: mocks/generated/run/instances/runtime
     interfaces:
       Data: {}
+      Maker: {}
   github.com/bukka/wst/run/metrics:
     config:
       dir: mocks/generated/run/metrics
@@ -153,10 +164,17 @@ packages:
       dir: mocks/generated/run/parameters/parameter
     interfaces:
       Parameter: {}
+  github.com/bukka/wst/run/resources/scripts:
+    config:
+      dir: mocks/generated/run/resources/scripts
+    interfaces:
+      Maker: {}
+      Script: {}
   github.com/bukka/wst/run/servers:
     config:
       dir: mocks/generated/run/servers
     interfaces:
+      Maker: {}
       Server: {}
   github.com/bukka/wst/run/servers/actions:
     config:
@@ -167,5 +185,6 @@ packages:
     config:
       dir: mocks/generated/run/services
     interfaces:
+      Maker: {}
       ServiceLocator: {}
       Service: {}

@@ -14,7 +14,10 @@
 
 package runtime
 
-import "sync"
+import (
+	"github.com/bukka/wst/app"
+	"sync"
+)
 
 // Data is the interface type to allow storage and retrieval of data across different actions.
 type Data interface {
@@ -22,12 +25,29 @@ type Data interface {
 	Load(key string) (interface{}, bool)
 }
 
-func CreateData() Data {
-	return &syncData{}
+type Maker interface {
+	Make() Data
+}
+
+type syncMaker struct {
+	fnd app.Foundation
+}
+
+func (s *syncMaker) Make() Data {
+	return &syncData{
+		fnd: s.fnd,
+	}
+}
+
+func CreateMaker(fnd app.Foundation) Maker {
+	return &syncMaker{
+		fnd: fnd,
+	}
 }
 
 // runtimeDataImpl is an implementation of the RuntimeData interface.
 type syncData struct {
+	fnd  app.Foundation
 	data sync.Map
 }
 
