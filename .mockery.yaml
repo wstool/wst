@@ -163,6 +163,7 @@ packages:
     config:
       dir: mocks/generated/run/parameters/parameter
     interfaces:
+      Maker: {}
       Parameter: {}
   github.com/bukka/wst/run/resources/scripts:
     config:
