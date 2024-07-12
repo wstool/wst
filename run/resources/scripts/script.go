@@ -15,10 +15,10 @@
 package scripts
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/parameters"
+	"github.com/pkg/errors"
 	"os"
 	"strconv"
 )
@@ -53,11 +53,11 @@ func (m *nativeMaker) Make(config map[string]types.Script) (Scripts, error) {
 	for scriptName, scriptConfig := range config {
 		mode, err := strconv.ParseUint(scriptConfig.Mode, 8, 32)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing file mode for script %s: %v", scriptName, err)
+			return nil, errors.Errorf("error parsing file mode for script %s: %v", scriptName, err)
 		}
 		scriptParameters, err := m.parametersMaker.Make(scriptConfig.Parameters)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing parameters for script %s: %v", scriptName, err)
+			return nil, errors.Errorf("error parsing parameters for script %s: %v", scriptName, err)
 		}
 		script := &nativeScript{
 			content:    scriptConfig.Content,
