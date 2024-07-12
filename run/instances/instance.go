@@ -16,18 +16,19 @@ package instances
 
 import (
 	"context"
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions"
 	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/environments"
+	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/services"
+	"github.com/pkg/errors"
 	"path/filepath"
 	"time"
 )
@@ -103,26 +104,28 @@ func (m *nativeInstanceMaker) Make(
 		}
 		instanceActions[i] = act
 	}
-	runData := m.runtimeMaker.Make()
+	runData := m.runtimeMaker.MakeData()
 	return &nativeInstance{
-		fnd:       m.fnd,
-		name:      name,
-		timeout:   time.Duration(instanceConfig.Timeouts.Actions * 1e6),
-		actions:   instanceActions,
-		envs:      envs,
-		runData:   runData,
-		workspace: instanceWorkspace,
+		fnd:          m.fnd,
+		runtimeMaker: m.runtimeMaker,
+		name:         name,
+		timeout:      time.Duration(instanceConfig.Timeouts.Actions * 1e6),
+		actions:      instanceActions,
+		envs:         envs,
+		runData:      runData,
+		workspace:    instanceWorkspace,
 	}, nil
 }
 
 type nativeInstance struct {
-	fnd       app.Foundation
-	name      string
-	actions   []action.Action
-	envs      environments.Environments
-	runData   runtime.Data
-	timeout   time.Duration
-	workspace string
+	fnd          app.Foundation
+	runtimeMaker runtime.Maker
+	name         string
+	actions      []action.Action
+	envs         environments.Environments
+	runData      runtime.Data
+	timeout      time.Duration
+	workspace    string
 }
 
 func (i *nativeInstance) Workspace() string {
@@ -135,56 +138,60 @@ func (i *nativeInstance) Name() string {
 
 func (i *nativeInstance) Run() error {
 	var err error
+	ctx := i.runtimeMaker.MakeBackgroundContext()
+
+	initializedEnvs := make(map[providers.Type]bool)
 	for envName, env := range i.envs {
 		if env.IsUsed() {
 			i.fnd.Logger().Debugf("Initializing %s environment", envName)
-			if err = env.Init(context.Background()); err != nil {
+			if err = env.Init(ctx); err != nil {
 				i.fnd.Logger().Debugf("Failed to initialize %s environment", envName)
-				for innerEnvName, innerEnv := range i.envs {
-					if innerEnv == env {
-						break
-					}
-					if innerEnv.IsUsed() {
-						innerErr := innerEnv.Destroy(context.Background())
-						if innerErr != nil {
-							i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", innerEnvName, innerErr)
-						}
-					}
-				}
+				_ = i.destroyEnvironments(ctx, initializedEnvs)
 				return err
 			}
+			initializedEnvs[envName] = true
 		}
 	}
+
+	ictx, cancel := i.runtimeMaker.MakeContextWithTimeout(ctx, i.timeout)
+	defer cancel()
 	for pos, act := range i.actions {
 		i.fnd.Logger().Debugf("Executing action number %d", pos)
-		if err = i.executeAction(act); err != nil {
+		if err = i.executeAction(ictx, act); err != nil {
 			break
 		}
 	}
-	for envName, env := range i.envs {
-		if env.IsUsed() {
-			i.fnd.Logger().Debugf("Destroying %s environment", envName)
-			destroyErr := env.Destroy(context.Background())
-			if destroyErr != nil {
-				i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", envName, destroyErr)
-				if err == nil {
-					err = destroyErr
-				}
-			}
+
+	destroyErr := i.destroyEnvironments(ctx, initializedEnvs)
+	if err == nil {
+		err = destroyErr
+	}
+
+	return err
+}
+
+func (i *nativeInstance) destroyEnvironments(ctx context.Context, initializedEnvs map[providers.Type]bool) error {
+	var err error
+	for envName := range initializedEnvs {
+		env := i.envs[envName]
+		i.fnd.Logger().Debugf("Destroying %s environment", envName)
+		if destroyErr := env.Destroy(ctx); destroyErr != nil {
+			i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", envName, err)
+			err = destroyErr
 		}
 	}
 	return err
 }
 
-func (i *nativeInstance) executeAction(action action.Action) error {
-	ctx, cancel := context.WithTimeout(context.Background(), action.Timeout())
+func (i *nativeInstance) executeAction(actionsCtx context.Context, action action.Action) error {
+	ctx, cancel := i.runtimeMaker.MakeContextWithTimeout(actionsCtx, action.Timeout())
 	defer cancel()
 	success, err := action.Execute(ctx, i.runData)
 	if err != nil {
 		return err
 	}
 	if !success {
-		return fmt.Errorf("action execution failed")
+		return errors.Errorf("action execution failed")
 	}
 	return nil
 }

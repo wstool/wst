@@ -15,29 +15,40 @@
 package runtime
 
 import (
+	"context"
 	"github.com/bukka/wst/app"
-	"sync"
+	"time"
 )
 
-// Data is the interface type to allow storage and retrieval of data across different actions.
-type Data interface {
-	Store(key string, value interface{}) error
-	Load(key string) (interface{}, bool)
+type Maker interface {
+	MakeData() Data
+	MakeBackgroundContext() context.Context
+	MakeContextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc)
 }
 
-// runtimeDataImpl is an implementation of the RuntimeData interface.
-type syncData struct {
-	fnd  app.Foundation
-	data sync.Map
+type syncMaker struct {
+	fnd app.Foundation
 }
 
-// Store stores the value for a key.
-func (rt *syncData) Store(key string, value interface{}) error {
-	rt.data.Store(key, value)
-	return nil
+func (s *syncMaker) MakeBackgroundContext() context.Context {
+	return context.Background()
 }
 
-// Load loads the value for a key.
-func (rt *syncData) Load(key string) (interface{}, bool) {
-	return rt.data.Load(key)
+func (s *syncMaker) MakeContextWithTimeout(
+	ctx context.Context,
+	timeout time.Duration,
+) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, timeout)
+}
+
+func (s *syncMaker) MakeData() Data {
+	return &syncData{
+		fnd: s.fnd,
+	}
+}
+
+func CreateMaker(fnd app.Foundation) Maker {
+	return &syncMaker{
+		fnd: fnd,
+	}
 }

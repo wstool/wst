@@ -1,13 +1,16 @@
 package runtime
 
 import (
+	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestSyncData_StoreAndLoad(t *testing.T) {
-	data := CreateData()
+	data := syncData{
+		fnd: appMocks.NewMockFoundation(t),
+	}
 	require.NotNil(t, data, "Data instance should not be nil")
 
 	tests := []struct {
