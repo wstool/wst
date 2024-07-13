@@ -24,6 +24,7 @@ import (
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/services/template"
 	"os"
+	"reflect"
 	"syscall"
 )
 
@@ -175,12 +176,12 @@ func (h *HookNative) Execute(
 ) (task.Task, error) {
 	var err error
 	if h.Type == StartHookType {
-		if st != nil {
+		if st != nil && !reflect.ValueOf(st).IsNil() {
 			return nil, errors.New("task has already been created which is likely because start already done")
 		}
 		st, err = env.RunTask(ctx, ss, nil)
 	} else {
-		if st == nil {
+		if st == nil || reflect.ValueOf(st).IsNil() {
 			return nil, errors.New("task has not been created which is likely because start is not done")
 		}
 	}
@@ -225,19 +226,24 @@ func (h *HookArgsCommand) Execute(
 	env environment.Environment,
 	st task.Task,
 ) (task.Task, error) {
-	command, err := h.newCommand(ss, tmpl)
-	if err != nil {
-		return nil, err
-	}
-
+	var err error
+	var command *environment.Command
 	if h.Type == StartHookType {
-		if st != nil {
+		if st != nil && !reflect.ValueOf(st).IsNil() {
 			return nil, errors.New("task has already been created which is likely because start already done")
+		}
+		command, err = h.newCommand(ss, tmpl)
+		if err != nil {
+			return nil, err
 		}
 		st, err = env.RunTask(ctx, ss, command)
 	} else {
-		if st == nil {
+		if st == nil || reflect.ValueOf(st).IsNil() {
 			return nil, errors.New("task has not been created which is likely because start is not done")
+		}
+		command, err = h.newCommand(ss, tmpl)
+		if err != nil {
+			return nil, err
 		}
 		err = env.ExecTaskCommand(ctx, ss, st, command)
 	}
@@ -285,7 +291,7 @@ func (h *HookSignal) Execute(
 	if h.Type == StartHookType {
 		return nil, fmt.Errorf("signal hook cannot be executed on start")
 	}
-	if st == nil {
+	if st == nil || reflect.ValueOf(st).IsNil() {
 		return nil, errors.New("task does not exist for signal hook to execute")
 	}
 
