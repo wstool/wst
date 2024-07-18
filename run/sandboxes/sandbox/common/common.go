@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
@@ -67,7 +68,11 @@ func (m *nativeMaker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error)
 type Sandbox struct {
 	available bool
 	dirs      map[dir.DirType]string
-	hooks     map[hooks.HookType]hooks.Hook
+	hooks     hooks.Hooks
+}
+
+func (s *Sandbox) ContainerConfig() *containers.ContainerConfig {
+	return nil
 }
 
 func (s *Sandbox) Available() bool {
