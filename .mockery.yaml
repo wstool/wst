@@ -171,6 +171,12 @@ packages:
     interfaces:
       Maker: {}
       Script: {}
+  github.com/bukka/wst/run/sandboxes/hooks:
+    config:
+      dir: mocks/generated/run/sandboxes/hooks
+    interfaces:
+      Hook: {}
+      Maker: {}
   github.com/bukka/wst/run/servers:
     config:
       dir: mocks/generated/run/servers
