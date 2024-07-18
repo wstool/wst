@@ -4,11 +4,11 @@ import (
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	hooksMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/hooks"
+	sandboxMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -125,7 +125,7 @@ func TestSandbox_Dir(t *testing.T) {
 }
 
 func TestSandbox_Hooks(t *testing.T) {
-	expectedHooks := map[hooks.HookType]hooks.Hook{
+	expectedHooks := hooks.Hooks{
 		hooks.StartHookType: &hooks.HookNative{}, // Example hook
 	}
 	s := Sandbox{hooks: expectedHooks}
@@ -147,31 +147,166 @@ func TestSandbox_Hook(t *testing.T) {
 }
 
 func TestSandbox_Inherit(t *testing.T) {
-	parentDirs := map[dir.DirType]string{
-		dir.ConfDirType: "/path/to/conf",
-		dir.RunDirType:  "/path/to/parent/run",
-	}
-	parentHooks := map[hooks.HookType]hooks.Hook{
-		hooks.StartHookType: &hooks.HookNative{},
-	}
-	parentSandbox := &Sandbox{
-		dirs:  parentDirs,
-		hooks: parentHooks,
+	tests := []struct {
+		name             string
+		childSandbox     *Sandbox
+		parentHooks      hooks.Hooks
+		parentDirs       map[dir.DirType]string
+		expectedHooks    hooks.Hooks
+		expectedDirs     map[dir.DirType]string
+		setupParentMocks func(
+			*sandboxMocks.MockSandbox,
+			hooks.Hooks,
+			map[dir.DirType]string,
+		)
+		expectedError    bool
+		expectedErrorMsg string
+	}{
+		{
+			name:         "Unset child sandbox inheritance",
+			childSandbox: CreateSandbox(true, make(map[dir.DirType]string), make(hooks.Hooks)),
+			parentHooks: hooks.Hooks{
+				hooks.StartHookType: hooksMocks.NewMockHook(t),
+				hooks.StopHookType:  hooksMocks.NewMockHook(t),
+			},
+			parentDirs: map[dir.DirType]string{
+				dir.ConfDirType: "/etc/app",
+				dir.RunDirType:  "/var/run/app",
+			},
+			expectedHooks: hooks.Hooks{
+				hooks.StartHookType: hooksMocks.NewMockHook(t),
+				hooks.StopHookType:  hooksMocks.NewMockHook(t),
+			},
+			expectedDirs: map[dir.DirType]string{
+				dir.ConfDirType: "/etc/app",
+				dir.RunDirType:  "/var/run/app",
+			},
+			setupParentMocks: func(
+				parent *sandboxMocks.MockSandbox,
+				hooks hooks.Hooks,
+				dirs map[dir.DirType]string,
+			) {
+				parent.On("Hooks").Return(hooks)
+				parent.On("Dirs").Return(dirs)
+			},
+		},
+		{
+			name: "Set child sandbox inheritance",
+			childSandbox: CreateSandbox(
+				true,
+				map[dir.DirType]string{
+					dir.ScriptDirType: "/usr/local/bin",
+				},
+				hooks.Hooks{
+					hooks.RestartHookType: hooksMocks.NewMockHook(t),
+				},
+			),
+			parentHooks: hooks.Hooks{
+				hooks.StartHookType: hooksMocks.NewMockHook(t),
+				hooks.StopHookType:  hooksMocks.NewMockHook(t),
+			},
+			parentDirs: map[dir.DirType]string{
+				dir.ConfDirType: "/etc/app",
+				dir.RunDirType:  "/var/run/app",
+			},
+			expectedHooks: hooks.Hooks{
+				hooks.RestartHookType: hooksMocks.NewMockHook(t),
+				hooks.StartHookType:   hooksMocks.NewMockHook(t),
+				hooks.StopHookType:    hooksMocks.NewMockHook(t),
+			},
+			expectedDirs: map[dir.DirType]string{
+				dir.ScriptDirType: "/usr/local/bin",
+				dir.ConfDirType:   "/etc/app",
+				dir.RunDirType:    "/var/run/app",
+			},
+			setupParentMocks: func(
+				parent *sandboxMocks.MockSandbox,
+				hooks hooks.Hooks,
+				dirs map[dir.DirType]string,
+			) {
+				parent.On("Hooks").Return(hooks)
+				parent.On("Dirs").Return(dirs)
+			},
+		},
+		{
+			name: "Errors on no hooks",
+			childSandbox: CreateSandbox(
+				true,
+				map[dir.DirType]string{
+					dir.ScriptDirType: "/usr/local/bin",
+				},
+				nil,
+			),
+			parentHooks: hooks.Hooks{
+				hooks.StartHookType: hooksMocks.NewMockHook(t),
+				hooks.StopHookType:  hooksMocks.NewMockHook(t),
+			},
+			parentDirs: map[dir.DirType]string{
+				dir.ConfDirType: "/etc/app",
+				dir.RunDirType:  "/var/run/app",
+			},
+			expectedHooks: hooks.Hooks{
+				hooks.RestartHookType: hooksMocks.NewMockHook(t),
+				hooks.StartHookType:   hooksMocks.NewMockHook(t),
+				hooks.StopHookType:    hooksMocks.NewMockHook(t),
+			},
+			expectedDirs: map[dir.DirType]string{
+				dir.ScriptDirType: "/usr/local/bin",
+				dir.ConfDirType:   "/etc/app",
+				dir.RunDirType:    "/var/run/app",
+			},
+			expectedError:    true,
+			expectedErrorMsg: "sandbox hooks not set",
+		},
+		{
+			name: "Errors on no dirs",
+			childSandbox: CreateSandbox(
+				true,
+				nil,
+				hooks.Hooks{
+					hooks.RestartHookType: hooksMocks.NewMockHook(t),
+				},
+			),
+			parentHooks: hooks.Hooks{
+				hooks.StartHookType: hooksMocks.NewMockHook(t),
+				hooks.StopHookType:  hooksMocks.NewMockHook(t),
+			},
+			parentDirs: map[dir.DirType]string{
+				dir.ConfDirType: "/etc/app",
+				dir.RunDirType:  "/var/run/app",
+			},
+			expectedHooks: hooks.Hooks{
+				hooks.RestartHookType: hooksMocks.NewMockHook(t),
+				hooks.StartHookType:   hooksMocks.NewMockHook(t),
+				hooks.StopHookType:    hooksMocks.NewMockHook(t),
+			},
+			expectedDirs: map[dir.DirType]string{
+				dir.ScriptDirType: "/usr/local/bin",
+				dir.ConfDirType:   "/etc/app",
+				dir.RunDirType:    "/var/run/app",
+			},
+			expectedError:    true,
+			expectedErrorMsg: "sandbox dirs not set",
+		},
 	}
 
-	childDirs := map[dir.DirType]string{
-		dir.ScriptDirType: "/path/to/scripts",
-	}
-	childHooks := make(map[hooks.HookType]hooks.Hook)
-	childSandbox := &Sandbox{
-		dirs:  childDirs,
-		hooks: childHooks,
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parentSandbox := sandboxMocks.NewMockSandbox(t)
+			if tt.setupParentMocks != nil {
+				tt.setupParentMocks(parentSandbox, tt.parentHooks, tt.parentDirs)
+			}
 
-	err := childSandbox.Inherit(parentSandbox)
-	require.NoError(t, err, "Inheriting from parent sandbox should not produce an error")
+			err := tt.childSandbox.Inherit(parentSandbox)
 
-	assert.Equal(t, parentDirs[dir.ConfDirType], childSandbox.dirs[dir.ConfDirType], "Child should inherit conf dir from parent")
-	assert.Equal(t, childDirs[dir.ScriptDirType], childSandbox.dirs[dir.ScriptDirType], "Child should keep its script dir")
-	assert.Equal(t, parentHooks[hooks.StartHookType], childSandbox.hooks[hooks.StartHookType], "Child should inherit start hook from parent")
+			if tt.expectedError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedHooks, tt.childSandbox.Hooks())
+				assert.Equal(t, tt.expectedDirs, tt.childSandbox.Dirs())
+			}
+		})
+	}
 }

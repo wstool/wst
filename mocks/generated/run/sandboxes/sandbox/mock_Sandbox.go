@@ -280,19 +280,19 @@ func (_c *MockSandbox_Hook_Call) RunAndReturn(run func(hooks.HookType) (hooks.Ho
 }
 
 // Hooks provides a mock function with given fields:
-func (_m *MockSandbox) Hooks() map[hooks.HookType]hooks.Hook {
+func (_m *MockSandbox) Hooks() hooks.Hooks {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Hooks")
 	}
 
-	var r0 map[hooks.HookType]hooks.Hook
-	if rf, ok := ret.Get(0).(func() map[hooks.HookType]hooks.Hook); ok {
+	var r0 hooks.Hooks
+	if rf, ok := ret.Get(0).(func() hooks.Hooks); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[hooks.HookType]hooks.Hook)
+			r0 = ret.Get(0).(hooks.Hooks)
 		}
 	}
 
@@ -316,12 +316,12 @@ func (_c *MockSandbox_Hooks_Call) Run(run func()) *MockSandbox_Hooks_Call {
 	return _c
 }
 
-func (_c *MockSandbox_Hooks_Call) Return(_a0 map[hooks.HookType]hooks.Hook) *MockSandbox_Hooks_Call {
+func (_c *MockSandbox_Hooks_Call) Return(_a0 hooks.Hooks) *MockSandbox_Hooks_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSandbox_Hooks_Call) RunAndReturn(run func() map[hooks.HookType]hooks.Hook) *MockSandbox_Hooks_Call {
+func (_c *MockSandbox_Hooks_Call) RunAndReturn(run func() hooks.Hooks) *MockSandbox_Hooks_Call {
 	_c.Call.Return(run)
 	return _c
 }

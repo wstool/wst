@@ -24,7 +24,7 @@ type Sandbox interface {
 	Available() bool
 	Dirs() map[dir.DirType]string
 	Dir(dirType dir.DirType) (string, error)
-	Hooks() map[hooks.HookType]hooks.Hook
+	Hooks() hooks.Hooks
 	Hook(hookType hooks.HookType) (hooks.Hook, error)
 	ContainerConfig() *containers.ContainerConfig
 	Inherit(parentSandbox Sandbox) error

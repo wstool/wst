@@ -79,17 +79,19 @@ func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
 	}
 	containerConfig := parentSandbox.ContainerConfig()
 
-	if s.config.ImageName == "" {
-		s.config.ImageName = containerConfig.ImageName
-	}
-	if s.config.ImageTag == "" {
-		s.config.ImageTag = containerConfig.ImageTag
-	}
-	if s.config.RegistryUsername == "" {
-		s.config.RegistryUsername = containerConfig.RegistryUsername
-	}
-	if s.config.RegistryPassword == "" {
-		s.config.RegistryPassword = containerConfig.RegistryPassword
+	if containerConfig != nil {
+		if s.config.ImageName == "" {
+			s.config.ImageName = containerConfig.ImageName
+		}
+		if s.config.ImageTag == "" {
+			s.config.ImageTag = containerConfig.ImageTag
+		}
+		if s.config.RegistryUsername == "" {
+			s.config.RegistryUsername = containerConfig.RegistryUsername
+		}
+		if s.config.RegistryPassword == "" {
+			s.config.RegistryPassword = containerConfig.RegistryPassword
+		}
 	}
 
 	return nil

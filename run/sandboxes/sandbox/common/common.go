@@ -17,7 +17,6 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
@@ -25,6 +24,7 @@ import (
 	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/sandboxes/sandbox"
+	"github.com/pkg/errors"
 )
 
 type Maker interface {
@@ -58,11 +58,15 @@ func (m *nativeMaker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error)
 		sandboxDirs[dirType] = dirPath
 	}
 
+	return CreateSandbox(config.Available, sandboxDirs, sandboxHooks), nil
+}
+
+func CreateSandbox(available bool, dirs map[dir.DirType]string, hooks hooks.Hooks) *Sandbox {
 	return &Sandbox{
-		available: config.Available,
-		dirs:      sandboxDirs,
-		hooks:     sandboxHooks,
-	}, nil
+		available: available,
+		dirs:      dirs,
+		hooks:     hooks,
+	}
 }
 
 type Sandbox struct {
@@ -91,7 +95,7 @@ func (s *Sandbox) Dir(dirType dir.DirType) (string, error) {
 	return dir, nil
 }
 
-func (s *Sandbox) Hooks() map[hooks.HookType]hooks.Hook {
+func (s *Sandbox) Hooks() hooks.Hooks {
 	return s.hooks
 }
 
@@ -104,6 +108,12 @@ func (s *Sandbox) Hook(hookType hooks.HookType) (hooks.Hook, error) {
 }
 
 func (s *Sandbox) Inherit(parentSandbox sandbox.Sandbox) error {
+	if s.hooks == nil {
+		return errors.New("sandbox hooks not set")
+	}
+	if s.dirs == nil {
+		return errors.New("sandbox dirs not set")
+	}
 	// Inherit hooks.
 	for hookType, parentHook := range parentSandbox.Hooks() {
 		_, ok := s.hooks[hookType]
