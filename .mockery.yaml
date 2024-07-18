@@ -177,6 +177,21 @@ packages:
     interfaces:
       Hook: {}
       Maker: {}
+  github.com/bukka/wst/run/sandboxes/sandbox:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox
+    interfaces:
+      Sandbox: {}
+  github.com/bukka/wst/run/sandboxes/sandbox/common:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox/common
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/sandboxes/sandbox/container:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox/container
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/servers:
     config:
       dir: mocks/generated/run/servers
