@@ -37,7 +37,7 @@ func CreateMaker(fnd app.Foundation, containerMaker container.Maker) Maker {
 }
 
 func (m *nativeMaker) MakeSandbox(config *types.DockerSandbox) (*Sandbox, error) {
-	commonSandbox, err := m.containerMaker.MakeSandbox(&types.ContainerSandbox{
+	containerSandbox, err := m.containerMaker.MakeSandbox(&types.ContainerSandbox{
 		Available: config.Available,
 		Dirs:      config.Dirs,
 		Hooks:     config.Hooks,
@@ -49,7 +49,7 @@ func (m *nativeMaker) MakeSandbox(config *types.DockerSandbox) (*Sandbox, error)
 	}
 
 	sandbox := &Sandbox{
-		Sandbox: *commonSandbox,
+		Sandbox: *containerSandbox,
 	}
 
 	return sandbox, nil

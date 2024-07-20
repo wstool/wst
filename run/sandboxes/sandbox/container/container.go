@@ -50,17 +50,21 @@ func (m *nativeMaker) MakeSandbox(config *types.ContainerSandbox) (*Sandbox, err
 		return nil, err
 	}
 
-	sandbox := &Sandbox{
-		Sandbox: *commonSandbox,
-		config: containers.ContainerConfig{
-			ImageName:        config.Image.Name,
-			ImageTag:         config.Image.Tag,
-			RegistryUsername: config.Registry.Auth.Username,
-			RegistryPassword: config.Registry.Auth.Password,
-		},
-	}
+	sb := CreateSandbox(commonSandbox, &containers.ContainerConfig{
+		ImageName:        config.Image.Name,
+		ImageTag:         config.Image.Tag,
+		RegistryUsername: config.Registry.Auth.Username,
+		RegistryPassword: config.Registry.Auth.Password,
+	})
 
-	return sandbox, nil
+	return sb, nil
+}
+
+func CreateSandbox(commonSandbox *common.Sandbox, config *containers.ContainerConfig) *Sandbox {
+	return &Sandbox{
+		Sandbox: *commonSandbox,
+		config:  *config,
+	}
 }
 
 type Sandbox struct {
