@@ -89,30 +89,18 @@ func (m *nativeMaker) MakeSandboxes(
 	kubernetesSb, kubernetesFound := mergedSandboxes[types.ContainerSandboxType]
 	if commonFound {
 		// Local merging
-		localSb, err = m.mergeLocalAndCommon(localSb, commonSb)
-		if err != nil {
-			return nil, err
-		}
+		localSb = m.mergeLocalAndCommon(localSb, commonSb)
 		localFound = true
 		// Container merging
-		containerSb, err = m.mergeLocalAndCommon(containerSb, commonSb)
-		if err != nil {
-			return nil, err
-		}
+		containerSb = m.mergeContainerAndCommon(containerSb, commonSb)
 		containerFound = true
 	}
 	if containerFound {
 		// Docker merging
-		dockerSb, err = m.mergeDockerAndContainer(dockerSb, containerSb)
-		if err != nil {
-			return nil, err
-		}
+		dockerSb = m.mergeDockerAndContainer(dockerSb, containerSb)
 		dockerFound = true
 		// Kubernetes merging
-		kubernetesSb, err = m.mergeKubernetesAndContainer(kubernetesSb, containerSb)
-		if err != nil {
-			return nil, err
-		}
+		kubernetesSb = m.mergeKubernetesAndContainer(kubernetesSb, containerSb)
 		kubernetesFound = true
 	}
 
@@ -140,96 +128,70 @@ func (m *nativeMaker) MakeSandboxes(
 	return sandboxes, nil
 }
 
-func (m *nativeMaker) mergeLocalAndCommon(local, common types.Sandbox) (types.Sandbox, error) {
-	localSandbox, localSandboxOk := local.(*types.LocalSandbox)
-	if !localSandboxOk {
-		return nil, errors.New("type assertion to *LocalSandbox failed")
+func (m *nativeMaker) mergeLocalAndCommon(local, common types.Sandbox) types.Sandbox {
+	commonSandbox := common.(*types.CommonSandbox)
+	if local == nil {
+		return &types.LocalSandbox{
+			Dirs:  commonSandbox.Dirs,
+			Hooks: commonSandbox.Hooks,
+		}
 	}
-	mergedCommon, err := m.mergeCommonSandbox(&types.CommonSandbox{
-		Available: localSandbox.Available,
-		Dirs:      localSandbox.Dirs,
-		Hooks:     localSandbox.Hooks,
-	}, common)
-	if err != nil {
-		return nil, err
-	}
-	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
-	localSandbox.Available = mergedCommonDeref.Available
-	localSandbox.Dirs = mergedCommonDeref.Dirs
-	localSandbox.Hooks = mergedCommonDeref.Hooks
+	localSandbox := local.(*types.LocalSandbox)
+	localSandbox.Dirs = m.mergeDirs(commonSandbox.Dirs, localSandbox.Dirs)
+	localSandbox.Hooks = m.mergeHooks(commonSandbox.Hooks, localSandbox.Hooks)
 
-	return localSandbox, nil
+	return localSandbox
 }
 
-func (m *nativeMaker) mergeContainerAndCommon(container, common types.Sandbox) (types.Sandbox, error) {
-	containerSandbox, containerSandboxOk := container.(*types.ContainerSandbox)
-	if !containerSandboxOk {
-		return nil, errors.New("type assertion to *ContainerSandbox failed")
+func (m *nativeMaker) mergeContainerAndCommon(container, common types.Sandbox) types.Sandbox {
+	commonSandbox := common.(*types.CommonSandbox)
+	if container == nil {
+		return &types.ContainerSandbox{
+			Dirs:  commonSandbox.Dirs,
+			Hooks: commonSandbox.Hooks,
+		}
 	}
-	mergedCommon, err := m.mergeCommonSandbox(&types.CommonSandbox{
-		Available: containerSandbox.Available,
-		Dirs:      containerSandbox.Dirs,
-		Hooks:     containerSandbox.Hooks,
-	}, common)
-	if err != nil {
-		return nil, err
-	}
-	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
-	containerSandbox.Available = mergedCommonDeref.Available
-	containerSandbox.Dirs = mergedCommonDeref.Dirs
-	containerSandbox.Hooks = mergedCommonDeref.Hooks
+	containerSandbox := container.(*types.ContainerSandbox)
+	containerSandbox.Dirs = m.mergeDirs(commonSandbox.Dirs, containerSandbox.Dirs)
+	containerSandbox.Hooks = m.mergeHooks(commonSandbox.Hooks, containerSandbox.Hooks)
 
-	return containerSandbox, nil
+	return containerSandbox
 }
 
-func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Sandbox) (types.Sandbox, error) {
-	dockerSandbox, dockerSandboxOk := docker.(*types.DockerSandbox)
-	if !dockerSandboxOk {
-		return nil, errors.New("type assertion to *DockerSandbox failed")
+func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Sandbox) types.Sandbox {
+	containerSandbox := container.(*types.ContainerSandbox)
+	if docker == nil {
+		return &types.DockerSandbox{
+			Dirs:     containerSandbox.Dirs,
+			Registry: containerSandbox.Registry,
+		}
 	}
-	mergedContainer, err := m.mergeContainerSandbox(&types.ContainerSandbox{
-		Available: dockerSandbox.Available,
-		Dirs:      dockerSandbox.Dirs,
-		Hooks:     dockerSandbox.Hooks,
-		Image:     dockerSandbox.Image,
-		Registry:  dockerSandbox.Registry,
-	}, container)
-	if err != nil {
-		return nil, err
-	}
-	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
-	dockerSandbox.Available = mergedContainerDeref.Available
-	dockerSandbox.Dirs = mergedContainerDeref.Dirs
-	dockerSandbox.Hooks = mergedContainerDeref.Hooks
-	dockerSandbox.Image = mergedContainerDeref.Image
-	dockerSandbox.Registry = mergedContainerDeref.Registry
 
-	return dockerSandbox, nil
+	dockerSandbox := docker.(*types.DockerSandbox)
+	dockerSandbox.Dirs = m.mergeDirs(containerSandbox.Dirs, dockerSandbox.Dirs)
+	dockerSandbox.Hooks = m.mergeHooks(containerSandbox.Hooks, dockerSandbox.Hooks)
+	dockerSandbox.Image = m.mergeContainerImage(containerSandbox.Image, dockerSandbox.Image)
+	dockerSandbox.Registry = m.mergeContainerRegistry(containerSandbox.Registry, dockerSandbox.Registry)
+
+	return dockerSandbox
 }
 
-func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox) (types.Sandbox, error) {
-	kubernetesSandbox, kubernetesSandboxOk := kubernetes.(*types.KubernetesSandbox)
-	if !kubernetesSandboxOk {
-		return nil, errors.New("type assertion to *KubernetesSandbox failed")
+func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox) types.Sandbox {
+	containerSandbox := container.(*types.ContainerSandbox)
+	if kubernetes == nil {
+		return &types.DockerSandbox{
+			Dirs:     containerSandbox.Dirs,
+			Registry: containerSandbox.Registry,
+		}
 	}
-	mergedContainer, err := m.mergeContainerSandbox(&types.ContainerSandbox{
-		Available: kubernetesSandbox.Available,
-		Dirs:      kubernetesSandbox.Dirs,
-		Hooks:     kubernetesSandbox.Hooks,
-		Image:     kubernetesSandbox.Image,
-		Registry:  kubernetesSandbox.Registry,
-	}, container)
-	if err != nil {
-		return nil, err
-	}
-	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
-	kubernetesSandbox.Available = mergedContainerDeref.Available
-	kubernetesSandbox.Dirs = mergedContainerDeref.Dirs
-	kubernetesSandbox.Hooks = mergedContainerDeref.Hooks
-	kubernetesSandbox.Image = mergedContainerDeref.Image
-	kubernetesSandbox.Registry = mergedContainerDeref.Registry
 
-	return kubernetesSandbox, nil
+	kubernetesSandbox := kubernetes.(*types.DockerSandbox)
+	kubernetesSandbox.Dirs = m.mergeDirs(containerSandbox.Dirs, kubernetesSandbox.Dirs)
+	kubernetesSandbox.Hooks = m.mergeHooks(containerSandbox.Hooks, kubernetesSandbox.Hooks)
+	kubernetesSandbox.Image = m.mergeContainerImage(containerSandbox.Image, kubernetesSandbox.Image)
+	kubernetesSandbox.Registry = m.mergeContainerRegistry(containerSandbox.Registry, kubernetesSandbox.Registry)
+
+	return kubernetesSandbox
 }
 
 type mergeFunc func(root, server types.Sandbox) (types.Sandbox, error)
@@ -262,7 +224,7 @@ func (m *nativeMaker) mergeConfigMaps(
 			mergedSandboxes[sandboxType] = mergedSandbox
 		} else if !rootExists && serverExists {
 			mergedSandboxes[sandboxType] = serverSandbox
-		} else {
+		} else if rootExists {
 			mergedSandboxes[sandboxType] = rootSandbox
 		}
 	}
@@ -270,38 +232,42 @@ func (m *nativeMaker) mergeConfigMaps(
 	return mergedSandboxes, nil
 }
 
-func (m *nativeMaker) mergeCommonSandbox(root, server types.Sandbox) (types.Sandbox, error) {
+func (m *nativeMaker) mergeDirs(firstDirs, secondDirs map[string]string) map[string]string {
+	mergedDirs := make(map[string]string)
+	for k, v := range firstDirs {
+		mergedDirs[k] = v
+	}
+	for k, v := range secondDirs {
+		mergedDirs[k] = v
+	}
+	return mergedDirs
+}
+
+func (m *nativeMaker) mergeHooks(firstHooks, secondHooks map[string]types.SandboxHook) map[string]types.SandboxHook {
+	mergedHooks := make(map[string]types.SandboxHook)
+	for k, v := range firstHooks {
+		mergedHooks[k] = v
+	}
+	for k, v := range secondHooks {
+		mergedHooks[k] = v
+	}
+	return mergedHooks
+}
+
+func (m *nativeMaker) mergeCommonSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	// Ensure both root and server are of the correct type, using type assertion to *CommonSandbox.
-	rootCommon, rootOk := root.(*types.CommonSandbox)
+	specCommon, rootOk := spec.(*types.CommonSandbox)
 	serverCommon, serverOk := server.(*types.CommonSandbox)
 	if !rootOk || !serverOk {
-		return nil, errors.New("type assertion to *CommonSandbox failed")
+		return nil, errors.New("common sandbox is not set in common field")
 	}
 
 	// Create a new instance of CommonSandbox for the merged result.
 	mergedCommon := &types.CommonSandbox{
-		Dirs:  make(map[string]string),
-		Hooks: make(map[string]types.SandboxHook),
+		Available: serverCommon.Available, // Available is always set from the server
+		Dirs:      m.mergeDirs(specCommon.Dirs, serverCommon.Dirs),
+		Hooks:     m.mergeHooks(specCommon.Hooks, serverCommon.Hooks),
 	}
-
-	// Copy from root to mergedCommon.
-	for k, v := range rootCommon.Dirs {
-		mergedCommon.Dirs[k] = v
-	}
-	for k, v := range rootCommon.Hooks {
-		mergedCommon.Hooks[k] = v
-	}
-
-	// Merge from server into mergedCommon, overwriting or adding new entries.
-	for k, v := range serverCommon.Dirs {
-		mergedCommon.Dirs[k] = v
-	}
-	for k, v := range serverCommon.Hooks {
-		mergedCommon.Hooks[k] = v
-	}
-
-	// Available is always set from the server
-	mergedCommon.Available = serverCommon.Available
 
 	// Return the new, merged CommonSandbox as a Sandbox interface.
 	return mergedCommon, nil
@@ -309,107 +275,93 @@ func (m *nativeMaker) mergeCommonSandbox(root, server types.Sandbox) (types.Sand
 
 func (m *nativeMaker) mergeLocalSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	// Ensure both spec and server are of the correct type, using type assertion to *CommonSandbox.
-	_, specOk := spec.(*types.LocalSandbox)
-	_, serverOk := server.(*types.LocalSandbox)
+	specLocal, specOk := spec.(*types.LocalSandbox)
+	serverLocal, serverOk := server.(*types.LocalSandbox)
 	if !specOk || !serverOk {
-		return nil, errors.New("type assertion to *LocalSandbox failed")
+		return nil, errors.New("local sandbox is not set in local field")
 	}
 
-	mergedCommon, err := m.mergeCommonSandbox(spec, server)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
 	mergedLocal := &types.LocalSandbox{
-		Available: mergedCommonDeref.Available,
-		Dirs:      mergedCommonDeref.Dirs,
-		Hooks:     mergedCommonDeref.Hooks,
+		Available: serverLocal.Available, // Available is always set from the server
+		Dirs:      m.mergeDirs(specLocal.Dirs, serverLocal.Dirs),
+		Hooks:     m.mergeHooks(specLocal.Hooks, serverLocal.Hooks),
 	}
 
 	return mergedLocal, nil
+}
+
+func (m *nativeMaker) mergeContainerImage(firstImage, secondImage types.ContainerImage) types.ContainerImage {
+	if secondImage.Name != "" {
+		firstImage.Name = secondImage.Name
+	}
+	if secondImage.Tag != "" {
+		firstImage.Tag = secondImage.Tag
+	}
+	return firstImage
+}
+
+func (m *nativeMaker) mergeContainerRegistry(
+	firstRegistry,
+	secondRegistry types.ContainerRegistry,
+) types.ContainerRegistry {
+	if secondRegistry.Auth.Username != "" {
+		firstRegistry.Auth.Username = secondRegistry.Auth.Username
+	}
+	if secondRegistry.Auth.Password != "" {
+		firstRegistry.Auth.Password = secondRegistry.Auth.Password
+	}
+	return firstRegistry
 }
 
 func (m *nativeMaker) mergeContainerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
 	specContainer, specOk := spec.(*types.ContainerSandbox)
 	serverContainer, serverOk := server.(*types.ContainerSandbox)
 	if !specOk || !serverOk {
-		return nil, errors.New("type assertion to *ContainerSandbox failed")
+		return nil, errors.New("container sandbox is not set in container field")
 	}
 
-	mergedCommon, err := m.mergeCommonSandbox(spec, server)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedCommonDeref := mergedCommon.(*types.CommonSandbox)
 	mergedContainer := &types.ContainerSandbox{
-		Available: mergedCommonDeref.Available,
-		Dirs:      mergedCommonDeref.Dirs,
-		Hooks:     mergedCommonDeref.Hooks,
-		Image:     specContainer.Image,
-		Registry:  specContainer.Registry,
-	}
-
-	if serverContainer.Image.Name != "" {
-		mergedContainer.Image.Name = serverContainer.Image.Name
-	}
-	if serverContainer.Image.Tag != "" {
-		mergedContainer.Image.Tag = serverContainer.Image.Tag
-	}
-	if serverContainer.Registry.Auth.Username != "" {
-		mergedContainer.Registry.Auth.Username = serverContainer.Registry.Auth.Username
-	}
-	if serverContainer.Registry.Auth.Password != "" {
-		mergedContainer.Registry.Auth.Password = serverContainer.Registry.Auth.Password
+		Available: serverContainer.Available,
+		Dirs:      m.mergeDirs(specContainer.Dirs, serverContainer.Dirs),
+		Hooks:     m.mergeHooks(specContainer.Hooks, serverContainer.Hooks),
+		Image:     m.mergeContainerImage(specContainer.Image, serverContainer.Image),
+		Registry:  m.mergeContainerRegistry(specContainer.Registry, serverContainer.Registry),
 	}
 
 	return mergedContainer, nil
 }
 
 func (m *nativeMaker) mergeDockerSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
-	_, specOk := spec.(*types.DockerSandbox)
-	_, serverOk := server.(*types.DockerSandbox)
+	specDocker, specOk := spec.(*types.DockerSandbox)
+	serverDocker, serverOk := server.(*types.DockerSandbox)
 	if !specOk || !serverOk {
-		return nil, errors.New("type assertion to *DockerSandbox failed")
+		return nil, errors.New("docker sandbox is not set in docker field")
 	}
 
-	mergedContainer, err := m.mergeContainerSandbox(spec, server)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
 	mergedDocker := &types.DockerSandbox{
-		Available: mergedContainerDeref.Available,
-		Dirs:      mergedContainerDeref.Dirs,
-		Hooks:     mergedContainerDeref.Hooks,
-		Image:     mergedContainerDeref.Image,
-		Registry:  mergedContainerDeref.Registry,
+		Available: serverDocker.Available,
+		Dirs:      m.mergeDirs(specDocker.Dirs, serverDocker.Dirs),
+		Hooks:     m.mergeHooks(specDocker.Hooks, serverDocker.Hooks),
+		Image:     m.mergeContainerImage(specDocker.Image, serverDocker.Image),
+		Registry:  m.mergeContainerRegistry(specDocker.Registry, serverDocker.Registry),
 	}
 
 	return mergedDocker, nil
 }
 
 func (m *nativeMaker) mergeKubernetesSandbox(spec, server types.Sandbox) (types.Sandbox, error) {
-	_, specOk := spec.(*types.KubernetesSandbox)
-	_, serverOk := server.(*types.KubernetesSandbox)
+	specKubernetes, specOk := spec.(*types.KubernetesSandbox)
+	serverKubernetes, serverOk := server.(*types.KubernetesSandbox)
 	if !specOk || !serverOk {
-		return nil, errors.New("type assertion to *KubernetesSandbox failed")
+		return nil, errors.New("kubernetes sandbox is not set in kubernetes field")
 	}
 
-	mergedContainer, err := m.mergeContainerSandbox(spec, server)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedContainerDeref := mergedContainer.(*types.ContainerSandbox)
 	mergedKubernetes := &types.KubernetesSandbox{
-		Available: mergedContainerDeref.Available,
-		Dirs:      mergedContainerDeref.Dirs,
-		Hooks:     mergedContainerDeref.Hooks,
-		Image:     mergedContainerDeref.Image,
-		Registry:  mergedContainerDeref.Registry,
+		Available: serverKubernetes.Available,
+		Dirs:      m.mergeDirs(specKubernetes.Dirs, serverKubernetes.Dirs),
+		Hooks:     m.mergeHooks(specKubernetes.Hooks, serverKubernetes.Hooks),
+		Image:     m.mergeContainerImage(specKubernetes.Image, serverKubernetes.Image),
+		Registry:  m.mergeContainerRegistry(specKubernetes.Registry, serverKubernetes.Registry),
 	}
 
 	return mergedKubernetes, nil
