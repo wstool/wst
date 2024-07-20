@@ -17,7 +17,6 @@ package local
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/containers"
 	"github.com/bukka/wst/run/sandboxes/sandbox/common"
 )
 
@@ -56,8 +55,4 @@ func (m *nativeMaker) MakeSandbox(config *types.LocalSandbox) (*Sandbox, error) 
 
 type Sandbox struct {
 	common.Sandbox
-}
-
-func (s *Sandbox) ContainerConfig() *containers.ContainerConfig {
-	return nil
 }
