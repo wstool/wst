@@ -192,6 +192,21 @@ packages:
       dir: mocks/generated/run/sandboxes/sandbox/container
     interfaces:
       Maker: {}
+  github.com/bukka/wst/run/sandboxes/sandbox/docker:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox/docker
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/sandboxes/sandbox/kubernetes:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox/kubernetes
+    interfaces:
+      Maker: {}
+  github.com/bukka/wst/run/sandboxes/sandbox/local:
+    config:
+      dir: mocks/generated/run/sandboxes/sandbox/local
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/servers:
     config:
       dir: mocks/generated/run/servers

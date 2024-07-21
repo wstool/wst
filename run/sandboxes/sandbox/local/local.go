@@ -17,11 +17,12 @@ package local
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/sandbox/common"
 )
 
 type Maker interface {
-	MakeSandbox(config *types.LocalSandbox) (*Sandbox, error)
+	MakeSandbox(config *types.LocalSandbox) (sandbox.Sandbox, error)
 }
 
 type nativeMaker struct {
@@ -36,7 +37,7 @@ func CreateMaker(fnd app.Foundation, commonMaker common.Maker) Maker {
 	}
 }
 
-func (m *nativeMaker) MakeSandbox(config *types.LocalSandbox) (*Sandbox, error) {
+func (m *nativeMaker) MakeSandbox(config *types.LocalSandbox) (sandbox.Sandbox, error) {
 	commonSandbox, err := m.commonMaker.MakeSandbox(&types.CommonSandbox{
 		Dirs:      config.Dirs,
 		Hooks:     config.Hooks,

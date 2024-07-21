@@ -85,8 +85,8 @@ func (m *nativeMaker) MakeSandboxes(
 	commonSb, commonFound := mergedSandboxes[types.CommonSandboxType]
 	localSb, localFound := mergedSandboxes[types.LocalSandboxType]
 	containerSb, containerFound := mergedSandboxes[types.ContainerSandboxType]
-	dockerSb, dockerFound := mergedSandboxes[types.ContainerSandboxType]
-	kubernetesSb, kubernetesFound := mergedSandboxes[types.ContainerSandboxType]
+	dockerSb, dockerFound := mergedSandboxes[types.DockerSandboxType]
+	kubernetesSb, kubernetesFound := mergedSandboxes[types.KubernetesSandboxType]
 	if commonFound {
 		// Local merging
 		localSb = m.mergeLocalAndCommon(localSb, commonSb)
@@ -119,7 +119,7 @@ func (m *nativeMaker) MakeSandboxes(
 		}
 	}
 	if kubernetesFound {
-		sandboxes[providers.KubernetesType], err = m.kubernetesMaker.MakeSandbox(dockerSb.(*types.KubernetesSandbox))
+		sandboxes[providers.KubernetesType], err = m.kubernetesMaker.MakeSandbox(kubernetesSb.(*types.KubernetesSandbox))
 		if err != nil {
 			return nil, err
 		}
@@ -132,8 +132,9 @@ func (m *nativeMaker) mergeLocalAndCommon(local, common types.Sandbox) types.San
 	commonSandbox := common.(*types.CommonSandbox)
 	if local == nil {
 		return &types.LocalSandbox{
-			Dirs:  commonSandbox.Dirs,
-			Hooks: commonSandbox.Hooks,
+			Available: commonSandbox.Available,
+			Dirs:      commonSandbox.Dirs,
+			Hooks:     commonSandbox.Hooks,
 		}
 	}
 	localSandbox := local.(*types.LocalSandbox)
@@ -147,8 +148,9 @@ func (m *nativeMaker) mergeContainerAndCommon(container, common types.Sandbox) t
 	commonSandbox := common.(*types.CommonSandbox)
 	if container == nil {
 		return &types.ContainerSandbox{
-			Dirs:  commonSandbox.Dirs,
-			Hooks: commonSandbox.Hooks,
+			Available: commonSandbox.Available,
+			Dirs:      commonSandbox.Dirs,
+			Hooks:     commonSandbox.Hooks,
 		}
 	}
 	containerSandbox := container.(*types.ContainerSandbox)
@@ -162,8 +164,11 @@ func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Sandbox) t
 	containerSandbox := container.(*types.ContainerSandbox)
 	if docker == nil {
 		return &types.DockerSandbox{
-			Dirs:     containerSandbox.Dirs,
-			Registry: containerSandbox.Registry,
+			Available: containerSandbox.Available,
+			Dirs:      containerSandbox.Dirs,
+			Hooks:     containerSandbox.Hooks,
+			Image:     containerSandbox.Image,
+			Registry:  containerSandbox.Registry,
 		}
 	}
 
@@ -179,13 +184,16 @@ func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Sandbox) t
 func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.Sandbox) types.Sandbox {
 	containerSandbox := container.(*types.ContainerSandbox)
 	if kubernetes == nil {
-		return &types.DockerSandbox{
-			Dirs:     containerSandbox.Dirs,
-			Registry: containerSandbox.Registry,
+		return &types.KubernetesSandbox{
+			Available: containerSandbox.Available,
+			Dirs:      containerSandbox.Dirs,
+			Hooks:     containerSandbox.Hooks,
+			Image:     containerSandbox.Image,
+			Registry:  containerSandbox.Registry,
 		}
 	}
 
-	kubernetesSandbox := kubernetes.(*types.DockerSandbox)
+	kubernetesSandbox := kubernetes.(*types.KubernetesSandbox)
 	kubernetesSandbox.Dirs = m.mergeDirs(containerSandbox.Dirs, kubernetesSandbox.Dirs)
 	kubernetesSandbox.Hooks = m.mergeHooks(containerSandbox.Hooks, kubernetesSandbox.Hooks)
 	kubernetesSandbox.Image = m.mergeContainerImage(containerSandbox.Image, kubernetesSandbox.Image)

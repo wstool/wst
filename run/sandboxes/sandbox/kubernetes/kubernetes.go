@@ -17,11 +17,12 @@ package kubernetes
 import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/bukka/wst/run/sandboxes/sandbox/container"
 )
 
 type Maker interface {
-	MakeSandbox(config *types.KubernetesSandbox) (*Sandbox, error)
+	MakeSandbox(config *types.KubernetesSandbox) (sandbox.Sandbox, error)
 }
 
 type nativeMaker struct {
@@ -36,7 +37,7 @@ func CreateMaker(fnd app.Foundation, containerMaker container.Maker) Maker {
 	}
 }
 
-func (m *nativeMaker) MakeSandbox(config *types.KubernetesSandbox) (*Sandbox, error) {
+func (m *nativeMaker) MakeSandbox(config *types.KubernetesSandbox) (sandbox.Sandbox, error) {
 	containerSandbox, err := m.containerMaker.MakeSandbox(&types.ContainerSandbox{
 		Available: config.Available,
 		Dirs:      config.Dirs,
