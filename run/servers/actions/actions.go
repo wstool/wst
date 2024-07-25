@@ -66,8 +66,3 @@ func (m *nativeMaker) Make(configActions *types.ServerActions) (*Actions, error)
 		Expect: expectActions,
 	}, nil
 }
-
-type nativeConfig struct {
-	file       string
-	parameters types.Parameters
-}

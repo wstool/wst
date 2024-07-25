@@ -42,7 +42,7 @@ func (m *nativeMaker) makeExpectAction(configAction types.ServerExpectationActio
 			responseExpectation: responseExpectation,
 		}, nil
 	default:
-		return nil, fmt.Errorf("invalid server expectation type %t", configAction)
+		return nil, fmt.Errorf("invalid server expectation type %T", configAction)
 	}
 }
 
