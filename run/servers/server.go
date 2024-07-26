@@ -153,8 +153,6 @@ func (m *nativeMaker) Make(config *types.Spec) (Servers, error) {
 					)
 				}
 				nativeSrv.parent = parent.(*nativeServer)
-			} else {
-				nativeSrv.extended = true
 			}
 		}
 	}
@@ -193,13 +191,9 @@ type nativeServer struct {
 }
 
 func (s *nativeServer) inherit() error {
-	if s.parent == nil {
-		// this should not happen as extended should be set during parent setting loop
-		s.extended = true
-		return nil
-	}
 	var err error
-	if !s.parent.extended {
+
+	if s.parent != nil && !s.parent.extended {
 		err = s.parent.inherit()
 		if err != nil {
 			return err
@@ -208,7 +202,7 @@ func (s *nativeServer) inherit() error {
 
 	var serverUser *user.User
 	if s.user == "" {
-		if s.parent.user == "" {
+		if s.parent == nil || s.parent.user == "" {
 			serverUser, err = s.fnd.CurrentUser()
 			if err != nil {
 				return err
@@ -220,14 +214,15 @@ func (s *nativeServer) inherit() error {
 	}
 
 	if s.group == "" {
-		if s.parent.group == "" {
+		if s.parent == nil || s.parent.group == "" {
 			if serverUser == nil {
 				serverUser, err = s.fnd.User(s.user)
 				if err != nil {
 					return err
 				}
 			}
-			group, err := s.fnd.UserGroup(serverUser)
+			var group *user.Group
+			group, err = s.fnd.UserGroup(serverUser)
 			if err != nil {
 				return err
 			}
@@ -235,6 +230,11 @@ func (s *nativeServer) inherit() error {
 		} else {
 			s.group = s.parent.group
 		}
+	}
+
+	if s.parent == nil {
+		s.extended = true
+		return nil
 	}
 
 	if s.port == 0 {
@@ -249,6 +249,7 @@ func (s *nativeServer) inherit() error {
 	if err != nil {
 		return err
 	}
+	s.extended = true
 
 	return nil
 }
