@@ -10,20 +10,13 @@ in the future.
 
 ### Run
 
-- actions tests
-- metrics tests
-- expectations tests
-- environments tests
-- instance tests
-- spec tests
-- parameters tests
-- resources tests
-- sandboxes tests
 - servers tests
   - specifically check setting of user and group as well as inheriting of the port
 - services tests
+- spec tests
 - run tests
 - integration tests
+- identify server circular extending and error instead of current stack panic
 - add detailed info and debug logging
 - kubernetes environment improvements
   - add health probes setup
@@ -36,21 +29,3 @@ in the future.
 
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
-
-## Plan
-
-- [x] Template rendering
-- [x] Docker and Kubernetes envs
-- [x] Dry run and finalization of all envs
-- [x] Benchmarking actions (wrk)
-- [x] Config factories, clean up and extra checks and parser tests
-- [x] Config merging and finalize tests
-- [x] Config overwrites and resolving all build issues
-- [ ] Actions, expectations and metrics tests
-- [ ] Environments tests
-- [ ] Instance, Spec and Parameters tests
-- [ ] Resources and sandboxes tests and clean up (move merging logic)
-- [ ] Servers tests
-- [ ] Services tests
-- [ ] Run tests
-- [ ] WST integration tests

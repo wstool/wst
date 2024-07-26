@@ -117,12 +117,17 @@ func (m *nativeMaker) Make(config *types.Spec) (Servers, error) {
 			return nil, err
 		}
 
+		if _, ok := srvs[name]; !ok {
+			srvs[name] = make(map[string]Server)
+		}
 		srvs[name][tag] = &nativeServer{
 			fnd:        m.fnd,
 			name:       name,
 			tag:        tag,
 			parentName: server.Extends,
 			port:       server.Port,
+			user:       server.User,
+			group:      server.Group,
 			actions:    serverActions,
 			configs:    serverConfigs,
 			templates:  serverTemplates,

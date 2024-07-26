@@ -34,9 +34,11 @@ func (a Sandboxes) Inherit(parentSandboxes Sandboxes) error {
 	for sandboxName, parentSandbox := range parentSandboxes {
 		sb, ok := a[sandboxName]
 		if ok {
-			err := sb.Inherit(parentSandbox)
-			if err != nil {
-				return err
+			if sb != parentSandbox { // skip spec sandbox inheritance in servers inheriting
+				err := sb.Inherit(parentSandbox)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			a[sandboxName] = parentSandbox

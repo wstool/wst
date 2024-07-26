@@ -171,6 +171,11 @@ packages:
     interfaces:
       Maker: {}
       Script: {}
+  github.com/bukka/wst/run/sandboxes:
+    config:
+      dir: mocks/generated/run/sandboxes
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/run/sandboxes/hooks:
     config:
       dir: mocks/generated/run/sandboxes/hooks
@@ -218,6 +223,19 @@ packages:
       dir: mocks/generated/run/servers/actions
     interfaces:
       ExpectAction: {}
+      Maker: {}
+  github.com/bukka/wst/run/servers/configs:
+    config:
+      dir: mocks/generated/run/servers/configs
+    interfaces:
+      Config: {}
+      Maker: {}
+  github.com/bukka/wst/run/servers/templates:
+    config:
+      dir: mocks/generated/run/servers/templates
+    interfaces:
+      Maker: {}
+      Template: {}
   github.com/bukka/wst/run/services:
     config:
       dir: mocks/generated/run/services
