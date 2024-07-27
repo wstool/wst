@@ -6,6 +6,7 @@ packages:
     interfaces:
       Command: {}
       Foundation: {}
+      File: {}
       Fs: {}
       HttpClient: {}
       VegetaAttacker: {}
