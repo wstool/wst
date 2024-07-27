@@ -33,7 +33,6 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/services/template"
-	"github.com/bukka/wst/run/services/template/service"
 	"io"
 	"os"
 	"path/filepath"
@@ -140,7 +139,7 @@ func (m *nativeMaker) Make(
 	instanceWorkspace string,
 ) (ServiceLocator, error) {
 	svcs := make(Services)
-	tmplSvcs := make(map[string]service.TemplateService)
+	tmplSvcs := make(template.Services)
 	for serviceName, serviceConfig := range config {
 		var includedScripts scripts.Scripts
 

@@ -65,6 +65,10 @@ func NewParameter(param parameter.Parameter, params parameters.Parameters, tmpl 
 	}
 }
 
+func (p *Parameter) IsObject() bool {
+	return p.param.Type() == parameter.MapType
+}
+
 func (p *Parameter) IsNumber() bool {
 	paramType := p.param.Type()
 	return paramType == parameter.IntType || paramType == parameter.FloatType

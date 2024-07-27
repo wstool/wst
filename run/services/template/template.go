@@ -2,11 +2,11 @@ package template
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers/templates"
 	"github.com/bukka/wst/run/services/template/service"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,7 +22,7 @@ type Template interface {
 type Maker interface {
 	Make(
 		service service.TemplateService,
-		services map[string]service.TemplateService,
+		services Services,
 		serverTemplates templates.Templates,
 	) Template
 }
@@ -39,7 +39,7 @@ func CreateMaker(fnd app.Foundation) Maker {
 
 func (m *nativeMaker) Make(
 	service service.TemplateService,
-	services map[string]service.TemplateService,
+	services Services,
 	serverTemplates templates.Templates,
 ) Template {
 	return &nativeTemplate{
@@ -71,11 +71,11 @@ type Data struct {
 func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parameters, writer io.Writer) error {
 	mainTmpl, err := template.New("main").Funcs(t.funcs()).Parse(content)
 	if err != nil {
-		return fmt.Errorf("error parsing main template: %v", err)
+		return errors.Errorf("error parsing main template: %v", err)
 	}
 	configs := t.service.EnvironmentConfigPaths()
 	if configs == nil {
-		return fmt.Errorf("configs are not set")
+		return errors.Errorf("configs are not set")
 	}
 
 	data := &Data{
