@@ -6,6 +6,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers/templates"
+	"github.com/bukka/wst/run/services/template/service"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,7 +20,11 @@ type Template interface {
 }
 
 type Maker interface {
-	Make(service Service, services map[string]Service, serverTemplates templates.Templates) Template
+	Make(
+		service service.TemplateService,
+		services map[string]service.TemplateService,
+		serverTemplates templates.Templates,
+	) Template
 }
 
 type nativeMaker struct {
@@ -32,7 +37,11 @@ func CreateMaker(fnd app.Foundation) Maker {
 	}
 }
 
-func (m *nativeMaker) Make(service Service, services map[string]Service, serverTemplates templates.Templates) Template {
+func (m *nativeMaker) Make(
+	service service.TemplateService,
+	services map[string]service.TemplateService,
+	serverTemplates templates.Templates,
+) Template {
 	return &nativeTemplate{
 		fnd:             m.fnd,
 		service:         service,
@@ -47,14 +56,14 @@ type nativeTemplate struct {
 	// Services.
 	services Services
 	// Current service.
-	service Service
+	service service.TemplateService
 	// Server templates
 	serverTemplates templates.Templates
 }
 
 type Data struct {
 	Configs    map[string]string
-	Service    Service
+	Service    service.TemplateService
 	Services   Services
 	Parameters Parameters
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/parameters/parameter"
+	"reflect"
 )
 
 type Parameters map[string]*Parameter
@@ -77,7 +78,7 @@ func (p *Parameter) ToNumber() float64 {
 }
 
 func (p *Parameter) ToString() (string, error) {
-	if p.param == nil {
+	if reflect.ValueOf(p.param).IsNil() {
 		return "", fmt.Errorf("trying to render not set parameter")
 	}
 	if p.isRendered {

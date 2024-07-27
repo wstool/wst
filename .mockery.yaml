@@ -249,3 +249,8 @@ packages:
       dir: mocks/generated/run/services/template
     interfaces:
       Template: {}
+  github.com/bukka/wst/run/services/template/service:
+    config:
+      dir: mocks/generated/run/services/template/service
+    interfaces:
+      TemplateService: {}

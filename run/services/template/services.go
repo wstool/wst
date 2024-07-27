@@ -2,21 +2,12 @@ package template
 
 import (
 	"errors"
-	"github.com/bukka/wst/run/sandboxes/dir"
+	"github.com/bukka/wst/run/services/template/service"
 )
 
-type Service interface {
-	PrivateUrl() (string, error)
-	Pid() (int, error)
-	Dirs() map[dir.DirType]string
-	Group() string
-	User() string
-	EnvironmentConfigPaths() map[string]string
-}
+type Services map[string]service.TemplateService
 
-type Services map[string]Service
-
-func (svcs Services) Find(name string) (Service, error) {
+func (svcs Services) Find(name string) (service.TemplateService, error) {
 	svc, ok := svcs[name]
 	if !ok {
 		return nil, errors.New("service not found")
