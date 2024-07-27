@@ -84,7 +84,7 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 		Services:   t.services,
 		Parameters: NewParameters(params, t),
 	}
-	if err := mainTmpl.Execute(writer, data); err != nil {
+	if err = mainTmpl.Execute(writer, data); err != nil {
 		return err
 	}
 
