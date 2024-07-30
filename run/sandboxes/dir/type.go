@@ -4,6 +4,6 @@ type DirType string
 
 const (
 	ConfDirType   DirType = "conf"
-	RunDirType            = "run"
-	ScriptDirType         = "script"
+	RunDirType    DirType = "run"
+	ScriptDirType DirType = "script"
 )

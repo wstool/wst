@@ -34,8 +34,9 @@ import (
 	"github.com/bukka/wst/run/services/template"
 	"github.com/pkg/errors"
 	"io"
-	"os"
+	"net/url"
 	"path/filepath"
+	"reflect"
 )
 
 type Service interface {
@@ -205,6 +206,7 @@ func (m *nativeMaker) Make(
 		}
 
 		service := &nativeService{
+			fnd:              m.fnd,
 			name:             serviceName,
 			fullName:         instanceName + "-" + serviceName,
 			public:           serviceConfig.Public,
@@ -234,6 +236,7 @@ type nativeServiceConfig struct {
 }
 
 type nativeService struct {
+	fnd                    app.Foundation
 	name                   string
 	fullName               string
 	public                 bool
@@ -312,18 +315,18 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 	return bufio.NewScanner(reader), nil
 }
 
-func (s *nativeService) configPaths(configPath string) (string, string, error) {
+func (s *nativeService) renderingPaths(path string, dirType dir.DirType) (string, string, error) {
 	environmentRootPath := s.environment.RootPath(s.workspace)
-	sandboxConfDir, err := s.sandbox.Dir(dir.ConfDirType)
+	sandboxDir, err := s.sandbox.Dir(dirType)
 	if err != nil {
 		return "", "", err
 	}
-	confPath := filepath.Join(sandboxConfDir, filepath.Base(configPath))
-	return filepath.Join(s.workspace, confPath), filepath.Join(environmentRootPath, confPath), nil
+	basePath := filepath.Join(sandboxDir, filepath.Base(path))
+	return filepath.Join(s.workspace, basePath), filepath.Join(environmentRootPath, basePath), nil
 }
 
 func (s *nativeService) renderConfig(config configs.Config) (string, string, error) {
-	file, err := os.Open(config.FilePath())
+	file, err := s.fnd.Fs().Open(config.FilePath())
 	if err != nil {
 		return "", "", err
 	}
@@ -334,7 +337,7 @@ func (s *nativeService) renderConfig(config configs.Config) (string, string, err
 		return "", "", err
 	}
 
-	workspaceConfigPath, environmentConfigPath, err := s.configPaths(config.FilePath())
+	workspaceConfigPath, environmentConfigPath, err := s.renderingPaths(config.FilePath(), dir.ConfDirType)
 	if err != nil {
 		return "", "", err
 	}
@@ -360,17 +363,15 @@ func (s *nativeService) renderConfigs() error {
 		wsConfigPaths[cfgName] = wsPath
 	}
 	s.environmentConfigPaths = envConfigPaths
-	s.workspaceConfigPaths = envConfigPaths
+	s.workspaceConfigPaths = wsConfigPaths
 	return nil
 }
 
 func (s *nativeService) renderScript(script scripts.Script) (string, string, error) {
-	sandboxScriptDir, err := s.sandbox.Dir(dir.ScriptDirType)
+	workspaceScriptPath, environmentScriptPath, err := s.renderingPaths(script.Path(), dir.ScriptDirType)
 	if err != nil {
 		return "", "", err
 	}
-	environmentScriptPath := filepath.Join(sandboxScriptDir, script.Path())
-	workspaceScriptPath := filepath.Join(s.workspace, environmentScriptPath)
 
 	err = s.template.RenderToFile(script.Content(), script.Parameters(), workspaceScriptPath, script.Mode())
 	if err != nil {
@@ -473,7 +474,7 @@ func (s *nativeService) Stop(ctx context.Context) error {
 
 	ss := s.makeEnvServiceSettings()
 	_, err = hook.Execute(ctx, ss, s.template, s.environment, s.task)
-	if err != nil {
+	if err == nil {
 		s.task = nil
 	}
 
@@ -489,18 +490,18 @@ func (s *nativeService) FullName() string {
 }
 
 func (s *nativeService) PublicUrl(path string) (string, error) {
-	if s.task == nil {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return "", errors.Errorf("service has not started yet")
 	}
 	if !s.IsPublic() {
 		return "", errors.Errorf("only public service has public URL")
 	}
 
-	return filepath.Join(s.task.PublicUrl(), path), nil
+	return url.JoinPath(s.task.PublicUrl(), path)
 }
 
 func (s *nativeService) PrivateUrl() (string, error) {
-	if s.task == nil {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return "", errors.Errorf("service has not started yet")
 	}
 
@@ -508,7 +509,7 @@ func (s *nativeService) PrivateUrl() (string, error) {
 }
 
 func (s *nativeService) Pid() (int, error) {
-	if s.task == nil {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return 0, errors.Errorf("service has not started yet")
 	}
 

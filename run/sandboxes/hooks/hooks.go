@@ -32,9 +32,9 @@ type HookType string
 
 const (
 	StartHookType   HookType = "start"
-	StopHookType             = "stop"
-	ReloadHookType           = "reload"
-	RestartHookType          = "restart"
+	StopHookType    HookType = "stop"
+	ReloadHookType  HookType = "reload"
+	RestartHookType HookType = "restart"
 )
 
 type Hooks map[HookType]Hook
