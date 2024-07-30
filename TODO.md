@@ -10,12 +10,12 @@ in the future.
 
 ### Run
 
-- servers tests
-  - specifically check setting of user and group as well as inheriting of the port
 - services tests
 - spec tests
 - run tests
 - integration tests
+- look to removing Service Requires or rethink how it should work
+  - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - identify server circular extending and error instead of current stack panic
 - add detailed info and debug logging
 - kubernetes environment improvements

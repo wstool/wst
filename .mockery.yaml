@@ -248,6 +248,7 @@ packages:
     config:
       dir: mocks/generated/run/services/template
     interfaces:
+      Maker: {}
       Template: {}
   github.com/bukka/wst/run/services/template/service:
     config:

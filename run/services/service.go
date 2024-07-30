@@ -17,7 +17,6 @@ package services
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments"
@@ -33,6 +32,7 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/services/template"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,7 +73,7 @@ type Services map[string]Service
 func (s Services) FindService(name string) (Service, error) {
 	svc, ok := s[name]
 	if !ok {
-		return svc, fmt.Errorf("service %s not found", name)
+		return svc, errors.Errorf("service %s not found", name)
 	}
 	return svc, nil
 }
@@ -150,7 +150,7 @@ func (m *nativeMaker) Make(
 			for _, scriptName := range serviceConfig.Resources.Scripts.IncludeList {
 				script, ok := scriptResources[scriptName]
 				if !ok {
-					return nil, fmt.Errorf("script %s not found for service %s", scriptName, serviceName)
+					return nil, errors.Errorf("script %s not found for service %s", scriptName, serviceName)
 				}
 				includedScripts[scriptName] = script
 			}
@@ -158,7 +158,7 @@ func (m *nativeMaker) Make(
 
 		server, ok := srvs.GetServer(serviceConfig.Server.Name)
 		if !ok {
-			return nil, fmt.Errorf("server %s not found for service %s", serviceConfig.Server, serviceName)
+			return nil, errors.Errorf("server %s not found for service %s", serviceConfig.Server.Name, serviceName)
 		}
 
 		serverParameters, err := m.parametersMaker.Make(serviceConfig.Server.Parameters)
@@ -171,15 +171,15 @@ func (m *nativeMaker) Make(
 
 		sb, ok := server.Sandbox(providerType)
 		if !ok {
-			return nil, fmt.Errorf("sandbox %s not found for service %s", sandboxName, serviceName)
+			return nil, errors.Errorf("sandbox %s not found for service %s", sandboxName, serviceName)
 		}
 		if !sb.Available() {
-			return nil, fmt.Errorf("sandbox %s is not available for service %s", sandboxName, serviceName)
+			return nil, errors.Errorf("sandbox %s is not available for service %s", sandboxName, serviceName)
 		}
 
 		env, ok := environments[providerType]
 		if !ok {
-			return nil, fmt.Errorf("environment %s not found for service %s", sandboxName, serviceName)
+			return nil, errors.Errorf("environment %s not found for service %s", sandboxName, serviceName)
 		}
 		env.MarkUsed()
 
@@ -187,9 +187,9 @@ func (m *nativeMaker) Make(
 
 		for configName, serviceServerConfig := range serviceConfig.Server.Configs {
 			if serviceServerConfig.Include {
-				config, found := server.Config(configName)
+				cfg, found := server.Config(configName)
 				if !found {
-					return nil, fmt.Errorf("server config %s not found for service %s", configName, serviceName)
+					return nil, errors.Errorf("server config %s not found for service %s", configName, serviceName)
 				}
 
 				serviceServerConfigParameters, err := m.parametersMaker.Make(serviceServerConfig.Parameters)
@@ -199,7 +199,7 @@ func (m *nativeMaker) Make(
 
 				nativeConfigs[configName] = nativeServiceConfig{
 					parameters: serviceServerConfigParameters.Inherit(serverParameters),
-					config:     config,
+					config:     cfg,
 				}
 			}
 		}
@@ -221,13 +221,11 @@ func (m *nativeMaker) Make(
 		tmplSvcs[serviceName] = service
 	}
 
-	sl := NewServiceLocator(svcs)
-
 	for _, svc := range svcs {
 		svc.SetTemplate(m.templateMaker.Make(svc, tmplSvcs, svc.Server().Templates()))
 	}
 
-	return sl, nil
+	return NewServiceLocator(svcs), nil
 }
 
 type nativeServiceConfig struct {
@@ -492,10 +490,10 @@ func (s *nativeService) FullName() string {
 
 func (s *nativeService) PublicUrl(path string) (string, error) {
 	if s.task == nil {
-		return "", fmt.Errorf("service has not started yet")
+		return "", errors.Errorf("service has not started yet")
 	}
 	if !s.IsPublic() {
-		return "", fmt.Errorf("only public service has public URL")
+		return "", errors.Errorf("only public service has public URL")
 	}
 
 	return filepath.Join(s.task.PublicUrl(), path), nil
@@ -503,7 +501,7 @@ func (s *nativeService) PublicUrl(path string) (string, error) {
 
 func (s *nativeService) PrivateUrl() (string, error) {
 	if s.task == nil {
-		return "", fmt.Errorf("service has not started yet")
+		return "", errors.Errorf("service has not started yet")
 	}
 
 	return s.task.PrivateUrl(), nil
@@ -511,7 +509,7 @@ func (s *nativeService) PrivateUrl() (string, error) {
 
 func (s *nativeService) Pid() (int, error) {
 	if s.task == nil {
-		return 0, fmt.Errorf("service has not started yet")
+		return 0, errors.Errorf("service has not started yet")
 	}
 
 	return s.task.Pid(), nil
