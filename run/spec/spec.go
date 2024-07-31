@@ -54,19 +54,20 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		return nil, err
 	}
 
-	var instances []instances.Instance
-	for _, instance := range config.Instances {
-		inst, err := m.instanceMaker.Make(instance, config.Environments, serversMap, config.Workspace)
+	var insts []instances.Instance
+	var inst instances.Instance
+	for _, configInst := range config.Instances {
+		inst, err = m.instanceMaker.Make(configInst, config.Environments, serversMap, config.Workspace)
 		if err != nil {
 			return nil, err
 		}
-		instances = append(instances, inst)
+		insts = append(insts, inst)
 	}
 
 	return &nativeSpec{
 		fnd:       m.fnd,
 		workspace: config.Workspace,
-		instances: instances,
+		instances: insts,
 	}, nil
 }
 

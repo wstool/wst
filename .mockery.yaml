@@ -143,6 +143,12 @@ packages:
       dir: mocks/generated/run/expectations
     interfaces:
       Maker: {}
+  github.com/bukka/wst/run/instances:
+    config:
+      dir: mocks/generated/run/instances
+    interfaces:
+      Instance: { }
+      InstanceMaker: { }
   github.com/bukka/wst/run/instances/runtime:
     config:
       dir: mocks/generated/run/instances/runtime
