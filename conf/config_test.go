@@ -30,7 +30,9 @@ func TestCreateConfigMaker(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := CreateConfigMaker(tt.fnd)
+			m := CreateConfigMaker(tt.fnd)
+			cm, ok := m.(*ConfigMaker)
+			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, cm.fnd)
 			assert.NotNil(t, cm.merger)
 			assert.NotNil(t, cm.parser)
