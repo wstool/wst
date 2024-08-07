@@ -23,6 +23,10 @@ import (
 	"github.com/bukka/wst/conf/types"
 )
 
+type Maker interface {
+	Make(configPaths []string, overwrites map[string]string) (*types.Config, error)
+}
+
 type ConfigMaker struct {
 	fnd        app.Foundation
 	loader     loader.Loader
@@ -31,7 +35,7 @@ type ConfigMaker struct {
 	overwriter overwrites.Overwriter
 }
 
-func CreateConfigMaker(fnd app.Foundation) *ConfigMaker {
+func CreateConfigMaker(fnd app.Foundation) Maker {
 	ld := loader.CreateLoader(fnd)
 	pr := parser.CreateParser(fnd, ld)
 	return &ConfigMaker{

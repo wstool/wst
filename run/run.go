@@ -32,7 +32,7 @@ type Options struct {
 
 type Runner struct {
 	fnd         app.Foundation
-	configMaker *conf.ConfigMaker
+	configMaker conf.Maker
 	specMaker   spec.Maker
 }
 

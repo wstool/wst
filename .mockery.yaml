@@ -11,6 +11,11 @@ packages:
       HttpClient: {}
       VegetaAttacker: {}
       VegetaMetrics: {}
+  github.com/bukka/wst/conf:
+    config:
+      dir: mocks/generated/conf
+    interfaces:
+      Maker: {}
   github.com/bukka/wst/conf/loader:
     config:
       dir: mocks/generated/conf/loader
@@ -261,3 +266,9 @@ packages:
       dir: mocks/generated/run/services/template/service
     interfaces:
       TemplateService: {}
+  github.com/bukka/wst/run/spec:
+    config:
+      dir: mocks/generated/run/spec
+    interfaces:
+      Maker: {}
+      Spec: {}
