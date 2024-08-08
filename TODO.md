@@ -10,9 +10,6 @@ in the future.
 
 ### Run
 
-- services tests
-- spec tests
-- run tests
 - integration tests
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
@@ -27,5 +24,6 @@ in the future.
 
 ### Config
 
+- parsing - config version should allow number - not just string so 1.0 can be used instead of "1.0"
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
