@@ -1117,16 +1117,17 @@ type ParseFieldConfigData struct {
 
 func Test_ConfigParser_parseField(t *testing.T) {
 	tests := []struct {
-		name               string
-		fieldName          string
-		data               interface{}
-		params             map[ConfigParam]string
-		expectedFieldValue interface{}
-		configsCalled      bool
-		configsData        []ParseFieldConfigData
-		factoryFound       bool
-		wantErr            bool
-		errMsg             string
+		name                string
+		fieldName           string
+		data                interface{}
+		params              map[ConfigParam]string
+		expectedFieldValue  interface{}
+		configsCalled       bool
+		configsData         []ParseFieldConfigData
+		factoryFound        bool
+		factoryExpectedKind reflect.Kind
+		wantErr             bool
+		errMsg              string
 	}{
 		{
 			name:      "parse field with factory param found",
@@ -1246,6 +1247,28 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				"services/test1.yaml": {Value: "test1"},
 				"services/test2.yaml": {Value: "test2"},
 			}},
+			wantErr: false,
+		},
+		{
+			name:      "parse field with loadable and factory param found",
+			fieldName: "D",
+			data:      "data.yaml",
+			params: map[ConfigParam]string{
+				"factory":  "test",
+				"loadable": "true",
+			},
+			configsCalled: true,
+			configsData: []ParseFieldConfigData{
+				{Path: "data.yaml", Data: map[string]interface{}{"val": "test"}},
+			},
+			factoryFound:        true,
+			factoryExpectedKind: reflect.Slice,
+			expectedFieldValue: &ParseFieldTestStruct{
+				D: []ParseFieldInnerTestStruct{
+					{Value: "test_data_1"},
+					{Value: "test_data_2"},
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -1384,6 +1407,24 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			if tt.factoryFound {
 				mockFactories.On("GetFactoryFunc", "test").Return(
 					factory.Func(func(data interface{}, fieldValue reflect.Value, path string) error {
+						if tt.factoryExpectedKind != reflect.Invalid {
+							assert.Equal(tt.factoryExpectedKind.String(), fieldValue.Kind().String())
+							if tt.factoryExpectedKind == reflect.Slice {
+								// Create a slice of ParseFieldInnerTestStruct
+								sliceType := fieldValue.Type().Elem()
+								slice := reflect.MakeSlice(reflect.SliceOf(sliceType), 0, 0)
+
+								// Populate the slice with test data
+								for i := 0; i < 2; i++ {
+									elem := reflect.New(sliceType).Elem()
+									elem.FieldByName("Value").SetString(fmt.Sprintf("test_data_%d", i+1))
+									slice = reflect.Append(slice, elem)
+								}
+
+								fieldValue.Set(slice)
+								return nil
+							}
+						}
 						fieldValue.SetString("test_data")
 						return nil
 					}), nil)

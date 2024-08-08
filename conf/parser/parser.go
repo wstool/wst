@@ -521,6 +521,12 @@ func (p *ConfigParser) parseField(
 ) error {
 	var err error
 
+	if _, isLoadable := params[ConfigParamLoadable]; isLoadable {
+		if data, err = p.processLoadableParam(data, fieldValue); err != nil {
+			return err
+		}
+	}
+
 	if factoryName, hasFactory := params[ConfigParamFactory]; hasFactory {
 		if err = p.processFactoryParam(factoryName, data, fieldValue, path); err != nil {
 			return err
@@ -536,12 +542,6 @@ func (p *ConfigParser) parseField(
 		}
 		if done {
 			return nil
-		}
-	}
-
-	if _, isLoadable := params[ConfigParamLoadable]; isLoadable {
-		if data, err = p.processLoadableParam(data, fieldValue); err != nil {
-			return err
 		}
 	}
 
