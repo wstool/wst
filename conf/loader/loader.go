@@ -32,7 +32,7 @@ type LoadedConfig interface {
 type Loader interface {
 	LoadConfig(path string) (LoadedConfig, error)
 	LoadConfigs(paths []string) ([]LoadedConfig, error)
-	GlobConfigs(pattern string) ([]LoadedConfig, error)
+	GlobConfigs(pattern string, cwd string) ([]LoadedConfig, error)
 }
 
 type LoadedConfigData struct {
@@ -98,12 +98,28 @@ func (l ConfigLoader) LoadConfigs(paths []string) ([]LoadedConfig, error) {
 	return configs, nil
 }
 
-func (l ConfigLoader) GlobConfigs(pattern string) ([]LoadedConfig, error) {
+func (l ConfigLoader) GlobConfigs(pattern string, wd string) ([]LoadedConfig, error) {
 	fs := l.fnd.Fs()
+
+	// Save the current working directory
+	originalCwd, err := l.fnd.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	// Change to the desired working directory
+	err = l.fnd.Chdir(wd)
+	if err != nil {
+		return nil, err
+	}
+	// Ensure to change back to the original working directory
+	defer l.fnd.Chdir(originalCwd)
+
 	paths, err := afero.Glob(fs, pattern)
 	if err != nil {
 		return nil, err
 	}
+	// Load configs
 	return l.LoadConfigs(paths)
 }
 

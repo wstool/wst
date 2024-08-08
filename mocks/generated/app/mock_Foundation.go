@@ -28,6 +28,52 @@ func (_m *MockFoundation) EXPECT() *MockFoundation_Expecter {
 	return &MockFoundation_Expecter{mock: &_m.Mock}
 }
 
+// Chdir provides a mock function with given fields: _a0
+func (_m *MockFoundation) Chdir(_a0 string) error {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Chdir")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFoundation_Chdir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Chdir'
+type MockFoundation_Chdir_Call struct {
+	*mock.Call
+}
+
+// Chdir is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockFoundation_Expecter) Chdir(_a0 interface{}) *MockFoundation_Chdir_Call {
+	return &MockFoundation_Chdir_Call{Call: _e.mock.On("Chdir", _a0)}
+}
+
+func (_c *MockFoundation_Chdir_Call) Run(run func(_a0 string)) *MockFoundation_Chdir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockFoundation_Chdir_Call) Return(_a0 error) *MockFoundation_Chdir_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_Chdir_Call) RunAndReturn(run func(string) error) *MockFoundation_Chdir_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CurrentUser provides a mock function with given fields:
 func (_m *MockFoundation) CurrentUser() (*user.User, error) {
 	ret := _m.Called()
@@ -268,6 +314,61 @@ func (_c *MockFoundation_GenerateUuid_Call) Return(_a0 string) *MockFoundation_G
 }
 
 func (_c *MockFoundation_GenerateUuid_Call) RunAndReturn(run func() string) *MockFoundation_GenerateUuid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Getwd provides a mock function with given fields:
+func (_m *MockFoundation) Getwd() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Getwd")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFoundation_Getwd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Getwd'
+type MockFoundation_Getwd_Call struct {
+	*mock.Call
+}
+
+// Getwd is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) Getwd() *MockFoundation_Getwd_Call {
+	return &MockFoundation_Getwd_Call{Call: _e.mock.On("Getwd")}
+}
+
+func (_c *MockFoundation_Getwd_Call) Run(run func()) *MockFoundation_Getwd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_Getwd_Call) Return(_a0 string, _a1 error) *MockFoundation_Getwd_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFoundation_Getwd_Call) RunAndReturn(run func() (string, error)) *MockFoundation_Getwd_Call {
 	_c.Call.Return(run)
 	return _c
 }

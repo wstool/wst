@@ -27,6 +27,8 @@ type Foundation interface {
 	Logger() *zap.SugaredLogger
 	Fs() afero.Fs
 	CurrentUser() (*user.User, error)
+	Chdir(string) error
+	Getwd() (string, error)
 	DryRun() bool
 	User(username string) (*user.User, error)
 	UserGroup(u *user.User) (*user.Group, error)
@@ -77,6 +79,14 @@ func (f *DefaultFoundation) Fs() afero.Fs {
 
 func (f *DefaultFoundation) CurrentUser() (*user.User, error) {
 	return user.Current()
+}
+
+func (f *DefaultFoundation) Chdir(s string) error {
+	return os.Chdir(s)
+}
+
+func (f *DefaultFoundation) Getwd() (string, error) {
+	return os.Getwd()
 }
 
 func (f *DefaultFoundation) User(username string) (*user.User, error) {

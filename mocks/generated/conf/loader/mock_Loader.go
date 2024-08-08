@@ -20,9 +20,9 @@ func (_m *MockLoader) EXPECT() *MockLoader_Expecter {
 	return &MockLoader_Expecter{mock: &_m.Mock}
 }
 
-// GlobConfigs provides a mock function with given fields: pattern
-func (_m *MockLoader) GlobConfigs(pattern string) ([]loader.LoadedConfig, error) {
-	ret := _m.Called(pattern)
+// GlobConfigs provides a mock function with given fields: pattern, cwd
+func (_m *MockLoader) GlobConfigs(pattern string, cwd string) ([]loader.LoadedConfig, error) {
+	ret := _m.Called(pattern, cwd)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GlobConfigs")
@@ -30,19 +30,19 @@ func (_m *MockLoader) GlobConfigs(pattern string) ([]loader.LoadedConfig, error)
 
 	var r0 []loader.LoadedConfig
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]loader.LoadedConfig, error)); ok {
-		return rf(pattern)
+	if rf, ok := ret.Get(0).(func(string, string) ([]loader.LoadedConfig, error)); ok {
+		return rf(pattern, cwd)
 	}
-	if rf, ok := ret.Get(0).(func(string) []loader.LoadedConfig); ok {
-		r0 = rf(pattern)
+	if rf, ok := ret.Get(0).(func(string, string) []loader.LoadedConfig); ok {
+		r0 = rf(pattern, cwd)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]loader.LoadedConfig)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(pattern)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(pattern, cwd)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -57,13 +57,14 @@ type MockLoader_GlobConfigs_Call struct {
 
 // GlobConfigs is a helper method to define mock.On call
 //   - pattern string
-func (_e *MockLoader_Expecter) GlobConfigs(pattern interface{}) *MockLoader_GlobConfigs_Call {
-	return &MockLoader_GlobConfigs_Call{Call: _e.mock.On("GlobConfigs", pattern)}
+//   - cwd string
+func (_e *MockLoader_Expecter) GlobConfigs(pattern interface{}, cwd interface{}) *MockLoader_GlobConfigs_Call {
+	return &MockLoader_GlobConfigs_Call{Call: _e.mock.On("GlobConfigs", pattern, cwd)}
 }
 
-func (_c *MockLoader_GlobConfigs_Call) Run(run func(pattern string)) *MockLoader_GlobConfigs_Call {
+func (_c *MockLoader_GlobConfigs_Call) Run(run func(pattern string, cwd string)) *MockLoader_GlobConfigs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -73,7 +74,7 @@ func (_c *MockLoader_GlobConfigs_Call) Return(_a0 []loader.LoadedConfig, _a1 err
 	return _c
 }
 
-func (_c *MockLoader_GlobConfigs_Call) RunAndReturn(run func(string) ([]loader.LoadedConfig, error)) *MockLoader_GlobConfigs_Call {
+func (_c *MockLoader_GlobConfigs_Call) RunAndReturn(run func(string, string) ([]loader.LoadedConfig, error)) *MockLoader_GlobConfigs_Call {
 	_c.Call.Return(run)
 	return _c
 }

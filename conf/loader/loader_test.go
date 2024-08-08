@@ -17,6 +17,7 @@ package loader
 import (
 	"github.com/bukka/wst/app"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -179,24 +180,25 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 	err = afero.WriteFile(mockFs, "/dir/test2.json", []byte(`{"key": "value2"}`), 0644)
 	assert.NoError(t, err)
 
-	// mock app.Foundation
-	MockFnd := &appMocks.MockFoundation{}
-	MockFnd.On("Fs").Return(mockFs)
-
-	type args struct {
-		path string
-	}
 	tests := []struct {
-		name    string
-		fnd     app.Foundation
-		args    args
-		want    []LoadedConfig
-		wantErr bool
+		name             string
+		fnd              app.Foundation
+		pattern          string
+		wd               string
+		setupMocks       func(fnd *appMocks.MockFoundation)
+		want             []LoadedConfig
+		expectError      bool
+		expectedErrorMsg string
 	}{
 		{
-			name: "Testing GlobConfigs",
-			fnd:  MockFnd,
-			args: args{path: "/dir/*.json"},
+			name:    "success on return of paths",
+			pattern: "/dir/*.json",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/wst").Return(nil)
+				fnd.On("Chdir", "/home").Return(nil)
+			},
 			want: []LoadedConfig{
 				LoadedConfigData{
 					path: "/dir/test.json",
@@ -207,33 +209,69 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 					data: map[string]interface{}{"key": "value2"},
 				},
 			},
-			wantErr: false,
 		},
 		{
-			name:    "Testing GlobConfigs - Error case - No Matching Files",
-			fnd:     MockFnd,
-			args:    args{path: "/dir/non_matching_pattern.json"},
-			want:    []LoadedConfig{},
-			wantErr: false,
+			name:    "success on no path found",
+			pattern: "/dir/non_matching_pattern.json",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/wst").Return(nil)
+				fnd.On("Chdir", "/home").Return(nil)
+			},
+			want: []LoadedConfig{},
 		},
 		{
-			name:    "Testing GlobConfigs - Invalid patter",
-			fnd:     MockFnd,
-			args:    args{path: "/dir/test[.yaml"},
-			wantErr: true,
+			name:    "error on invalid pattern",
+			pattern: "/dir/test[.yaml",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/wst").Return(nil)
+				fnd.On("Chdir", "/home").Return(nil)
+			},
+			expectError:      true,
+			expectedErrorMsg: "syntax error in pattern",
+		},
+		{
+			name:    "error on changing directory",
+			pattern: "/dir/test[.yaml",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/wst").Return(errors.New("chdir fail"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "chdir fail",
+		},
+		{
+			name:    "error on getting working directory directory",
+			pattern: "/dir/test[.yaml",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", errors.New("wd fail"))
+			},
+			expectError:      true,
+			expectedErrorMsg: "wd fail",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			fndMock.On("Fs").Return(mockFs)
+
 			l := ConfigLoader{
-				fnd: tt.fnd,
+				fnd: fndMock,
 			}
-			got, err := l.GlobConfigs(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GlobConfigs() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			tt.setupMocks(fndMock)
+			got, err := l.GlobConfigs(tt.pattern, tt.wd)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
 			}
-			assert.Equal(t, tt.want, got)
 		})
 	}
 }

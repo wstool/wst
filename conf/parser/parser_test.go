@@ -417,17 +417,17 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			if tt.name != "Error from GlobConfigs" {
 				stringData, isString := tt.data.(string)
 				if isString {
-					mockLoader.On("GlobConfigs", stringData).Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
+					mockLoader.On("GlobConfigs", stringData, "/var/www").Return([]loader.LoadedConfig{mockLoadedConfig}, nil)
 				}
 			} else {
-				mockLoader.On("GlobConfigs", tt.data.(string)).Return(nil, errors.New("forced GlobConfigs error"))
+				mockLoader.On("GlobConfigs", tt.data.(string), "/var/www").Return(nil, errors.New("forced GlobConfigs error"))
 			}
 
 			p := ConfigParser{
 				fnd:    nil, // replace with necessary mock if necessary
 				loader: mockLoader,
 			}
-			got, err := p.processLoadableParam(tt.data, tt.fieldValue)
+			got, err := p.processLoadableParam(tt.data, tt.fieldValue, "/var/www/wst.yaml")
 
 			// if an error is expected
 			if tt.wantErr {
@@ -1396,9 +1396,9 @@ func Test_ConfigParser_parseField(t *testing.T) {
 						mockLoadedConfig.On("Data").Return(configData.Data)
 						mockConfigs = append(mockConfigs, mockLoadedConfig)
 					}
-					mockLoader.On("GlobConfigs", tt.data.(string)).Return(mockConfigs, nil)
+					mockLoader.On("GlobConfigs", tt.data.(string), "/opt/config").Return(mockConfigs, nil)
 				} else {
-					mockLoader.On("GlobConfigs", tt.data.(string)).Return(
+					mockLoader.On("GlobConfigs", tt.data.(string), "/opt/config").Return(
 						nil, errors.New("forced GlobConfigs error"))
 				}
 			}

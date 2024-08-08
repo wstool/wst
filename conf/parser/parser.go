@@ -221,10 +221,10 @@ func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Val
 	return nil
 }
 
-func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value) (interface{}, error) {
+func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value, path string) (interface{}, error) {
 	loadableData, isString := data.(string)
 	if isString {
-		configs, err := p.loader.GlobConfigs(loadableData)
+		configs, err := p.loader.GlobConfigs(loadableData, filepath.Dir(path))
 		if err != nil {
 			return nil, errors.Errorf("loading configs: %v", err)
 		}
@@ -522,7 +522,7 @@ func (p *ConfigParser) parseField(
 	var err error
 
 	if _, isLoadable := params[ConfigParamLoadable]; isLoadable {
-		if data, err = p.processLoadableParam(data, fieldValue); err != nil {
+		if data, err = p.processLoadableParam(data, fieldValue, path); err != nil {
 			return err
 		}
 	}
