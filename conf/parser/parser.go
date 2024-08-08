@@ -235,7 +235,7 @@ func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect
 			for _, config := range configs {
 				data := config.Data()
 				data[pathKey] = config.Path()
-				loadedData[config.Path()] = data
+				loadedData = data
 			}
 			return loadedData, nil
 

@@ -370,10 +370,10 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			name:       "Field value kind is map",
 			data:       "*.json",
 			fieldValue: reflect.ValueOf(map[string]interface{}{}),
-			want: map[string]interface{}{"/configs/test.json": map[string]interface{}{
+			want: map[string]interface{}{
 				"key":      "value",
 				"wst/path": "/configs/test.json",
-			}},
+			},
 			wantErr: false,
 		},
 		{
@@ -1239,13 +1239,16 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			},
 			configsCalled: true,
 			configsData: []ParseFieldConfigData{
-				{Path: "services/test1.yaml", Data: map[string]interface{}{"val": "test1"}},
-				{Path: "services/test2.yaml", Data: map[string]interface{}{"val": "test2"}},
+				{Path: "services/test1.yaml", Data: map[string]interface{}{
+					"s1": map[string]interface{}{"val": "test1"},
+				}},
+				{Path: "services/test2.yaml", Data: map[string]interface{}{
+					"s2": map[string]interface{}{"val": "test2"},
+				}},
 			},
 			factoryFound: false,
 			expectedFieldValue: &ParseFieldTestStruct{E: map[string]ParseFieldInnerTestStruct{
-				"services/test1.yaml": {Value: "test1"},
-				"services/test2.yaml": {Value: "test2"},
+				"s2": {Value: "test2"}, // For map only the last item is added
 			}},
 			wantErr: false,
 		},
@@ -1450,7 +1453,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 					assert.ErrorContains(err, tt.errMsg)
 				}
 			} else {
-				assert.Equal(commonFieldValue, tt.expectedFieldValue)
+				assert.Equal(tt.expectedFieldValue, commonFieldValue)
 			}
 		})
 	}
