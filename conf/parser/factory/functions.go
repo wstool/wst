@@ -36,13 +36,15 @@ type FuncProvider struct {
 	fnd            app.Foundation
 	actionsFactory ActionsFactory
 	structParser   StructParser
+	pathKey        string
 }
 
-func CreateFactories(fnd app.Foundation, structParser StructParser) Functions {
+func CreateFactories(fnd app.Foundation, structParser StructParser, pathKey string) Functions {
 	return &FuncProvider{
 		fnd:            fnd,
 		actionsFactory: CreateActionsFactory(fnd, structParser),
 		structParser:   structParser,
+		pathKey:        pathKey,
 	}
 }
 
@@ -120,6 +122,7 @@ func processTypeMap[T any](
 	factories map[string]typeMapFactory[T],
 	structParser StructParser,
 	path string,
+	pathKey string,
 ) (map[string]T, error) {
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
@@ -141,8 +144,8 @@ func processTypeMap[T any](
 				return nil, err
 			}
 			result[key] = structure
-		} else {
-			return nil, errors.Errorf("unknown environment type: %s", key)
+		} else if key != pathKey {
+			return nil, errors.Errorf("unknown %s type: %s", name, key)
 		}
 	}
 
@@ -167,7 +170,7 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 			return &types.KubernetesEnvironment{}
 		},
 	}
-	environments, err := processTypeMap("environments", data, environmentFactories, f.structParser, path)
+	environments, err := processTypeMap("environments", data, environmentFactories, f.structParser, path, f.pathKey)
 	if err != nil {
 		return err
 	}
@@ -321,7 +324,7 @@ func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Valu
 			return &types.KubernetesSandbox{}
 		},
 	}
-	sandboxes, err := processTypeMap("sandboxes", data, sandboxFactories, f.structParser, path)
+	sandboxes, err := processTypeMap("sandboxes", data, sandboxFactories, f.structParser, path, f.pathKey)
 	if err != nil {
 		return err
 	}

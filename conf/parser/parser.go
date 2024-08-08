@@ -625,7 +625,7 @@ func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
 		loader: loader,
 	}
 
-	factories := factory.CreateFactories(fnd, configParser.ParseStruct)
+	factories := factory.CreateFactories(fnd, configParser.ParseStruct, pathKey)
 	configParser.factories = factories
 
 	return configParser

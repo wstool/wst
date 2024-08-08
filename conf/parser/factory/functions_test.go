@@ -36,7 +36,7 @@ func TestCreateFactories(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateFactories(tt.fnd, tt.structParser)
+			got := CreateFactories(tt.fnd, tt.structParser, "wst/path")
 			funcProvider, ok := got.(*FuncProvider)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, funcProvider.fnd)
@@ -225,6 +225,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 				"container":  map[string]interface{}{"image": "test:1.0"},
 				"docker":     map[string]interface{}{"image": "test:1.1"},
 				"kubernetes": map[string]interface{}{"image": "test:1.2"},
+				"wst/path":   "/var/wst",
 			},
 			mockParseCalls: []struct {
 				data map[string]interface{}
@@ -297,7 +298,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			},
 			expectedValue: map[string]interface{}{}, // Expected no environments to be created
 			wantErr:       true,
-			errMsg:        "unknown environment type: unsupported",
+			errMsg:        "unknown environments type: unsupported",
 		},
 		{
 			name:          "createEnvironments with invalid data structure",
@@ -602,6 +603,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 				"container":  map[string]interface{}{"image": "test:1.0"},
 				"docker":     map[string]interface{}{"image": "test:1.1"},
 				"kubernetes": map[string]interface{}{"image": "test:1.2"},
+				"wst/path":   "/var/wst",
 			},
 			mockParseCalls: []struct {
 				data map[string]interface{}
@@ -645,7 +647,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			},
 			expectedValue: map[string]interface{}{}, // Expecting no sandboxes to be created due to error
 			wantErr:       true,
-			errMsg:        "unknown environment type: unsupported",
+			errMsg:        "unknown sandboxes type: unsupported",
 		},
 		// Server expectations
 		{
@@ -817,7 +819,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			parserMock := localMocks.NewMockMiniParser(t)
-			f := CreateFactories(fndMock, parserMock.ParseStruct)
+			f := CreateFactories(fndMock, parserMock.ParseStruct, "wst/path")
 
 			// Setup mock expectations
 			totalCalls := 0
