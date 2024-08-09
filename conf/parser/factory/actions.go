@@ -15,9 +15,9 @@
 package factory
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -45,7 +45,7 @@ func CreateActionsFactory(fnd app.Foundation, structParser StructParser) Actions
 
 func (f *NativeActionsFactory) parseActionString(actionString string) (*ActionMeta, error) {
 	if actionString == "" {
-		return nil, fmt.Errorf("action string cannot be empty")
+		return nil, errors.Errorf("action string cannot be empty")
 	}
 	elements := strings.Split(actionString, "/")
 	actionName := elements[0]
@@ -55,7 +55,7 @@ func (f *NativeActionsFactory) parseActionString(actionString string) (*ActionMe
 		if len(elements) > 2 {
 			customName = elements[2]
 			if len(elements) > 3 {
-				return nil, fmt.Errorf("action string cannot be composed of more than three elements")
+				return nil, errors.Errorf("action string cannot be composed of more than three elements")
 			}
 		}
 	}
@@ -98,10 +98,10 @@ func (f *NativeActionsFactory) parseExpectationAction(
 		case "response":
 			structure = &types.ResponseExpectationAction{}
 		default:
-			return nil, fmt.Errorf("invalid expectation key %s", expKey)
+			return nil, errors.Errorf("invalid expectation key %s", expKey)
 		}
 		if parsed {
-			return nil, fmt.Errorf("expression cannot have multiple types - additional key %s", expKey)
+			return nil, errors.Errorf("expression cannot have multiple types - additional key %s", expKey)
 		}
 		parsed = true
 	}
@@ -165,17 +165,17 @@ func (f *NativeActionsFactory) parseAction(
 		err = f.structParser(data, stopAction, path)
 		action = stopAction
 	default:
-		return nil, fmt.Errorf("unknown action %s", meta.actionName)
+		return nil, errors.Errorf("unknown action %s", meta.actionName)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 	if meta.customName != "" && !customNameAllowed {
-		return nil, fmt.Errorf("custom name not allowed for action %s", meta.actionName)
+		return nil, errors.Errorf("custom name not allowed for action %s", meta.actionName)
 	}
 	if meta.serviceName != "" && !serviceNameAllowed {
-		return nil, fmt.Errorf("service name not allowed for action %s", meta.actionName)
+		return nil, errors.Errorf("service name not allowed for action %s", meta.actionName)
 	}
 
 	return action, nil
@@ -183,16 +183,16 @@ func (f *NativeActionsFactory) parseAction(
 
 func (f *NativeActionsFactory) parseActionFromMap(action map[string]interface{}, path string) (types.Action, error) {
 	if len(action) > 1 {
-		return nil, fmt.Errorf("invalid action format - exactly one item in map is required")
+		return nil, errors.Errorf("invalid action format - exactly one item in map is required")
 	}
 	for name, value := range action {
 		valueMap, ok := value.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("invalid action format - action value must be an object")
+			return nil, errors.Errorf("invalid action format - action value must be an object")
 		}
 		return f.parseAction(name, valueMap, path)
 	}
-	return nil, fmt.Errorf("invalid action format - empty object is not valid action")
+	return nil, errors.Errorf("invalid action format - empty object is not valid action")
 }
 
 func (f *NativeActionsFactory) ParseActions(actions []interface{}, path string) ([]types.Action, error) {
@@ -212,7 +212,7 @@ func (f *NativeActionsFactory) ParseActions(actions []interface{}, path string) 
 			}
 			parsedActions = append(parsedActions, parsedAction)
 		default:
-			return nil, fmt.Errorf("unsupported action type %t", untypedAction)
+			return nil, errors.Errorf("unsupported action type %t", untypedAction)
 		}
 	}
 	return parsedActions, nil

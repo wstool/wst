@@ -25,6 +25,7 @@ import (
 
 func Run() {
 	var debug bool
+	var runFailed bool
 	var overwriteValues []string
 	var logger *zap.Logger
 
@@ -58,7 +59,9 @@ func Run() {
 				Instances:   args,
 			}
 			// Add execution code here.
+			runFailed = false
 			if err = run.CreateRunner(fnd).Execute(options); err != nil {
+				runFailed = true
 				logger.Error("Unable to execute run operation: ", zap.Error(err))
 			}
 			return err
@@ -76,7 +79,9 @@ func Run() {
 		"Provide a more detailed output by logging additional debugging information")
 	rootCmd.AddCommand(runCmd)
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if !runFailed {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }
