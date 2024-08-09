@@ -586,7 +586,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				map[string]interface{}{"action": "value"},
 			},
 			wantErr: true,
-			errMsg:  "invalid action [0] format - action value must be an object",
+			errMsg:  "invalid action [0].action format - action value must be an object",
 		},
 		{
 			name: "Invalid action format - empty",

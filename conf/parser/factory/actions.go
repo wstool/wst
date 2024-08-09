@@ -129,7 +129,6 @@ func (f *NativeActionsFactory) parseAction(
 	data map[string]interface{},
 	path string,
 ) (types.Action, error) {
-	f.loc.SetField(actionString)
 	meta, err := f.parseActionString(actionString)
 	if err != nil {
 		return nil, err
@@ -197,6 +196,7 @@ func (f *NativeActionsFactory) parseActionFromMap(action map[string]interface{},
 		return nil, errors.Errorf("invalid action %s format - exactly one item in map is required", f.loc.String())
 	}
 	for name, value := range action {
+		f.loc.SetField(name)
 		valueMap, ok := value.(map[string]interface{})
 		if !ok {
 			return nil, errors.Errorf("invalid action %s format - action value must be an object", f.loc.String())
@@ -214,6 +214,7 @@ func (f *NativeActionsFactory) ParseActions(actions []interface{}, path string) 
 		f.loc.StartObject()
 		switch action := untypedAction.(type) {
 		case string:
+			f.loc.SetField(action)
 			parsedAction, err := f.parseAction(action, map[string]interface{}{}, path)
 			if err != nil {
 				return nil, err
