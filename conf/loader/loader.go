@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
@@ -91,7 +92,7 @@ func (l ConfigLoader) LoadConfigs(paths []string) ([]LoadedConfig, error) {
 	for _, path := range paths {
 		config, err := l.LoadConfig(path)
 		if err != nil {
-			return nil, err
+			return nil, errors.Errorf("loading config %s failed: %v", path, err)
 		}
 		configs = append(configs, config)
 	}
