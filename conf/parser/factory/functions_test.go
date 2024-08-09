@@ -3,6 +3,7 @@ package factory
 import (
 	"errors"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/parser/location"
 	"github.com/bukka/wst/conf/types"
 	localMocks "github.com/bukka/wst/mocks/authored/local"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
@@ -20,7 +21,7 @@ func TestCreateFactories(t *testing.T) {
 	testPath := "testPath"
 	parserMock.On("ParseStruct", testData, &testStructure, testPath).
 		Return(nil).Once()
-	actionFactory := CreateActionsFactory(fndMock, parserMock.ParseStruct)
+	actionFactory := CreateActionsFactory(fndMock, parserMock.ParseStruct, location.CreateLocation())
 
 	tests := []struct {
 		name         string
@@ -36,7 +37,7 @@ func TestCreateFactories(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateFactories(tt.fnd, tt.structParser, "wst/path")
+			got := CreateFactories(tt.fnd, tt.structParser, "wst/path", location.CreateLocation())
 			funcProvider, ok := got.(*FuncProvider)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, funcProvider.fnd)
@@ -819,7 +820,7 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			parserMock := localMocks.NewMockMiniParser(t)
-			f := CreateFactories(fndMock, parserMock.ParseStruct, "wst/path")
+			f := CreateFactories(fndMock, parserMock.ParseStruct, "wst/path", location.CreateLocation())
 
 			// Setup mock expectations
 			totalCalls := 0

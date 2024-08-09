@@ -19,6 +19,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
+	"github.com/bukka/wst/conf/parser/location"
 	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -54,7 +55,7 @@ type ConfigParser struct {
 	fnd       app.Foundation
 	loader    loader.Loader
 	factories factory.Functions
-	loc       *Location
+	loc       *location.Location
 }
 
 // check if param is a valid param (one of param* constants)
@@ -81,10 +82,7 @@ func isValidParam(param string) bool {
 	}
 }
 
-func (p *ConfigParser) pos() string {
-	if p.loc == nil {
-		return "unknown"
-	}
+func (p *ConfigParser) Pos() string {
 	pos := p.loc.String()
 	if pos == "" {
 		return "unknown"
@@ -127,7 +125,7 @@ func (p *ConfigParser) ParseTag(tag string) (map[ConfigParam]string, error) {
 			}
 			params[ConfigParam(key)] = value
 		} else {
-			return nil, errors.Errorf("field %s invalid parameter key: %s", p.pos(), key)
+			return nil, errors.Errorf("field %s invalid parameter key: %s", p.Pos(), key)
 		}
 	}
 
@@ -140,21 +138,21 @@ func (p *ConfigParser) processDefaultParam(fieldName string, defaultValue string
 		intValue, err := strconv.Atoi(defaultValue)
 		if err != nil {
 			return errors.Errorf("default value %q for field %s can't be converted to int: %v",
-				defaultValue, p.pos(), err)
+				defaultValue, p.Pos(), err)
 		}
 		fieldValue.SetInt(int64(intValue))
 	case reflect.Bool:
 		boolValue, err := strconv.ParseBool(defaultValue)
 		if err != nil {
 			return errors.Errorf("default value %q for field %s can't be converted to bool: %v",
-				defaultValue, p.pos(), err)
+				defaultValue, p.Pos(), err)
 		}
 		fieldValue.SetBool(boolValue)
 	case reflect.String:
 		fieldValue.SetString(defaultValue)
 	default:
 		return errors.Errorf("default value %v for field %s cannot be converted to type %v",
-			defaultValue, p.pos(), fieldValue.Type())
+			defaultValue, p.Pos(), fieldValue.Type())
 	}
 	return nil
 }
@@ -180,7 +178,7 @@ func (p *ConfigParser) processEnumParam(enums string, data interface{}, fieldNam
 		}
 	}
 
-	return errors.Errorf("values %v are not valid for field %s", enums, p.pos())
+	return errors.Errorf("values %v are not valid for field %s", enums, p.Pos())
 }
 
 func (p *ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {
@@ -191,14 +189,14 @@ func (p *ConfigParser) processKeysParam(keys string, data interface{}, fieldName
 		}
 	}
 
-	return errors.Errorf("keys %v are not valid for field %s", keys, p.pos())
+	return errors.Errorf("keys %v are not valid for field %s", keys, p.Pos())
 }
 
 func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
 	// Assert data is a string
 	path, ok := data.(string)
 	if !ok {
-		return errors.Errorf("unexpected type %T for data in field %s, expected string", data, p.pos())
+		return errors.Errorf("unexpected type %T for data in field %s, expected string", data, p.Pos())
 	}
 
 	fs := p.fnd.Fs()
@@ -213,18 +211,18 @@ func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Val
 	if err != nil {
 		return err
 	} else if !exists {
-		return errors.Errorf("file path %s for field %s does not exist", path, p.pos())
+		return errors.Errorf("file path %s for field %s does not exist", path, p.Pos())
 	}
 
 	// Check that fieldValue is settable (it is addressable and was not obtained by
 	// the use of unexported struct fields)
 	if !fieldValue.CanSet() {
-		return errors.Errorf("field %s is not settable", p.pos())
+		return errors.Errorf("field %s is not settable", p.Pos())
 	}
 
 	// Check if fieldValue is of type string
 	if fieldValue.Kind() != reflect.String {
-		return errors.Errorf("field %s is not of type string", p.pos())
+		return errors.Errorf("field %s is not of type string", p.Pos())
 	}
 
 	// If no errors so far, set the fieldValue to the resolved file path
@@ -238,7 +236,7 @@ func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect
 	if isString {
 		configs, err := p.loader.GlobConfigs(loadableData, filepath.Dir(path))
 		if err != nil {
-			return nil, errors.Errorf("loading configs for field %s: %v", p.pos(), err)
+			return nil, errors.Errorf("loading configs for field %s: %v", p.Pos(), err)
 		}
 
 		switch fieldValue.Kind() {
@@ -263,7 +261,7 @@ func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect
 		default:
 			return nil, errors.Errorf(
 				"type of field %s is neither map nor slice (kind=%s)",
-				p.pos(),
+				p.Pos(),
 				fieldValue.Kind().String(),
 			)
 		}
@@ -280,7 +278,7 @@ func (p *ConfigParser) processStringParam(
 	kind := fieldValue.Kind()
 
 	if kind != reflect.Struct && kind != reflect.Map && kind != reflect.Interface && kind != reflect.Ptr {
-		return false, errors.Errorf("field %s must be a struct or interface type or a pointer to such", p.pos())
+		return false, errors.Errorf("field %s must be a struct or interface type or a pointer to such", p.Pos())
 	}
 
 	if kind == reflect.Ptr || kind == reflect.Interface {
@@ -309,16 +307,16 @@ func (p *ConfigParser) processStringParam(
 		// Use an empty map as temporary data to populate the struct
 		err := p.ParseStruct(make(map[string]interface{}), fieldValuePtrInterface, path)
 		if err != nil {
-			return false, errors.Errorf("error parsing struct in field %s for string param: %v", p.pos(), err)
+			return false, errors.Errorf("error parsing struct in field %s for string param: %v", p.Pos(), err)
 		}
 
 		// Set the string value to the appropriate sub-field
 		err = p.setFieldByName(fieldValuePtrInterface, fieldName, strData)
 		if err != nil {
-			return false, errors.Errorf("failed to set field %s : %v", p.pos(), err)
+			return false, errors.Errorf("failed to set field %s : %v", p.Pos(), err)
 		}
 	} else {
-		return false, errors.Errorf("field %s value must be a pointer to a struct or a map", p.pos())
+		return false, errors.Errorf("field %s value must be a pointer to a struct or a map", p.Pos())
 	}
 	return true, nil
 }
@@ -331,10 +329,10 @@ func (p *ConfigParser) setFieldByName(v interface{}, name string, value string) 
 		// For struct:
 		fv := rv.Elem().FieldByName(name)
 		if !fv.IsValid() {
-			return errors.Errorf("field %s does not have a valid field name: %s", p.pos(), name)
+			return errors.Errorf("field %s does not have a valid field name: %s", p.Pos(), name)
 		}
 		if !fv.CanSet() {
-			return errors.Errorf("field %s cannot set the field: %s", p.pos(), name)
+			return errors.Errorf("field %s cannot set the field: %s", p.Pos(), name)
 		}
 		fv.SetString(value)
 	}
@@ -371,7 +369,7 @@ func (p *ConfigParser) processMapValue(
 		// Use an empty map as temporary data to populate the struct
 		err := p.ParseStruct(elemData, newElem.Interface(), path)
 		if err != nil {
-			return errors.Errorf("field %s error parsing struct for string param: %v", p.pos(), err)
+			return errors.Errorf("field %s error parsing struct for string param: %v", p.Pos(), err)
 		}
 
 		if !valIsMap {
@@ -380,13 +378,13 @@ func (p *ConfigParser) processMapValue(
 			if !ok {
 				return errors.Errorf(
 					"field %s invalid map value type for string param - expected string, got %T",
-					p.pos(),
+					p.Pos(),
 					val,
 				)
 			}
 			err = p.setFieldByName(newElem.Interface(), fieldName, strVal)
 			if err != nil {
-				return errors.Errorf("failed to set field %s: %v", p.pos(), err)
+				return errors.Errorf("failed to set field %s: %v", p.Pos(), err)
 			}
 		}
 
@@ -404,13 +402,13 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 	case reflect.Struct:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
-			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", p.pos())
+			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", p.Pos())
 		}
 		return p.ParseStruct(dataMap, fieldValue.Addr().Interface(), path)
 	case reflect.Map:
 		dataMap, ok := data.(map[string]interface{})
 		if !ok {
-			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", p.pos())
+			return errors.Errorf("unable to convert data for field %s to map[string]interface{}", p.Pos())
 		}
 		if fieldValue.IsNil() {
 			// Initialize a new map
@@ -439,7 +437,7 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 				dataSlice[i] = v
 			}
 		} else {
-			return errors.Errorf("unable to convert data for field %s to []interface{}", p.pos())
+			return errors.Errorf("unable to convert data for field %s to []interface{}", p.Pos())
 		}
 		if fieldValue.IsNil() || fieldValue.Len() < len(dataSlice) {
 			// Make a new slice to accommodate all elements
@@ -478,7 +476,7 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 					intVal = int64(floatVal)
 				} else {
 					return errors.Errorf("field %s could not be set: "+
-						"float64 value has a fractional part and cannot be converted to integer types", p.pos())
+						"float64 value has a fractional part and cannot be converted to integer types", p.Pos())
 				}
 			} else {
 				intVal = v.Int()
@@ -520,7 +518,7 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 				fieldValue.SetInt(intVal)
 				return nil
 			case reflect.String:
-				return errors.Errorf("field %s is an integer and cannot be converted to string", p.pos())
+				return errors.Errorf("field %s is an integer and cannot be converted to string", p.Pos())
 			}
 		}
 
@@ -531,7 +529,7 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 			return nil
 		}
 
-		return errors.Errorf("field %s could not be set due to type mismatch or non-convertible types", p.pos())
+		return errors.Errorf("field %s could not be set due to type mismatch or non-convertible types", p.Pos())
 
 	}
 	return nil
@@ -603,7 +601,7 @@ func (p *ConfigParser) ParseStruct(
 	p.loc.StartObject()
 	structValuePtr := reflect.ValueOf(structure)
 	if structValuePtr.Kind() != reflect.Ptr || structValuePtr.Elem().Kind() != reflect.Struct {
-		return errors.Errorf("field %s expected a pointer to a struct, got %T", p.pos(), structure)
+		return errors.Errorf("field %s expected a pointer to a struct, got %T", p.Pos(), structure)
 	}
 	structValue := structValuePtr.Elem()
 	structType := structValue.Type()
@@ -611,7 +609,7 @@ func (p *ConfigParser) ParseStruct(
 	if newPathInterface, newPathFound := data[pathKey]; newPathFound {
 		newPath, ok := newPathInterface.(string)
 		if !ok {
-			return errors.Errorf("field %s unexpected type %T for path", p.pos(), newPathInterface)
+			return errors.Errorf("field %s unexpected type %T for path", p.Pos(), newPathInterface)
 		}
 		configPath = newPath
 	}
@@ -651,7 +649,7 @@ func (p *ConfigParser) ParseStruct(
 }
 
 func (p *ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
-	p.loc = CreateLocation()
+	p.loc.Reset()
 	return p.ParseStruct(data, config, configPath)
 }
 
@@ -659,9 +657,10 @@ func CreateParser(fnd app.Foundation, loader loader.Loader) Parser {
 	configParser := &ConfigParser{
 		fnd:    fnd,
 		loader: loader,
+		loc:    location.CreateLocation(),
 	}
 
-	factories := factory.CreateFactories(fnd, configParser.ParseStruct, pathKey)
+	factories := factory.CreateFactories(fnd, configParser.ParseStruct, pathKey, configParser.loc)
 	configParser.factories = factories
 
 	return configParser

@@ -16,6 +16,7 @@ package factory
 
 import (
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/parser/location"
 	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
 	"reflect"
@@ -36,14 +37,16 @@ type FuncProvider struct {
 	fnd            app.Foundation
 	actionsFactory ActionsFactory
 	structParser   StructParser
+	loc            *location.Location
 	pathKey        string
 }
 
-func CreateFactories(fnd app.Foundation, structParser StructParser, pathKey string) Functions {
+func CreateFactories(fnd app.Foundation, structParser StructParser, pathKey string, loc *location.Location) Functions {
 	return &FuncProvider{
 		fnd:            fnd,
-		actionsFactory: CreateActionsFactory(fnd, structParser),
+		actionsFactory: CreateActionsFactory(fnd, structParser, loc),
 		structParser:   structParser,
+		loc:            loc,
 		pathKey:        pathKey,
 	}
 }
@@ -67,7 +70,7 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 	case "createServiceScripts":
 		return f.createServiceScripts, nil
 	default:
-		return nil, errors.Errorf("unknown function %s", funcName)
+		return nil, errors.Errorf("unknown function %s at %s", funcName, f.loc.String())
 	}
 }
 
@@ -76,7 +79,7 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value,
 	// Check if data is a slice
 	dataSlice, ok := data.([]interface{})
 	if !ok {
-		return errors.Errorf("data must be an array, got %T", data)
+		return errors.Errorf("field %s data must be an array, got %T", f.loc.String(), data)
 	}
 
 	actions, err := f.actionsFactory.ParseActions(dataSlice, path)
@@ -106,7 +109,7 @@ func (f *FuncProvider) createContainerImage(data interface{}, fieldValue reflect
 			return err
 		}
 	default:
-		return errors.Errorf("unsupported type for image data")
+		return errors.Errorf("unsupported type for image data at %s", f.loc.String())
 	}
 
 	fieldValue.Set(reflect.ValueOf(img))

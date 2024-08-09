@@ -3,6 +3,7 @@ package factory
 import (
 	"errors"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/parser/location"
 	"github.com/bukka/wst/conf/types"
 	localMocks "github.com/bukka/wst/mocks/authored/local"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
@@ -34,7 +35,7 @@ func TestCreateActionsFactory(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateActionsFactory(tt.fnd, tt.structParser)
+			got := CreateActionsFactory(tt.fnd, tt.structParser, location.CreateLocation())
 			factory, ok := got.(*NativeActionsFactory)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, factory.fnd)
@@ -67,7 +68,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				"",
 			},
 			wantErr: true,
-			errMsg:  "action string cannot be empty",
+			errMsg:  "action [0] string cannot be empty",
 		},
 		{
 			name: "Valid bench action",
@@ -96,7 +97,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				"action/service/custom/extra",
 			},
 			wantErr: true,
-			errMsg:  "action string cannot be composed of more than three elements",
+			errMsg:  "action [0].action/service/custom/extra string cannot be composed of more than three elements",
 		},
 		{
 			name: "Valid custom expectation action string",
@@ -558,7 +559,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				1,
 			},
 			wantErr: true,
-			errMsg:  "unsupported action type %!t(int=1)",
+			errMsg:  "unsupported action [0] type int",
 		},
 		{
 			name: "Unsupported action type",
@@ -577,7 +578,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "invalid action format - exactly one item in map is required",
+			errMsg:  "invalid action [0] format - exactly one item in map is required",
 		},
 		{
 			name: "Invalid action format - not an object",
@@ -585,7 +586,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				map[string]interface{}{"action": "value"},
 			},
 			wantErr: true,
-			errMsg:  "invalid action format - action value must be an object",
+			errMsg:  "invalid action [0] format - action value must be an object",
 		},
 		{
 			name: "Invalid action format - empty",
@@ -593,7 +594,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 				map[string]interface{}{},
 			},
 			wantErr: true,
-			errMsg:  "invalid action format - empty object is not valid action",
+			errMsg:  "invalid action [0] format - empty object is not valid action",
 		},
 	}
 
@@ -611,6 +612,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 
 			f := &NativeActionsFactory{
 				structParser: parserMock.ParseStruct,
+				loc:          location.CreateLocation(),
 			}
 
 			got, err := f.ParseActions(tt.actions, staticPath)

@@ -24,6 +24,9 @@ in the future.
 
 ### Config
 
+- parsing - improve error messages
+  - clean up and make error messages consistent
+  - verify that location is correct and not missing leave
 - parsing - config version should allow number - not just string so 1.0 can be used instead of "1.0"
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)

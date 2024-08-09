@@ -19,6 +19,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/loader"
 	"github.com/bukka/wst/conf/parser/factory"
+	"github.com/bukka/wst/conf/parser/location"
 	"github.com/bukka/wst/conf/types"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	loaderMocks "github.com/bukka/wst/mocks/generated/conf/loader"
@@ -134,7 +135,7 @@ func TestConfigParser_ParseTag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := ConfigParser{}
+			parser := ConfigParser{loc: location.CreateLocation()}
 			got, err := parser.ParseTag(tt.tag)
 
 			// if an error is expected
@@ -156,7 +157,6 @@ func Test_ConfigParser_processDefaultParam(t *testing.T) {
 		C string `wst:"name:c"`
 	}
 
-	p := &ConfigParser{}
 	testCase := defaultTestStruct{}
 
 	tests := []struct {
@@ -205,6 +205,7 @@ func Test_ConfigParser_processDefaultParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			p := &ConfigParser{loc: location.CreateLocation()}
 			err := p.processDefaultParam(tt.name, tt.defaultVal, tt.fieldVal)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("processDefaultParam() error = %v, wantErr %v", err, tt.wantErr)
@@ -284,8 +285,6 @@ func TestConfigParser_processFactoryParam(t *testing.T) {
 }
 
 func Test_ConfigParser_processEnumParam(t *testing.T) {
-	p := ConfigParser{}
-
 	tests := []struct {
 		name      string
 		enums     string
@@ -311,6 +310,7 @@ func Test_ConfigParser_processEnumParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			p := ConfigParser{loc: location.CreateLocation()}
 			if err := p.processEnumParam(tt.enums, tt.data, tt.fieldName); (err != nil) != tt.wantErr {
 				t.Errorf("processEnumParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -319,8 +319,6 @@ func Test_ConfigParser_processEnumParam(t *testing.T) {
 }
 
 func Test_ConfigParser_processKeysParam(t *testing.T) {
-	p := ConfigParser{}
-
 	tests := []struct {
 		name      string
 		keys      string
@@ -346,6 +344,7 @@ func Test_ConfigParser_processKeysParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			p := ConfigParser{loc: location.CreateLocation()}
 			if err := p.processKeysParam(tt.keys, tt.data, tt.fieldName); (err != nil) != tt.wantErr {
 				t.Errorf("processKeysParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -426,7 +425,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			p := ConfigParser{
 				fnd:    nil, // replace with necessary mock if necessary
 				loader: mockLoader,
-				loc:    CreateLocation(),
+				loc:    location.CreateLocation(),
 			}
 			p.loc.StartObject()
 			p.loc.SetField("f1")
@@ -569,7 +568,7 @@ func TestProcessPathParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockFs.ShouldError = tt.fsExistsErr
-			parser := ConfigParser{fnd: mockFnd}
+			parser := ConfigParser{fnd: mockFnd, loc: location.CreateLocation()}
 			err := parser.processPathParam(tt.data, tt.fieldValue, fieldName, tt.configPath)
 
 			if tt.wantErr {
@@ -623,7 +622,7 @@ type StringParamMapFieldStruct struct {
 
 func Test_ConfigParser_processStringParam(t *testing.T) {
 	// Prepare ConfigParser
-	p := ConfigParser{fnd: nil, loc: CreateLocation()}
+	p := ConfigParser{fnd: nil, loc: location.CreateLocation()}
 
 	// Testing data setup
 	dataVal := "stringValue"
@@ -842,7 +841,7 @@ type AssignFieldParentStruct struct {
 }
 
 func Test_ConfigParser_assignField(t *testing.T) {
-	p := ConfigParser{fnd: nil, loc: CreateLocation()}
+	p := ConfigParser{fnd: nil, loc: location.CreateLocation()}
 
 	tests := []struct {
 		name          string
@@ -1446,7 +1445,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				fnd:       mockFnd,
 				loader:    mockLoader,
 				factories: mockFactories,
-				loc:       CreateLocation(),
+				loc:       location.CreateLocation(),
 			}
 
 			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params, "/opt/config/wst.yaml")
@@ -1561,7 +1560,7 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 				fnd:       mockFnd,
 				loader:    mockLoader,
 				factories: mockFactories,
-				loc:       CreateLocation(),
+				loc:       location.CreateLocation(),
 			}
 
 			err := p.ParseStruct(tt.data, tt.testStruct, "/var/www/config.yaml")

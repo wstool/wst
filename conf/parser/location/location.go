@@ -1,64 +1,64 @@
-package parser
+package location
 
 import (
 	"fmt"
 	"strings"
 )
 
-type LocationItem interface {
+type Item interface {
 	String(first bool) string
-	Parent() LocationItem
+	Parent() Item
 }
 
-type LocationFieldItem struct {
-	parent LocationItem
+type FieldItem struct {
+	parent Item
 	name   string
 }
 
-func (l LocationFieldItem) Parent() LocationItem {
+func (l FieldItem) Parent() Item {
 	return l.parent
 }
 
-func (l LocationFieldItem) String(first bool) string {
+func (l FieldItem) String(first bool) string {
 	if first {
 		return l.name
 	}
 	return "." + l.name
 }
 
-type LocationIndexItem struct {
-	parent LocationItem
+type IndexItem struct {
+	parent Item
 	idx    int
 }
 
-func (l LocationIndexItem) Parent() LocationItem {
+func (l IndexItem) Parent() Item {
 	return l.parent
 }
 
-func (l LocationIndexItem) String(first bool) string {
+func (l IndexItem) String(first bool) string {
 	return fmt.Sprintf("[%d]", l.idx)
 }
 
-type LocationType int
+type Type int
 
 const (
-	LocationInvalid LocationType = iota
-	LocationFieldType
-	LocationIndexType
+	InvalidType Type = iota
+	FieldType
+	IndexType
 )
 
 type Location struct {
-	parent  LocationItem
-	locType LocationType
-	field   *LocationFieldItem
-	index   *LocationIndexItem
+	parent  Item
+	locType Type
+	field   *FieldItem
+	index   *IndexItem
 	depth   int
 }
 
 func (l *Location) start() {
-	if l.locType == LocationFieldType {
+	if l.locType == FieldType {
 		l.parent = l.field
-	} else if l.locType == LocationIndexType {
+	} else if l.locType == IndexType {
 		l.parent = l.index
 	}
 	l.depth++
@@ -67,14 +67,14 @@ func (l *Location) start() {
 func (l *Location) end() {
 	if l.parent == nil {
 		l.depth = 0
-		l.locType = LocationInvalid
+		l.locType = InvalidType
 	} else {
 		switch item := l.parent.(type) {
-		case *LocationIndexItem:
-			l.locType = LocationIndexType
+		case *IndexItem:
+			l.locType = IndexType
 			l.index = item
-		case *LocationFieldItem:
-			l.locType = LocationFieldType
+		case *FieldItem:
+			l.locType = FieldType
 			l.field = item
 		}
 		l.parent = l.parent.Parent()
@@ -84,8 +84,8 @@ func (l *Location) end() {
 
 func (l *Location) StartObject() {
 	l.start()
-	l.locType = LocationFieldType
-	l.field = &LocationFieldItem{parent: l.parent}
+	l.locType = FieldType
+	l.field = &FieldItem{parent: l.parent}
 }
 
 func (l *Location) EndObject() {
@@ -93,15 +93,15 @@ func (l *Location) EndObject() {
 }
 
 func (l *Location) SetField(name string) {
-	if l.locType == LocationFieldType {
+	if l.locType == FieldType {
 		l.field.name = name
 	}
 }
 
 func (l *Location) StartArray() {
 	l.start()
-	l.locType = LocationIndexType
-	l.index = &LocationIndexItem{parent: l.parent, idx: -1}
+	l.locType = IndexType
+	l.index = &IndexItem{parent: l.parent, idx: -1}
 }
 
 func (l *Location) EndArray() {
@@ -109,17 +109,17 @@ func (l *Location) EndArray() {
 }
 
 func (l *Location) SetIndex(idx int) {
-	if l.locType == LocationIndexType {
+	if l.locType == IndexType {
 		l.index.idx = idx
 	}
 }
 
 func (l *Location) String() string {
 	idents := make([]string, 0, l.depth)
-	var item LocationItem
-	if l.locType == LocationFieldType && l.field.name != "" {
+	var item Item
+	if l.locType == FieldType && l.field.name != "" {
 		item = l.field
-	} else if l.locType == LocationIndexType && l.index.idx >= 0 {
+	} else if l.locType == IndexType && l.index.idx >= 0 {
 		item = l.index
 	} else {
 		item = l.parent
@@ -136,6 +136,11 @@ func (l *Location) String() string {
 
 	// Concatenate the reversed idents
 	return strings.Join(idents, "")
+}
+
+func (l *Location) Reset() {
+	l.parent = nil
+	l.locType = InvalidType
 }
 
 func CreateLocation() *Location {
