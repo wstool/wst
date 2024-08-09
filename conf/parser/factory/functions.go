@@ -126,21 +126,29 @@ func processTypeMap[T any](
 	structParser StructParser,
 	path string,
 	pathKey string,
+	loc *location.Location,
 ) (map[string]T, error) {
 	// Check if data is a map
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return nil, errors.Errorf("data for %s must be a map, got %T", name, data)
+		return nil, errors.Errorf("field %s data for %s must be a map, got %T", loc.String(), name, data)
 	}
 
 	result := make(map[string]T, len(dataMap))
 	var factory typeMapFactory[T]
 	var valMap map[string]interface{}
+	loc.StartObject()
 	for key, val := range dataMap {
+		loc.SetField(key)
 		if factory, ok = factories[key]; ok {
 			valMap, ok = val.(map[string]interface{})
 			if !ok {
-				return nil, errors.Errorf("data for value in %s must be a map, got %T", name, val)
+				return nil, errors.Errorf(
+					"field %s data for value in %s must be a map, got %T",
+					loc.String(),
+					name,
+					val,
+				)
 			}
 			structure := factory(key)
 			if err := structParser(valMap, structure, path); err != nil {
@@ -148,9 +156,10 @@ func processTypeMap[T any](
 			}
 			result[key] = structure
 		} else if key != pathKey {
-			return nil, errors.Errorf("unknown %s type: %s", name, key)
+			return nil, errors.Errorf("field %s unknown %s type: %s", loc.String(), name, key)
 		}
 	}
+	loc.EndObject()
 
 	return result, nil
 }
@@ -173,7 +182,15 @@ func (f *FuncProvider) createEnvironments(data interface{}, fieldValue reflect.V
 			return &types.KubernetesEnvironment{}
 		},
 	}
-	environments, err := processTypeMap("environments", data, environmentFactories, f.structParser, path, f.pathKey)
+	environments, err := processTypeMap(
+		"environments",
+		data,
+		environmentFactories,
+		f.structParser,
+		path,
+		f.pathKey,
+		f.loc,
+	)
 	if err != nil {
 		return err
 	}
@@ -327,7 +344,15 @@ func (f *FuncProvider) createSandboxes(data interface{}, fieldValue reflect.Valu
 			return &types.KubernetesSandbox{}
 		},
 	}
-	sandboxes, err := processTypeMap("sandboxes", data, sandboxFactories, f.structParser, path, f.pathKey)
+	sandboxes, err := processTypeMap(
+		"sandboxes",
+		data,
+		sandboxFactories,
+		f.structParser,
+		path,
+		f.pathKey,
+		f.loc,
+	)
 	if err != nil {
 		return err
 	}
