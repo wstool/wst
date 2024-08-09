@@ -17,6 +17,8 @@ package parameter
 import (
 	"fmt"
 	"github.com/bukka/wst/app"
+	"github.com/bukka/wst/conf/types"
+	"github.com/pkg/errors"
 	"strconv"
 )
 
@@ -83,20 +85,31 @@ func (m *nativeMaker) Make(config interface{}) (Parameter, error) {
 			}
 		}
 	case map[string]interface{}:
-		p.parameterType = MapType
-		p.mapValue = make(map[string]Parameter)
-		for key, elem := range v {
-			if paramElem, err := m.Make(elem); err == nil {
-				p.mapValue[key] = paramElem
-			} else {
-				return nil, err
-			}
+		if err := m.processMap(p, v); err != nil {
+			return nil, err
+		}
+	case types.Parameters:
+		if err := m.processMap(p, v); err != nil {
+			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unsupported type: %T", v)
+		return nil, errors.Errorf("unsupported type: %T", v)
 	}
 
 	return p, nil
+}
+
+func (m *nativeMaker) processMap(p *parameter, v map[string]interface{}) error {
+	p.parameterType = MapType
+	p.mapValue = make(map[string]Parameter)
+	for key, elem := range v {
+		if paramElem, err := m.Make(elem); err == nil {
+			p.mapValue[key] = paramElem
+		} else {
+			return err
+		}
+	}
+	return nil
 }
 
 type parameter struct {

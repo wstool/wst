@@ -2,6 +2,7 @@ package parameter
 
 import (
 	"fmt"
+	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -14,18 +15,116 @@ func Test_nativeMaker_Make(t *testing.T) {
 	tests := []struct {
 		name           string
 		config         interface{}
+		expectedParam  *parameter
 		expectedType   Type
 		expectingError bool
 	}{
-		{"Bool Type", true, BoolType, false},
-		{"Int Type", 42, IntType, false},
-		{"Float Type", 3.14, FloatType, false},
-		{"String Type", "test", StringType, false},
-		{"Array Type", []interface{}{1, 2, 3}, ArrayType, false},
-		{"Map Type", map[string]interface{}{"key": "value"}, MapType, false},
-		{"Unsupported Type", struct{}{}, NilType, true},
-		{"Unsupported Array Type", []interface{}{struct{}{}}, NilType, true},
-		{"Unsupported Map Type", map[string]interface{}{"key": struct{}{}}, NilType, true},
+		{
+			name:   "Bool Type",
+			config: true,
+			expectedParam: &parameter{
+				parameterType: BoolType,
+				boolValue:     true,
+			},
+			expectedType:   BoolType,
+			expectingError: false,
+		},
+		{
+			name:   "Int Type",
+			config: 42,
+			expectedParam: &parameter{
+				parameterType: IntType,
+				intValue:      42,
+			},
+			expectedType:   IntType,
+			expectingError: false,
+		},
+		{
+			name:   "Float Type",
+			config: 3.14,
+			expectedParam: &parameter{
+				parameterType: FloatType,
+				floatValue:    3.14,
+			},
+			expectedType:   FloatType,
+			expectingError: false,
+		},
+		{
+			name:   "String Type",
+			config: "test",
+			expectedParam: &parameter{
+				parameterType: StringType,
+				stringValue:   "test",
+			},
+			expectedType:   StringType,
+			expectingError: false,
+		},
+		{
+			name:   "Array Type",
+			config: []interface{}{1, 2, 3},
+			expectedParam: &parameter{
+				parameterType: ArrayType,
+				arrayValue: []Parameter{
+					&parameter{parameterType: IntType, intValue: 1},
+					&parameter{parameterType: IntType, intValue: 2},
+					&parameter{parameterType: IntType, intValue: 3},
+				},
+			},
+			expectedType:   ArrayType,
+			expectingError: false,
+		},
+		{
+			name:   "Map Type",
+			config: map[string]interface{}{"key": "value"},
+			expectedParam: &parameter{
+				parameterType: MapType,
+				mapValue: map[string]Parameter{
+					"key": &parameter{parameterType: StringType, stringValue: "value"},
+				},
+			},
+			expectedType:   MapType,
+			expectingError: false,
+		},
+		{
+			name:   "Parameters Type",
+			config: types.Parameters{"key": "value"},
+			expectedParam: &parameter{
+				parameterType: MapType,
+				mapValue: map[string]Parameter{
+					"key": &parameter{parameterType: StringType, stringValue: "value"},
+				},
+			},
+			expectedType:   MapType,
+			expectingError: false,
+		},
+		{
+			name:           "Unsupported Type",
+			config:         struct{}{},
+			expectedParam:  nil,
+			expectedType:   NilType,
+			expectingError: true,
+		},
+		{
+			name:           "Unsupported Array Type",
+			config:         []interface{}{struct{}{}},
+			expectedParam:  nil,
+			expectedType:   NilType,
+			expectingError: true,
+		},
+		{
+			name:           "Unsupported Map Type",
+			config:         map[string]interface{}{"key": struct{}{}},
+			expectedParam:  nil,
+			expectedType:   NilType,
+			expectingError: true,
+		},
+		{
+			name:           "Unsupported Parameters Type",
+			config:         types.Parameters{"key": struct{}{}},
+			expectedParam:  nil,
+			expectedType:   NilType,
+			expectingError: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -36,6 +135,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, test.expectedType, param.Type())
+
+				// Cast the result to the expected type and compare
+				actualParam, ok := param.(*parameter)
+				if assert.True(t, ok) {
+					assert.Equal(t, test.expectedParam, actualParam)
+				}
 			}
 		})
 	}
