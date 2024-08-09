@@ -65,16 +65,21 @@ func (l *Location) start() {
 }
 
 func (l *Location) end() {
-	switch item := l.parent.(type) {
-	case *LocationIndexItem:
-		l.locType = LocationIndexType
-		l.index = item
-	case *LocationFieldItem:
-		l.locType = LocationFieldType
-		l.field = item
+	if l.parent == nil {
+		l.depth = 0
+		l.locType = LocationInvalid
+	} else {
+		switch item := l.parent.(type) {
+		case *LocationIndexItem:
+			l.locType = LocationIndexType
+			l.index = item
+		case *LocationFieldItem:
+			l.locType = LocationFieldType
+			l.field = item
+		}
+		l.parent = l.parent.Parent()
+		l.depth--
 	}
-	l.parent = l.parent.Parent()
-	l.depth--
 }
 
 func (l *Location) StartObject() {
@@ -119,8 +124,8 @@ func (l *Location) String() string {
 	} else {
 		item = l.parent
 	}
-	for pos := 0; item != nil; pos++ {
-		idents = append(idents, item.String(pos == 0))
+	for item != nil {
+		idents = append(idents, item.String(item.Parent() == nil))
 		item = item.Parent()
 	}
 

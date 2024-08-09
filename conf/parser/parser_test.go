@@ -392,7 +392,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			fieldValue: reflect.ValueOf("string"), // unsupported kind
 			want:       nil,
 			wantErr:    true,
-			errMsg:     "type of field is neither map nor slice (kind=string)",
+			errMsg:     "type of field f1 is neither map nor slice (kind=string)",
 		},
 		{
 			name:       "Error from GlobConfigs",
@@ -400,7 +400,7 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			fieldValue: reflect.ValueOf(map[string]interface{}{}),
 			want:       nil,
 			wantErr:    true,
-			errMsg:     "loading configs: forced GlobConfigs error",
+			errMsg:     "loading configs for field f1: forced GlobConfigs error",
 		},
 		{
 			name:       "Skip if data is not string",
@@ -426,7 +426,10 @@ func Test_ConfigParser_processLoadableParam(t *testing.T) {
 			p := ConfigParser{
 				fnd:    nil, // replace with necessary mock if necessary
 				loader: mockLoader,
+				loc:    CreateLocation(),
 			}
+			p.loc.StartObject()
+			p.loc.SetField("f1")
 			got, err := p.processLoadableParam(tt.data, tt.fieldValue, "/var/www/wst.yaml")
 
 			// if an error is expected
@@ -505,7 +508,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        "test/non-existent",
 			configPath:  "config/",
 			wantErr:     true,
-			expectedErr: "file path config/test/non-existent does not exist",
+			expectedErr: "file path config/test/non-existent for field unknown does not exist",
 		},
 		{
 			name:        "Data is not a string",
@@ -513,7 +516,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        123,
 			configPath:  "config/",
 			wantErr:     true,
-			expectedErr: "unexpected type int for data, expected string",
+			expectedErr: "unexpected type int for data in field unknown, expected string",
 		},
 		{
 			name:          "Empty path",
@@ -529,7 +532,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        nil,
 			configPath:  "config/",
 			wantErr:     true,
-			expectedErr: "unexpected type <nil> for data, expected string",
+			expectedErr: "unexpected type <nil> for data in field unknown, expected string",
 		},
 		{
 			name:        "Invalid configPath",
@@ -537,7 +540,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        "test/path",
 			configPath:  "invalid/config/path",
 			wantErr:     true,
-			expectedErr: "file path invalid/config/test/path does not exist",
+			expectedErr: "file path invalid/config/test/path for field unknown does not exist",
 		},
 		{
 			name:        "Field value cannot be set",
@@ -545,7 +548,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        "test/path",
 			configPath:  "/opt/config/wst.yaml",
 			wantErr:     true,
-			expectedErr: "field file is not settable",
+			expectedErr: "field unknown is not settable",
 		},
 		{
 			name:        "Invalid field value type",
@@ -553,7 +556,7 @@ func TestProcessPathParam(t *testing.T) {
 			data:        "test/path",
 			configPath:  "/opt/config/wst.yaml",
 			wantErr:     true,
-			expectedErr: "field file is not of type string",
+			expectedErr: "field unknown is not of type string",
 		},
 	}
 
@@ -620,7 +623,7 @@ type StringParamMapFieldStruct struct {
 
 func Test_ConfigParser_processStringParam(t *testing.T) {
 	// Prepare ConfigParser
-	p := ConfigParser{fnd: nil} // you may need to initialize this with suitable fields based on your implementation
+	p := ConfigParser{fnd: nil, loc: CreateLocation()}
 
 	// Testing data setup
 	dataVal := "stringValue"
@@ -673,7 +676,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       dataVal,
 			fieldValue: reflect.ValueOf(&invalidStruct.Child),
 			wantErr:    true,
-			errMsg:     "error parsing struct for string param: invalid parameter key: unknown",
+			errMsg:     "error parsing struct in field A for string param: field A invalid parameter key: unknown",
 		},
 		{
 			name:       "attempt to set an unexported field",
@@ -689,7 +692,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       "value",
 			fieldValue: reflect.ValueOf(&StringParamNonexistentFieldStruct{}),
 			wantErr:    true,
-			errMsg:     "not a valid field name: NonexistentField",
+			errMsg:     "failed to set field A : field A does not have a valid field name: NonexistentField",
 		},
 		{
 			name:      "process map param with shallow fields",
@@ -701,8 +704,8 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			fieldValue: msField,
 			changed:    true,
 			want: map[string]StringParamTestStruct{
-				"key1": StringParamTestStruct{StringField: "value1"},
-				"key2": StringParamTestStruct{StringField: "value2"},
+				"key1": {StringField: "value1"},
+				"key2": {StringField: "value2"},
 			},
 		},
 		{
@@ -715,8 +718,8 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			fieldValue: msField,
 			changed:    true,
 			want: map[string]StringParamTestStruct{
-				"key1": StringParamTestStruct{StringField: "value1"},
-				"key2": StringParamTestStruct{StringField: "value2"},
+				"key1": {StringField: "value1"},
+				"key2": {StringField: "value2"},
 			},
 		},
 		{
@@ -732,8 +735,8 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			fieldValue: msField,
 			changed:    true,
 			want: map[string]StringParamTestStruct{
-				"key1": StringParamTestStruct{StringField: "str", IntField: 2},
-				"key2": StringParamTestStruct{StringField: "value2"},
+				"key1": {StringField: "str", IntField: 2},
+				"key2": {StringField: "value2"},
 			},
 		},
 		{
@@ -753,7 +756,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       map[string]interface{}{"NonExistentField": "someValue"},
 			fieldValue: msField,
 			wantErr:    true,
-			errMsg:     "failed to set field NonExistentField: not a valid field name: NonExistentField",
+			errMsg:     "failed to set field A: field A does not have a valid field name: NonExistentField",
 		},
 		{
 			name:       "process map param with invalid struct field",
@@ -761,7 +764,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       mapDataVal,
 			fieldValue: reflect.ValueOf(mapInvalidStructVal.MapField),
 			wantErr:    true,
-			errMsg:     "error parsing struct for string param: invalid parameter key: unknown",
+			errMsg:     "field A.A error parsing struct for string param: field A.A invalid parameter key: unknown",
 		},
 		{
 			name:       "process map param with invalid data type",
@@ -776,7 +779,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       dataVal,
 			fieldValue: reflect.ValueOf(strVal),
 			wantErr:    true,
-			errMsg:     "field StringField must be a struct or interface type or a pointer to such",
+			errMsg:     "field A.A must be a struct or interface type or a pointer to such",
 		},
 		{
 			name:       "process string param with pointer to string value",
@@ -784,7 +787,7 @@ func Test_ConfigParser_processStringParam(t *testing.T) {
 			data:       dataVal,
 			fieldValue: reflect.ValueOf(&strVal),
 			wantErr:    true,
-			errMsg:     "field StringField value must be a pointer to a struct or a map",
+			errMsg:     "field A.A value must be a pointer to a struct or a map",
 		},
 	}
 
@@ -839,7 +842,7 @@ type AssignFieldParentStruct struct {
 }
 
 func Test_ConfigParser_assignField(t *testing.T) {
-	p := ConfigParser{fnd: nil} // Initialize appropriately
+	p := ConfigParser{fnd: nil, loc: CreateLocation()}
 
 	tests := []struct {
 		name          string
@@ -910,7 +913,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      []interface{}{"TestA", 1},
 			value:     &AssignFieldTestStruct{},
 			wantErr:   true,
-			errMsg:    "field C[1] is an integer and cannot be converted to string",
+			errMsg:    "field [1] is an integer and cannot be converted to string",
 		},
 		{
 			name:      "assign tuple in map field",
@@ -928,7 +931,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      map[string]interface{}{"test": "xy"},
 			value:     &AssignFieldTestStruct{},
 			wantErr:   true,
-			errMsg:    "field D could not be set due to type mismatch or non-convertible types",
+			errMsg:    "field [1].test could not be set due to type mismatch or non-convertible types",
 		},
 		{
 			name:      "assign invalid data to struct",
@@ -936,7 +939,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      "test",
 			value:     &AssignFieldParentStruct{},
 			wantErr:   true,
-			errMsg:    "unable to convert data for field Child to map[string]interface{}",
+			errMsg:    "unable to convert data for field [1].test to map[string]interface{}",
 		},
 		{
 			name:          "assign struct field with mismatched type should error",
@@ -1048,7 +1051,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      map[int]interface{}{1: "one"}, // Assuming D expects map[string]int
 			value:     &AssignFieldTestStruct{},
 			wantErr:   true,
-			errMsg:    "unable to convert data for field D",
+			errMsg:    "unable to convert data for field [1].test to map[string]interface{}",
 		},
 		{
 			name:      "assign slice field with single incompatible element",
@@ -1056,7 +1059,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      "test", // Mixed types, expecting []string
 			value:     &AssignFieldTestStruct{},
 			wantErr:   true,
-			errMsg:    "unable to convert data for field C",
+			errMsg:    "unable to convert data for field [1].test to []interface{}",
 		},
 		{
 			name:      "assign non-struct/interface/ptr type",
@@ -1064,7 +1067,7 @@ func Test_ConfigParser_assignField(t *testing.T) {
 			data:      "value",
 			value:     new(int),
 			wantErr:   true,
-			errMsg:    "field NonStructField could not be set due to type mismatch or non-convertible types",
+			errMsg:    "field [1].test could not be set due to type mismatch or non-convertible types",
 		},
 	}
 
@@ -1371,7 +1374,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 			data:      map[string]interface{}{"a": "NestedTest", "b": 1},
 			params:    map[ConfigParam]string{},
 			wantErr:   true,
-			errMsg:    "field A could not be set due to type mismatch or non-convertible types",
+			errMsg:    "field unknown could not be set due to type mismatch or non-convertible types",
 		},
 	}
 
@@ -1443,6 +1446,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 				fnd:       mockFnd,
 				loader:    mockLoader,
 				factories: mockFactories,
+				loc:       CreateLocation(),
 			}
 
 			err := p.parseField(tt.data, fieldValue, tt.fieldName, tt.params, "/opt/config/wst.yaml")
@@ -1492,12 +1496,6 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 
 	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
 	assert.NoError(t, err)
-
-	p := &ConfigParser{
-		fnd:       mockFnd,
-		loader:    mockLoader,
-		factories: mockFactories,
-	}
 
 	tests := []struct {
 		name           string
@@ -1559,6 +1557,13 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			p := &ConfigParser{
+				fnd:       mockFnd,
+				loader:    mockLoader,
+				factories: mockFactories,
+				loc:       CreateLocation(),
+			}
+
 			err := p.ParseStruct(tt.data, tt.testStruct, "/var/www/config.yaml")
 
 			if tt.errMsg != "" {

@@ -85,7 +85,11 @@ func (p *ConfigParser) pos() string {
 	if p.loc == nil {
 		return "unknown"
 	}
-	return p.loc.String()
+	pos := p.loc.String()
+	if pos == "" {
+		return "unknown"
+	}
+	return pos
 }
 
 // ParseTag parses the 'wst' struct tag into a Field
@@ -194,7 +198,7 @@ func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Val
 	// Assert data is a string
 	path, ok := data.(string)
 	if !ok {
-		return errors.Errorf("unexpected type %T for data for field %s, expected string", data, p.pos())
+		return errors.Errorf("unexpected type %T for data in field %s, expected string", data, p.pos())
 	}
 
 	fs := p.fnd.Fs()
