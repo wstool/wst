@@ -1579,23 +1579,17 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 }
 
 func Test_ConfigParser_ParseConfig(t *testing.T) {
-	mockLoader := &loaderMocks.MockLoader{}
-
-	mockFs := afero.NewMemMapFs()
-	// mock app.Foundation
-	mockFnd := &appMocks.MockFoundation{}
-	mockFnd.On("Fs").Return(mockFs)
-
 	tests := []struct {
 		name           string
 		data           map[string]interface{}
 		files          map[string]string
 		expectedConfig *types.Config
+		setupMocks     func(fnd *appMocks.MockFoundation)
 		path           string
 		errMsg         string
 	}{
 		{
-			name: "parse big compact config",
+			name: "successfully parse big compact config",
 			data: map[string]interface{}{
 				"version":     "1.0",
 				"name":        "WST Project",
@@ -1987,16 +1981,59 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 					Workspace: "",
 				},
 			},
-			path: "/var/www/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/www").Return(nil)
+				fnd.On("Chdir", "/home").Return(nil)
+			},
+			path: "/var/www/wst.yaml",
+		},
+		{
+			name: "failure on changing directory",
+			data: map[string]interface{}{
+				"version":     "1.0",
+				"name":        "WST Project",
+				"description": "A project to demonstrate JSON Schema representation in Go",
+				"spec":        map[string]interface{}{},
+			},
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/www").Return(errors.New("chdir fail"))
+			},
+			path:   "/var/www/wst.yaml",
+			errMsg: "chdir fail",
+		},
+		{
+			name: "failure on getting working directory",
+			data: map[string]interface{}{
+				"version":     "1.0",
+				"name":        "WST Project",
+				"description": "A project to demonstrate JSON Schema representation in Go",
+				"spec":        map[string]interface{}{},
+			},
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("", errors.New("getwd fail"))
+			},
+			path:   "/var/www/wst.yaml",
+			errMsg: "getwd fail",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockLoader := &loaderMocks.MockLoader{}
+
+			mockFs := afero.NewMemMapFs()
+			// mock app.Foundation
+			mockFnd := &appMocks.MockFoundation{}
+			mockFnd.On("Fs").Return(mockFs)
+
 			for fileName, content := range tt.files {
 				err := afero.WriteFile(mockFs, fileName, []byte(content), 0644)
 				assert.NoError(t, err)
 			}
+
+			tt.setupMocks(mockFnd)
 
 			p := CreateParser(mockFnd, mockLoader)
 			config := types.Config{}

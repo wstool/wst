@@ -649,6 +649,19 @@ func (p *ConfigParser) ParseStruct(
 }
 
 func (p *ConfigParser) ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error {
+	// Save the current working directory
+	originalCwd, err := p.fnd.Getwd()
+	if err != nil {
+		return err
+	}
+	// Change to the desired working directory
+	err = p.fnd.Chdir(filepath.Dir(configPath))
+	if err != nil {
+		return err
+	}
+	// Ensure to change back to the original working directory
+	defer p.fnd.Chdir(originalCwd)
+
 	p.loc.Reset()
 	return p.ParseStruct(data, config, configPath)
 }
