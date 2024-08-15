@@ -15,7 +15,6 @@
 package actions
 
 import (
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions/action"
@@ -31,6 +30,7 @@ import (
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
+	"github.com/pkg/errors"
 )
 
 type ActionMaker interface {
@@ -100,6 +100,6 @@ func (m *nativeActionMaker) MakeAction(
 	case *types.StopAction:
 		return m.stopMaker.Make(action, sl, defaultTimeout)
 	default:
-		return nil, fmt.Errorf("unsupported action type: %T", config)
+		return nil, errors.Errorf("unsupported action type: %T", config)
 	}
 }

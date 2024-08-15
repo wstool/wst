@@ -23,6 +23,7 @@ import (
 )
 
 type ActionsFactory interface {
+	ParseAction(actions interface{}, path string) (types.Action, error)
 	ParseActions(actions []interface{}, path string) ([]types.Action, error)
 }
 
@@ -206,30 +207,36 @@ func (f *NativeActionsFactory) parseActionFromMap(action map[string]interface{},
 	return nil, errors.Errorf("invalid action %s format - empty object is not valid action", f.loc.String())
 }
 
+func (f *NativeActionsFactory) ParseAction(action interface{}, path string) (types.Action, error) {
+	f.loc.StartObject()
+	var parsedAction types.Action
+	var err error
+	switch typedAction := action.(type) {
+	case string:
+		f.loc.SetField(typedAction)
+		parsedAction, err = f.parseAction(typedAction, map[string]interface{}{}, path)
+	case map[string]interface{}:
+		parsedAction, err = f.parseActionFromMap(typedAction, path)
+	default:
+		return nil, errors.Errorf("unsupported action %s type %T", f.loc.String(), action)
+	}
+	if err != nil {
+		return nil, err
+	}
+	f.loc.EndObject()
+	return parsedAction, nil
+}
+
 func (f *NativeActionsFactory) ParseActions(actions []interface{}, path string) ([]types.Action, error) {
 	var parsedActions []types.Action
 	f.loc.StartArray()
-	for i, untypedAction := range actions {
+	for i, action := range actions {
 		f.loc.SetIndex(i)
-		f.loc.StartObject()
-		switch action := untypedAction.(type) {
-		case string:
-			f.loc.SetField(action)
-			parsedAction, err := f.parseAction(action, map[string]interface{}{}, path)
-			if err != nil {
-				return nil, err
-			}
-			parsedActions = append(parsedActions, parsedAction)
-		case map[string]interface{}:
-			parsedAction, err := f.parseActionFromMap(action, path)
-			if err != nil {
-				return nil, err
-			}
-			parsedActions = append(parsedActions, parsedAction)
-		default:
-			return nil, errors.Errorf("unsupported action %s type %T", f.loc.String(), untypedAction)
+		parsedAction, err := f.ParseAction(action, path)
+		if err != nil {
+			return nil, err
 		}
-		f.loc.EndObject()
+		parsedActions = append(parsedActions, parsedAction)
 	}
 	f.loc.EndArray()
 	return parsedActions, nil

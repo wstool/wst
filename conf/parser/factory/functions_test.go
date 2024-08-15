@@ -69,6 +69,36 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 	}{
 		// ACTION
 		{
+			name:     "createAction valid data",
+			funcName: "createAction",
+			data: map[string]interface{}{
+				"start/serviceName": map[string]interface{}{"services": []map[string]interface{}{}},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"services": []map[string]interface{}{}},
+					err:  nil,
+				},
+			},
+			expectedValue: &types.StartAction{
+				Service: "serviceName",
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createAction fails on invalid type",
+			funcName: "createAction",
+			data: map[string]interface{}{
+				"wrong": map[string]interface{}{"services": []map[string]interface{}{}},
+			},
+			expectedValue: &types.StartAction{},
+			wantErr:       true,
+			errMsg:        "unknown action wrong at wrong",
+		},
+		{
 			name:          "createActions valid data empty",
 			funcName:      "createActions",
 			data:          []interface{}{},

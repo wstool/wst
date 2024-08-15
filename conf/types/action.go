@@ -97,12 +97,12 @@ type BenchAction struct {
 }
 
 type ParallelAction struct {
-	Actions []Action `wst:"actions"`
+	Actions []Action `wst:"actions,factory=createActions"`
 	Timeout int      `wst:"timeout"`
 }
 
 type NotAction struct {
-	Action  Action `wst:"action"`
+	Action  Action `wst:"action,factory=createAction"`
 	Timeout int    `wst:"timeout"`
 }
 

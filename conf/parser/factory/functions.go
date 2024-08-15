@@ -53,6 +53,8 @@ func CreateFactories(fnd app.Foundation, structParser StructParser, pathKey stri
 
 func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 	switch funcName {
+	case "createAction":
+		return f.createAction, nil
 	case "createActions":
 		return f.createActions, nil
 	case "createContainerImage":
@@ -74,7 +76,17 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 	}
 }
 
-// Define your factory functions as methods of FactoryFuncProvider struct
+func (f *FuncProvider) createAction(data interface{}, fieldValue reflect.Value, path string) error {
+	action, err := f.actionsFactory.ParseAction(data, path)
+	if err != nil {
+		return err
+	}
+
+	fieldValue.Set(reflect.ValueOf(action))
+
+	return nil
+}
+
 func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value, path string) error {
 	// Check if data is a slice
 	dataSlice, ok := data.([]interface{})
