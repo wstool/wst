@@ -32,9 +32,9 @@ type nativeMaker struct {
 	clientSetError error
 }
 
-func (m *nativeMaker) getClientSet(config *types.KubernetesEnvironment) (*kubernetes.Clientset, error) {
+func (m *nativeMaker) getClientSet(kubeconfigPath string) (*kubernetes.Clientset, error) {
 	if m.clientSet == nil && m.clientSetError == nil {
-		kubeConfig, err := clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
+		kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 		if err != nil {
 			m.clientSetError = err
 		} else {
@@ -46,36 +46,28 @@ func (m *nativeMaker) getClientSet(config *types.KubernetesEnvironment) (*kubern
 	return m.clientSet, m.clientSetError
 }
 
-func (m *nativeMaker) MakeConfigMapClient(config *types.KubernetesEnvironment) (ConfigMapClient, error) {
-	clientSet, err := m.getClientSet(config)
-	if err != nil {
-		return nil, err
+func (m *nativeMaker) makeConfigClient(config *types.KubernetesEnvironment) *configClient {
+	return &configClient{
+		kubeconfigPath: config.Kubeconfig,
+		maker:          m,
+		namespace:      config.Namespace,
 	}
-	return &configMapClient{client: clientSet.CoreV1().ConfigMaps(config.Namespace)}, nil
+}
+
+func (m *nativeMaker) MakeConfigMapClient(config *types.KubernetesEnvironment) (ConfigMapClient, error) {
+	return &configMapClient{configClient: m.makeConfigClient(config)}, nil
 }
 
 func (m *nativeMaker) MakeDeploymentClient(config *types.KubernetesEnvironment) (DeploymentClient, error) {
-	clientSet, err := m.getClientSet(config)
-	if err != nil {
-		return nil, err
-	}
-	return &deploymentClient{client: clientSet.AppsV1().Deployments(config.Namespace)}, nil
+	return &deploymentClient{configClient: m.makeConfigClient(config)}, nil
 }
 
 func (m *nativeMaker) MakePodClient(config *types.KubernetesEnvironment) (PodClient, error) {
-	clientSet, err := m.getClientSet(config)
-	if err != nil {
-		return nil, err
-	}
-	return &podClient{client: clientSet.CoreV1().Pods(config.Namespace)}, nil
+	return &podClient{configClient: m.makeConfigClient(config)}, nil
 }
 
 func (m *nativeMaker) MakeServiceClient(config *types.KubernetesEnvironment) (ServiceClient, error) {
-	clientSet, err := m.getClientSet(config)
-	if err != nil {
-		return nil, err
-	}
-	return &serviceClient{client: clientSet.CoreV1().Services(config.Namespace)}, nil
+	return &serviceClient{configClient: m.makeConfigClient(config)}, nil
 }
 
 type WatchResult interface {
@@ -105,12 +97,38 @@ type ServiceClient interface {
 	Watch(ctx context.Context, opts metav1.ListOptions) (WatchResult, error)
 }
 
+type configClient struct {
+	kubeconfigPath string
+	maker          *nativeMaker
+	namespace      string
+}
+
+func (c *configClient) getConfigSet() (*kubernetes.Clientset, error) {
+	return c.maker.getClientSet(c.kubeconfigPath)
+}
+
 type configMapClient struct {
+	*configClient
 	client clientcorev1.ConfigMapInterface
 }
 
+func (c *configMapClient) getClient() (clientcorev1.ConfigMapInterface, error) {
+	if c.client == nil {
+		clientSet, err := c.getConfigSet()
+		if err != nil {
+			return nil, err
+		}
+		c.client = clientSet.CoreV1().ConfigMaps(c.namespace)
+	}
+	return c.client, nil
+}
+
 func (c *configMapClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return c.client.Delete(ctx, name, opts)
+	client, err := c.getClient()
+	if err != nil {
+		return err
+	}
+	return client.Delete(ctx, name, opts)
 }
 
 func (c *configMapClient) Create(
@@ -118,15 +136,35 @@ func (c *configMapClient) Create(
 	configMap *corev1.ConfigMap,
 	opts metav1.CreateOptions,
 ) (*corev1.ConfigMap, error) {
-	return c.client.Create(ctx, configMap, opts)
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.Create(ctx, configMap, opts)
 }
 
 type deploymentClient struct {
+	*configClient
 	client clientappsv1.DeploymentInterface
 }
 
+func (d *deploymentClient) getClient() (clientappsv1.DeploymentInterface, error) {
+	if d.client == nil {
+		clientSet, err := d.getConfigSet()
+		if err != nil {
+			return nil, err
+		}
+		d.client = clientSet.AppsV1().Deployments(d.namespace)
+	}
+	return d.client, nil
+}
+
 func (d *deploymentClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return d.client.Delete(ctx, name, opts)
+	client, err := d.getClient()
+	if err != nil {
+		return err
+	}
+	return client.Delete(ctx, name, opts)
 }
 
 func (d *deploymentClient) Create(
@@ -134,31 +172,75 @@ func (d *deploymentClient) Create(
 	deployment *appsv1.Deployment,
 	opts metav1.CreateOptions,
 ) (*appsv1.Deployment, error) {
-	return d.client.Create(ctx, deployment, opts)
+	client, err := d.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.Create(ctx, deployment, opts)
 }
 
 func (d *deploymentClient) Watch(ctx context.Context, opts metav1.ListOptions) (WatchResult, error) {
-	return d.client.Watch(ctx, opts)
+	client, err := d.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.Watch(ctx, opts)
 }
 
 type podClient struct {
+	*configClient
 	client clientcorev1.PodInterface
 }
 
+func (p *podClient) getClient() (clientcorev1.PodInterface, error) {
+	if p.client == nil {
+		clientSet, err := p.getConfigSet()
+		if err != nil {
+			return nil, err
+		}
+		p.client = clientSet.CoreV1().Pods(p.namespace)
+	}
+	return p.client, nil
+}
+
 func (p *podClient) StreamLogs(ctx context.Context, name string, opts *corev1.PodLogOptions) (io.ReadCloser, error) {
-	return p.client.GetLogs(name, opts).Stream(ctx)
+	client, err := p.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetLogs(name, opts).Stream(ctx)
 }
 
 func (p *podClient) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error) {
-	return p.client.List(ctx, opts)
+	client, err := p.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.List(ctx, opts)
 }
 
 type serviceClient struct {
+	*configClient
 	client clientcorev1.ServiceInterface
 }
 
+func (s *serviceClient) getClient() (clientcorev1.ServiceInterface, error) {
+	if s.client == nil {
+		clientSet, err := s.getConfigSet()
+		if err != nil {
+			return nil, err
+		}
+		s.client = clientSet.CoreV1().Services(s.namespace)
+	}
+	return s.client, nil
+}
+
 func (s *serviceClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return s.client.Delete(ctx, name, opts)
+	client, err := s.getClient()
+	if err != nil {
+		return err
+	}
+	return client.Delete(ctx, name, opts)
 }
 
 func (s *serviceClient) Create(
@@ -166,9 +248,17 @@ func (s *serviceClient) Create(
 	service *corev1.Service,
 	opts metav1.CreateOptions,
 ) (*corev1.Service, error) {
-	return s.client.Create(ctx, service, opts)
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.Create(ctx, service, opts)
 }
 
 func (s *serviceClient) Watch(ctx context.Context, opts metav1.ListOptions) (WatchResult, error) {
-	return s.client.Watch(ctx, opts)
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.Watch(ctx, opts)
 }
