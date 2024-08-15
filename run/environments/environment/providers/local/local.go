@@ -70,7 +70,7 @@ func (l *localEnvironment) RootPath(workspace string) string {
 
 func (l *localEnvironment) Init(ctx context.Context) error {
 	fs := l.Fnd.Fs()
-	err := fs.MkdirAll(l.workspace, 0644)
+	err := fs.MkdirAll(l.workspace, 0755)
 	if err != nil {
 		return errors.Errorf("Creating workspace directory for local env failed: %v", err)
 	}
