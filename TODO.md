@@ -10,11 +10,14 @@ in the future.
 
 ### Run
 
-- integration tests
+- instance name should be always set otherwise service full name will be incorrect
+  - add check that it's set after making it
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - identify server circular extending and error instead of current stack panic
+- identify template include recursion (nesting limit)
 - add detailed info and debug logging
+- integration tests
 - kubernetes environment improvements
   - add health probes setup
 - docker environment improvements
@@ -24,9 +27,12 @@ in the future.
 
 ### Config
 
+- parsing - add logic to use file name for instance name if present
 - parsing - improve error messages
   - clean up and make error messages consistent
   - verify that location is correct and not missing leave
+- parsing - warn on unknown fields in the config for struct mapping
+  - for example setting environment ports `from` and `to` fields should notify that only `start` and `end` supported
 - parsing - config version should allow number - not just string so 1.0 can be used instead of "1.0"
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
