@@ -44,6 +44,7 @@ const (
 )
 
 const pathKey = "wst/path"
+const pathVirtual = "virtual"
 
 type Parser interface {
 	ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error
@@ -192,7 +193,12 @@ func (p *ConfigParser) processKeysParam(keys string, data interface{}, fieldName
 	return errors.Errorf("keys %v are not valid for field %s", keys, p.Pos())
 }
 
-func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Value, fieldName string, configPath string) error {
+func (p *ConfigParser) processPathParam(
+	data interface{},
+	fieldValue reflect.Value,
+	configPath string,
+	configPathType string,
+) error {
 	// Assert data is a string
 	path, ok := data.(string)
 	if !ok {
@@ -206,12 +212,14 @@ func (p *ConfigParser) processPathParam(data interface{}, fieldValue reflect.Val
 		path = filepath.Join(filepath.Dir(configPath), path)
 	}
 
-	// Check if the constructed path exists using Afero's fs.Exists
-	exists, err := afero.Exists(fs, path)
-	if err != nil {
-		return err
-	} else if !exists {
-		return errors.Errorf("file path %s for field %s does not exist", path, p.Pos())
+	if configPathType != pathVirtual {
+		// Check if the constructed path exists using Afero's fs.Exists
+		exists, err := afero.Exists(fs, path)
+		if err != nil {
+			return err
+		} else if !exists {
+			return errors.Errorf("file path %s for field %s does not exist", path, p.Pos())
+		}
 	}
 
 	// Check that fieldValue is settable (it is addressable and was not obtained by
@@ -583,8 +591,8 @@ func (p *ConfigParser) parseField(
 		}
 	}
 
-	if _, hasPath := params[ConfigParamPath]; hasPath {
-		if err = p.processPathParam(data, fieldValue, fieldName, path); err != nil {
+	if pathType, hasPath := params[ConfigParamPath]; hasPath {
+		if err = p.processPathParam(data, fieldValue, path, pathType); err != nil {
 			return err
 		}
 	} else if err = p.assignField(data, fieldValue, fieldName, path); err != nil {

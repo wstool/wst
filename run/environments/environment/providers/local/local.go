@@ -72,7 +72,7 @@ func (l *localEnvironment) Init(ctx context.Context) error {
 	fs := l.Fnd.Fs()
 	err := fs.MkdirAll(l.workspace, 0644)
 	if err != nil {
-		return err
+		return errors.Errorf("Creating workspace directory for local env failed: %v", err)
 	}
 	l.initialized = true
 

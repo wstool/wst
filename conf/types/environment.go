@@ -41,5 +41,5 @@ type KubernetesEnvironment struct {
 	Ports      EnvironmentPorts  `wst:"ports"`
 	Registry   ContainerRegistry `wst:"registry"`
 	Namespace  string            `wst:"namespace"`
-	Kubeconfig string            `wst:"kubeconfig,path"`
+	Kubeconfig string            `wst:"kubeconfig,path=virtual"`
 }

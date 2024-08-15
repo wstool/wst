@@ -464,17 +464,16 @@ func TestProcessPathParam(t *testing.T) {
 	mockFnd := &appMocks.MockFoundation{}
 	mockFnd.On("Fs").Return(mockFs)
 
-	fieldName := "file"
-
 	tests := []struct {
-		name          string
-		fieldValue    reflect.Value
-		data          interface{}
-		configPath    string
-		fsExistsErr   bool
-		wantErr       bool
-		expectedErr   string
-		expectedValue string
+		name           string
+		fieldValue     reflect.Value
+		data           interface{}
+		configPath     string
+		configPathType string
+		fsExistsErr    bool
+		wantErr        bool
+		expectedErr    string
+		expectedValue  string
 	}{
 		{
 			name:          "Valid relative path",
@@ -491,6 +490,15 @@ func TestProcessPathParam(t *testing.T) {
 			configPath:    "/opt/config/wst.yaml",
 			wantErr:       false,
 			expectedValue: "/test/path",
+		},
+		{
+			name:           "Valid virtual path",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "test/path",
+			configPath:     "/home/wst.yaml",
+			configPathType: "virtual",
+			wantErr:        false,
+			expectedValue:  "/home/test/path",
 		},
 		{
 			name:        "Existence path check error",
@@ -569,7 +577,7 @@ func TestProcessPathParam(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockFs.ShouldError = tt.fsExistsErr
 			parser := ConfigParser{fnd: mockFnd, loc: location.CreateLocation()}
-			err := parser.processPathParam(tt.data, tt.fieldValue, fieldName, tt.configPath)
+			err := parser.processPathParam(tt.data, tt.fieldValue, tt.configPath, tt.configPathType)
 
 			if tt.wantErr {
 				require.Error(t, err)

@@ -19,5 +19,5 @@ type Spec struct {
 	Instances    []Instance             `wst:"instances,loadable"`
 	Sandboxes    map[string]Sandbox     `wst:"sandboxes,loadable,factory=createSandboxes"`
 	Servers      []Server               `wst:"servers,loadable"`
-	Workspace    string                 `wst:"workspace"`
+	Workspace    string                 `wst:"workspace,path=virtual"`
 }
