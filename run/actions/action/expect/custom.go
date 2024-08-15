@@ -2,13 +2,13 @@ package expect
 
 import (
 	"context"
-	"fmt"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -23,12 +23,13 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 	}
 
 	server := commonExpectation.service.Server()
-	expectation, ok := server.ExpectAction(config.Name)
+	customName := config.Custom.Name
+	expectation, ok := server.ExpectAction(customName)
 	if !ok {
-		return nil, fmt.Errorf("expectation action %s not found", config.Name)
+		return nil, errors.Errorf("expectation action %s not found", customName)
 	}
 
-	configParameters, err := m.parametersMaker.Make(config.Parameters)
+	configParameters, err := m.parametersMaker.Make(config.Custom.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -69,5 +70,5 @@ func (a *customAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 		}
 		return ra.Execute(ctx, runData)
 	}
-	return false, fmt.Errorf("no expectation set")
+	return false, errors.Errorf("no expectation set")
 }

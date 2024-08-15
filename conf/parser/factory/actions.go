@@ -81,9 +81,11 @@ func (f *NativeActionsFactory) parseExpectationAction(
 ) (types.Action, error) {
 	if meta.customName != "" {
 		return &types.CustomExpectationAction{
-			Service:    meta.serviceName,
-			Name:       meta.customName,
-			Parameters: data,
+			Service: meta.serviceName,
+			Custom: types.CustomExpectation{
+				Name:       meta.customName,
+				Parameters: data,
+			},
 		}, nil
 	}
 	var structure interface{}

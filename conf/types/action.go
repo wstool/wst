@@ -14,11 +14,15 @@
 
 package types
 
-type CustomExpectationAction struct {
-	Service    string     `wst:"service"`
-	Timeout    int        `wst:"timeout"`
+type CustomExpectation struct {
 	Name       string     `wst:"name"`
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
+}
+
+type CustomExpectationAction struct {
+	Service string            `wst:"service"`
+	Timeout int               `wst:"timeout"`
+	Custom  CustomExpectation `wst:"custom"`
 }
 
 type OutputExpectation struct {

@@ -1763,6 +1763,17 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								map[string]interface{}{
 									"expect": map[string]interface{}{
 										"service": "web_service",
+										"custom": map[string]interface{}{
+											"name": "status",
+											"parameters": map[string]interface{}{
+												"body": "3",
+											},
+										},
+									},
+								},
+								map[string]interface{}{
+									"expect": map[string]interface{}{
+										"service": "web_service",
 										"response": map[string]interface{}{
 											"body": map[string]interface{}{
 												"content": "OK",
@@ -1863,9 +1874,21 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								&types.CustomExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
-									Name:    "status",
-									Parameters: types.Parameters{
-										"body": "2",
+									Custom: types.CustomExpectation{
+										Name: "status",
+										Parameters: types.Parameters{
+											"body": "2",
+										},
+									},
+								},
+								&types.CustomExpectationAction{
+									Service: "web_service",
+									Timeout: 0,
+									Custom: types.CustomExpectation{
+										Name: "status",
+										Parameters: types.Parameters{
+											"body": "3",
+										},
 									},
 								},
 								&types.ResponseExpectationAction{
