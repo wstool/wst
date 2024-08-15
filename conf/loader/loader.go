@@ -120,8 +120,22 @@ func (l ConfigLoader) GlobConfigs(pattern string, wd string) ([]LoadedConfig, er
 	if err != nil {
 		return nil, err
 	}
+	if len(paths) == 0 {
+		return []LoadedConfig{}, nil
+	}
+
+	// Convert to absolute paths
+	absolutePaths := make([]string, len(paths))
+	for i, path := range paths {
+		if filepath.IsAbs(path) {
+			absolutePaths[i] = path
+		} else {
+			absolutePaths[i] = filepath.Join(wd, path)
+		}
+	}
+
 	// Load configs
-	return l.LoadConfigs(paths)
+	return l.LoadConfigs(absolutePaths)
 }
 
 func CreateLoader(fnd app.Foundation) Loader {

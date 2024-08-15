@@ -179,6 +179,14 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 	assert.NoError(t, err)
 	err = afero.WriteFile(mockFs, "/dir/test2.json", []byte(`{"key": "value2"}`), 0644)
 	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "dir/test.json", []byte(`{"key": "value"}`), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "dir/test2.json", []byte(`{"key": "value2"}`), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/var/wst/dir/test.json", []byte(`{"key": "value"}`), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/var/wst/dir/test2.json", []byte(`{"key": "value2"}`), 0644)
+	assert.NoError(t, err)
 
 	tests := []struct {
 		name             string
@@ -191,7 +199,7 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 		expectedErrorMsg string
 	}{
 		{
-			name:    "success on return of paths",
+			name:    "success on return of absolute paths",
 			pattern: "/dir/*.json",
 			wd:      "/var/wst",
 			setupMocks: func(fnd *appMocks.MockFoundation) {
@@ -206,6 +214,26 @@ func TestConfigLoader_GlobConfigs(t *testing.T) {
 				},
 				LoadedConfigData{
 					path: "/dir/test2.json",
+					data: map[string]interface{}{"key": "value2"},
+				},
+			},
+		},
+		{
+			name:    "success on return of relative paths",
+			pattern: "dir/*.json",
+			wd:      "/var/wst",
+			setupMocks: func(fnd *appMocks.MockFoundation) {
+				fnd.On("Getwd").Return("/home", nil)
+				fnd.On("Chdir", "/var/wst").Return(nil)
+				fnd.On("Chdir", "/home").Return(nil)
+			},
+			want: []LoadedConfig{
+				LoadedConfigData{
+					path: "/var/wst/dir/test.json",
+					data: map[string]interface{}{"key": "value"},
+				},
+				LoadedConfigData{
+					path: "/var/wst/dir/test2.json",
 					data: map[string]interface{}{"key": "value2"},
 				},
 			},
