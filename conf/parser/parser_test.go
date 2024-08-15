@@ -1456,6 +1456,7 @@ func Test_ConfigParser_parseField(t *testing.T) {
 					assert.ErrorContains(err, tt.errMsg)
 				}
 			} else {
+				assert.NoError(err)
 				assert.Equal(tt.expectedFieldValue, commonFieldValue)
 			}
 		})

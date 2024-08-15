@@ -416,13 +416,15 @@ func (p *ConfigParser) assignField(data interface{}, fieldValue reflect.Value, f
 		}
 		p.loc.StartObject()
 		for key, val := range dataMap {
-			p.loc.SetField(key)
-			newVal := reflect.New(fieldValue.Type().Elem())
-			err := p.assignField(val, newVal.Elem(), fieldName, path)
-			if err != nil {
-				return err
+			if key != pathKey {
+				p.loc.SetField(key)
+				newVal := reflect.New(fieldValue.Type().Elem())
+				err := p.assignField(val, newVal.Elem(), fieldName, path)
+				if err != nil {
+					return err
+				}
+				fieldValue.SetMapIndex(reflect.ValueOf(key), newVal.Elem())
 			}
-			fieldValue.SetMapIndex(reflect.ValueOf(key), newVal.Elem())
 		}
 		p.loc.EndObject()
 	case reflect.Slice:
