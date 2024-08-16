@@ -1806,9 +1806,6 @@ func Test_nativeService_Start(t *testing.T) {
 				tmpl *templateMocks.MockTemplate,
 			) (*environment.ServiceSettings, *taskMocks.MockTask) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
-				memMapFs := afero.NewMemMapFs()
-				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
-				fnd.On("Fs").Return(memMapFs)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				sv.On("Configs").Return(configs.Configs{
@@ -1846,6 +1843,8 @@ func Test_nativeService_Start(t *testing.T) {
 				sv.On("Configs").Return(configs.Configs{
 					"php_ini": phpIniConfig,
 				})
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 
 				return nil, nil
 			},
@@ -1873,6 +1872,8 @@ func Test_nativeService_Start(t *testing.T) {
 				sv.On("Configs").Return(configs.Configs{
 					"php_ini": phpIniConfig,
 				})
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 
 				return nil, nil
 			},

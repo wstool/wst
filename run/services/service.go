@@ -325,37 +325,33 @@ func (s *nativeService) renderingPaths(path string, dirType dir.DirType) (string
 	return filepath.Join(s.workspace, basePath), filepath.Join(environmentRootPath, basePath), nil
 }
 
-func (s *nativeService) renderConfig(config configs.Config) (string, string, error) {
+func (s *nativeService) renderConfig(config configs.Config, wsPath string) error {
 	file, err := s.fnd.Fs().Open(config.FilePath())
 	if err != nil {
-		return "", "", err
+		return err
 	}
 	defer file.Close()
 
 	configContent, err := io.ReadAll(file)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
-	workspaceConfigPath, environmentConfigPath, err := s.renderingPaths(config.FilePath(), dir.ConfDirType)
+	err = s.template.RenderToFile(string(configContent), config.Parameters(), wsPath, 0644)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
-	err = s.template.RenderToFile(string(configContent), config.Parameters(), workspaceConfigPath, 0644)
-	if err != nil {
-		return "", "", err
-	}
-
-	return workspaceConfigPath, environmentConfigPath, nil
+	return nil
 }
 
 func (s *nativeService) renderConfigs() error {
 	cfgs := s.server.Configs()
 	envConfigPaths := make(map[string]string, len(cfgs))
 	wsConfigPaths := make(map[string]string, len(cfgs))
+	// fist get all config paths
 	for cfgName, cfg := range cfgs {
-		wsPath, envPath, err := s.renderConfig(cfg)
+		wsPath, envPath, err := s.renderingPaths(cfg.FilePath(), dir.ConfDirType)
 		if err != nil {
 			return err
 		}
@@ -364,6 +360,13 @@ func (s *nativeService) renderConfigs() error {
 	}
 	s.environmentConfigPaths = envConfigPaths
 	s.workspaceConfigPaths = wsConfigPaths
+	// and then render
+	for cfgName, cfg := range cfgs {
+		err := s.renderConfig(cfg, wsConfigPaths[cfgName])
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
