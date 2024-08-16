@@ -25,7 +25,7 @@ func TestSyncMaker_MakeBackgroundContext(t *testing.T) {
 	assert.NotNil(t, ctx, "MakeBackgroundContext should return a non-nil context")
 }
 
-func TestSyncMaker_MakeContextWithTimeout(t *testing.T) {
+func TestSyncMaker_MakeContextWithTimeout_limited(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	maker := CreateMaker(fndMock)
 	baseCtx := context.Background()
@@ -45,5 +45,22 @@ func TestSyncMaker_MakeContextWithTimeout(t *testing.T) {
 		assert.Fail(t, "Context should have been cancelled by timeout")
 	case <-ctx.Done():
 		assert.Equal(t, context.DeadlineExceeded, ctx.Err(), "Context should be cancelled due to deadline exceeded")
+	}
+}
+
+func TestSyncMaker_MakeContextWithTimeout_unlimited(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	maker := CreateMaker(fndMock)
+	baseCtx := context.Background()
+	timeout := time.Millisecond * 0
+
+	ctx, cancel := maker.MakeContextWithTimeout(baseCtx, timeout)
+	defer cancel()
+
+	select {
+	case <-time.After(10 * time.Millisecond):
+		assert.NoError(t, ctx.Err(), "Context should not have any error")
+	case <-ctx.Done():
+		assert.Fail(t, "Context should not have been cancelled")
 	}
 }
