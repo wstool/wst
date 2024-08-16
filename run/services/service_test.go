@@ -287,10 +287,16 @@ func Test_nativeMaker_Make(t *testing.T) {
 				fpmDebSrv.On("Config", "php.ini").Return(fpmPhpIniConfig, true)
 				fpmDebSrv.On("Config", "fpm.conf").Return(fpmConfConfig, true)
 				fpmDebSrv.On("Templates").Return(fpmTemplates)
+				fpmDebSrv.On("Parameters").Return(parameters.Parameters{
+					"fpm_binary": createParamMock(t, "php-fpm"),
+				})
 				nginxDebSrv := serversMocks.NewMockServer(t)
 				nginxDebSrv.On("Sandbox", providers.DockerType).Return(sb, true)
 				nginxDebSrv.On("Config", "nginx.conf").Return(nginxConfConfig, true)
 				nginxDebSrv.On("Templates").Return(nginxTemplates)
+				nginxDebSrv.On("Parameters").Return(parameters.Parameters{
+					"nginx_binary": createParamMock(t, "nginx"),
+				})
 				srvs := servers.Servers{
 					"fpm": {
 						"debian": fpmDebSrv,
@@ -321,6 +327,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 								"memory_limit": createParamMock(t, "1G"),
 								"tag":          createParamMock(t, "prod"),
 								"type":         createParamMock(t, "php"),
+								"fpm_binary":   createParamMock(t, "php-fpm"),
 							},
 							config: fpmPhpIniConfig,
 						},
@@ -329,6 +336,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 								"max_children": createParamMock(t, "10"),
 								"tag":          createParamMock(t, "prod"),
 								"type":         createParamMock(t, "php"),
+								"fpm_binary":   createParamMock(t, "php-fpm"),
 							},
 							config: fpmConfConfig,
 						},
@@ -357,6 +365,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 								"worker_connections": createParamMock(t, "1024"),
 								"tag":                createParamMock(t, "prod"),
 								"type":               createParamMock(t, "ws"),
+								"nginx_binary":       createParamMock(t, "nginx"),
 							},
 							config: nginxConfConfig,
 						},
@@ -428,12 +437,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 					providers.KubernetesType: kubeEnv,
 				}
 				serverParams := parameters.Parameters{
-					"p1": parameterMocks.NewMockParameter(t),
-					"p2": parameterMocks.NewMockParameter(t),
+					"p1": createParamMock(t, "p1"),
+					"p2": createParamMock(t, "p2"),
 				}
 				configParams := parameters.Parameters{
-					"p0": parameterMocks.NewMockParameter(t),
-					"p1": parameterMocks.NewMockParameter(t),
+					"p0": createParamMock(t, "p0"),
+					"p1": createParamMock(t, "p1"),
 				}
 				pm.On("Make", types.Parameters{
 					"p1": 1,
@@ -453,6 +462,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
 				debSrv.On("Config", "c").Return(cfg, true)
 				debSrv.On("Templates").Return(tmpls)
+				debSrv.On("Parameters").Return(parameters.Parameters{
+					"p1": createParamMock(t, "p1s"),
+					"ps": createParamMock(t, "ps"),
+				})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,
@@ -479,9 +492,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 					configs: map[string]nativeServiceConfig{
 						"c": {
 							parameters: parameters.Parameters{
-								"p0": parameterMocks.NewMockParameter(t),
-								"p1": parameterMocks.NewMockParameter(t),
-								"p2": parameterMocks.NewMockParameter(t),
+								"p0": createParamMock(t, "p0"),
+								"p1": createParamMock(t, "p1"),
+								"p2": createParamMock(t, "p2"),
+								"ps": createParamMock(t, "ps"),
 							},
 							config: cfg,
 						},
@@ -566,6 +580,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				debSrv := serversMocks.NewMockServer(t)
 				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
 				debSrv.On("Config", "c").Return(cfg, true)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,
@@ -639,6 +654,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				debSrv := serversMocks.NewMockServer(t)
 				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
 				debSrv.On("Config", "c").Return(nil, false)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,
@@ -708,6 +724,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				sb.On("Available").Return(true)
 				debSrv := serversMocks.NewMockServer(t)
 				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,
@@ -779,6 +796,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				sb.On("Available").Return(false)
 				debSrv := serversMocks.NewMockServer(t)
 				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,
@@ -848,6 +866,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				}).Return(serverParams, nil)
 				debSrv := serversMocks.NewMockServer(t)
 				debSrv.On("Sandbox", providers.LocalType).Return(nil, false)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
 				srvs := servers.Servers{
 					"php": {
 						"debian": debSrv,

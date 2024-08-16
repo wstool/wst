@@ -168,6 +168,7 @@ func (m *nativeMaker) Make(
 		if err != nil {
 			return nil, err
 		}
+		serverParameters.Inherit(server.Parameters())
 
 		sandboxName := serviceConfig.Server.Sandbox
 		providerType := providers.Type(sandboxName)
