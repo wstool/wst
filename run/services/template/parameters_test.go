@@ -3,7 +3,6 @@ package template
 import (
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
-	templateMocks "github.com/bukka/wst/mocks/generated/run/services/template"
 	serviceMocks "github.com/bukka/wst/mocks/generated/run/services/template/service"
 	"github.com/bukka/wst/run/parameters/parameter"
 	"github.com/stretchr/testify/assert"
@@ -161,7 +160,6 @@ func TestParameter_ToString(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupParam     func(*parameterMocks.MockParameter)
-		setupTemplate  func(*templateMocks.MockTemplate)
 		emptyParam     bool
 		expectError    bool
 		expected       string
@@ -188,14 +186,12 @@ func TestParameter_ToString(t *testing.T) {
 			setupParam: func(mp *parameterMocks.MockParameter) {
 				mp.On("StringValue").Return("recursive")
 			},
-			setupTemplate:  func(mt *templateMocks.MockTemplate) {},
 			expectError:    true,
 			expectedErrMsg: "recursive rendering of parameter",
 		},
 		{
 			name:           "Parameter not set",
 			setupParam:     func(mp *parameterMocks.MockParameter) {},
-			setupTemplate:  func(mt *templateMocks.MockTemplate) {},
 			emptyParam:     true,
 			expectError:    true,
 			expectedErrMsg: "trying to render not set parameter",
