@@ -75,7 +75,7 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	}
 	configs := t.service.EnvironmentConfigPaths()
 	if configs == nil {
-		return errors.Errorf("configs are not set")
+		return errors.Errorf("service configs are not set")
 	}
 
 	data := &Data{
@@ -99,19 +99,20 @@ func (t *nativeTemplate) RenderToFile(
 ) error {
 	fs := t.fnd.Fs()
 
-	err := fs.MkdirAll(filepath.Dir(filePath), 0755)
+	dirPath := filepath.Dir(filePath)
+	err := fs.MkdirAll(dirPath, 0755)
 	if err != nil {
-		return err
+		return errors.Errorf("creating directory %s failed: %v", dirPath, err)
 	}
 
 	file, err := fs.OpenFile(filePath, os.O_RDWR|os.O_CREATE, perm)
 	if err != nil {
-		return err
+		return errors.Errorf("creating / opening file %s failed: %v", filePath, err)
 	}
 	defer file.Close()
 
 	if err = t.RenderToWriter(content, params, file); err != nil {
-		return err
+		return errors.Errorf("rendering file %s failed: %v", filePath, err)
 	}
 
 	return nil
