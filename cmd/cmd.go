@@ -63,6 +63,9 @@ func Run() {
 			if err = run.CreateRunner(fnd).Execute(options); err != nil {
 				runFailed = true
 				logger.Error("Unable to execute run operation: ", zap.Error(err))
+				if debug {
+					fmt.Printf("\n\n%+v\n", err)
+				}
 			}
 			return err
 		},
