@@ -17,6 +17,7 @@ package services
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments"
@@ -40,6 +41,7 @@ import (
 )
 
 type Service interface {
+	Address() string
 	PublicUrl(path string) (string, error)
 	PrivateUrl() (string, error)
 	Pid() (int, error)
@@ -490,6 +492,10 @@ func (s *nativeService) Name() string {
 
 func (s *nativeService) FullName() string {
 	return s.fullName
+}
+
+func (s *nativeService) Address() string {
+	return fmt.Sprintf("0.0.0.0:%d", s.Port())
 }
 
 func (s *nativeService) PublicUrl(path string) (string, error) {
