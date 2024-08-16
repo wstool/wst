@@ -64,7 +64,7 @@ func Run() {
 				runFailed = true
 				logger.Error("Unable to execute run operation: ", zap.Error(err))
 				if debug {
-					fmt.Printf("\n\n%+v\n", err)
+					fmt.Fprintf(os.Stderr, "\nERROR: %+v\n", err)
 				}
 			}
 			return err
