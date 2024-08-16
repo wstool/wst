@@ -121,7 +121,7 @@ func (t *nativeTemplate) RenderToFile(
 func (t *nativeTemplate) RenderToString(content string, params parameters.Parameters) (string, error) {
 	var buf bytes.Buffer
 	if err := t.RenderToWriter(content, params, &buf); err != nil {
-		return "", err
+		return "", errors.Errorf("rendering template string fialed: %v", err)
 	}
 
 	return buf.String(), nil

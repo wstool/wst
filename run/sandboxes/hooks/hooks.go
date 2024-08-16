@@ -16,13 +16,12 @@ package hooks
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/task"
 	"github.com/bukka/wst/run/services/template"
+	"github.com/pkg/errors"
 	"os"
 	"reflect"
 	"syscall"
@@ -69,7 +68,7 @@ func (m *nativeMaker) MakeHooks(config map[string]types.SandboxHook) (Hooks, err
 		case types.ReloadSandboxHookType:
 			hookType = ReloadHookType
 		default:
-			return nil, fmt.Errorf("invalid hook type %s", configHookTypeStr)
+			return nil, errors.Errorf("invalid hook type %s", configHookTypeStr)
 		}
 		hook, err := m.MakeHook(hookConfig, hookType)
 		if err != nil {
@@ -142,7 +141,7 @@ func (m *nativeMaker) MakeHook(config types.SandboxHook, hookType HookType) (Hoo
 			resultHook = &HookSignal{BaseHook: *baseHook, Signal: signal}
 		}
 	default:
-		return nil, fmt.Errorf("unsupported hook type %t", config)
+		return nil, errors.Errorf("unsupported hook type %t", config)
 	}
 
 	return resultHook, nil
@@ -202,13 +201,13 @@ type HookArgsCommand struct {
 func (h *HookArgsCommand) newCommand(ss *environment.ServiceSettings, tmpl template.Template) (*environment.Command, error) {
 	executable, err := tmpl.RenderToString(h.Executable, ss.ServerParameters)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("rendering executable %s failed: %v", h.Executable, err)
 	}
 	args := make([]string, len(h.Args))
 	for i, arg := range h.Args {
 		args[i], err = tmpl.RenderToString(arg, ss.ServerParameters)
 		if err != nil {
-			return nil, err
+			return nil, errors.Errorf("rendering executable %s argument %s failed: %v", executable, arg, err)
 		}
 	}
 
@@ -289,7 +288,7 @@ func (h *HookSignal) Execute(
 	st task.Task,
 ) (task.Task, error) {
 	if h.Type == StartHookType {
-		return nil, fmt.Errorf("signal hook cannot be executed on start")
+		return nil, errors.Errorf("signal hook cannot be executed on start")
 	}
 	if st == nil || reflect.ValueOf(st).IsNil() {
 		return nil, errors.New("task does not exist for signal hook to execute")
