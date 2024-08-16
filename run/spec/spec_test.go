@@ -87,6 +87,25 @@ func Test_nativeMaker_Make(t *testing.T) {
 			expectedErrorMsg: "instance fail",
 		},
 		{
+			name: "failed spec creation on instance with empty name",
+			config: &types.Spec{
+				Instances:    []types.Instance{{Name: ""}, {Name: "i2"}},
+				Environments: envsConfig,
+				Workspace:    "/workspace",
+			},
+			setupMocks: func(cfg *types.Spec, sm *serversMocks.MockMaker, im *instancesMocks.MockInstanceMaker) []instances.Instance {
+				srvs := servers.Servers{
+					"php": {
+						"base": serversMocks.NewMockServer(t),
+					},
+				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				return nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "instance 0 name is empty",
+		},
+		{
 			name: "failed spec creation on servers make fail",
 			config: &types.Spec{
 				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},

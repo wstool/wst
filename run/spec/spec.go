@@ -21,6 +21,7 @@ import (
 	"github.com/bukka/wst/run/instances"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -56,7 +57,10 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 
 	var insts []instances.Instance
 	var inst instances.Instance
-	for _, configInst := range config.Instances {
+	for i, configInst := range config.Instances {
+		if configInst.Name == "" {
+			return nil, errors.Errorf("instance %d name is empty", i)
+		}
 		inst, err = m.instanceMaker.Make(configInst, config.Environments, serversMap, config.Workspace)
 		if err != nil {
 			return nil, err
