@@ -10,8 +10,8 @@ in the future.
 
 ### Run
 
-- instance name should be always set otherwise service full name will be incorrect
-  - add check that it's set after making it
+- make Service Address hostname configurable so it's not always 0.0.0.0
+  - consider support for UDS
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - identify server circular extending and error instead of current stack panic
