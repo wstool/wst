@@ -333,7 +333,7 @@ func Test_nativeTemplate_RenderToFile(t *testing.T) {
 
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/var/www", fs.FileMode(0755)).Return(nil)
-				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR, fs.FileMode(0644)).Return(fileMock, nil)
+				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR|os.O_CREATE, fs.FileMode(0644)).Return(fileMock, nil)
 
 				fm.On("Fs").Return(fsMock)
 
@@ -361,30 +361,7 @@ func Test_nativeTemplate_RenderToFile(t *testing.T) {
 
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/var/www", fs.FileMode(0755)).Return(nil)
-				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR, fs.FileMode(0644)).Return(fileMock, nil)
-
-				fm.On("Fs").Return(fsMock)
-				return nil, nil
-			},
-			expectErr: true,
-			errMsg:    "unclosed action",
-		},
-		{
-			name:        "Parsing error",
-			templateStr: "{{ .Wrong",
-			filePath:    "/var/www/t.txt",
-			perm:        0644,
-			setupFunc: func(
-				fm *appMocks.MockFoundation,
-				sm *serviceMocks.MockTemplateService,
-				st templates.Templates,
-			) (parameters.Parameters, Services) {
-				fileMock := appMocks.NewMockFile(t)
-				fileMock.On("Close").Return(nil)
-
-				fsMock := appMocks.NewMockFs(t)
-				fsMock.On("MkdirAll", "/var/www", fs.FileMode(0755)).Return(nil)
-				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR, fs.FileMode(0644)).Return(fileMock, nil)
+				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR|os.O_CREATE, fs.FileMode(0644)).Return(fileMock, nil)
 
 				fm.On("Fs").Return(fsMock)
 				return nil, nil
@@ -404,7 +381,7 @@ func Test_nativeTemplate_RenderToFile(t *testing.T) {
 			) (parameters.Parameters, Services) {
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/var/www", fs.FileMode(0755)).Return(nil)
-				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR, fs.FileMode(0644)).Return(
+				fsMock.On("OpenFile", "/var/www/t.txt", os.O_RDWR|os.O_CREATE, fs.FileMode(0644)).Return(
 					nil,
 					errors.New("open fail"),
 				)

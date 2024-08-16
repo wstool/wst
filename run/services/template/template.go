@@ -104,7 +104,7 @@ func (t *nativeTemplate) RenderToFile(
 		return err
 	}
 
-	file, err := fs.OpenFile(filePath, os.O_RDWR, perm)
+	file, err := fs.OpenFile(filePath, os.O_RDWR|os.O_CREATE, perm)
 	if err != nil {
 		return err
 	}
