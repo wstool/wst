@@ -40,11 +40,11 @@ func (c ExecCommand) IsRunning() bool {
 }
 
 func (c ExecCommand) Start() error {
-	return c.Start()
+	return c.cmd.Start()
 }
 
 func (c ExecCommand) Run() error {
-	return c.Run()
+	return c.cmd.Run()
 }
 
 func (c ExecCommand) ProcessPid() int {
