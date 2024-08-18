@@ -276,10 +276,13 @@ func Test_nativeMaker_Make(t *testing.T) {
 				fpmPhpIniConfig := createConfigMock(t, "fpm-php-ini")
 				fpmPhpIniConfig.On("Parameters").Return(parameters.Parameters{})
 				fpmConfConfig := createConfigMock(t, "fpm-conf")
-				fpmConfConfig.On("Parameters").Return(parameters.Parameters{})
+				fpmConfConfig.On("Parameters").Return(parameters.Parameters{
+					"pm": createParamMock(t, "static"),
+				})
 				nginxConfConfig := createConfigMock(t, "nginx-conf")
 				nginxConfConfig.On("Parameters").Return(parameters.Parameters{
-					"error_log_level": createParamMock(t, "debug"),
+					"error_log_level":    createParamMock(t, "debug"),
+					"worker_connections": createParamMock(t, "100"),
 				})
 				fpmTemplates := templates.Templates{
 					"fpm_conf": templatesMocks.NewMockTemplate(t),
@@ -339,6 +342,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 						"fpm.conf": {
 							parameters: parameters.Parameters{
 								"max_children": createParamMock(t, "10"),
+								"pm":           createParamMock(t, "static"),
 								"tag":          createParamMock(t, "prod"),
 								"type":         createParamMock(t, "php"),
 								"fpm_binary":   createParamMock(t, "php-fpm"),
@@ -368,6 +372,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 						"nginx.conf": {
 							parameters: parameters.Parameters{
 								"worker_connections": createParamMock(t, "1024"),
+								"error_log_level":    createParamMock(t, "debug"),
 								"tag":                createParamMock(t, "prod"),
 								"type":               createParamMock(t, "ws"),
 								"nginx_binary":       createParamMock(t, "nginx"),
@@ -460,6 +465,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 				sb := sandboxMocks.NewMockSandbox(t)
 				sb.On("Available").Return(true)
 				cfg := configsMocks.NewMockConfig(t)
+				cfg.On("Parameters").Return(parameters.Parameters{
+					"cp": createParamMock(t, "cp"),
+				})
 				tmpls := templates.Templates{
 					"t": templatesMocks.NewMockTemplate(t),
 				}
@@ -497,6 +505,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					configs: map[string]nativeServiceConfig{
 						"c": {
 							parameters: parameters.Parameters{
+								"cp": createParamMock(t, "cp"),
 								"p0": createParamMock(t, "p0"),
 								"p1": createParamMock(t, "p1"),
 								"p2": createParamMock(t, "p2"),
@@ -1483,17 +1492,21 @@ func Test_nativeService_Start(t *testing.T) {
 				fpmConfConfigParams := parameters.Parameters{
 					"max_children": parameterMocks.NewMockParameter(t),
 				}
-				fpmConfConfig.On("Parameters").Return(fpmConfConfigParams)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
 					"memory_limit": parameterMocks.NewMockParameter(t),
 				}
-				phpIniConfig.On("Parameters").Return(phpIniConfigParams)
-				sv.On("Configs").Return(configs.Configs{
-					"fpm_conf": fpmConfConfig,
-					"php_ini":  phpIniConfig,
-				})
+				svc.configs = map[string]nativeServiceConfig{
+					"fpm_conf": {
+						parameters: fpmConfConfigParams,
+						config:     fpmConfConfig,
+					},
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
@@ -1581,17 +1594,21 @@ func Test_nativeService_Start(t *testing.T) {
 				fpmConfConfigParams := parameters.Parameters{
 					"max_children": parameterMocks.NewMockParameter(t),
 				}
-				fpmConfConfig.On("Parameters").Return(fpmConfConfigParams)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
 					"memory_limit": parameterMocks.NewMockParameter(t),
 				}
-				phpIniConfig.On("Parameters").Return(phpIniConfigParams)
-				sv.On("Configs").Return(configs.Configs{
-					"fpm_conf": fpmConfConfig,
-					"php_ini":  phpIniConfig,
-				})
+				svc.configs = map[string]nativeServiceConfig{
+					"fpm_conf": {
+						parameters: fpmConfConfigParams,
+						config:     fpmConfConfig,
+					},
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
@@ -1679,17 +1696,21 @@ func Test_nativeService_Start(t *testing.T) {
 				fpmConfConfigParams := parameters.Parameters{
 					"max_children": parameterMocks.NewMockParameter(t),
 				}
-				fpmConfConfig.On("Parameters").Return(fpmConfConfigParams)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
 					"memory_limit": parameterMocks.NewMockParameter(t),
 				}
-				phpIniConfig.On("Parameters").Return(phpIniConfigParams)
-				sv.On("Configs").Return(configs.Configs{
-					"fpm_conf": fpmConfConfig,
-					"php_ini":  phpIniConfig,
-				})
+				svc.configs = map[string]nativeServiceConfig{
+					"fpm_conf": {
+						parameters: fpmConfConfigParams,
+						config:     fpmConfConfig,
+					},
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
@@ -1754,17 +1775,21 @@ func Test_nativeService_Start(t *testing.T) {
 				fpmConfConfigParams := parameters.Parameters{
 					"max_children": parameterMocks.NewMockParameter(t),
 				}
-				fpmConfConfig.On("Parameters").Return(fpmConfConfigParams)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
 					"memory_limit": parameterMocks.NewMockParameter(t),
 				}
-				phpIniConfig.On("Parameters").Return(phpIniConfigParams)
-				sv.On("Configs").Return(configs.Configs{
-					"fpm_conf": fpmConfConfig,
-					"php_ini":  phpIniConfig,
-				})
+				svc.configs = map[string]nativeServiceConfig{
+					"fpm_conf": {
+						parameters: fpmConfConfigParams,
+						config:     fpmConfConfig,
+					},
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
@@ -1812,21 +1837,25 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
 				fpmConfConfig := configsMocks.NewMockConfig(t)
-				fpmConfConfig.On("FilePath").Return("/app/fpm.conf").Maybe()
+				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
 					"max_children": parameterMocks.NewMockParameter(t),
 				}
-				fpmConfConfig.On("Parameters").Return(fpmConfConfigParams).Maybe()
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
 					"memory_limit": parameterMocks.NewMockParameter(t),
 				}
-				phpIniConfig.On("Parameters").Return(phpIniConfigParams)
-				sv.On("Configs").Return(configs.Configs{
-					"fpm_conf": fpmConfConfig,
-					"php_ini":  phpIniConfig,
-				})
+				svc.configs = map[string]nativeServiceConfig{
+					"fpm_conf": {
+						parameters: fpmConfConfigParams,
+						config:     fpmConfConfig,
+					},
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
