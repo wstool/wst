@@ -28,7 +28,6 @@ import (
 	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/bukka/wst/run/servers"
-	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/servers/templates"
 	"github.com/bukka/wst/run/services/template"
 	"github.com/pkg/errors"
@@ -1893,12 +1892,18 @@ func Test_nativeService_Start(t *testing.T) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
-				sv.On("Configs").Return(configs.Configs{
-					"php_ini": phpIniConfig,
-				})
+				phpIniConfigParams := parameters.Parameters{
+					"memory_limit": parameterMocks.NewMockParameter(t),
+				}
+				svc.configs = map[string]nativeServiceConfig{
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
+
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", errors.New("sandbox config dir fail"))
-
 				return nil, nil
 			},
 			expectError:    true,
@@ -1925,9 +1930,15 @@ func Test_nativeService_Start(t *testing.T) {
 				fnd.On("Fs").Return(mockFs)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
-				sv.On("Configs").Return(configs.Configs{
-					"php_ini": phpIniConfig,
-				})
+				phpIniConfigParams := parameters.Parameters{
+					"memory_limit": parameterMocks.NewMockParameter(t),
+				}
+				svc.configs = map[string]nativeServiceConfig{
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 
@@ -1954,9 +1965,15 @@ func Test_nativeService_Start(t *testing.T) {
 				fnd.On("Fs").Return(mockFs)
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
-				sv.On("Configs").Return(configs.Configs{
-					"php_ini": phpIniConfig,
-				})
+				phpIniConfigParams := parameters.Parameters{
+					"memory_limit": parameterMocks.NewMockParameter(t),
+				}
+				svc.configs = map[string]nativeServiceConfig{
+					"php_ini": {
+						parameters: phpIniConfigParams,
+						config:     phpIniConfig,
+					},
+				}
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 
