@@ -47,6 +47,7 @@ type Service interface {
 	Pid() (int, error)
 	Name() string
 	FullName() string
+	Executable() (string, error)
 	User() string
 	Group() string
 	Dirs() map[dir.DirType]string
@@ -511,6 +512,14 @@ func (s *nativeService) FullName() string {
 
 func (s *nativeService) Address() string {
 	return fmt.Sprintf("0.0.0.0:%d", s.Port())
+}
+
+func (s *nativeService) Executable() (string, error) {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
+		return "", errors.Errorf("service has not started yet")
+	}
+
+	return s.task.Executable(), nil
 }
 
 func (s *nativeService) PublicUrl(path string) (string, error) {

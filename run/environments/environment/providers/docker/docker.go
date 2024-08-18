@@ -254,6 +254,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	dockTask := &dockerTask{
 		containerName:       containerName,
 		containerId:         containerId,
+		containerExecutable: cmd.Name,
 		containerPublicUrl:  hostUrl,
 		containerPrivateUrl: fmt.Sprintf("http://%s:%s", containerName, serverPort),
 		containerReady:      false,
@@ -342,6 +343,7 @@ func (e *dockerEnvironment) RootPath(workspace string) string {
 type dockerTask struct {
 	containerName       string
 	containerId         string
+	containerExecutable string
 	containerReady      bool
 	containerPublicUrl  string
 	containerPrivateUrl string
@@ -357,6 +359,10 @@ func (t *dockerTask) Id() string {
 
 func (t *dockerTask) Name() string {
 	return t.containerName
+}
+
+func (t *dockerTask) Executable() string {
+	return t.containerExecutable
 }
 
 func (t *dockerTask) Type() providers.Type {

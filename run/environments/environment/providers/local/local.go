@@ -120,6 +120,7 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 	t := &localTask{
 		id:          l.Fnd.GenerateUuid(),
 		cmd:         command,
+		executable:  cmd.Name,
 		serviceName: ss.Name,
 		serviceUrl:  fmt.Sprintf("http://localhost:%d", ss.Port),
 	}
@@ -206,6 +207,7 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 type localTask struct {
 	id          string
 	cmd         app.Command
+	executable  string
 	serviceName string
 	serviceUrl  string
 }
@@ -216,6 +218,10 @@ func (t *localTask) Pid() int {
 
 func (t *localTask) Id() string {
 	return t.id
+}
+
+func (t *localTask) Executable() string {
+	return t.executable
 }
 
 func (t *localTask) Name() string {

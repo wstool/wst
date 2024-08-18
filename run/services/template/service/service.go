@@ -4,6 +4,7 @@ package service
 type TemplateService interface {
 	Address() string
 	PrivateUrl() (string, error)
+	Executable() (string, error)
 	Pid() (int, error)
 	ConfDir() string
 	RunDir() string

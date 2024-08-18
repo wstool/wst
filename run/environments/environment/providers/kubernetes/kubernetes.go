@@ -429,6 +429,7 @@ func (e *kubernetesEnvironment) createDeployment(
 		serviceName: serviceName,
 		configMaps:  configMaps,
 		deployment:  result,
+		executable:  cmd.Name,
 	}
 	e.tasks[serviceName] = kubeTask
 
@@ -621,6 +622,7 @@ type kubernetesTask struct {
 	service           *corev1.Service
 	configMaps        []*corev1.ConfigMap
 	outputReader      *CombinedReader
+	executable        string
 	serviceName       string
 	servicePublicUrl  string
 	servicePrivateUrl string
@@ -637,6 +639,10 @@ func (t *kubernetesTask) Id() string {
 
 func (t *kubernetesTask) Name() string {
 	return t.serviceName
+}
+
+func (t *kubernetesTask) Executable() string {
+	return t.executable
 }
 
 func (k *kubernetesTask) Type() providers.Type {

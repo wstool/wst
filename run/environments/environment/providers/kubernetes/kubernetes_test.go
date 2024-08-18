@@ -909,6 +909,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					configMaps:        cm,
 					deployment:        d,
 					service:           s,
+					executable:        "php",
 					serviceName:       "mysvc",
 					servicePublicUrl:  "",
 					servicePrivateUrl: "http://mysvc:1234",
@@ -1024,6 +1025,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					configMaps:        cm,
 					deployment:        d,
 					service:           s,
+					executable:        "php",
 					serviceName:       "svc",
 					servicePublicUrl:  "http://10.0.0.1",
 					servicePrivateUrl: "http://svc:1234",
@@ -1095,6 +1097,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					configMaps:        cm,
 					deployment:        d,
 					service:           s,
+					executable:        "php",
 					serviceName:       "svc",
 					servicePublicUrl:  "http://127.0.0.1",
 					servicePrivateUrl: "http://svc:1234",
@@ -2285,6 +2288,10 @@ func (t *invalidTask) Id() string {
 	return ""
 }
 
+func (t *invalidTask) Executable() string {
+	return ""
+}
+
 func (t *invalidTask) Name() string {
 	return ""
 }
@@ -2479,6 +2486,7 @@ func getTestTask() *kubernetesTask {
 		deployment:        nil,
 		service:           nil,
 		configMaps:        nil,
+		executable:        "epk",
 		serviceName:       "kubes",
 		servicePublicUrl:  "http://localhost:1234",
 		servicePrivateUrl: "http://kubes:8080",
@@ -2492,6 +2500,10 @@ func Test_kubernetesTask_Id(t *testing.T) {
 
 func Test_kubernetesTask_Name(t *testing.T) {
 	assert.Equal(t, "kubes", getTestTask().Name())
+}
+
+func Test_kubernetesTask_Executable(t *testing.T) {
+	assert.Equal(t, "epk", getTestTask().Executable())
 }
 
 func Test_kubernetesTask_Pid(t *testing.T) {

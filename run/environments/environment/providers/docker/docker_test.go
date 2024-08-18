@@ -449,6 +449,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			expectedTask: &dockerTask{
 				containerName:       "wt-svc",
 				containerId:         "dcid",
+				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "http://localhost:8080",
 				containerPrivateUrl: "http://wt-svc:1234",
@@ -547,6 +548,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			expectedTask: &dockerTask{
 				containerName:       "wt-svc",
 				containerId:         "dcid",
+				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
 				containerPrivateUrl: "http://wt-svc:1234",
@@ -597,6 +599,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			expectedTask: &dockerTask{
 				containerName:       "wt-svc",
 				containerId:         "container",
+				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
 				containerPrivateUrl: "http://wt-svc:1234",
@@ -1702,6 +1705,7 @@ func getTestTask() *dockerTask {
 	return &dockerTask{
 		containerName:       "cn",
 		containerId:         "cid",
+		containerExecutable: "epd",
 		containerReady:      true,
 		containerPublicUrl:  "http://localhost:8080",
 		containerPrivateUrl: "http://cn:1234",
@@ -1714,6 +1718,10 @@ func Test_dockerTask_Id(t *testing.T) {
 
 func Test_dockerTask_Name(t *testing.T) {
 	assert.Equal(t, "cn", getTestTask().Name())
+}
+
+func Test_dockerTask_Executable(t *testing.T) {
+	assert.Equal(t, "epd", getTestTask().Executable())
 }
 
 func Test_dockerTask_Pid(t *testing.T) {

@@ -2116,6 +2116,53 @@ func Test_nativeService_FullName(t *testing.T) {
 	assert.Equal(t, "instance-name-svc", svc.FullName())
 }
 
+func Test_nativeService_Executable(t *testing.T) {
+	tests := []struct {
+		name               string
+		hasTask            bool
+		taskExecutable     string
+		expectedExecutable string
+		expectError        bool
+		expectedErrMsg     string
+	}{
+		{
+			name:               "successful executable",
+			hasTask:            true,
+			taskExecutable:     "ep",
+			expectedExecutable: "ep",
+			expectError:        false,
+		},
+		{
+			name:           "error on missing task",
+			hasTask:        false,
+			expectError:    true,
+			expectedErrMsg: "service has not started yet",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testingNativeService(t)
+			if !tt.hasTask {
+				svc.task = nil
+			}
+			if tt.taskExecutable != "" {
+				svc.task.(*taskMocks.MockTask).On("Executable").Return(tt.taskExecutable)
+			}
+
+			actualUrl, err := svc.Executable()
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedExecutable, actualUrl)
+			}
+		})
+	}
+}
+
 func Test_nativeService_PublicUrl(t *testing.T) {
 	tests := []struct {
 		name           string

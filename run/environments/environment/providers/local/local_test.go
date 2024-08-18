@@ -329,6 +329,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				locTask, ok := resultTask.(*localTask)
 				assert.True(t, ok)
 				assert.Equal(t, "test-service", locTask.serviceName)
+				assert.Equal(t, "test-command", locTask.executable)
 				assert.Equal(t, fmt.Sprintf("http://localhost:%d", ss.Port), locTask.serviceUrl)
 				assert.Equal(t, mockCommand, locTask.cmd)
 				assert.Equal(t, tt.uuid, locTask.id) // Checking the UUID
@@ -689,6 +690,7 @@ func getTestTask(t *testing.T) *localTask {
 	cmdMock.On("ProcessPid").Maybe().Return(22)
 	return &localTask{
 		id:          "lid",
+		executable:  "ep",
 		cmd:         cmdMock,
 		serviceName: "lids",
 		serviceUrl:  "http://localhost:1234",
@@ -697,6 +699,10 @@ func getTestTask(t *testing.T) *localTask {
 
 func Test_localTask_Id(t *testing.T) {
 	assert.Equal(t, "lid", getTestTask(t).Id())
+}
+
+func Test_localTask_Executable(t *testing.T) {
+	assert.Equal(t, "ep", getTestTask(t).Executable())
 }
 
 func Test_localTask_Name(t *testing.T) {
