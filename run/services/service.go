@@ -50,6 +50,9 @@ type Service interface {
 	User() string
 	Group() string
 	Dirs() map[dir.DirType]string
+	ConfDir() string
+	RunDir() string
+	ScriptDir() string
 	Port() int32
 	EnvironmentConfigPaths() map[string]string
 	WorkspaceConfigPaths() map[string]string
@@ -292,6 +295,18 @@ func (s *nativeService) Group() string {
 
 func (s *nativeService) Dirs() map[dir.DirType]string {
 	return s.Sandbox().Dirs()
+}
+
+func (s *nativeService) ConfDir() string {
+	return s.Sandbox().Dirs()[dir.ConfDirType]
+}
+
+func (s *nativeService) RunDir() string {
+	return s.Sandbox().Dirs()[dir.RunDirType]
+}
+
+func (s *nativeService) ScriptDir() string {
+	return s.Sandbox().Dirs()[dir.ScriptDirType]
 }
 
 func (s *nativeService) Server() servers.Server {

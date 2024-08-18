@@ -38,6 +38,96 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// Address provides a mock function with given fields:
+func (_m *MockService) Address() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Address")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_Address_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Address'
+type MockService_Address_Call struct {
+	*mock.Call
+}
+
+// Address is a helper method to define mock.On call
+func (_e *MockService_Expecter) Address() *MockService_Address_Call {
+	return &MockService_Address_Call{Call: _e.mock.On("Address")}
+}
+
+func (_c *MockService_Address_Call) Run(run func()) *MockService_Address_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_Address_Call) Return(_a0 string) *MockService_Address_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_Address_Call) RunAndReturn(run func() string) *MockService_Address_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ConfDir provides a mock function with given fields:
+func (_m *MockService) ConfDir() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConfDir")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_ConfDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfDir'
+type MockService_ConfDir_Call struct {
+	*mock.Call
+}
+
+// ConfDir is a helper method to define mock.On call
+func (_e *MockService_Expecter) ConfDir() *MockService_ConfDir_Call {
+	return &MockService_ConfDir_Call{Call: _e.mock.On("ConfDir")}
+}
+
+func (_c *MockService_ConfDir_Call) Run(run func()) *MockService_ConfDir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_ConfDir_Call) Return(_a0 string) *MockService_ConfDir_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ConfDir_Call) RunAndReturn(run func() string) *MockService_ConfDir_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Dirs provides a mock function with given fields:
 func (_m *MockService) Dirs() map[dir.DirType]string {
 	ret := _m.Called()
@@ -825,6 +915,51 @@ func (_c *MockService_Restart_Call) RunAndReturn(run func(context.Context) error
 	return _c
 }
 
+// RunDir provides a mock function with given fields:
+func (_m *MockService) RunDir() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for RunDir")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_RunDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunDir'
+type MockService_RunDir_Call struct {
+	*mock.Call
+}
+
+// RunDir is a helper method to define mock.On call
+func (_e *MockService_Expecter) RunDir() *MockService_RunDir_Call {
+	return &MockService_RunDir_Call{Call: _e.mock.On("RunDir")}
+}
+
+func (_c *MockService_RunDir_Call) Run(run func()) *MockService_RunDir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_RunDir_Call) Return(_a0 string) *MockService_RunDir_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_RunDir_Call) RunAndReturn(run func() string) *MockService_RunDir_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Sandbox provides a mock function with given fields:
 func (_m *MockService) Sandbox() sandbox.Sandbox {
 	ret := _m.Called()
@@ -868,6 +1003,51 @@ func (_c *MockService_Sandbox_Call) Return(_a0 sandbox.Sandbox) *MockService_San
 }
 
 func (_c *MockService_Sandbox_Call) RunAndReturn(run func() sandbox.Sandbox) *MockService_Sandbox_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ScriptDir provides a mock function with given fields:
+func (_m *MockService) ScriptDir() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ScriptDir")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_ScriptDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ScriptDir'
+type MockService_ScriptDir_Call struct {
+	*mock.Call
+}
+
+// ScriptDir is a helper method to define mock.On call
+func (_e *MockService_Expecter) ScriptDir() *MockService_ScriptDir_Call {
+	return &MockService_ScriptDir_Call{Call: _e.mock.On("ScriptDir")}
+}
+
+func (_c *MockService_ScriptDir_Call) Run(run func()) *MockService_ScriptDir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_ScriptDir_Call) Return(_a0 string) *MockService_ScriptDir_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ScriptDir_Call) RunAndReturn(run func() string) *MockService_ScriptDir_Call {
 	_c.Call.Return(run)
 	return _c
 }

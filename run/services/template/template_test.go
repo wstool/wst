@@ -8,7 +8,6 @@ import (
 	serviceMocks "github.com/bukka/wst/mocks/generated/run/services/template/service"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/parameters/parameter"
-	"github.com/bukka/wst/run/sandboxes/dir"
 	"github.com/bukka/wst/run/servers/templates"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -159,7 +158,7 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 		{
 			name: "Valid template with service values",
 			templateStr: "{{ .Service.PrivateUrl }};{{ .Service.Pid }};{{ .Service.User }};{{ .Service.Group }};" +
-				"{{ range $k, $v := .Service.Dirs }}{{ $k }}:{{ $v }},{{ end }};" +
+				"conf:{{ .Service.ConfDir }},run:{{ .Service.RunDir }},script:{{ .Service.ScriptDir }};" +
 				"{{ range $k, $v := .Service.EnvironmentConfigPaths }}{{ $k }}:{{ $v }},{{ end }};" +
 				"{{ range $k, $v := .Configs }}{{ $k }}:{{ $v }},{{ end }}",
 			setupFunc: func(
@@ -171,10 +170,9 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 				sm.On("Pid").Return(1234, nil)
 				sm.On("User").Return("grp")
 				sm.On("Group").Return("usr")
-				sm.On("Dirs").Return(map[dir.DirType]string{
-					dir.ConfDirType: "/etc",
-					dir.RunDirType:  "/var/run",
-				})
+				sm.On("ConfDir").Return("/etc")
+				sm.On("RunDir").Return("/var/run")
+				sm.On("ScriptDir").Return("/var/www")
 				sm.On("EnvironmentConfigPaths").Return(map[string]string{
 					"p1": "/var/p1",
 					"p2": "/var/p2",
@@ -183,7 +181,7 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 					"k": parameterMocks.NewMockParameter(t),
 				}, nil
 			},
-			expected: "http://svc;1234;grp;usr;conf:/etc,run:/var/run,;p1:/var/p1,p2:/var/p2,;p1:/var/p1,p2:/var/p2,",
+			expected: "http://svc;1234;grp;usr;conf:/etc,run:/var/run,script:/var/www;p1:/var/p1,p2:/var/p2,;p1:/var/p1,p2:/var/p2,",
 		},
 		{
 			name:        "Valid template with includes",

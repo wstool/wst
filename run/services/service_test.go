@@ -1193,11 +1193,37 @@ func Test_nativeService_Group(t *testing.T) {
 	assert.Equal(t, "usergroup", svc.Group())
 }
 
+func testSandboxDirs() map[dir.DirType]string {
+	return map[dir.DirType]string{
+		dir.ConfDirType:   "/conf/dir",
+		dir.RunDirType:    "/run/dir",
+		dir.ScriptDirType: "/script/dir",
+	}
+}
+
 func Test_nativeService_Dirs(t *testing.T) {
 	svc := testingNativeService(t)
-	expectedDirs := map[dir.DirType]string{dir.ConfDirType: "/conf/dir"}
-	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(expectedDirs)
-	assert.Equal(t, expectedDirs, svc.Dirs())
+	sandboxDirs := testSandboxDirs()
+	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(sandboxDirs)
+	assert.Equal(t, sandboxDirs, svc.Dirs())
+}
+
+func Test_nativeService_ConfDir(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
+	assert.Equal(t, "/conf/dir", svc.ConfDir())
+}
+
+func Test_nativeService_RunDir(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
+	assert.Equal(t, "/run/dir", svc.RunDir())
+}
+
+func Test_nativeService_ScriptDir(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
+	assert.Equal(t, "/script/dir", svc.ScriptDir())
 }
 
 func Test_nativeService_Server(t *testing.T) {
