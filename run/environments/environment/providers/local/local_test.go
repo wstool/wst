@@ -136,13 +136,13 @@ func Test_localEnvironment_Init(t *testing.T) {
 		{
 			name: "successful initialization",
 			setupMocks: func(t *testing.T, mockFs *appMocks.MockFs) {
-				mockFs.On("MkdirAll", "/fake/path", os.FileMode(0644)).Return(nil)
+				mockFs.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
 			},
 		},
 		{
 			name: "error on directory creation",
 			setupMocks: func(t *testing.T, mockFs *appMocks.MockFs) {
-				mockFs.On("MkdirAll", "/fake/path", os.FileMode(0644)).Return(os.ErrPermission)
+				mockFs.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(os.ErrPermission)
 			},
 			expectError:    true,
 			expectedErrMsg: "permission denied",
@@ -292,7 +292,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			mockCommand := appMocks.NewMockCommand(t)
 			ctx := context.Background()
 
-			fsMock.On("MkdirAll", tt.workspace, os.FileMode(0644)).Return(tt.mkdirAllError)
+			fsMock.On("MkdirAll", tt.workspace, os.FileMode(0755)).Return(tt.mkdirAllError)
 			fndMock.On("Fs").Return(fsMock)
 
 			if tt.mkdirAllError == nil {
