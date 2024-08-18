@@ -274,8 +274,13 @@ func Test_nativeMaker_Make(t *testing.T) {
 				sb := sandboxMocks.NewMockSandbox(t)
 				sb.On("Available").Return(true)
 				fpmPhpIniConfig := createConfigMock(t, "fpm-php-ini")
+				fpmPhpIniConfig.On("Parameters").Return(parameters.Parameters{})
 				fpmConfConfig := createConfigMock(t, "fpm-conf")
+				fpmConfConfig.On("Parameters").Return(parameters.Parameters{})
 				nginxConfConfig := createConfigMock(t, "nginx-conf")
+				nginxConfConfig.On("Parameters").Return(parameters.Parameters{
+					"error_log_level": createParamMock(t, "debug"),
+				})
 				fpmTemplates := templates.Templates{
 					"fpm_conf": templatesMocks.NewMockTemplate(t),
 				}

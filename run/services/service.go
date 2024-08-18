@@ -205,7 +205,7 @@ func (m *nativeMaker) Make(
 				}
 
 				nativeConfigs[configName] = nativeServiceConfig{
-					parameters: serviceServerConfigParameters.Inherit(serverParameters),
+					parameters: serviceServerConfigParameters.Inherit(cfg.Parameters()).Inherit(serverParameters),
 					config:     cfg,
 				}
 			}
@@ -343,8 +343,8 @@ func (s *nativeService) renderingPaths(path string, dirType dir.DirType) (string
 	return filepath.Join(s.workspace, basePath), filepath.Join(environmentRootPath, basePath), nil
 }
 
-func (s *nativeService) renderConfig(config configs.Config, wsPath string) error {
-	file, err := s.fnd.Fs().Open(config.FilePath())
+func (s *nativeService) renderConfig(configParameters parameters.Parameters, configPath, wsPath string) error {
+	file, err := s.fnd.Fs().Open(configPath)
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func (s *nativeService) renderConfig(config configs.Config, wsPath string) error
 		return err
 	}
 
-	err = s.template.RenderToFile(string(configContent), config.Parameters(), wsPath, 0644)
+	err = s.template.RenderToFile(string(configContent), configParameters, wsPath, 0644)
 	if err != nil {
 		return err
 	}
@@ -364,12 +364,11 @@ func (s *nativeService) renderConfig(config configs.Config, wsPath string) error
 }
 
 func (s *nativeService) renderConfigs() error {
-	cfgs := s.server.Configs()
-	envConfigPaths := make(map[string]string, len(cfgs))
-	wsConfigPaths := make(map[string]string, len(cfgs))
+	envConfigPaths := make(map[string]string, len(s.configs))
+	wsConfigPaths := make(map[string]string, len(s.configs))
 	// fist get all config paths
-	for cfgName, cfg := range cfgs {
-		wsPath, envPath, err := s.renderingPaths(cfg.FilePath(), dir.ConfDirType)
+	for cfgName, sc := range s.configs {
+		wsPath, envPath, err := s.renderingPaths(sc.config.FilePath(), dir.ConfDirType)
 		if err != nil {
 			return err
 		}
@@ -379,8 +378,8 @@ func (s *nativeService) renderConfigs() error {
 	s.environmentConfigPaths = envConfigPaths
 	s.workspaceConfigPaths = wsConfigPaths
 	// and then render
-	for cfgName, cfg := range cfgs {
-		err := s.renderConfig(cfg, wsConfigPaths[cfgName])
+	for cfgName, sc := range s.configs {
+		err := s.renderConfig(sc.parameters, sc.config.FilePath(), wsConfigPaths[cfgName])
 		if err != nil {
 			return err
 		}
