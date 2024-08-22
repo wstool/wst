@@ -108,6 +108,13 @@ packages:
       dir: mocks/generated/run/environments/environment
     interfaces:
       Environment: {}
+
+  github.com/bukka/wst/run/environments/environment/output:
+    config:
+      dir: mocks/generated/run/environments/environment/output
+    interfaces:
+      Collector: {}
+      Maker: {}
   github.com/bukka/wst/run/environments/environment/providers/docker:
     config:
       dir: mocks/generated/run/environments/environment/providers/docker

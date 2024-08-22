@@ -113,16 +113,30 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 
 	command := l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args)
 
-	if err := command.Start(); err != nil {
+	// Collect logs
+	stdoutPipe, err := command.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	stderrPipe, err := command.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	outputCollector := l.OutputMaker.MakeCollector()
+	if err = outputCollector.Start(stdoutPipe, stderrPipe); err != nil {
+		return nil, err
+	}
+	if err = command.Start(); err != nil {
 		return nil, err
 	}
 
 	t := &localTask{
-		id:          l.Fnd.GenerateUuid(),
-		cmd:         command,
-		executable:  cmd.Name,
-		serviceName: ss.Name,
-		serviceUrl:  fmt.Sprintf("http://localhost:%d", ss.Port),
+		id:              l.Fnd.GenerateUuid(),
+		cmd:             command,
+		outputCollector: outputCollector,
+		executable:      cmd.Name,
+		serviceName:     ss.Name,
+		serviceUrl:      fmt.Sprintf("http://localhost:%d", ss.Port),
 	}
 	l.tasks[t.id] = t
 
@@ -173,43 +187,25 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 		return nil, err
 	}
 
-	outputCollector := NewBufferedOutputCollector()
 	switch outputType {
 	case output.Stdout:
-		stdoutPipe, err := t.cmd.StdoutPipe()
-		if err != nil {
-			return nil, err
-		}
-		outputCollector.collectOutput(stdoutPipe)
+		return t.outputCollector.StdoutReader(), nil
 	case output.Stderr:
-		stderrPipe, err := t.cmd.StderrPipe()
-		if err != nil {
-			return nil, err
-		}
-		outputCollector.collectOutput(stderrPipe)
+		return t.outputCollector.StderrReader(), nil
 	case output.Any:
-		stdoutPipe, err := t.cmd.StdoutPipe()
-		if err != nil {
-			return nil, err
-		}
-		stderrPipe, err := t.cmd.StderrPipe()
-		if err != nil {
-			return nil, err
-		}
-		outputCollector.collectOutput(stdoutPipe, stderrPipe)
+		return t.outputCollector.AnyReader(), nil
 	default:
 		return nil, fmt.Errorf("unsupported output type")
 	}
-
-	return outputCollector, nil
 }
 
 type localTask struct {
-	id          string
-	cmd         app.Command
-	executable  string
-	serviceName string
-	serviceUrl  string
+	id              string
+	cmd             app.Command
+	outputCollector output.Collector
+	executable      string
+	serviceName     string
+	serviceUrl      string
 }
 
 func (t *localTask) Pid() int {

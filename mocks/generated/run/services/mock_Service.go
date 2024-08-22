@@ -316,6 +316,61 @@ func (_c *MockService_EnvironmentScriptPaths_Call) RunAndReturn(run func() map[s
 	return _c
 }
 
+// Executable provides a mock function with given fields:
+func (_m *MockService) Executable() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Executable")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_Executable_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Executable'
+type MockService_Executable_Call struct {
+	*mock.Call
+}
+
+// Executable is a helper method to define mock.On call
+func (_e *MockService_Expecter) Executable() *MockService_Executable_Call {
+	return &MockService_Executable_Call{Call: _e.mock.On("Executable")}
+}
+
+func (_c *MockService_Executable_Call) Run(run func()) *MockService_Executable_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_Executable_Call) Return(_a0 string, _a1 error) *MockService_Executable_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_Executable_Call) RunAndReturn(run func() (string, error)) *MockService_Executable_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FullName provides a mock function with given fields:
 func (_m *MockService) FullName() string {
 	ret := _m.Called()

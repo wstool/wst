@@ -7,6 +7,7 @@ import (
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/authored/external"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
+	outputMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/output"
 	taskMocks "github.com/bukka/wst/mocks/generated/run/environments/task"
 	"github.com/bukka/wst/run/environments/environment"
 	"github.com/bukka/wst/run/environments/environment/output"
@@ -252,57 +253,171 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 
 func Test_localEnvironment_RunTask(t *testing.T) {
 	tests := []struct {
-		name              string
-		workspace         string
-		mkdirAllError     error
-		commandStartError error
-		expectedError     error
-		expectTask        bool
-		uuid              string // UUID for each task
+		name       string
+		workspace  string
+		setupMocks func(
+			*testing.T,
+			context.Context,
+			*appMocks.MockFoundation,
+			*outputMocks.MockMaker,
+		) *appMocks.MockCommand
+		expectError    bool
+		expectedErrMsg string
+		expectTask     bool
+		uuid           string // UUID for each task
 	}{
 		{
-			name:          "successfully runs task",
-			workspace:     "/fake/path",
-			expectedError: nil,
-			expectTask:    true,
-			uuid:          "uuid-123",
+			name:      "successfully runs task",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
+				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
+				mockCommand.On("StdoutPipe").Return(stdout, nil)
+				mockCommand.On("StderrPipe").Return(stderr, nil)
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector").Return(collectorMock)
+				collectorMock.On("Start", stdout, stderr).Return(nil)
+				mockCommand.On("Start").Return(nil)
+				fndMock.On("GenerateUuid").Return("uuid-123")
+				return mockCommand
+			},
+			expectTask: true,
+			uuid:       "uuid-123",
 		},
 		{
-			name:          "initialization error due to filesystem",
-			workspace:     "/fake/path",
-			mkdirAllError: fmt.Errorf("filesystem error"),
-			expectedError: fmt.Errorf("filesystem error"),
-			expectTask:    false,
-			uuid:          "uuid-456",
+			name:      "command start error",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
+				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
+				mockCommand.On("StdoutPipe").Return(stdout, nil)
+				mockCommand.On("StderrPipe").Return(stderr, nil)
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector").Return(collectorMock)
+				collectorMock.On("Start", stdout, stderr).Return(nil)
+				mockCommand.On("Start").Return(fmt.Errorf("command start error"))
+				return mockCommand
+			},
+			expectError:    true,
+			expectedErrMsg: "command start error",
 		},
 		{
-			name:              "command start error",
-			workspace:         "/fake/path",
-			commandStartError: fmt.Errorf("command start error"),
-			expectedError:     fmt.Errorf("command start error"),
-			expectTask:        false,
-			uuid:              "uuid-789",
+			name:      "collector error",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
+				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
+				mockCommand.On("StdoutPipe").Return(stdout, nil)
+				mockCommand.On("StderrPipe").Return(stderr, nil)
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector").Return(collectorMock)
+				collectorMock.On("Start", stdout, stderr).Return(fmt.Errorf("collector start error"))
+				return mockCommand
+			},
+			expectError:    true,
+			expectedErrMsg: "collector start error",
+		},
+		{
+			name:      "stderr error",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
+				mockCommand.On("StdoutPipe").Return(stdout, nil)
+				mockCommand.On("StderrPipe").Return(nil, fmt.Errorf("stderr error"))
+				return mockCommand
+			},
+			expectError:    true,
+			expectedErrMsg: "stderr error",
+		},
+		{
+			name:      "stdout error",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				mockCommand.On("StdoutPipe").Return(nil, fmt.Errorf("stdout error"))
+				return mockCommand
+			},
+			expectError:    true,
+			expectedErrMsg: "stdout error",
+		},
+		{
+			name:      "mkdir error",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) *appMocks.MockCommand {
+				fsMock := appMocks.NewMockFs(t)
+				fndMock.On("Fs").Return(fsMock)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(fmt.Errorf("mkdir error"))
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "mkdir error",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
-			fsMock := appMocks.NewMockFs(t)
-			mockCommand := appMocks.NewMockCommand(t)
+			outputMakerMock := outputMocks.NewMockMaker(t)
 			ctx := context.Background()
 
-			fsMock.On("MkdirAll", tt.workspace, os.FileMode(0755)).Return(tt.mkdirAllError)
-			fndMock.On("Fs").Return(fsMock)
-
-			if tt.mkdirAllError == nil {
-				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
-				mockCommand.On("Start").Return(tt.commandStartError)
-				fndMock.On("GenerateUuid").Maybe().Return(tt.uuid)
-			}
+			mockCommand := tt.setupMocks(t, ctx, fndMock, outputMakerMock)
 
 			env := &localEnvironment{
-				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock},
+				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock, OutputMaker: outputMakerMock},
 				workspace:         tt.workspace,
 				initialized:       false,
 				tasks:             make(map[string]*localTask),
@@ -319,9 +434,9 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 
 			resultTask, err := env.RunTask(ctx, ss, cmd)
 
-			if tt.expectedError != nil {
+			if tt.expectError {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError.Error())
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
 				assert.Nil(t, resultTask)
 			} else {
 				assert.NoError(t, err)
@@ -332,12 +447,11 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				assert.Equal(t, "test-command", locTask.executable)
 				assert.Equal(t, fmt.Sprintf("http://localhost:%d", ss.Port), locTask.serviceUrl)
 				assert.Equal(t, mockCommand, locTask.cmd)
-				assert.Equal(t, tt.uuid, locTask.id) // Checking the UUID
+				assert.Equal(t, tt.uuid, locTask.id)
 			}
 
 			fndMock.AssertExpectations(t)
-			fsMock.AssertExpectations(t)
-			if tt.mkdirAllError == nil && mockCommand.AssertNumberOfCalls(t, "Start", 1) {
+			if mockCommand != nil {
 				mockCommand.AssertExpectations(t)
 			}
 		})
@@ -565,7 +679,7 @@ func Test_localEnvironment_Output(t *testing.T) {
 	tests := []struct {
 		name             string
 		outputType       output.Type
-		setupMocks       func(*testing.T, *appMocks.MockCommand)
+		setupMocks       func(*testing.T, *outputMocks.MockCollector)
 		nilTask          bool
 		expectError      bool
 		expectedOutput   string
@@ -574,81 +688,39 @@ func Test_localEnvironment_Output(t *testing.T) {
 		{
 			name:       "successful stdout output collection",
 			outputType: output.Stdout,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
 				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
-				cmd.On("StdoutPipe").Return(stdout, nil)
+				om.On("StdoutReader").Return(stdout)
 			},
 			expectedOutput: "Hello, stdout!",
 		},
 		{
 			name:       "successful stderr output collection",
 			outputType: output.Stderr,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
+			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
 				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
-				cmd.On("StderrPipe").Return(stderr, nil)
+				om.On("StderrReader").Return(stderr)
 			},
 			expectedOutput: "Hello, stderr!",
 		},
 		{
 			name:       "successful any output collection",
 			outputType: output.Any,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
-				stdout := io.NopCloser(strings.NewReader("out"))
-				stderr := io.NopCloser(strings.NewReader("out"))
-				cmd.On("StdoutPipe").Return(stdout, nil)
-				cmd.On("StderrPipe").Return(stderr, nil)
+			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
+				anyout := io.NopCloser(strings.NewReader("outout"))
+				om.On("AnyReader").Return(anyout)
 			},
 			expectedOutput: "outout",
 		},
 		{
-			name:       "error on stdout pipe",
-			outputType: output.Stdout,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
-				cmd.On("StdoutPipe").Return(nil, fmt.Errorf("stdout error"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "stdout error",
-		},
-		{
-			name:       "error on stderr pipe",
-			outputType: output.Stderr,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
-				cmd.On("StderrPipe").Return(nil, fmt.Errorf("stderr error"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "stderr error",
-		},
-		{
-			name:       "error on stdout pipe in any type",
-			outputType: output.Any,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
-				cmd.On("StdoutPipe").Return(nil, fmt.Errorf("stdout error"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "stdout error", // Assuming first error encountered is returned
-		},
-		{
-			name:       "error on stderr pipe in any type",
-			outputType: output.Any,
-			setupMocks: func(t *testing.T, cmd *appMocks.MockCommand) {
-				stdout := io.NopCloser(strings.NewReader("out"))
-				cmd.On("StdoutPipe").Return(stdout, nil)
-				cmd.On("StderrPipe").Return(nil, fmt.Errorf("stderr error"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "stderr error", // Assuming first error encountered is returned
-		},
-		{
 			name:             "unsupported output type",
 			outputType:       output.Type(999), // Invalid output type
-			setupMocks:       func(t *testing.T, cmd *appMocks.MockCommand) {},
 			expectError:      true,
 			expectedErrorMsg: "unsupported output type",
 		},
 		{
 			name:             "nil task",
 			outputType:       output.Any, // Invalid output type
-			setupMocks:       func(t *testing.T, cmd *appMocks.MockCommand) {},
 			nilTask:          true,
 			expectError:      true,
 			expectedErrorMsg: "target task is not set",
@@ -658,13 +730,15 @@ func Test_localEnvironment_Output(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			cmdMock := appMocks.NewMockCommand(t)
-			tt.setupMocks(t, cmdMock)
+			ocMock := outputMocks.NewMockCollector(t)
+			if tt.setupMocks != nil {
+				tt.setupMocks(t, ocMock)
+			}
 
 			var testTask task.Task = nil
 			if !tt.nilTask {
 				testTask = &localTask{
-					cmd: cmdMock,
+					outputCollector: ocMock,
 				}
 			}
 

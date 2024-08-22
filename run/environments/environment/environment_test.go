@@ -56,6 +56,7 @@ func TestCommonMaker_MakeCommonEnvironment(t *testing.T) {
 
 			// Assert that the foundation is properly set
 			assert.Equal(t, fndMock, result.Fnd)
+			assert.NotNil(t, result.OutputMaker)
 
 			// Assert that Ports and Used are correctly set
 			assert.Equal(t, tt.expectedResult.Ports.Start, result.Ports.Start)

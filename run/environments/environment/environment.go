@@ -81,25 +81,29 @@ type Maker interface {
 }
 
 type CommonMaker struct {
-	Fnd app.Foundation
+	Fnd         app.Foundation
+	OutputMaker output.Maker
 }
 
 func CreateCommonMaker(fnd app.Foundation) *CommonMaker {
 	return &CommonMaker{
-		Fnd: fnd,
+		Fnd:         fnd,
+		OutputMaker: output.CreateMaker(fnd),
 	}
 }
 
 type CommonEnvironment struct {
-	Fnd   app.Foundation
-	Used  bool
-	Ports Ports
+	Fnd         app.Foundation
+	OutputMaker output.Maker
+	Used        bool
+	Ports       Ports
 }
 
 func (m *CommonMaker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
 	return &CommonEnvironment{
-		Fnd:  m.Fnd,
-		Used: false,
+		Fnd:         m.Fnd,
+		OutputMaker: m.OutputMaker,
+		Used:        false,
 		Ports: Ports{
 			Start: config.Ports.Start,
 			Used:  config.Ports.Start,
