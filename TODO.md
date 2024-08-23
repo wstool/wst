@@ -27,6 +27,8 @@ in the future.
 
 ### Config
 
+- parsing - if instance timeouts is not specified, the default action 30000 default is not applied
+  - this might be a generic problem that nested struct parsing is skipped if not present
 - parsing - add logic to use file name for instance name if present
 - parsing - improve error messages
   - clean up and make error messages consistent
@@ -34,5 +36,7 @@ in the future.
 - parsing - warn on unknown fields in the config for struct mapping
   - for example setting environment ports `from` and `to` fields should notify that only `start` and `end` supported
 - parsing - config version should allow number - not just string so 1.0 can be used instead of "1.0"
+- parsing - support time and metric units (auto string to number conversions)
+  - e.g. 1k = 100, 1s = 1000, 1ms = 1
 - merging - generic merging rules taken from params
 - boolean conversion in the same way as string (maybe something more generic that can handle both)
