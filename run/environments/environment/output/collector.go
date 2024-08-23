@@ -2,67 +2,84 @@ package output
 
 import (
 	"bytes"
+	"context"
+	"github.com/pkg/errors"
 	"io"
 	"sync"
 )
 
 type Collector interface {
 	Close()
-	AnyReader() io.Reader
-	StderrReader() io.Reader
-	StdoutReader() io.Reader
+	AnyReader(ctx context.Context) io.Reader
+	StderrReader(ctx context.Context) io.Reader
+	StdoutReader(ctx context.Context) io.Reader
 	Start(stdoutPipe, stderrPipe io.ReadCloser) error
 	Wait()
 }
 
 // blockingBufferReader is a custom reader that blocks until data is available in the buffer.
 type blockingBufferReader struct {
-	buffer *bytes.Buffer
-	cond   *sync.Cond
-	closed bool
-	mu     sync.Mutex
+	buffer    *bytes.Buffer
+	dataCh    chan struct{}
+	closeCh   chan struct{}
+	closed    bool
+	mu        sync.Mutex
+	closeOnce sync.Once
 }
 
 // newBlockingBufferReader creates a new blockingBufferReader.
 func newBlockingBufferReader(buffer *bytes.Buffer) *blockingBufferReader {
-	reader := &blockingBufferReader{
-		buffer: buffer,
+	return &blockingBufferReader{
+		buffer:  buffer,
+		dataCh:  make(chan struct{}, 1),
+		closeCh: make(chan struct{}),
 	}
-	reader.cond = sync.NewCond(&reader.mu)
-	return reader
 }
 
 // Write appends data to the buffer and signals readers.
 func (r *blockingBufferReader) Write(data []byte) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	n, err := r.buffer.Write(data)
-	r.cond.Broadcast() // Signal that data is available
+	select {
+	case r.dataCh <- struct{}{}: // Notify readers that data is available
+	default: // Non-blocking send
+	}
 	return n, err
 }
 
 // Read reads data from the buffer, blocking if no data is available.
 func (r *blockingBufferReader) Read(p []byte) (int, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	for {
+		r.mu.Lock()
+		if r.buffer.Len() > 0 {
+			n, err := r.buffer.Read(p)
+			r.mu.Unlock()
+			return n, err
+		}
+		if r.closed && r.buffer.Len() == 0 {
+			r.mu.Unlock()
+			return 0, io.EOF
+		}
+		r.mu.Unlock()
 
-	for r.buffer.Len() == 0 && !r.closed {
-		r.cond.Wait() // Wait for data to be available
+		select {
+		case <-r.dataCh: // Wait for data to be available
+		case <-r.closeCh: // Wait for the reader to be closed
+			return 0, io.EOF
+		}
 	}
-
-	if r.buffer.Len() == 0 && r.closed {
-		return 0, io.EOF
-	}
-
-	return r.buffer.Read(p)
 }
 
 // Close marks the reader as closed and signals any waiting readers.
 func (r *blockingBufferReader) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.closed = true
-	r.cond.Broadcast() // Signal all waiting readers
+	r.closeOnce.Do(func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		r.closed = true
+		close(r.closeCh) // Close the channel to notify readers
+	})
 	return nil
 }
 
@@ -118,18 +135,18 @@ func (bc *BufferedCollector) Wait() {
 }
 
 // StdoutReader returns an io.Reader for the collected stdout logs.
-func (bc *BufferedCollector) StdoutReader() io.Reader {
-	return bc.stdoutBuffer
+func (bc *BufferedCollector) StdoutReader(ctx context.Context) io.Reader {
+	return newContextAwareReader(ctx, bc.stdoutBuffer)
 }
 
 // StderrReader returns an io.Reader for the collected stderr logs.
-func (bc *BufferedCollector) StderrReader() io.Reader {
-	return bc.stderrBuffer
+func (bc *BufferedCollector) StderrReader(ctx context.Context) io.Reader {
+	return newContextAwareReader(ctx, bc.stderrBuffer)
 }
 
 // AnyReader returns an io.Reader for the mixed logs in the order they were collected.
-func (bc *BufferedCollector) AnyReader() io.Reader {
-	return bc.mixedBuffer
+func (bc *BufferedCollector) AnyReader(ctx context.Context) io.Reader {
+	return newContextAwareReader(ctx, bc.mixedBuffer)
 }
 
 // Close closes all pipes.
@@ -141,4 +158,32 @@ func (bc *BufferedCollector) Close() {
 	bc.stdoutBuffer.Close()
 	bc.stderrBuffer.Close()
 	bc.mixedBuffer.Close()
+}
+
+// contextAwareReader wraps an io.Reader and respects context cancellation.
+type contextAwareReader struct {
+	ctx    context.Context
+	reader *blockingBufferReader
+}
+
+// NewContextAwareReader creates a new contextAwareReader.
+func newContextAwareReader(ctx context.Context, reader *blockingBufferReader) *contextAwareReader {
+	return &contextAwareReader{
+		ctx:    ctx,
+		reader: reader,
+	}
+}
+
+// Read reads from the underlying reader or returns early if the context is done.
+func (r *contextAwareReader) Read(p []byte) (n int, err error) {
+	for {
+		select {
+		case <-r.ctx.Done():
+			return 0, errors.Errorf("read cancelled: %v", r.ctx.Err())
+		case <-r.reader.dataCh: // Data is available
+			return r.reader.Read(p)
+		case <-r.reader.closeCh: // Reader is closed
+			return 0, io.EOF
+		}
+	}
 }

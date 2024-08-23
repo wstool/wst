@@ -87,6 +87,7 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 				l.Fnd.Logger().Errorf("Failed to kill process: %v", err)
 				hasError = true
 			}
+			t.outputCollector.Close()
 		}
 	}
 
@@ -189,11 +190,11 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 
 	switch outputType {
 	case output.Stdout:
-		return t.outputCollector.StdoutReader(), nil
+		return t.outputCollector.StdoutReader(ctx), nil
 	case output.Stderr:
-		return t.outputCollector.StderrReader(), nil
+		return t.outputCollector.StderrReader(ctx), nil
 	case output.Any:
-		return t.outputCollector.AnyReader(), nil
+		return t.outputCollector.AnyReader(ctx), nil
 	default:
 		return nil, fmt.Errorf("unsupported output type")
 	}

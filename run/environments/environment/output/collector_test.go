@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sync"
@@ -71,6 +72,36 @@ func (m *mockReadCloser) IsClosed() bool {
 	return m.closed
 }
 
+func readWorker(t *testing.T, wg *sync.WaitGroup, expectError bool, expected string, read func(buf []byte) (int, error)) {
+	defer wg.Done()
+	mixedData := new(bytes.Buffer)
+
+	// Continuously read until EOF
+	buf := make([]byte, 1024)
+	for {
+		n, err := read(buf)
+		if n > 0 {
+			mixedData.Write(buf[:n])
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if expectError {
+				assert.Contains(t, err.Error(), expected)
+			} else {
+				t.Errorf("unexpected error: %v", err)
+			}
+			break
+		}
+		// Short sleep to allow more data to arrive
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !expectError {
+		assert.Equal(t, expected, mixedData.String())
+	}
+}
+
 func TestBufferedCollector_AnyReader(t *testing.T) {
 	// Define the events with delays
 	stdoutEvents := []event{
@@ -92,31 +123,10 @@ func TestBufferedCollector_AnyReader(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
-		mixedData := new(bytes.Buffer)
-
-		// Continuously read until EOF
-		buf := make([]byte, 1024)
-		for {
-			n, err := collector.AnyReader().Read(buf)
-			if n > 0 {
-				mixedData.Write(buf[:n])
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				break
-			}
-			// Short sleep to allow more data to arrive
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		expected := "stdout line 1\nstdout line 2\nstderr line 1\n"
-		assert.Equal(t, expected, mixedData.String())
-	}()
+	go readWorker(t, &wg, false, "stdout line 1\nstdout line 2\nstderr line 1\n",
+		func(buf []byte) (int, error) {
+			return collector.AnyReader(context.Background()).Read(buf)
+		})
 
 	time.Sleep(600 * time.Millisecond)
 	collector.Close()
@@ -128,11 +138,11 @@ func TestBufferedCollector_AnyReader(t *testing.T) {
 func TestBufferedCollector_StdoutReader(t *testing.T) {
 	// Define the events with delays
 	stdoutEvents := []event{
-		{delay: 100 * time.Millisecond, message: "stdout line 1\n"},
-		{delay: 200 * time.Millisecond, message: "stdout line 2\n"},
+		{delay: 50 * time.Millisecond, message: "stdout line 1\n"},
+		{delay: 100 * time.Millisecond, message: "stdout line 2\n"},
 	}
 	stderrEvents := []event{
-		{delay: 300 * time.Millisecond, message: "stderr line 1\n"},
+		{delay: 150 * time.Millisecond, message: "stderr line 1\n"},
 	}
 
 	stdoutMock := newMockReadCloser(stdoutEvents)
@@ -146,33 +156,12 @@ func TestBufferedCollector_StdoutReader(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
-		mixedData := new(bytes.Buffer)
+	go readWorker(t, &wg, false, "stdout line 1\nstdout line 2\n",
+		func(buf []byte) (int, error) {
+			return collector.StdoutReader(context.Background()).Read(buf)
+		})
 
-		// Continuously read until EOF
-		buf := make([]byte, 1024)
-		for {
-			n, err := collector.StdoutReader().Read(buf)
-			if n > 0 {
-				mixedData.Write(buf[:n])
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				break
-			}
-			// Short sleep to allow more data to arrive
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		expected := "stdout line 1\nstdout line 2\n"
-		assert.Equal(t, expected, mixedData.String())
-	}()
-
-	time.Sleep(400 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	collector.Close()
 
 	wg.Wait()
@@ -182,11 +171,11 @@ func TestBufferedCollector_StdoutReader(t *testing.T) {
 func TestBufferedCollector_StderrReader(t *testing.T) {
 	// Define the events with delays
 	stdoutEvents := []event{
-		{delay: 100 * time.Millisecond, message: "stdout line 1\n"},
-		{delay: 200 * time.Millisecond, message: "stdout line 2\n"},
+		{delay: 50 * time.Millisecond, message: "stdout line 1\n"},
+		{delay: 100 * time.Millisecond, message: "stdout line 2\n"},
 	}
 	stderrEvents := []event{
-		{delay: 300 * time.Millisecond, message: "stderr line 1\n"},
+		{delay: 150 * time.Millisecond, message: "stderr line 1\n"},
 	}
 
 	stdoutMock := newMockReadCloser(stdoutEvents)
@@ -200,33 +189,98 @@ func TestBufferedCollector_StderrReader(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
-		mixedData := new(bytes.Buffer)
+	go readWorker(t, &wg, false, "stderr line 1\n", func(buf []byte) (int, error) {
+		return collector.StderrReader(context.Background()).Read(buf)
+	})
 
-		// Continuously read until EOF
-		buf := make([]byte, 1024)
-		for {
-			n, err := collector.StderrReader().Read(buf)
-			if n > 0 {
-				mixedData.Write(buf[:n])
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				break
-			}
-			// Short sleep to allow more data to arrive
-			time.Sleep(10 * time.Millisecond)
-		}
+	time.Sleep(250 * time.Millisecond)
+	collector.Close()
 
-		expected := "stderr line 1\n"
-		assert.Equal(t, expected, mixedData.String())
-	}()
+	wg.Wait()
+	collector.Wait()
+}
 
-	time.Sleep(400 * time.Millisecond)
+func TestBufferedCollector_StderrReader_cancelled(t *testing.T) {
+	// Define the events with delays
+	stderrEvents := []event{
+		{delay: 150 * time.Millisecond, message: "stderr line 1\n"},
+	}
+
+	stdoutMock := newMockReadCloser([]event{})
+	stderrMock := newMockReadCloser(stderrEvents)
+
+	collector := NewBufferedCollector()
+
+	err := collector.Start(stdoutMock, stderrMock)
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go readWorker(t, &wg, true, "read cancelled", func(buf []byte) (int, error) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		return collector.StderrReader(ctx).Read(buf)
+	})
+
+	time.Sleep(250 * time.Millisecond)
+	collector.Close()
+
+	wg.Wait()
+	collector.Wait()
+}
+
+func TestBufferedCollector_stderrBuffer_Read(t *testing.T) {
+	// Define the events with delays
+	stderrEvents := []event{
+		{delay: 150 * time.Millisecond, message: "stderr line 1\n"},
+	}
+
+	stdoutMock := newMockReadCloser([]event{})
+	stderrMock := newMockReadCloser(stderrEvents)
+
+	collector := NewBufferedCollector()
+
+	err := collector.Start(stdoutMock, stderrMock)
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go readWorker(t, &wg, false, "stderr line 1\n", func(buf []byte) (int, error) {
+		return collector.stderrBuffer.Read(buf)
+	})
+
+	time.Sleep(250 * time.Millisecond)
+	collector.Close()
+
+	wg.Wait()
+	collector.Wait()
+}
+
+func TestBufferedCollector_stderrBuffer_Close(t *testing.T) {
+	// Define the events with delays
+	stderrEvents := []event{
+		{delay: 150 * time.Millisecond, message: "stderr line 1\n"},
+	}
+
+	stdoutMock := newMockReadCloser([]event{})
+	stderrMock := newMockReadCloser(stderrEvents)
+
+	collector := NewBufferedCollector()
+
+	err := collector.Start(stdoutMock, stderrMock)
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go readWorker(t, &wg, false, "", func(buf []byte) (int, error) {
+		collector.Close()
+		return collector.stderrBuffer.Read(buf)
+	})
+
+	time.Sleep(250 * time.Millisecond)
 	collector.Close()
 
 	wg.Wait()
