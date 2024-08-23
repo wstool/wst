@@ -3,13 +3,15 @@ package output
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	"io"
+	"strings"
 	"sync"
 )
 
 type Collector interface {
-	Close()
+	Close() error
 	AnyReader(ctx context.Context) io.Reader
 	StderrReader(ctx context.Context) io.Reader
 	StdoutReader(ctx context.Context) io.Reader
@@ -150,14 +152,30 @@ func (bc *BufferedCollector) AnyReader(ctx context.Context) io.Reader {
 }
 
 // Close closes all pipes.
-func (bc *BufferedCollector) Close() {
-	bc.stdoutPipe.Close()
-	bc.stderrPipe.Close()
+func (bc *BufferedCollector) Close() error {
+	var errStrings []string
 
-	// Close the custom readers to signal EOF
+	// Attempt to close stdoutPipe
+	if err := bc.stdoutPipe.Close(); err != nil {
+		errStrings = append(errStrings, fmt.Sprintf("stdoutPipe close error: %v", err))
+	}
+
+	// Attempt to close stderrPipe
+	if err := bc.stderrPipe.Close(); err != nil {
+		errStrings = append(errStrings, fmt.Sprintf("stderrPipe close error: %v", err))
+	}
+
 	bc.stdoutBuffer.Close()
 	bc.stderrBuffer.Close()
 	bc.mixedBuffer.Close()
+
+	// Aggregate errors if any occurred
+	if len(errStrings) > 0 {
+		return errors.New(strings.Join(errStrings, "; "))
+	}
+
+	// Return nil if all close operations succeeded
+	return nil
 }
 
 // contextAwareReader wraps an io.Reader and respects context cancellation.

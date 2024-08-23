@@ -181,23 +181,35 @@ func Test_localEnvironment_Init(t *testing.T) {
 func Test_localEnvironment_Destroy(t *testing.T) {
 	tests := []struct {
 		name           string
-		setupMocks     func(*testing.T, *appMocks.MockFs, *appMocks.MockCommand)
+		setupMocks     func(*testing.T, *appMocks.MockFs, *appMocks.MockCommand, *outputMocks.MockCollector)
 		expectError    bool
 		expectedErrMsg string
 	}{
 		{
 			name: "successful destruction with running tasks",
-			setupMocks: func(t *testing.T, mockFs *appMocks.MockFs, mockCmd *appMocks.MockCommand) {
+			setupMocks: func(
+				t *testing.T,
+				mockFs *appMocks.MockFs,
+				mockCmd *appMocks.MockCommand,
+				mockOc *outputMocks.MockCollector,
+			) {
 				mockCmd.On("IsRunning").Return(true)
 				mockCmd.On("ProcessSignal", os.Kill).Return(nil)
+				mockOc.On("Close").Return(nil)
 				mockFs.On("RemoveAll", "/fake/path").Return(nil)
 			},
 		},
 		{
 			name: "failure to kill running task",
-			setupMocks: func(t *testing.T, mockFs *appMocks.MockFs, mockCmd *appMocks.MockCommand) {
+			setupMocks: func(
+				t *testing.T,
+				mockFs *appMocks.MockFs,
+				mockCmd *appMocks.MockCommand,
+				mockOc *outputMocks.MockCollector,
+			) {
 				mockCmd.On("IsRunning").Return(true)
 				mockCmd.On("ProcessSignal", os.Kill).Return(os.ErrPermission)
+				mockOc.On("Close").Return(nil)
 				mockFs.On("RemoveAll", "/fake/path").Return(nil)
 			},
 			expectError:    true,
@@ -205,7 +217,12 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 		},
 		{
 			name: "error on directory removal",
-			setupMocks: func(t *testing.T, mockFs *appMocks.MockFs, mockCmd *appMocks.MockCommand) {
+			setupMocks: func(
+				t *testing.T,
+				mockFs *appMocks.MockFs,
+				mockCmd *appMocks.MockCommand,
+				mockOc *outputMocks.MockCollector,
+			) {
 				mockCmd.On("IsRunning").Return(false) // No running tasks
 				mockFs.On("RemoveAll", "/fake/path").Return(os.ErrPermission)
 			},
@@ -218,7 +235,8 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockFs := appMocks.NewMockFs(t)
 			mockCmd := appMocks.NewMockCommand(t)
-			tt.setupMocks(t, mockFs, mockCmd)
+			mockOc := outputMocks.NewMockCollector(t)
+			tt.setupMocks(t, mockFs, mockCmd, mockOc)
 
 			fs := &afero.Afero{Fs: mockFs}
 			fndMock := appMocks.NewMockFoundation(t)
@@ -232,7 +250,10 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 				workspace:         "/fake/path",
 				initialized:       true,
 				tasks: map[string]*localTask{
-					"task1": {cmd: mockCmd},
+					"task1": {
+						cmd:             mockCmd,
+						outputCollector: mockOc,
+					},
 				},
 			}
 

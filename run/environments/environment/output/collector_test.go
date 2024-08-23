@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"context"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sync"
@@ -285,4 +286,64 @@ func TestBufferedCollector_stderrBuffer_Close(t *testing.T) {
 
 	wg.Wait()
 	collector.Wait()
+}
+
+// MockReadCloser simulates an io.ReadCloser with an optional close error.
+type closeErrorReadCloser struct {
+	closeErr error
+}
+
+func (m *closeErrorReadCloser) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (m *closeErrorReadCloser) Close() error {
+	return m.closeErr
+}
+
+// TestBufferedCollector_Close tests the Close method of BufferedCollector.
+func TestBufferedCollector_Close(t *testing.T) {
+	tests := []struct {
+		name           string
+		stdoutCloseErr error
+		stderrCloseErr error
+		expectedErr    string
+	}{
+		{
+			name:        "All close operations succeed",
+			expectedErr: "",
+		},
+		{
+			name:           "stdoutPipe close fails",
+			stdoutCloseErr: errors.New("stdout close error"),
+			expectedErr:    "stdoutPipe close error: stdout close error",
+		},
+		{
+			name:           "stderrPipe close fails",
+			stderrCloseErr: errors.New("stderr close error"),
+			expectedErr:    "stderrPipe close error: stderr close error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock objects with the desired close errors
+			stdoutPipe := &closeErrorReadCloser{closeErr: tt.stdoutCloseErr}
+			stderrPipe := &closeErrorReadCloser{closeErr: tt.stderrCloseErr}
+
+			// Create a BufferedCollector with the actual blockingBufferReader instances
+			collector := NewBufferedCollector()
+			collector.stdoutPipe = stdoutPipe
+			collector.stderrPipe = stderrPipe
+
+			// Call Close and check the result
+			err := collector.Close()
+			if tt.expectedErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedErr, err.Error())
+			}
+		})
+	}
 }

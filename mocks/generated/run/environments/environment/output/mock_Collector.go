@@ -3,6 +3,7 @@
 package output
 
 import (
+	context "context"
 	io "io"
 
 	mock "github.com/stretchr/testify/mock"
@@ -21,17 +22,17 @@ func (_m *MockCollector) EXPECT() *MockCollector_Expecter {
 	return &MockCollector_Expecter{mock: &_m.Mock}
 }
 
-// AnyReader provides a mock function with given fields:
-func (_m *MockCollector) AnyReader() io.Reader {
-	ret := _m.Called()
+// AnyReader provides a mock function with given fields: ctx
+func (_m *MockCollector) AnyReader(ctx context.Context) io.Reader {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AnyReader")
 	}
 
 	var r0 io.Reader
-	if rf, ok := ret.Get(0).(func() io.Reader); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) io.Reader); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.Reader)
@@ -47,13 +48,14 @@ type MockCollector_AnyReader_Call struct {
 }
 
 // AnyReader is a helper method to define mock.On call
-func (_e *MockCollector_Expecter) AnyReader() *MockCollector_AnyReader_Call {
-	return &MockCollector_AnyReader_Call{Call: _e.mock.On("AnyReader")}
+//   - ctx context.Context
+func (_e *MockCollector_Expecter) AnyReader(ctx interface{}) *MockCollector_AnyReader_Call {
+	return &MockCollector_AnyReader_Call{Call: _e.mock.On("AnyReader", ctx)}
 }
 
-func (_c *MockCollector_AnyReader_Call) Run(run func()) *MockCollector_AnyReader_Call {
+func (_c *MockCollector_AnyReader_Call) Run(run func(ctx context.Context)) *MockCollector_AnyReader_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -63,14 +65,27 @@ func (_c *MockCollector_AnyReader_Call) Return(_a0 io.Reader) *MockCollector_Any
 	return _c
 }
 
-func (_c *MockCollector_AnyReader_Call) RunAndReturn(run func() io.Reader) *MockCollector_AnyReader_Call {
+func (_c *MockCollector_AnyReader_Call) RunAndReturn(run func(context.Context) io.Reader) *MockCollector_AnyReader_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Close provides a mock function with given fields:
-func (_m *MockCollector) Close() {
-	_m.Called()
+func (_m *MockCollector) Close() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockCollector_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
@@ -90,12 +105,12 @@ func (_c *MockCollector_Close_Call) Run(run func()) *MockCollector_Close_Call {
 	return _c
 }
 
-func (_c *MockCollector_Close_Call) Return() *MockCollector_Close_Call {
-	_c.Call.Return()
+func (_c *MockCollector_Close_Call) Return(_a0 error) *MockCollector_Close_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockCollector_Close_Call) RunAndReturn(run func()) *MockCollector_Close_Call {
+func (_c *MockCollector_Close_Call) RunAndReturn(run func() error) *MockCollector_Close_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -147,17 +162,17 @@ func (_c *MockCollector_Start_Call) RunAndReturn(run func(io.ReadCloser, io.Read
 	return _c
 }
 
-// StderrReader provides a mock function with given fields:
-func (_m *MockCollector) StderrReader() io.Reader {
-	ret := _m.Called()
+// StderrReader provides a mock function with given fields: ctx
+func (_m *MockCollector) StderrReader(ctx context.Context) io.Reader {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for StderrReader")
 	}
 
 	var r0 io.Reader
-	if rf, ok := ret.Get(0).(func() io.Reader); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) io.Reader); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.Reader)
@@ -173,13 +188,14 @@ type MockCollector_StderrReader_Call struct {
 }
 
 // StderrReader is a helper method to define mock.On call
-func (_e *MockCollector_Expecter) StderrReader() *MockCollector_StderrReader_Call {
-	return &MockCollector_StderrReader_Call{Call: _e.mock.On("StderrReader")}
+//   - ctx context.Context
+func (_e *MockCollector_Expecter) StderrReader(ctx interface{}) *MockCollector_StderrReader_Call {
+	return &MockCollector_StderrReader_Call{Call: _e.mock.On("StderrReader", ctx)}
 }
 
-func (_c *MockCollector_StderrReader_Call) Run(run func()) *MockCollector_StderrReader_Call {
+func (_c *MockCollector_StderrReader_Call) Run(run func(ctx context.Context)) *MockCollector_StderrReader_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -189,22 +205,22 @@ func (_c *MockCollector_StderrReader_Call) Return(_a0 io.Reader) *MockCollector_
 	return _c
 }
 
-func (_c *MockCollector_StderrReader_Call) RunAndReturn(run func() io.Reader) *MockCollector_StderrReader_Call {
+func (_c *MockCollector_StderrReader_Call) RunAndReturn(run func(context.Context) io.Reader) *MockCollector_StderrReader_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// StdoutReader provides a mock function with given fields:
-func (_m *MockCollector) StdoutReader() io.Reader {
-	ret := _m.Called()
+// StdoutReader provides a mock function with given fields: ctx
+func (_m *MockCollector) StdoutReader(ctx context.Context) io.Reader {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for StdoutReader")
 	}
 
 	var r0 io.Reader
-	if rf, ok := ret.Get(0).(func() io.Reader); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) io.Reader); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.Reader)
@@ -220,13 +236,14 @@ type MockCollector_StdoutReader_Call struct {
 }
 
 // StdoutReader is a helper method to define mock.On call
-func (_e *MockCollector_Expecter) StdoutReader() *MockCollector_StdoutReader_Call {
-	return &MockCollector_StdoutReader_Call{Call: _e.mock.On("StdoutReader")}
+//   - ctx context.Context
+func (_e *MockCollector_Expecter) StdoutReader(ctx interface{}) *MockCollector_StdoutReader_Call {
+	return &MockCollector_StdoutReader_Call{Call: _e.mock.On("StdoutReader", ctx)}
 }
 
-func (_c *MockCollector_StdoutReader_Call) Run(run func()) *MockCollector_StdoutReader_Call {
+func (_c *MockCollector_StdoutReader_Call) Run(run func(ctx context.Context)) *MockCollector_StdoutReader_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -236,7 +253,7 @@ func (_c *MockCollector_StdoutReader_Call) Return(_a0 io.Reader) *MockCollector_
 	return _c
 }
 
-func (_c *MockCollector_StdoutReader_Call) RunAndReturn(run func() io.Reader) *MockCollector_StdoutReader_Call {
+func (_c *MockCollector_StdoutReader_Call) RunAndReturn(run func(context.Context) io.Reader) *MockCollector_StdoutReader_Call {
 	_c.Call.Return(run)
 	return _c
 }

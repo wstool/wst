@@ -23,6 +23,7 @@ in the future.
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
   - custom docker 
+- consider reporting closing output streams in localEnvironment Destroy
 - support metrics server expectation
 
 ### Config

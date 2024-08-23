@@ -87,7 +87,8 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 				l.Fnd.Logger().Errorf("Failed to kill process: %v", err)
 				hasError = true
 			}
-			t.outputCollector.Close()
+			// Ignore errors for now as we do not want to log error on EOF closing
+			_ = t.outputCollector.Close()
 		}
 	}
 
