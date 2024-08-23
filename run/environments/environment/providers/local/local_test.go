@@ -306,9 +306,9 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				mockCommand.On("StdoutPipe").Return(stdout, nil)
 				mockCommand.On("StderrPipe").Return(stderr, nil)
 				collectorMock := outputMocks.NewMockCollector(t)
+				mockCommand.On("Start").Return(nil)
 				outMakerMock.On("MakeCollector").Return(collectorMock)
 				collectorMock.On("Start", stdout, stderr).Return(nil)
-				mockCommand.On("Start").Return(nil)
 				fndMock.On("GenerateUuid").Return("uuid-123")
 				return mockCommand
 			},
@@ -333,9 +333,6 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
 				mockCommand.On("StdoutPipe").Return(stdout, nil)
 				mockCommand.On("StderrPipe").Return(stderr, nil)
-				collectorMock := outputMocks.NewMockCollector(t)
-				outMakerMock.On("MakeCollector").Return(collectorMock)
-				collectorMock.On("Start", stdout, stderr).Return(nil)
 				mockCommand.On("Start").Return(fmt.Errorf("command start error"))
 				return mockCommand
 			},
@@ -360,6 +357,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
 				mockCommand.On("StdoutPipe").Return(stdout, nil)
 				mockCommand.On("StderrPipe").Return(stderr, nil)
+				mockCommand.On("Start").Return(nil)
 				collectorMock := outputMocks.NewMockCollector(t)
 				outMakerMock.On("MakeCollector").Return(collectorMock)
 				collectorMock.On("Start", stdout, stderr).Return(fmt.Errorf("collector start error"))
