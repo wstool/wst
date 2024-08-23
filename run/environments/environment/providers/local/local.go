@@ -123,11 +123,11 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 	if err != nil {
 		return nil, err
 	}
-	outputCollector := l.OutputMaker.MakeCollector()
-	if err = outputCollector.Start(stdoutPipe, stderrPipe); err != nil {
+	if err = command.Start(); err != nil {
 		return nil, err
 	}
-	if err = command.Start(); err != nil {
+	outputCollector := l.OutputMaker.MakeCollector()
+	if err = outputCollector.Start(stdoutPipe, stderrPipe); err != nil {
 		return nil, err
 	}
 
