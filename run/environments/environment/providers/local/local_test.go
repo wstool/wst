@@ -698,7 +698,7 @@ func Test_localEnvironment_Output(t *testing.T) {
 	tests := []struct {
 		name             string
 		outputType       output.Type
-		setupMocks       func(*testing.T, *outputMocks.MockCollector)
+		setupMocks       func(*testing.T, context.Context, *outputMocks.MockCollector)
 		nilTask          bool
 		expectError      bool
 		expectedOutput   string
@@ -707,27 +707,27 @@ func Test_localEnvironment_Output(t *testing.T) {
 		{
 			name:       "successful stdout output collection",
 			outputType: output.Stdout,
-			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
+			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
 				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
-				om.On("StdoutReader").Return(stdout)
+				om.On("StdoutReader", ctx).Return(stdout)
 			},
 			expectedOutput: "Hello, stdout!",
 		},
 		{
 			name:       "successful stderr output collection",
 			outputType: output.Stderr,
-			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
+			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
 				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
-				om.On("StderrReader").Return(stderr)
+				om.On("StderrReader", ctx).Return(stderr)
 			},
 			expectedOutput: "Hello, stderr!",
 		},
 		{
 			name:       "successful any output collection",
 			outputType: output.Any,
-			setupMocks: func(t *testing.T, om *outputMocks.MockCollector) {
+			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
 				anyout := io.NopCloser(strings.NewReader("outout"))
-				om.On("AnyReader").Return(anyout)
+				om.On("AnyReader", ctx).Return(anyout)
 			},
 			expectedOutput: "outout",
 		},
@@ -751,7 +751,7 @@ func Test_localEnvironment_Output(t *testing.T) {
 			ctx := context.Background()
 			ocMock := outputMocks.NewMockCollector(t)
 			if tt.setupMocks != nil {
-				tt.setupMocks(t, ocMock)
+				tt.setupMocks(t, ctx, ocMock)
 			}
 
 			var testTask task.Task = nil
