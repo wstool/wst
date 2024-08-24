@@ -61,7 +61,8 @@ func (a *outputAction) Timeout() time.Duration {
 }
 
 func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing expectation output action")
+	logger := a.fnd.Logger()
+	logger.Infof("Executing expectation output action")
 	outputType, err := a.getServiceOutputType(a.OutputType)
 	if err != nil {
 		return false, err
@@ -74,8 +75,10 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 	if err != nil {
 		return false, err
 	}
+	lines := []string{}
 	for scanner.Scan() {
 		line := scanner.Text()
+		lines = append(lines, line)
 		messages, err = a.matchMessages(line, messages)
 		if err != nil {
 			return false, err
@@ -85,6 +88,12 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 		}
 	}
 	if scanner.Err() != nil {
+		for _, msg := range messages {
+			logger.Debugf("Expected message not found: %s", msg)
+		}
+		for _, line := range lines {
+			logger.Debugf("Unexpected line found: %s", line)
+		}
 		return false, scanner.Err()
 	}
 
