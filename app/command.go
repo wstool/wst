@@ -16,6 +16,8 @@ type Command interface {
 	ProcessSignal(sig os.Signal) error
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
+	SetStdout(stdout io.Writer)
+	SetStderr(stdout io.Writer)
 }
 
 func NewExecCommand(ctx context.Context, name string, args []string) Command {
@@ -63,6 +65,14 @@ func (c ExecCommand) StderrPipe() (io.ReadCloser, error) {
 	return c.cmd.StderrPipe()
 }
 
+func (c ExecCommand) SetStdout(stdout io.Writer) {
+	c.cmd.Stdout = stdout
+}
+
+func (c ExecCommand) SetStderr(stderr io.Writer) {
+	c.cmd.Stderr = stderr
+}
+
 func NewDryRunCommand() Command {
 	return &DryRunCommand{}
 }
@@ -107,3 +117,7 @@ func (c DryRunCommand) StdoutPipe() (io.ReadCloser, error) {
 func (c DryRunCommand) StderrPipe() (io.ReadCloser, error) {
 	return &DummyReaderCloser{}, nil
 }
+
+func (c DryRunCommand) SetStdout(stdout io.Writer) {}
+
+func (c DryRunCommand) SetStderr(stdout io.Writer) {}

@@ -210,6 +210,53 @@ func (_c *MockCollector_StderrReader_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// StderrWriter provides a mock function with given fields:
+func (_m *MockCollector) StderrWriter() io.Writer {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for StderrWriter")
+	}
+
+	var r0 io.Writer
+	if rf, ok := ret.Get(0).(func() io.Writer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Writer)
+		}
+	}
+
+	return r0
+}
+
+// MockCollector_StderrWriter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StderrWriter'
+type MockCollector_StderrWriter_Call struct {
+	*mock.Call
+}
+
+// StderrWriter is a helper method to define mock.On call
+func (_e *MockCollector_Expecter) StderrWriter() *MockCollector_StderrWriter_Call {
+	return &MockCollector_StderrWriter_Call{Call: _e.mock.On("StderrWriter")}
+}
+
+func (_c *MockCollector_StderrWriter_Call) Run(run func()) *MockCollector_StderrWriter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCollector_StderrWriter_Call) Return(_a0 io.Writer) *MockCollector_StderrWriter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCollector_StderrWriter_Call) RunAndReturn(run func() io.Writer) *MockCollector_StderrWriter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StdoutReader provides a mock function with given fields: ctx
 func (_m *MockCollector) StdoutReader(ctx context.Context) io.Reader {
 	ret := _m.Called(ctx)
@@ -254,6 +301,53 @@ func (_c *MockCollector_StdoutReader_Call) Return(_a0 io.Reader) *MockCollector_
 }
 
 func (_c *MockCollector_StdoutReader_Call) RunAndReturn(run func(context.Context) io.Reader) *MockCollector_StdoutReader_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StdoutWriter provides a mock function with given fields:
+func (_m *MockCollector) StdoutWriter() io.Writer {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for StdoutWriter")
+	}
+
+	var r0 io.Writer
+	if rf, ok := ret.Get(0).(func() io.Writer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Writer)
+		}
+	}
+
+	return r0
+}
+
+// MockCollector_StdoutWriter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StdoutWriter'
+type MockCollector_StdoutWriter_Call struct {
+	*mock.Call
+}
+
+// StdoutWriter is a helper method to define mock.On call
+func (_e *MockCollector_Expecter) StdoutWriter() *MockCollector_StdoutWriter_Call {
+	return &MockCollector_StdoutWriter_Call{Call: _e.mock.On("StdoutWriter")}
+}
+
+func (_c *MockCollector_StdoutWriter_Call) Run(run func()) *MockCollector_StdoutWriter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCollector_StdoutWriter_Call) Return(_a0 io.Writer) *MockCollector_StdoutWriter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCollector_StdoutWriter_Call) RunAndReturn(run func() io.Writer) *MockCollector_StdoutWriter_Call {
 	_c.Call.Return(run)
 	return _c
 }

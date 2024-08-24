@@ -347,3 +347,41 @@ func TestBufferedCollector_Close(t *testing.T) {
 		})
 	}
 }
+
+func TestBufferedCollector_StdoutWriter(t *testing.T) {
+	// Initialize the BufferedCollector
+	collector := NewBufferedCollector()
+
+	// Write some data using StdoutWriter
+	stdoutWriter := collector.StdoutWriter()
+	_, err := stdoutWriter.Write([]byte("stdout log 1\n"))
+	assert.NoError(t, err)
+
+	_, err = stdoutWriter.Write([]byte("stdout log 2\n"))
+	assert.NoError(t, err)
+
+	// Validate that the data written to StdoutWriter is in both stdoutBuffer and mixedBuffer
+	expected := "stdout log 1\nstdout log 2\n"
+
+	assert.Equal(t, expected, collector.stdoutBuffer.buffer.String())
+	assert.Equal(t, expected, collector.mixedBuffer.buffer.String())
+}
+
+func TestBufferedCollector_StderrWriter(t *testing.T) {
+	// Initialize the BufferedCollector
+	collector := NewBufferedCollector()
+
+	// Write some data using StderrWriter
+	stderrWriter := collector.StderrWriter()
+	_, err := stderrWriter.Write([]byte("stderr log 1\n"))
+	assert.NoError(t, err)
+
+	_, err = stderrWriter.Write([]byte("stderr log 2\n"))
+	assert.NoError(t, err)
+
+	// Validate that the data written to StderrWriter is in both stderrBuffer and mixedBuffer
+	expected := "stderr log 1\nstderr log 2\n"
+
+	assert.Equal(t, expected, collector.stderrBuffer.buffer.String())
+	assert.Equal(t, expected, collector.mixedBuffer.buffer.String())
+}

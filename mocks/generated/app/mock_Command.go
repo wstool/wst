@@ -203,6 +203,72 @@ func (_c *MockCommand_Run_Call) RunAndReturn(run func() error) *MockCommand_Run_
 	return _c
 }
 
+// SetStderr provides a mock function with given fields: stdout
+func (_m *MockCommand) SetStderr(stdout io.Writer) {
+	_m.Called(stdout)
+}
+
+// MockCommand_SetStderr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStderr'
+type MockCommand_SetStderr_Call struct {
+	*mock.Call
+}
+
+// SetStderr is a helper method to define mock.On call
+//   - stdout io.Writer
+func (_e *MockCommand_Expecter) SetStderr(stdout interface{}) *MockCommand_SetStderr_Call {
+	return &MockCommand_SetStderr_Call{Call: _e.mock.On("SetStderr", stdout)}
+}
+
+func (_c *MockCommand_SetStderr_Call) Run(run func(stdout io.Writer)) *MockCommand_SetStderr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(io.Writer))
+	})
+	return _c
+}
+
+func (_c *MockCommand_SetStderr_Call) Return() *MockCommand_SetStderr_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockCommand_SetStderr_Call) RunAndReturn(run func(io.Writer)) *MockCommand_SetStderr_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetStdout provides a mock function with given fields: stdout
+func (_m *MockCommand) SetStdout(stdout io.Writer) {
+	_m.Called(stdout)
+}
+
+// MockCommand_SetStdout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStdout'
+type MockCommand_SetStdout_Call struct {
+	*mock.Call
+}
+
+// SetStdout is a helper method to define mock.On call
+//   - stdout io.Writer
+func (_e *MockCommand_Expecter) SetStdout(stdout interface{}) *MockCommand_SetStdout_Call {
+	return &MockCommand_SetStdout_Call{Call: _e.mock.On("SetStdout", stdout)}
+}
+
+func (_c *MockCommand_SetStdout_Call) Run(run func(stdout io.Writer)) *MockCommand_SetStdout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(io.Writer))
+	})
+	return _c
+}
+
+func (_c *MockCommand_SetStdout_Call) Return() *MockCommand_SetStdout_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockCommand_SetStdout_Call) RunAndReturn(run func(io.Writer)) *MockCommand_SetStdout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function with given fields:
 func (_m *MockCommand) Start() error {
 	ret := _m.Called()

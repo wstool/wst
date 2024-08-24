@@ -115,20 +115,11 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 
 	command := l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args)
 
-	// Collect logs
-	stdoutPipe, err := command.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	stderrPipe, err := command.StderrPipe()
-	if err != nil {
-		return nil, err
-	}
-	if err = command.Start(); err != nil {
-		return nil, err
-	}
 	outputCollector := l.OutputMaker.MakeCollector()
-	if err = outputCollector.Start(stdoutPipe, stderrPipe); err != nil {
+	command.SetStdout(outputCollector.StdoutWriter())
+	command.SetStderr(outputCollector.StderrWriter())
+
+	if err := command.Start(); err != nil {
 		return nil, err
 	}
 

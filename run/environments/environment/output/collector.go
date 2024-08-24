@@ -16,6 +16,8 @@ type Collector interface {
 	StderrReader(ctx context.Context) io.Reader
 	StdoutReader(ctx context.Context) io.Reader
 	Start(stdoutPipe, stderrPipe io.ReadCloser) error
+	StdoutWriter() io.Writer
+	StderrWriter() io.Writer
 	Wait()
 }
 
@@ -51,8 +53,7 @@ func (r *blockingBufferReader) Write(data []byte) (int, error) {
 	return n, err
 }
 
-// Read reads data from the buffer, blocking if no data is available.
-func (r *blockingBufferReader) Read(p []byte) (int, error) {
+func (r *blockingBufferReader) readWithContext(ctx context.Context, p []byte) (int, error) {
 	for {
 		r.mu.Lock()
 		if r.buffer.Len() > 0 {
@@ -67,11 +68,19 @@ func (r *blockingBufferReader) Read(p []byte) (int, error) {
 		r.mu.Unlock()
 
 		select {
+		case <-ctx.Done():
+			return 0, errors.Errorf("read cancelled: %v", ctx.Err())
 		case <-r.dataCh: // Wait for data to be available
+			continue
 		case <-r.closeCh: // Wait for the reader to be closed
 			return 0, io.EOF
 		}
 	}
+}
+
+// Read reads data from the buffer, blocking if no data is available.
+func (r *blockingBufferReader) Read(p []byte) (int, error) {
+	return r.readWithContext(context.Background(), p)
 }
 
 // Close marks the reader as closed and signals any waiting readers.
@@ -122,13 +131,13 @@ func (bc *BufferedCollector) Start(stdoutPipe, stderrPipe io.ReadCloser) error {
 }
 
 // collectOutput reads from the given pipe and writes to the corresponding buffer.
-func (bc *BufferedCollector) collectOutput(pipe io.ReadCloser, buffer *blockingBufferReader) {
+func (bc *BufferedCollector) collectOutput(pipe io.ReadCloser, buffer *blockingBufferReader) (int64, error) {
 	defer bc.wg.Done()
 
 	reader := io.TeeReader(pipe, buffer)
+	written, err := io.Copy(bc.mixedBuffer, reader)
 
-	// Continuously read from the pipe
-	io.Copy(bc.mixedBuffer, reader)
+	return written, err
 }
 
 // Wait blocks until all logs are collected.
@@ -151,18 +160,32 @@ func (bc *BufferedCollector) AnyReader(ctx context.Context) io.Reader {
 	return newContextAwareReader(ctx, bc.mixedBuffer)
 }
 
+// StdoutWriter returns a MultiWriter that writes to both stdoutBuffer and mixedBuffer
+func (bc *BufferedCollector) StdoutWriter() io.Writer {
+	return io.MultiWriter(bc.stdoutBuffer, bc.mixedBuffer)
+}
+
+// StderrWriter returns a MultiWriter that writes to both stderrBuffer and mixedBuffer
+func (bc *BufferedCollector) StderrWriter() io.Writer {
+	return io.MultiWriter(bc.stderrBuffer, bc.mixedBuffer)
+}
+
 // Close closes all pipes.
 func (bc *BufferedCollector) Close() error {
 	var errStrings []string
 
-	// Attempt to close stdoutPipe
-	if err := bc.stdoutPipe.Close(); err != nil {
-		errStrings = append(errStrings, fmt.Sprintf("stdoutPipe close error: %v", err))
+	// Attempt to close stdoutPipe if set
+	if bc.stdoutPipe != nil {
+		if err := bc.stdoutPipe.Close(); err != nil {
+			errStrings = append(errStrings, fmt.Sprintf("stdoutPipe close error: %v", err))
+		}
 	}
 
-	// Attempt to close stderrPipe
-	if err := bc.stderrPipe.Close(); err != nil {
-		errStrings = append(errStrings, fmt.Sprintf("stderrPipe close error: %v", err))
+	// Attempt to close stderrPipe if set
+	if bc.stderrPipe != nil {
+		if err := bc.stderrPipe.Close(); err != nil {
+			errStrings = append(errStrings, fmt.Sprintf("stderrPipe close error: %v", err))
+		}
 	}
 
 	bc.stdoutBuffer.Close()
@@ -192,16 +215,7 @@ func newContextAwareReader(ctx context.Context, reader *blockingBufferReader) *c
 	}
 }
 
-// Read reads from the underlying reader or returns early if the context is done.
+// Read reads from the underlying reader with context.
 func (r *contextAwareReader) Read(p []byte) (n int, err error) {
-	for {
-		select {
-		case <-r.ctx.Done():
-			return 0, errors.Errorf("read cancelled: %v", r.ctx.Err())
-		case <-r.reader.dataCh: // Data is available
-			return r.reader.Read(p)
-		case <-r.reader.closeCh: // Reader is closed
-			return 0, io.EOF
-		}
-	}
+	return r.reader.readWithContext(r.ctx, p)
 }
