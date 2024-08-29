@@ -18,7 +18,6 @@ in the future.
 
 ### Run
 
-- scripts are currently not created in their files but instead directly in /var/www which is a file
 - fix port allocation - currently it is always 0 for services
 - make Service Address hostname configurable so it's not always 0.0.0.0
   - consider support for UDS

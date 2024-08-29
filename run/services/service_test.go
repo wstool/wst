@@ -1524,7 +1524,7 @@ func Test_nativeService_Start(t *testing.T) {
 				).Return(nil)
 
 				indexScript := scriptsMocks.NewMockScript(t)
-				indexScript.On("Path").Return("/app/index.php")
+				indexScript.On("Path").Return("")
 				indexScript.On("Mode").Return(os.FileMode(0664))
 				indexScript.On("Content").Return("<?php echo 1;")
 				indexScriptParams := parameters.Parameters{
@@ -1532,7 +1532,7 @@ func Test_nativeService_Start(t *testing.T) {
 				}
 				indexScript.On("Parameters").Return(indexScriptParams)
 				svc.scripts = scripts.Scripts{
-					"index": indexScript,
+					"index.php": indexScript,
 				}
 				sb.On("Dir", dir.ScriptDirType).Return("scr", nil)
 				tmpl.On(
@@ -1549,14 +1549,14 @@ func Test_nativeService_Start(t *testing.T) {
 					"php_ini":  "/tmp/svc/conf/php.ini",
 				}
 				ss.EnvironmentScriptPaths = map[string]string{
-					"index": "/tmp/svc/scr/index.php",
+					"index.php": "/tmp/svc/scr/index.php",
 				}
 				ss.WorkspaceConfigPaths = map[string]string{
 					"fpm_conf": "/tmp/ws/svc/conf/fpm.conf",
 					"php_ini":  "/tmp/ws/svc/conf/php.ini",
 				}
 				ss.WorkspaceScriptPaths = map[string]string{
-					"index": "/tmp/ws/svc/scr/index.php",
+					"index.php": "/tmp/ws/svc/scr/index.php",
 				}
 				tsk := taskMocks.NewMockTask(t)
 				tsk.TestData().Set("id", "task")

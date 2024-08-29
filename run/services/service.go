@@ -388,8 +388,12 @@ func (s *nativeService) renderConfigs() error {
 	return nil
 }
 
-func (s *nativeService) renderScript(script scripts.Script) (string, string, error) {
-	workspaceScriptPath, environmentScriptPath, err := s.renderingPaths(script.Path(), dir.ScriptDirType)
+func (s *nativeService) renderScript(script scripts.Script, scriptName string) (string, string, error) {
+	scriptPath := script.Path()
+	if scriptPath == "" {
+		scriptPath = scriptName
+	}
+	workspaceScriptPath, environmentScriptPath, err := s.renderingPaths(scriptPath, dir.ScriptDirType)
 	if err != nil {
 		return "", "", err
 	}
@@ -407,7 +411,7 @@ func (s *nativeService) renderScripts() error {
 	envScriptPaths := make(map[string]string, len(includedScripts))
 	wsScriptPaths := make(map[string]string, len(includedScripts))
 	for scriptName, script := range includedScripts {
-		wsPath, envPath, err := s.renderScript(script)
+		wsPath, envPath, err := s.renderScript(script, scriptName)
 		if err != nil {
 			return err
 		}
