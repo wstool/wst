@@ -645,6 +645,53 @@ func (_c *MockEnvironment_RunTask_Call) RunAndReturn(run func(context.Context, *
 	return _c
 }
 
+// ServiceAddress provides a mock function with given fields: serviceName, port
+func (_m *MockEnvironment) ServiceAddress(serviceName string, port int32) string {
+	ret := _m.Called(serviceName, port)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ServiceAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string, int32) string); ok {
+		r0 = rf(serviceName, port)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockEnvironment_ServiceAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceAddress'
+type MockEnvironment_ServiceAddress_Call struct {
+	*mock.Call
+}
+
+// ServiceAddress is a helper method to define mock.On call
+//   - serviceName string
+//   - port int32
+func (_e *MockEnvironment_Expecter) ServiceAddress(serviceName interface{}, port interface{}) *MockEnvironment_ServiceAddress_Call {
+	return &MockEnvironment_ServiceAddress_Call{Call: _e.mock.On("ServiceAddress", serviceName, port)}
+}
+
+func (_c *MockEnvironment_ServiceAddress_Call) Run(run func(serviceName string, port int32)) *MockEnvironment_ServiceAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(int32))
+	})
+	return _c
+}
+
+func (_c *MockEnvironment_ServiceAddress_Call) Return(_a0 string) *MockEnvironment_ServiceAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEnvironment_ServiceAddress_Call) RunAndReturn(run func(string, int32) string) *MockEnvironment_ServiceAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockEnvironment creates a new instance of MockEnvironment. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockEnvironment(t interface {

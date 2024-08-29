@@ -408,7 +408,7 @@ func (e *kubernetesEnvironment) createDeployment(
 							Args:    args,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: ss.Port,
+									ContainerPort: ss.ServerPort,
 								},
 							},
 							VolumeMounts: volumeMounts,
@@ -491,8 +491,8 @@ func (e *kubernetesEnvironment) createService(
 			Type: kubeServiceType,
 			Ports: []corev1.ServicePort{
 				{
-					Port:       ss.Port,
-					TargetPort: intstr.FromInt32(ss.Port),
+					Port:       ss.ServerPort,
+					TargetPort: intstr.FromInt32(ss.ServerPort),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -513,7 +513,7 @@ func (e *kubernetesEnvironment) createService(
 		if ss.Public {
 			kubeTask.servicePublicUrl = "http://127.0.0.1"
 		}
-		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
+		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.ServerPort)
 		return nil
 	}
 
@@ -539,7 +539,7 @@ func (e *kubernetesEnvironment) createService(
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
 					kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
 				}
-				kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.Port)
+				kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.ServerPort)
 				return nil
 			case watch.Deleted:
 				fallthrough
@@ -615,6 +615,10 @@ func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, ou
 
 func (e *kubernetesEnvironment) RootPath(workspace string) string {
 	return ""
+}
+
+func (e *kubernetesEnvironment) ServiceAddress(serviceName string, port int32) string {
+	return serviceName
 }
 
 type kubernetesTask struct {

@@ -17,7 +17,6 @@ package services
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/run/environments"
@@ -217,6 +216,7 @@ func (m *nativeMaker) Make(
 			name:             serviceName,
 			fullName:         instanceName + "-" + serviceName,
 			public:           serviceConfig.Public,
+			port:             env.ReservePort(),
 			environment:      env,
 			scripts:          includedScripts,
 			server:           server,
@@ -247,6 +247,7 @@ type nativeService struct {
 	name                   string
 	fullName               string
 	public                 bool
+	port                   int32
 	scripts                scripts.Scripts
 	server                 servers.Server
 	serverParameters       parameters.Parameters
@@ -427,7 +428,8 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 	return &environment.ServiceSettings{
 		Name:                   s.name,
 		FullName:               s.fullName,
-		Port:                   s.Port(),
+		Port:                   s.port,
+		ServerPort:             s.server.Port(),
 		Public:                 s.public,
 		ContainerConfig:        s.sandbox.ContainerConfig(),
 		ServerParameters:       s.serverParameters,
@@ -515,7 +517,7 @@ func (s *nativeService) FullName() string {
 }
 
 func (s *nativeService) Address() string {
-	return fmt.Sprintf("0.0.0.0:%d", s.Port())
+	return s.environment.ServiceAddress(s.name, s.port)
 }
 
 func (s *nativeService) Executable() (string, error) {

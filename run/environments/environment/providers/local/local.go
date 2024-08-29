@@ -71,6 +71,10 @@ func (l *localEnvironment) RootPath(workspace string) string {
 	return workspace
 }
 
+func (l *localEnvironment) ServiceAddress(serviceName string, port int32) string {
+	return fmt.Sprintf("127.0.0.1:%d", port)
+}
+
 func (l *localEnvironment) Init(ctx context.Context) error {
 	fs := l.Fnd.Fs()
 	err := fs.MkdirAll(l.workspace, 0755)

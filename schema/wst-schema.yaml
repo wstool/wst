@@ -472,6 +472,7 @@ $defs:
         type: string
       port:
         title: Server primary exported port
+        description: This is meant only for container environments where the port is specific to the container.
         type: string
       configs:
         title: Configuration files

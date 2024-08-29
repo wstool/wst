@@ -230,6 +230,8 @@ func Test_nativeMaker_Make(t *testing.T) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv.On("MarkUsed").Return()
+				dockerEnv.On("ReservePort").Return(int32(8500)).Once()
+				dockerEnv.On("ReservePort").Return(int32(8501))
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
 				envs := environments.Environments{
 					providers.LocalType:      localEnv,
@@ -322,6 +324,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					name:             "fpm",
 					fullName:         "ti-fpm",
 					public:           false,
+					port:             int32(8500),
 					scripts:          scrs,
 					server:           fpmDebSrv,
 					serverParameters: fpmServerParams,
@@ -361,6 +364,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					name:             "nginx",
 					fullName:         "ti-nginx",
 					public:           true,
+					port:             int32(8501),
 					scripts:          scrs,
 					server:           nginxDebSrv,
 					serverParameters: nginxServerParams,
@@ -438,6 +442,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				localEnv.On("MarkUsed").Return()
+				localEnv.On("ReservePort").Return(int32(8500))
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
 				envs := environments.Environments{
@@ -493,6 +498,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					name:     "svc",
 					fullName: "testInstance-svc",
 					public:   true,
+					port:     int32(8500),
 					scripts: scripts.Scripts{
 						"s1": scriptsMocks.NewMockScript(t),
 					},
@@ -1116,6 +1122,7 @@ func testingNativeService(t *testing.T) *nativeService {
 		name:                   "svc",
 		fullName:               "instance-name-svc",
 		public:                 true,
+		port:                   8500,
 		workspace:              "/tmp/ws/svc",
 		server:                 serversMocks.NewMockServer(t),
 		serverParameters:       parameters.Parameters{"p1": parameterMocks.NewMockParameter(t)},
@@ -1142,7 +1149,8 @@ func testingServiceSettings(s *nativeService) *environment.ServiceSettings {
 	return &environment.ServiceSettings{
 		Name:                   s.name,
 		FullName:               s.fullName,
-		Port:                   int32(12345),
+		Port:                   int32(8500),
+		ServerPort:             int32(12345),
 		Public:                 s.public,
 		ContainerConfig:        cc,
 		ServerParameters:       s.serverParameters,
@@ -1155,8 +1163,10 @@ func testingServiceSettings(s *nativeService) *environment.ServiceSettings {
 
 func Test_nativeService_Address(t *testing.T) {
 	svc := testingNativeService(t)
-	svc.server.(*serversMocks.MockServer).On("Port").Return(int32(1234))
-	assert.Equal(t, "0.0.0.0:1234", svc.Address())
+	svc.environment.(*environmentMocks.MockEnvironment).On("ServiceAddress", "svc", int32(8500)).Return(
+		"127.0.0.1:8500",
+	)
+	assert.Equal(t, "127.0.0.1:8500", svc.Address())
 }
 
 func Test_nativeService_Port(t *testing.T) {

@@ -184,11 +184,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	}
 
 	// Prepare host config with Port bindings
-	serverPort := strconv.Itoa(int(ss.Port))
+	serverPort := strconv.Itoa(int(ss.ServerPort))
 	hostUrl := ""
 	var hostConfig *container.HostConfig
 	if ss.Public {
-		hostPort := strconv.Itoa(int(e.ReservePort()))
+		hostPort := strconv.Itoa(int(ss.Port))
 		portMapName := nat.Port(serverPort + "/tcp")
 		hostConfig = &container.HostConfig{
 			PortBindings: nat.PortMap{
@@ -338,6 +338,10 @@ func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, output
 
 func (e *dockerEnvironment) RootPath(workspace string) string {
 	return ""
+}
+
+func (e *dockerEnvironment) ServiceAddress(serviceName string, port int32) string {
+	return serviceName
 }
 
 type dockerTask struct {

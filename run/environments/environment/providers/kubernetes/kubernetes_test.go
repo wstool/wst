@@ -811,10 +811,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -927,10 +928,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1044,10 +1046,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1116,10 +1119,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1214,10 +1218,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1309,10 +1314,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1401,10 +1407,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1484,10 +1491,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1573,10 +1581,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1647,10 +1656,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1718,10 +1728,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1786,10 +1797,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1851,10 +1863,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1912,10 +1925,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1970,10 +1984,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -2031,10 +2046,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -2080,10 +2096,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			useFullName:    false,
 			envStartPort:   8080,
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -2129,10 +2146,11 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			useFullName:    true,
 			envStartPort:   8080,
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: strings.Repeat("a", 260),
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   strings.Repeat("a", 260),
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				EnvironmentConfigPaths: map[string]string{
 					"my_main_conf": "/etc/main.conf",
 				},
@@ -2232,9 +2250,10 @@ func Test_kubernetesEnvironment_ExecTaskCommand(t *testing.T) {
 	env := &kubernetesEnvironment{}
 	ctx := context.Background()
 	ss := &environment.ServiceSettings{
-		Name:     "svc",
-		FullName: "mysvc",
-		Port:     1234,
+		Name:       "svc",
+		FullName:   "mysvc",
+		Port:       8080,
+		ServerPort: 1234,
 	}
 	cmd := &environment.Command{Name: "test"}
 	tsk := &kubernetesTask{}
@@ -2247,9 +2266,10 @@ func Test_kubernetesEnvironment_ExecTaskSignal(t *testing.T) {
 	env := &kubernetesEnvironment{}
 	ctx := context.Background()
 	ss := &environment.ServiceSettings{
-		Name:     "svc",
-		FullName: "mysvc",
-		Port:     1234,
+		Name:       "svc",
+		FullName:   "mysvc",
+		Port:       8080,
+		ServerPort: 1234,
 	}
 	tsk := &kubernetesTask{}
 	err := env.ExecTaskSignal(ctx, ss, tsk, os.Interrupt)
@@ -2479,6 +2499,11 @@ func Test_kubernetesEnvironment_Output(t *testing.T) {
 func Test_kubernetesEnvironment_RootPath(t *testing.T) {
 	env := &kubernetesEnvironment{}
 	assert.Equal(t, "", env.RootPath("/www/ws"))
+}
+
+func Test_kubernetesEnvironment_ServiceAddress(t *testing.T) {
+	env := &kubernetesEnvironment{}
+	assert.Equal(t, "svc", env.ServiceAddress("svc", 1234))
 }
 
 func getTestTask() *kubernetesTask {

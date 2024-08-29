@@ -18,9 +18,6 @@ in the future.
 
 ### Run
 
-- fix port allocation - currently it is always 0 for services
-- make Service Address hostname configurable so it's not always 0.0.0.0
-  - consider support for UDS
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - identify server circular extending and error instead of current stack panic
@@ -31,8 +28,12 @@ in the future.
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
   - custom docker 
-- consider reporting closing output streams in localEnvironment Destroy
+- local environment improvements
+  - support for UDS in address
+  - consider reporting closing output streams in Destroy
 - support metrics server expectation
+- replace environment.ServiceSettings struct with environment.Service interface
+  - code clean up really with saving some calls - it just messy to pre-create this struct
 
 ### Config
 

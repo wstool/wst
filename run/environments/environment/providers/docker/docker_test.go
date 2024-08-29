@@ -363,10 +363,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   true,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     true,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -461,10 +462,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -560,10 +562,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -611,10 +614,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -698,10 +702,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -796,10 +801,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -876,10 +882,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -950,10 +957,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1028,10 +1036,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1096,10 +1105,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1164,10 +1174,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1230,10 +1241,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1277,10 +1289,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1324,10 +1337,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "wt",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1370,10 +1384,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			envStartPort:  8080,
 			networkName:   "",
 			ss: &environment.ServiceSettings{
-				Name:     "svc",
-				FullName: "mysvc",
-				Port:     1234,
-				Public:   false,
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
 				ContainerConfig: &containers.ContainerConfig{
 					ImageName:        "wst",
 					ImageTag:         "test",
@@ -1421,7 +1436,8 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:            "svc",
 				FullName:        "mysvc",
-				Port:            1234,
+				Port:            8080,
+				ServerPort:      1234,
 				Public:          false,
 				ContainerConfig: nil,
 				EnvironmentConfigPaths: map[string]string{
@@ -1507,9 +1523,10 @@ func Test_dockerEnvironment_ExecTaskCommand(t *testing.T) {
 	env := &dockerEnvironment{}
 	ctx := context.Background()
 	ss := &environment.ServiceSettings{
-		Name:     "svc",
-		FullName: "mysvc",
-		Port:     1234,
+		Name:       "svc",
+		FullName:   "mysvc",
+		Port:       8080,
+		ServerPort: 1234,
 	}
 	cmd := &environment.Command{Name: "test"}
 	tsk := &dockerTask{}
@@ -1522,9 +1539,10 @@ func Test_dockerEnvironment_ExecTaskSignal(t *testing.T) {
 	env := &dockerEnvironment{}
 	ctx := context.Background()
 	ss := &environment.ServiceSettings{
-		Name:     "svc",
-		FullName: "mysvc",
-		Port:     1234,
+		Name:       "svc",
+		FullName:   "mysvc",
+		Port:       8080,
+		ServerPort: 1234,
 	}
 	tsk := &dockerTask{}
 	err := env.ExecTaskSignal(ctx, ss, tsk, os.Interrupt)
@@ -1699,6 +1717,11 @@ func Test_dockerEnvironment_Output(t *testing.T) {
 func Test_dockerEnvironment_RootPath(t *testing.T) {
 	env := &dockerEnvironment{}
 	assert.Equal(t, "", env.RootPath("/www/ws"))
+}
+
+func Test_dockerEnvironment_ServiceAddress(t *testing.T) {
+	env := &dockerEnvironment{}
+	assert.Equal(t, "svc", env.ServiceAddress("svc", 1234))
 }
 
 func getTestTask() *dockerTask {

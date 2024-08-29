@@ -52,6 +52,7 @@ type ServiceSettings struct {
 	Port                   int32
 	Public                 bool
 	ContainerConfig        *containers.ContainerConfig
+	ServerPort             int32
 	ServerParameters       parameters.Parameters
 	EnvironmentConfigPaths map[string]string
 	EnvironmentScriptPaths map[string]string
@@ -63,6 +64,7 @@ type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
 	RootPath(workspace string) string
+	ServiceAddress(serviceName string, port int32) string
 	RunTask(ctx context.Context, ss *ServiceSettings, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command) error
 	ExecTaskSignal(ctx context.Context, ss *ServiceSettings, target task.Task, signal os.Signal) error
