@@ -20,17 +20,17 @@ func (_m *MockMaker) EXPECT() *MockMaker_Expecter {
 	return &MockMaker_Expecter{mock: &_m.Mock}
 }
 
-// MakeCollector provides a mock function with given fields:
-func (_m *MockMaker) MakeCollector() output.Collector {
-	ret := _m.Called()
+// MakeCollector provides a mock function with given fields: tid
+func (_m *MockMaker) MakeCollector(tid string) output.Collector {
+	ret := _m.Called(tid)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MakeCollector")
 	}
 
 	var r0 output.Collector
-	if rf, ok := ret.Get(0).(func() output.Collector); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) output.Collector); ok {
+		r0 = rf(tid)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(output.Collector)
@@ -46,13 +46,14 @@ type MockMaker_MakeCollector_Call struct {
 }
 
 // MakeCollector is a helper method to define mock.On call
-func (_e *MockMaker_Expecter) MakeCollector() *MockMaker_MakeCollector_Call {
-	return &MockMaker_MakeCollector_Call{Call: _e.mock.On("MakeCollector")}
+//   - tid string
+func (_e *MockMaker_Expecter) MakeCollector(tid interface{}) *MockMaker_MakeCollector_Call {
+	return &MockMaker_MakeCollector_Call{Call: _e.mock.On("MakeCollector", tid)}
 }
 
-func (_c *MockMaker_MakeCollector_Call) Run(run func()) *MockMaker_MakeCollector_Call {
+func (_c *MockMaker_MakeCollector_Call) Run(run func(tid string)) *MockMaker_MakeCollector_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -62,7 +63,7 @@ func (_c *MockMaker_MakeCollector_Call) Return(_a0 output.Collector) *MockMaker_
 	return _c
 }
 
-func (_c *MockMaker_MakeCollector_Call) RunAndReturn(run func() output.Collector) *MockMaker_MakeCollector_Call {
+func (_c *MockMaker_MakeCollector_Call) RunAndReturn(run func(string) output.Collector) *MockMaker_MakeCollector_Call {
 	_c.Call.Return(run)
 	return _c
 }

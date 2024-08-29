@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -18,6 +20,8 @@ type Command interface {
 	StderrPipe() (io.ReadCloser, error)
 	SetStdout(stdout io.Writer)
 	SetStderr(stdout io.Writer)
+	String() string
+	Wait() error
 }
 
 func NewExecCommand(ctx context.Context, name string, args []string) Command {
@@ -28,6 +32,10 @@ func NewExecCommand(ctx context.Context, name string, args []string) Command {
 
 type ExecCommand struct {
 	cmd *exec.Cmd
+}
+
+func (c ExecCommand) String() string {
+	return c.cmd.String()
 }
 
 func (c ExecCommand) IsRunning() bool {
@@ -73,11 +81,21 @@ func (c ExecCommand) SetStderr(stderr io.Writer) {
 	c.cmd.Stderr = stderr
 }
 
-func NewDryRunCommand() Command {
+func (c ExecCommand) Wait() error {
+	return c.cmd.Wait()
+}
+
+func NewDryRunCommand(name string, args []string) Command {
 	return &DryRunCommand{}
 }
 
 type DryRunCommand struct {
+	name string
+	args []string
+}
+
+func (c DryRunCommand) String() string {
+	return fmt.Sprintf("%s %s", c.name, strings.Join(c.args, " "))
 }
 
 func (c DryRunCommand) IsRunning() bool {
@@ -121,3 +139,7 @@ func (c DryRunCommand) StderrPipe() (io.ReadCloser, error) {
 func (c DryRunCommand) SetStdout(stdout io.Writer) {}
 
 func (c DryRunCommand) SetStderr(stdout io.Writer) {}
+
+func (c DryRunCommand) Wait() error {
+	return nil
+}

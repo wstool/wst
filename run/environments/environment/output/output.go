@@ -13,15 +13,15 @@ const (
 )
 
 type Maker interface {
-	MakeCollector() Collector
+	MakeCollector(tid string) Collector
 }
 
 type nativeMaker struct {
 	fnd app.Foundation
 }
 
-func (n nativeMaker) MakeCollector() Collector {
-	return NewBufferedCollector()
+func (m *nativeMaker) MakeCollector(tid string) Collector {
+	return NewBufferedCollector(m.fnd, tid)
 }
 
 func CreateMaker(fnd app.Foundation) Maker {

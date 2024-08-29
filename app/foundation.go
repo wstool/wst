@@ -107,7 +107,7 @@ func (f *DefaultFoundation) LookupEnvVar(key string) (string, bool) {
 
 func (f *DefaultFoundation) ExecCommand(ctx context.Context, name string, args []string) Command {
 	if f.dryRun {
-		return NewDryRunCommand()
+		return NewDryRunCommand(name, args)
 	}
 	return NewExecCommand(ctx, name, args)
 }

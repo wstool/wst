@@ -14,6 +14,7 @@ import (
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/bukka/wst/run/environments/task"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,6 +23,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCreateMaker(t *testing.T) {
@@ -166,7 +168,8 @@ func Test_localEnvironment_Init(t *testing.T) {
 				initialized:       false,
 			}
 
-			err := env.Init(context.Background())
+			ctx := context.Background()
+			err := env.Init(ctx)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -174,6 +177,7 @@ func Test_localEnvironment_Init(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.True(t, env.initialized)
+				assert.Equal(t, ctx, env.ctx)
 			}
 		})
 	}
@@ -275,16 +279,19 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 
 func Test_localEnvironment_RunTask(t *testing.T) {
 	tests := []struct {
-		name       string
-		workspace  string
-		setupMocks func(
+		name        string
+		workspace   string
+		initialized bool
+		setupMocks  func(
 			*testing.T,
+			context.Context,
 			context.Context,
 			*appMocks.MockFoundation,
 			*outputMocks.MockMaker,
-		) *appMocks.MockCommand
+		) (*appMocks.MockCommand, chan struct{})
 		expectError    bool
 		expectedErrMsg string
+		expectedLogs   []string
 		expectTask     bool
 		uuid           string // UUID for each task
 	}{
@@ -293,58 +300,197 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			workspace: "/fake/path",
 			setupMocks: func(
 				t *testing.T,
-				ctx context.Context,
+				actionCtx context.Context,
+				envCtx context.Context,
 				fndMock *appMocks.MockFoundation,
 				outMakerMock *outputMocks.MockMaker,
-			) *appMocks.MockCommand {
+			) (*appMocks.MockCommand, chan struct{}) {
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
 				fndMock.On("Fs").Return(fsMock)
 				mockCommand := appMocks.NewMockCommand(t)
-				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", actionCtx, "test-command", []string{"arg1"}).Return(mockCommand)
+
 				stdoutWriter := &bytes.Buffer{}
 				stderrWriter := &bytes.Buffer{}
 				stdoutWriter.Write([]byte("Stdout!"))
 				stderrWriter.Write([]byte("Stderr!"))
 				collectorMock := outputMocks.NewMockCollector(t)
-				outMakerMock.On("MakeCollector").Return(collectorMock)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
 				collectorMock.On("StdoutWriter").Return(stdoutWriter)
 				collectorMock.On("StderrWriter").Return(stderrWriter)
+
+				// Channel to signal the completion of awaitTask
+				taskFinishedChan := make(chan struct{})
+
 				mockCommand.On("SetStdout", stdoutWriter)
 				mockCommand.On("SetStderr", stderrWriter)
-				mockCommand.On("Start").Return(nil)
 				fndMock.On("GenerateUuid").Return("uuid-123")
-				return mockCommand
+
+				mockCommand.On("Start").Return(nil)
+				mockCommand.On("Wait").Return(nil).Run(func(args mock.Arguments) {
+					// Simulate command execution time
+					time.Sleep(50 * time.Millisecond)
+				})
+
+				// Mock collector close and signal completion
+				collectorMock.On("Close").Return(nil).Run(func(args mock.Arguments) {
+					close(taskFinishedChan) // Signal task completion
+				}).Once()
+
+				return mockCommand, taskFinishedChan
 			},
 			expectTask: true,
-			uuid:       "uuid-123",
+			expectedLogs: []string{
+				"Initializing local environment before running task",
+				"Creating command: test-command arg1",
+				"Task uuid-123 started for command: test-command",
+				"Task uuid-123 command finished",
+			},
+			uuid: "uuid-123",
+		},
+		{
+			name:        "successfully runs initialized task",
+			workspace:   "/fake/path",
+			initialized: true,
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				mockCommand := appMocks.NewMockCommand(t)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", envCtx, "test-command", []string{"arg1"}).Return(mockCommand)
+
+				stdoutWriter := &bytes.Buffer{}
+				stderrWriter := &bytes.Buffer{}
+				stdoutWriter.Write([]byte("Stdout!"))
+				stderrWriter.Write([]byte("Stderr!"))
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
+				collectorMock.On("StdoutWriter").Return(stdoutWriter)
+				collectorMock.On("StderrWriter").Return(stderrWriter)
+
+				// Channel to signal the completion of awaitTask
+				taskFinishedChan := make(chan struct{})
+
+				mockCommand.On("SetStdout", stdoutWriter)
+				mockCommand.On("SetStderr", stderrWriter)
+				fndMock.On("GenerateUuid").Return("uuid-123")
+
+				mockCommand.On("Start").Return(nil)
+				mockCommand.On("Wait").Return(nil).Run(func(args mock.Arguments) {
+					// Simulate command execution time
+					time.Sleep(50 * time.Millisecond)
+				})
+
+				// Mock collector close and signal completion
+				collectorMock.On("Close").Return(nil).Run(func(args mock.Arguments) {
+					close(taskFinishedChan) // Signal task completion
+				}).Once()
+
+				return mockCommand, taskFinishedChan
+			},
+			expectTask: true,
+			expectedLogs: []string{
+				"Creating command: test-command arg1",
+				"Task uuid-123 started for command: test-command",
+				"Task uuid-123 command finished",
+			},
+			uuid: "uuid-123",
+		},
+		{
+			name:      "successfully start but failed wait and close",
+			workspace: "/fake/path",
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", actionCtx, "test-command", []string{"arg1"}).Return(mockCommand)
+
+				stdoutWriter := &bytes.Buffer{}
+				stderrWriter := &bytes.Buffer{}
+				stdoutWriter.Write([]byte("Stdout!"))
+				stderrWriter.Write([]byte("Stderr!"))
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
+				collectorMock.On("StdoutWriter").Return(stdoutWriter)
+				collectorMock.On("StderrWriter").Return(stderrWriter)
+
+				// Channel to signal the completion of awaitTask
+				taskFinishedChan := make(chan struct{})
+
+				mockCommand.On("SetStdout", stdoutWriter)
+				mockCommand.On("SetStderr", stderrWriter)
+				fndMock.On("GenerateUuid").Return("uuid-123")
+
+				mockCommand.On("Start").Return(nil)
+				mockCommand.On("Wait").Return(errors.New("wait fail")).Run(func(args mock.Arguments) {
+					// Simulate command execution time
+					time.Sleep(50 * time.Millisecond)
+				})
+
+				// Mock collector close, log output and signal completion
+				collectorMock.On("Close").Return(errors.New("close fail")).Once()
+				collectorMock.On("LogOutput").Run(func(args mock.Arguments) {
+					close(taskFinishedChan) // Signal task completion
+				}).Once()
+
+				return mockCommand, taskFinishedChan
+			},
+			expectTask: true,
+			expectedLogs: []string{
+				"Initializing local environment before running task",
+				"Creating command: test-command arg1",
+				"Task uuid-123 started for command: test-command",
+				"Waiting for local task uuid-123 failed: wait fail",
+				"Closing output collector for local task uuid-123 failed: close fail",
+			},
+			uuid: "uuid-123",
 		},
 		{
 			name:      "command start error",
 			workspace: "/fake/path",
 			setupMocks: func(
 				t *testing.T,
-				ctx context.Context,
+				actionCtx context.Context,
+				envCtx context.Context,
 				fndMock *appMocks.MockFoundation,
 				outMakerMock *outputMocks.MockMaker,
-			) *appMocks.MockCommand {
+			) (*appMocks.MockCommand, chan struct{}) {
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
 				fndMock.On("Fs").Return(fsMock)
 				mockCommand := appMocks.NewMockCommand(t)
-				fndMock.On("ExecCommand", ctx, "test-command", []string{"arg1"}).Return(mockCommand)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", actionCtx, "test-command", []string{"arg1"}).Return(mockCommand)
 				stdoutWriter := &bytes.Buffer{}
 				stderrWriter := &bytes.Buffer{}
 				stdoutWriter.Write([]byte("Stdout!"))
 				stderrWriter.Write([]byte("Stderr!"))
 				collectorMock := outputMocks.NewMockCollector(t)
-				outMakerMock.On("MakeCollector").Return(collectorMock)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
 				collectorMock.On("StdoutWriter").Return(stdoutWriter)
 				collectorMock.On("StderrWriter").Return(stderrWriter)
 				mockCommand.On("SetStdout", stdoutWriter)
 				mockCommand.On("SetStderr", stderrWriter)
+				fndMock.On("GenerateUuid").Return("uuid-123")
 				mockCommand.On("Start").Return(fmt.Errorf("command start error"))
-				return mockCommand
+				fndMock.On("GenerateUuid").Return("uuid-123")
+
+				// No need for taskFinishedChan in this error scenario
+				return mockCommand, nil
 			},
 			expectError:    true,
 			expectedErrMsg: "command start error",
@@ -354,14 +500,17 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			workspace: "/fake/path",
 			setupMocks: func(
 				t *testing.T,
-				ctx context.Context,
+				actionCtx context.Context,
+				envCtx context.Context,
 				fndMock *appMocks.MockFoundation,
 				outMakerMock *outputMocks.MockMaker,
-			) *appMocks.MockCommand {
+			) (*appMocks.MockCommand, chan struct{}) {
 				fsMock := appMocks.NewMockFs(t)
 				fndMock.On("Fs").Return(fsMock)
 				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(fmt.Errorf("mkdir error"))
-				return nil
+
+				// No need for taskFinishedChan in this error scenario
+				return nil, nil
 			},
 			expectError:    true,
 			expectedErrMsg: "mkdir error",
@@ -372,14 +521,19 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			outputMakerMock := outputMocks.NewMockMaker(t)
-			ctx := context.Background()
+			actionCtx := context.WithValue(context.Background(), "type", "action")
+			envCtx := context.WithValue(context.Background(), "type", "env")
 
-			mockCommand := tt.setupMocks(t, ctx, fndMock, outputMakerMock)
+			logger := external.NewMockLogger()
+			fndMock.On("Logger").Return(logger.SugaredLogger)
+
+			mockCommand, taskFinishedChan := tt.setupMocks(t, actionCtx, envCtx, fndMock, outputMakerMock)
 
 			env := &localEnvironment{
 				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock, OutputMaker: outputMakerMock},
 				workspace:         tt.workspace,
-				initialized:       false,
+				initialized:       tt.initialized,
+				ctx:               envCtx,
 				tasks:             make(map[string]*localTask),
 			}
 
@@ -392,7 +546,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				Args: []string{"arg1"},
 			}
 
-			resultTask, err := env.RunTask(ctx, ss, cmd)
+			resultTask, err := env.RunTask(actionCtx, ss, cmd)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -408,6 +562,14 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				assert.Equal(t, fmt.Sprintf("http://localhost:%d", ss.Port), locTask.serviceUrl)
 				assert.Equal(t, mockCommand, locTask.cmd)
 				assert.Equal(t, tt.uuid, locTask.id)
+
+				// Wait for the task to finish
+				<-taskFinishedChan
+				time.Sleep(50 * time.Millisecond)
+				if tt.expectedLogs != nil {
+					assert.Equal(t, tt.expectedLogs, logger.Messages())
+				}
+
 			}
 
 			fndMock.AssertExpectations(t)
@@ -434,12 +596,13 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 				fnd.On("ExecCommand", mock.Anything, "echo", []string{"hello"}).Return(cmd)
 			},
 			target: func() task.Task {
-				localTask := &localTask{
+				lt := &localTask{
 					serviceName: "local-service",
-					cmd:         &app.ExecCommand{}, // Using a valid local task type
+					cmd:         &app.ExecCommand{},
 				}
-				localTask.cmd = &app.ExecCommand{} // Stubbing the command to be returned
-				return localTask
+				lt.serviceRunning.Store(true)
+				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
+				return lt
 			},
 			command: &environment.Command{
 				Name: "echo",
@@ -454,12 +617,13 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 				fnd.On("ExecCommand", mock.Anything, "echo", []string{"error"}).Return(cmd)
 			},
 			target: func() task.Task {
-				localTask := &localTask{
+				lt := &localTask{
 					serviceName: "local-service",
 					cmd:         &app.ExecCommand{}, // Using a valid local task type
 				}
-				localTask.cmd = &app.ExecCommand{} // Stubbing the command to be returned
-				return localTask
+				lt.serviceRunning.Store(true)
+				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
+				return lt
 			},
 			command: &environment.Command{
 				Name: "echo",
@@ -467,6 +631,25 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 			},
 			expectError:      true,
 			expectedErrorMsg: "execution failed",
+		},
+		{
+			name: "error task not running",
+			target: func() task.Task {
+				lt := &localTask{
+					id:          "tid",
+					serviceName: "local-service",
+					cmd:         &app.ExecCommand{}, // Using a valid local task type
+				}
+				lt.serviceRunning.Store(false)
+				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
+				return lt
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			expectError:      true,
+			expectedErrorMsg: "task tid is not running",
 		},
 		{
 			name: "error wrong task type",
@@ -552,10 +735,12 @@ func Test_localEnvironment_ExecTaskSignal(t *testing.T) {
 			target: func(t *testing.T) task.Task {
 				cmdMock := appMocks.NewMockCommand(t)
 				cmdMock.On("ProcessSignal", os.Interrupt).Return(nil)
-				return &localTask{
+				lt := &localTask{
 					serviceName: "local-service",
 					cmd:         cmdMock,
 				}
+				lt.serviceRunning.Store(true)
+				return lt
 			},
 			signal:      os.Interrupt,
 			expectError: false,
@@ -565,14 +750,31 @@ func Test_localEnvironment_ExecTaskSignal(t *testing.T) {
 			target: func(t *testing.T) task.Task {
 				cmdMock := appMocks.NewMockCommand(t)
 				cmdMock.On("ProcessSignal", os.Kill).Return(fmt.Errorf("failed to send signal"))
-				return &localTask{
+				lt := &localTask{
 					serviceName: "local-service",
 					cmd:         cmdMock,
 				}
+				lt.serviceRunning.Store(true)
+				return lt
 			},
 			signal:           os.Kill,
 			expectError:      true,
 			expectedErrorMsg: "failed to send signal",
+		},
+		{
+			name: "task is not running",
+			target: func(t *testing.T) task.Task {
+				cmdMock := appMocks.NewMockCommand(t)
+				lt := &localTask{
+					id:          "uuid-tid",
+					serviceName: "local-service",
+					cmd:         cmdMock,
+				}
+				return lt
+			},
+			signal:           os.Kill,
+			expectError:      true,
+			expectedErrorMsg: "task uuid-tid is not running",
 		},
 		{
 			name: "task is nil",
@@ -695,11 +897,12 @@ func Test_localEnvironment_Output(t *testing.T) {
 				tt.setupMocks(t, ctx, ocMock)
 			}
 
-			var testTask task.Task = nil
+			var testTask *localTask = nil
 			if !tt.nilTask {
 				testTask = &localTask{
 					outputCollector: ocMock,
 				}
+				testTask.serviceRunning.Store(true)
 			}
 
 			env := &localEnvironment{}
@@ -722,13 +925,15 @@ func Test_localEnvironment_Output(t *testing.T) {
 func getTestTask(t *testing.T) *localTask {
 	cmdMock := appMocks.NewMockCommand(t)
 	cmdMock.On("ProcessPid").Maybe().Return(22)
-	return &localTask{
+	lt := &localTask{
 		id:          "lid",
 		executable:  "ep",
 		cmd:         cmdMock,
 		serviceName: "lids",
 		serviceUrl:  "http://localhost:1234",
 	}
+	lt.serviceRunning.Store(true)
+	return lt
 }
 
 func Test_localTask_Id(t *testing.T) {
@@ -753,6 +958,10 @@ func Test_localTask_PrivateUrl(t *testing.T) {
 
 func Test_localTask_PublicUrl(t *testing.T) {
 	assert.Equal(t, "http://localhost:1234", getTestTask(t).PublicUrl())
+}
+
+func Test_localTask_IsRunning(t *testing.T) {
+	assert.True(t, getTestTask(t).IsRunning())
 }
 
 func Test_localTask_Type(t *testing.T) {

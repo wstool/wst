@@ -115,6 +115,38 @@ func (_c *MockCollector_Close_Call) RunAndReturn(run func() error) *MockCollecto
 	return _c
 }
 
+// LogOutput provides a mock function with given fields:
+func (_m *MockCollector) LogOutput() {
+	_m.Called()
+}
+
+// MockCollector_LogOutput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LogOutput'
+type MockCollector_LogOutput_Call struct {
+	*mock.Call
+}
+
+// LogOutput is a helper method to define mock.On call
+func (_e *MockCollector_Expecter) LogOutput() *MockCollector_LogOutput_Call {
+	return &MockCollector_LogOutput_Call{Call: _e.mock.On("LogOutput")}
+}
+
+func (_c *MockCollector_LogOutput_Call) Run(run func()) *MockCollector_LogOutput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCollector_LogOutput_Call) Return() *MockCollector_LogOutput_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockCollector_LogOutput_Call) RunAndReturn(run func()) *MockCollector_LogOutput_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function with given fields: stdoutPipe, stderrPipe
 func (_m *MockCollector) Start(stdoutPipe io.ReadCloser, stderrPipe io.ReadCloser) error {
 	ret := _m.Called(stdoutPipe, stderrPipe)

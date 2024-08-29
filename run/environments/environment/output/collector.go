@@ -1,9 +1,11 @@
 package output
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bukka/wst/app"
 	"github.com/pkg/errors"
 	"io"
 	"strings"
@@ -18,6 +20,7 @@ type Collector interface {
 	Start(stdoutPipe, stderrPipe io.ReadCloser) error
 	StdoutWriter() io.Writer
 	StderrWriter() io.Writer
+	LogOutput()
 	Wait()
 }
 
@@ -96,6 +99,8 @@ func (r *blockingBufferReader) Close() error {
 
 // BufferedCollector collects stdout, stderr, and mixed logs.
 type BufferedCollector struct {
+	fnd          app.Foundation
+	tid          string
 	stdoutPipe   io.ReadCloser
 	stderrPipe   io.ReadCloser
 	stdoutBuffer *blockingBufferReader
@@ -105,12 +110,14 @@ type BufferedCollector struct {
 }
 
 // NewBufferedCollector initializes and returns a new BufferedCollector.
-func NewBufferedCollector() *BufferedCollector {
+func NewBufferedCollector(fnd app.Foundation, tid string) *BufferedCollector {
 	stdoutBuffer := newBlockingBufferReader(new(bytes.Buffer))
 	stderrBuffer := newBlockingBufferReader(new(bytes.Buffer))
 	mixedBuffer := newBlockingBufferReader(new(bytes.Buffer))
 
 	return &BufferedCollector{
+		fnd:          fnd,
+		tid:          tid,
 		stdoutBuffer: stdoutBuffer,
 		stderrBuffer: stderrBuffer,
 		mixedBuffer:  mixedBuffer,
@@ -199,6 +206,24 @@ func (bc *BufferedCollector) Close() error {
 
 	// Return nil if all close operations succeeded
 	return nil
+}
+
+func (bc *BufferedCollector) logBuffer(name string, buf *bytes.Buffer) {
+	logger := bc.fnd.Logger()
+	if buf.Len() > 0 {
+		scanner := bufio.NewScanner(buf)
+		for scanner.Scan() {
+			logger.Debugf("Task %s %s: %s", bc.tid, name, scanner.Text())
+		}
+	} else {
+		logger.Debugf("Task %s %s - nothing logged", bc.tid, name)
+	}
+}
+
+// LogOutput logs data of all buffers. It should be used only after closing the collector otherwise races possible.
+func (bc *BufferedCollector) LogOutput() {
+	bc.logBuffer("stdout", bc.stdoutBuffer.buffer)
+	bc.logBuffer("stderr", bc.stderrBuffer.buffer)
 }
 
 // contextAwareReader wraps an io.Reader and respects context cancellation.

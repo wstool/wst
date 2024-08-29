@@ -27,6 +27,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sync/atomic"
 )
 
 type Maker interface {
@@ -59,6 +61,7 @@ func (m *localMaker) Make(
 
 type localEnvironment struct {
 	environment.CommonEnvironment
+	ctx         context.Context
 	workspace   string
 	initialized bool
 	tasks       map[string]*localTask
@@ -75,6 +78,7 @@ func (l *localEnvironment) Init(ctx context.Context) error {
 		return errors.Errorf("Creating workspace directory for local env failed: %v", err)
 	}
 	l.initialized = true
+	l.ctx = ctx
 
 	return nil
 }
@@ -105,17 +109,42 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 	return nil
 }
 
+func (l *localEnvironment) awaitTask(t *localTask) {
+	logOutput := false
+	logger := l.Fnd.Logger()
+	if err := t.cmd.Wait(); err != nil {
+		logger.Errorf("Waiting for local task %s failed: %v", t.id, err)
+		logOutput = true
+	}
+	t.serviceRunning.Store(false)
+	if err := t.outputCollector.Close(); err != nil {
+		logger.Warnf("Closing output collector for local task %s failed: %v", t.id, err)
+		logOutput = true
+	} else {
+		logger.Debugf("Task %s command finished", t.id)
+	}
+	if logOutput {
+		t.outputCollector.LogOutput()
+	}
+}
+
 func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
+	logger := l.Fnd.Logger()
 	if !l.initialized {
+		// This would be useful only for some special tasks that are pre-executed before instances setup (not used)
+		logger.Debug("Initializing local environment before running task")
 		err := l.Init(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	command := l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args)
+	command := l.Fnd.ExecCommand(l.ctx, cmd.Name, cmd.Args)
 
-	outputCollector := l.OutputMaker.MakeCollector()
+	logger.Debugf("Creating command: %s", command)
+
+	tid := l.Fnd.GenerateUuid()
+	outputCollector := l.OutputMaker.MakeCollector(tid)
 	command.SetStdout(outputCollector.StdoutWriter())
 	command.SetStderr(outputCollector.StderrWriter())
 
@@ -124,20 +153,24 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 	}
 
 	t := &localTask{
-		id:              l.Fnd.GenerateUuid(),
+		id:              tid,
 		cmd:             command,
 		outputCollector: outputCollector,
 		executable:      cmd.Name,
 		serviceName:     ss.Name,
 		serviceUrl:      fmt.Sprintf("http://localhost:%d", ss.Port),
 	}
+	t.serviceRunning.Store(true)
 	l.tasks[t.id] = t
+	logger.Debugf("Task %s started for command: %s", t.id, cmd.Name)
+
+	go l.awaitTask(t)
 
 	return t, nil
 }
 
 func convertTask(target task.Task) (*localTask, error) {
-	if target == nil {
+	if target == nil || reflect.ValueOf(target).IsNil() {
 		return nil, fmt.Errorf("target task is not set")
 	}
 	if target.Type() != providers.LocalType {
@@ -147,6 +180,9 @@ func convertTask(target task.Task) (*localTask, error) {
 	if !ok {
 		// this should not happen
 		return nil, fmt.Errorf("target task is not of type *localTask")
+	}
+	if !t.IsRunning() {
+		return nil, fmt.Errorf("task %s is not running", t.id)
 	}
 	return t, nil
 }
@@ -197,6 +233,7 @@ type localTask struct {
 	cmd             app.Command
 	outputCollector output.Collector
 	executable      string
+	serviceRunning  atomic.Bool
 	serviceName     string
 	serviceUrl      string
 }
@@ -227,4 +264,8 @@ func (t *localTask) PrivateUrl() string {
 
 func (t *localTask) Type() providers.Type {
 	return providers.LocalType
+}
+
+func (t *localTask) IsRunning() bool {
+	return t.serviceRunning.Load()
 }

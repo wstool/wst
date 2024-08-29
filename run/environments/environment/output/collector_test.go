@@ -3,6 +3,8 @@ package output
 import (
 	"bytes"
 	"context"
+	"github.com/bukka/wst/mocks/authored/external"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -116,7 +118,8 @@ func TestBufferedCollector_AnyReader(t *testing.T) {
 	stdoutMock := newMockReadCloser(stdoutEvents)
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -149,7 +152,8 @@ func TestBufferedCollector_StdoutReader(t *testing.T) {
 	stdoutMock := newMockReadCloser(stdoutEvents)
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -182,7 +186,8 @@ func TestBufferedCollector_StderrReader(t *testing.T) {
 	stdoutMock := newMockReadCloser(stdoutEvents)
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -210,7 +215,8 @@ func TestBufferedCollector_StderrReader_cancelled(t *testing.T) {
 	stdoutMock := newMockReadCloser([]event{})
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -240,7 +246,8 @@ func TestBufferedCollector_stderrBuffer_Read(t *testing.T) {
 	stdoutMock := newMockReadCloser([]event{})
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -268,7 +275,8 @@ func TestBufferedCollector_stderrBuffer_Close(t *testing.T) {
 	stdoutMock := newMockReadCloser([]event{})
 	stderrMock := newMockReadCloser(stderrEvents)
 
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	err := collector.Start(stdoutMock, stderrMock)
 	assert.NoError(t, err)
@@ -332,7 +340,8 @@ func TestBufferedCollector_Close(t *testing.T) {
 			stderrPipe := &closeErrorReadCloser{closeErr: tt.stderrCloseErr}
 
 			// Create a BufferedCollector with the actual blockingBufferReader instances
-			collector := NewBufferedCollector()
+			fndMock := appMocks.NewMockFoundation(t)
+			collector := NewBufferedCollector(fndMock, "tid")
 			collector.stdoutPipe = stdoutPipe
 			collector.stderrPipe = stderrPipe
 
@@ -350,7 +359,8 @@ func TestBufferedCollector_Close(t *testing.T) {
 
 func TestBufferedCollector_StdoutWriter(t *testing.T) {
 	// Initialize the BufferedCollector
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	// Write some data using StdoutWriter
 	stdoutWriter := collector.StdoutWriter()
@@ -369,7 +379,8 @@ func TestBufferedCollector_StdoutWriter(t *testing.T) {
 
 func TestBufferedCollector_StderrWriter(t *testing.T) {
 	// Initialize the BufferedCollector
-	collector := NewBufferedCollector()
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
 
 	// Write some data using StderrWriter
 	stderrWriter := collector.StderrWriter()
@@ -384,4 +395,77 @@ func TestBufferedCollector_StderrWriter(t *testing.T) {
 
 	assert.Equal(t, expected, collector.stderrBuffer.buffer.String())
 	assert.Equal(t, expected, collector.mixedBuffer.buffer.String())
+}
+
+func TestBufferedCollector_LogOutput(t *testing.T) {
+	tid := "abc"
+	tests := []struct {
+		name            string
+		stdoutMessages  []string
+		stderrMessages  []string
+		expectedMessage []string
+	}{
+		{
+			name:           "stdout not empty and stderr not empty",
+			stdoutMessages: []string{"stdout log 1\n", "stdout log 2\n"},
+			stderrMessages: []string{"stderr log 1\n", "stderr log 2\n"},
+			expectedMessage: []string{
+				"Task abc stdout: stdout log 1",
+				"Task abc stdout: stdout log 2",
+				"Task abc stderr: stderr log 1",
+				"Task abc stderr: stderr log 2",
+			},
+		},
+		{
+			name:           "stdout not empty and stderr empty",
+			stdoutMessages: []string{"stdout log 1\n", "stdout log 2\n"},
+			stderrMessages: []string{},
+			expectedMessage: []string{
+				"Task abc stdout: stdout log 1",
+				"Task abc stdout: stdout log 2",
+				"Task abc stderr - nothing logged",
+			},
+		},
+		{
+			name:           "stdout empty and stderr not empty",
+			stdoutMessages: []string{},
+			stderrMessages: []string{"stderr log 1\n", "stderr log 2\n"},
+			expectedMessage: []string{
+				"Task abc stdout - nothing logged",
+				"Task abc stderr: stderr log 1",
+				"Task abc stderr: stderr log 2",
+			},
+		},
+		{
+			name:           "stdout empty and stderr empty",
+			stdoutMessages: []string{},
+			stderrMessages: []string{},
+			expectedMessage: []string{
+				"Task abc stdout - nothing logged",
+				"Task abc stderr - nothing logged",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			mockLogger := external.NewMockLogger()
+			fndMock.On("Logger").Return(mockLogger.SugaredLogger)
+			collector := NewBufferedCollector(fndMock, tid)
+
+			for _, msg := range tt.stdoutMessages {
+				_, err := collector.stdoutBuffer.Write([]byte(msg))
+				assert.NoError(t, err)
+			}
+			for _, msg := range tt.stderrMessages {
+				_, err := collector.stderrBuffer.Write([]byte(msg))
+				assert.NoError(t, err)
+			}
+
+			collector.LogOutput()
+
+			assert.Equal(t, tt.expectedMessage, mockLogger.Messages())
+		})
+	}
 }

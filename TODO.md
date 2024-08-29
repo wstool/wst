@@ -5,11 +5,21 @@ in the future.
 
 ## Code
 
+### Build and CI
+
+- update Go to latest 1.22 and then 1.23 (re-run mockery)
+- update deps
+- add pipeline to run unit test
+- integration tests
+
 ### App
-- possibly some other helpers
+
+- organise Foundation - split to smaller pieces (especially the OS stuff)
 
 ### Run
 
+- scripts are currently not created in their files but instead directly in /var/www which is a file
+- fix port allocation - currently it is always 0 for services
 - make Service Address hostname configurable so it's not always 0.0.0.0
   - consider support for UDS
 - look to removing Service Requires or rethink how it should work
@@ -17,7 +27,6 @@ in the future.
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
 - add detailed info and debug logging
-- integration tests
 - kubernetes environment improvements
   - add health probes setup
 - docker environment improvements

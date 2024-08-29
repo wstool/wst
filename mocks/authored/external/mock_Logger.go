@@ -25,7 +25,7 @@ type MockLogger struct {
 }
 
 func NewMockLogger() *MockLogger {
-	core, observedLogs := observer.New(zap.InfoLevel)
+	core, observedLogs := observer.New(zap.DebugLevel)
 	logger := zap.New(core)
 	return &MockLogger{
 		SugaredLogger: logger.Sugar(),
