@@ -509,9 +509,6 @@ func (s *nativeService) Stop(ctx context.Context) error {
 
 	ss := s.makeEnvServiceSettings()
 	_, err = hook.Execute(ctx, ss, s.template, s.environment, s.task)
-	if err == nil {
-		s.task = nil
-	}
 
 	return err
 }

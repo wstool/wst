@@ -2139,7 +2139,7 @@ func Test_nativeService_Stop(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.expectedErrMsg)
 			} else {
 				assert.NoError(t, err)
-				assert.Nil(t, svc.task)
+				assert.NotNil(t, svc.task)
 			}
 		})
 	}
