@@ -79,7 +79,7 @@ func (l *localEnvironment) Init(ctx context.Context) error {
 	fs := l.Fnd.Fs()
 	err := fs.MkdirAll(l.workspace, 0755)
 	if err != nil {
-		return errors.Errorf("Creating workspace directory for local env failed: %v", err)
+		return errors.Errorf("failure when creating workspace directory: %v", err)
 	}
 	l.initialized = true
 	l.ctx = ctx
@@ -175,18 +175,18 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 
 func convertTask(target task.Task) (*localTask, error) {
 	if target == nil || reflect.ValueOf(target).IsNil() {
-		return nil, fmt.Errorf("target task is not set")
+		return nil, errors.Errorf("target task is not set")
 	}
 	if target.Type() != providers.LocalType {
-		return nil, fmt.Errorf("local environment can process only local task")
+		return nil, errors.Errorf("local environment can process only local task")
 	}
 	t, ok := target.(*localTask)
 	if !ok {
 		// this should not happen
-		return nil, fmt.Errorf("target task is not of type *localTask")
+		return nil, errors.Errorf("target task is not of type *localTask")
 	}
 	if !t.IsRunning() {
-		return nil, fmt.Errorf("task %s is not running", t.id)
+		return nil, errors.Errorf("task %s is not running", t.id)
 	}
 	return t, nil
 }
@@ -228,7 +228,7 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 	case output.Any:
 		return t.outputCollector.AnyReader(ctx), nil
 	default:
-		return nil, fmt.Errorf("unsupported output type")
+		return nil, errors.Errorf("unsupported output type")
 	}
 }
 

@@ -167,7 +167,7 @@ func Test_localEnvironment_Init(t *testing.T) {
 				mockFs.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(os.ErrPermission)
 			},
 			expectError:    true,
-			expectedErrMsg: "permission denied",
+			expectedErrMsg: "failure when creating workspace directory: permission denied",
 		},
 	}
 
