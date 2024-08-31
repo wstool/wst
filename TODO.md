@@ -21,7 +21,8 @@ in the future.
 
 ### Run
 
-- set correct path for dirs - /run is not in the workspace
+- investigate why template include is not found and make it work (status expectation)
+- look into why timeouts in custom action are not honoured
 - look into doing some partial expectation - some sort of contains mode rather than full match
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
@@ -41,6 +42,9 @@ in the future.
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
+- come up with custom error wrapping and types
+  - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
+  - removal of deprecated (archived) github.com/pkg/errors
 - replace environment.ServiceSettings struct with environment.Service interface
   - code clean up really with saving some calls - it just messy to pre-create this struct
 
