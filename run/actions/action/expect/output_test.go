@@ -285,6 +285,62 @@ func Test_outputAction_Execute(t *testing.T) {
 			want:       true,
 		},
 		{
+			name: "successful output ordered regexp match without template rendering",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				r := strings.NewReader("[01-Sep-2024 19:13:14] NOTICE: fpm is running, pid 174924")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeRandom,
+				MatchType:      expectations.MatchTypeRegexp,
+				OutputType:     expectations.OutputTypeStderr,
+				RenderTemplate: false,
+				Messages: []string{
+					"\\[.*\\] NOTICE: fpm is running, pid 174924",
+				},
+			},
+			outputType: output.Stderr,
+			want:       true,
+		},
+		{
+			name: "successful output ordered regexp match without template rendering",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				r := strings.NewReader("2024/09/01 18:33:51 [notice] 164024#164024: start worker process 16402")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeRandom,
+				MatchType:      expectations.MatchTypeRegexp,
+				OutputType:     expectations.OutputTypeStderr,
+				RenderTemplate: false,
+				Messages: []string{
+					"\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} \\[notice\\] \\d+#\\d+: start worker process \\d+",
+				},
+			},
+			outputType: output.Stderr,
+			want:       true,
+		},
+		{
 			name: "successful no match without dry run",
 			setupMocks: func(
 				t *testing.T,
