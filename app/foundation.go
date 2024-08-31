@@ -25,7 +25,7 @@ import (
 
 type Foundation interface {
 	Logger() *zap.SugaredLogger
-	Fs() afero.Fs
+	Fs() Fs
 	CurrentUser() (*user.User, error)
 	Chdir(string) error
 	Getwd() (string, error)
@@ -43,7 +43,7 @@ type Foundation interface {
 
 type DefaultFoundation struct {
 	logger *zap.SugaredLogger
-	fs     afero.Fs
+	fs     Fs
 	dryRun bool
 }
 
@@ -73,7 +73,7 @@ func (f *DefaultFoundation) Logger() *zap.SugaredLogger {
 	return f.logger
 }
 
-func (f *DefaultFoundation) Fs() afero.Fs {
+func (f *DefaultFoundation) Fs() Fs {
 	return f.fs
 }
 

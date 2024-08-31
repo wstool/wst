@@ -446,6 +446,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -485,6 +489,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -531,6 +539,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -572,6 +584,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -615,6 +631,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -663,6 +683,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -711,6 +735,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -759,6 +787,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -799,6 +831,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -839,6 +875,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -879,6 +919,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -919,6 +963,10 @@ func Test_nativeInstance_Run(t *testing.T) {
 				acts []*actionMocks.MockAction,
 				cancelFunc context.CancelFunc,
 			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
 				ctx := context.Background()
 				rm.On("MakeBackgroundContext").Return(ctx)
 
@@ -934,6 +982,23 @@ func Test_nativeInstance_Run(t *testing.T) {
 			},
 			expectError:      true,
 			expectedErrorMsg: "docker fail",
+		},
+		{
+			name:  "fail on removing workspace",
+			count: 1,
+			setupMocks: func(
+				inst *nativeInstance,
+				fnd *appMocks.MockFoundation,
+				rm *runtimeMocks.MockMaker,
+				acts []*actionMocks.MockAction,
+				cancelFunc context.CancelFunc,
+			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(errors.New("remove fail"))
+				fnd.On("Fs").Return(fsMock)
+			},
+			expectError:      true,
+			expectedErrorMsg: "ailed to remove previous workspace for instance testInstance: remove fail",
 		},
 	}
 

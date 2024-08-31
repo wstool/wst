@@ -3,10 +3,9 @@
 package app
 
 import (
-	app "github.com/bukka/wst/app"
-	afero "github.com/spf13/afero"
-
 	context "context"
+
+	app "github.com/bukka/wst/app"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -227,19 +226,19 @@ func (_c *MockFoundation_ExecCommand_Call) RunAndReturn(run func(context.Context
 }
 
 // Fs provides a mock function with given fields:
-func (_m *MockFoundation) Fs() afero.Fs {
+func (_m *MockFoundation) Fs() app.Fs {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Fs")
 	}
 
-	var r0 afero.Fs
-	if rf, ok := ret.Get(0).(func() afero.Fs); ok {
+	var r0 app.Fs
+	if rf, ok := ret.Get(0).(func() app.Fs); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(afero.Fs)
+			r0 = ret.Get(0).(app.Fs)
 		}
 	}
 
@@ -263,12 +262,12 @@ func (_c *MockFoundation_Fs_Call) Run(run func()) *MockFoundation_Fs_Call {
 	return _c
 }
 
-func (_c *MockFoundation_Fs_Call) Return(_a0 afero.Fs) *MockFoundation_Fs_Call {
+func (_c *MockFoundation_Fs_Call) Return(_a0 app.Fs) *MockFoundation_Fs_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockFoundation_Fs_Call) RunAndReturn(run func() afero.Fs) *MockFoundation_Fs_Call {
+func (_c *MockFoundation_Fs_Call) RunAndReturn(run func() app.Fs) *MockFoundation_Fs_Call {
 	_c.Call.Return(run)
 	return _c
 }

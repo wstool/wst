@@ -138,8 +138,13 @@ func (i *nativeInstance) Name() string {
 
 func (i *nativeInstance) Run() error {
 	var err error
-	ctx := i.runtimeMaker.MakeBackgroundContext()
 
+	fs := i.fnd.Fs()
+	if err = fs.RemoveAll(i.workspace); err != nil {
+		return errors.Errorf("failed to remove previous workspace for instance %s: %v", i.name, err)
+	}
+
+	ctx := i.runtimeMaker.MakeBackgroundContext()
 	initializedEnvs := make(map[providers.Type]bool)
 	for envName, env := range i.envs {
 		if env.IsUsed() {

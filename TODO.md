@@ -21,7 +21,6 @@ in the future.
 
 ### Run
 
-- clean up workspace when starting new instance run
 - set correct path for dirs - /run is not in the workspace
 - look into doing some partial expectation - some sort of contains mode rather than full match
 - look to removing Service Requires or rethink how it should work
