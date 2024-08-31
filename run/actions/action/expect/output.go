@@ -25,6 +25,7 @@ import (
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -97,6 +98,10 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 		}
 		for _, line := range lines {
 			logger.Debugf("Unexpected line found: %s", line)
+		}
+		err = scanner.Err()
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+			return false, nil
 		}
 		return false, scanner.Err()
 	}

@@ -3,7 +3,6 @@ package expect
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/authored/external"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
@@ -182,10 +181,28 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 	}
 }
 
-type errorReader struct{}
+type errorReader struct {
+	msg        string
+	first_read bool
+}
 
 func (e *errorReader) Read(p []byte) (int, error) {
-	return 0, fmt.Errorf("simulated read error")
+	if e.first_read {
+		// Fill the buffer with some data (e.g., "data")
+		data := []byte("data")
+
+		// Copy data into the provided buffer `p`
+		n := copy(p, data)
+
+		// Mark first_read as false, indicating the first read has been completed
+		e.first_read = false
+
+		// Return the number of bytes written to the buffer and no error
+		return n, nil
+	}
+
+	// On subsequent reads, return an error
+	return 0, errors.New(e.msg)
 }
 
 func Test_outputAction_Execute(t *testing.T) {
@@ -395,7 +412,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			want:       true,
 		},
 		{
-			name: "failed match due to scanner error",
+			name: "successful false due scanner context deadline error",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -406,7 +423,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
-				errReader := &errorReader{}
+				errReader := &errorReader{msg: "context deadline exceeded"}
 				scanner := bufio.NewScanner(errReader)
 				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
 			},
@@ -418,7 +435,35 @@ func Test_outputAction_Execute(t *testing.T) {
 				Messages:       []string{"te.*"},
 			},
 			outputType: output.Stderr,
-			expectErr:  true,
+			want:       false,
+			expectErr:  false,
+		},
+		{
+			name: "failed match due to scanner internal error",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				errReader := &errorReader{msg: "scanner internal error", first_read: true}
+				scanner := bufio.NewScanner(errReader)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeRandom,
+				MatchType:      expectations.MatchTypeRegexp,
+				OutputType:     expectations.OutputTypeStderr,
+				RenderTemplate: false,
+				Messages:       []string{"te.*"},
+			},
+			outputType:       output.Stderr,
+			expectErr:        true,
+			expectedErrorMsg: "scanner internal error",
 		},
 		{
 			name: "failed due to invalid fixed match",
