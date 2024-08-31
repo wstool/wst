@@ -10,6 +10,7 @@ import (
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/actions/action/request"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
@@ -42,15 +43,19 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 	}{
 		{
 			name: "successful output action creation",
-			config: &types.ResponseExpectationAction{Service: "validService", Response: types.ResponseExpectation{
-				Request: "last",
-				Headers: types.Headers{"h1": "test"},
-				Body: types.ResponseBody{
-					Content:        "data",
-					Match:          "exact",
-					RenderTemplate: true,
+			config: &types.ResponseExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Response: types.ResponseExpectation{
+					Request: "last",
+					Headers: types.Headers{"h1": "test"},
+					Body: types.ResponseBody{
+						Content:        "data",
+						Match:          "exact",
+						RenderTemplate: true,
+					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -80,6 +85,7 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 						fnd:     fndMock,
 						service: svc,
 						timeout: 5000 * 1e6,
+						when:    action.OnSuccess,
 					},
 					ResponseExpectation: expectation,
 					parameters:          parameters.Parameters{},
@@ -88,15 +94,19 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 		},
 		{
 			name: "failed output action creation because no service found",
-			config: &types.ResponseExpectationAction{Service: "invalidService", Response: types.ResponseExpectation{
-				Request: "last",
-				Headers: types.Headers{"h1": "test"},
-				Body: types.ResponseBody{
-					Content:        "data",
-					Match:          "exact",
-					RenderTemplate: true,
+			config: &types.ResponseExpectationAction{
+				Service: "invalidService",
+				When:    "on_success",
+				Response: types.ResponseExpectation{
+					Request: "last",
+					Headers: types.Headers{"h1": "test"},
+					Body: types.ResponseBody{
+						Content:        "data",
+						Match:          "exact",
+						RenderTemplate: true,
+					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -113,15 +123,19 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 		},
 		{
 			name: "failed output action creation because output expectation creation failed",
-			config: &types.ResponseExpectationAction{Service: "validService", Response: types.ResponseExpectation{
-				Request: "last",
-				Headers: types.Headers{"h1": "test"},
-				Body: types.ResponseBody{
-					Content:        "data",
-					Match:          "exact",
-					RenderTemplate: true,
+			config: &types.ResponseExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Response: types.ResponseExpectation{
+					Request: "last",
+					Headers: types.Headers{"h1": "test"},
+					Body: types.ResponseBody{
+						Content:        "data",
+						Match:          "exact",
+						RenderTemplate: true,
+					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,

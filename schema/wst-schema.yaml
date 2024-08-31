@@ -631,6 +631,16 @@ $defs:
               This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
               unlimited and 0 means using the default value defined in the instance action timeout.
             type: integer
+          when:
+            title: When to run the action
+            description: |
+              This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+              if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+              at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+              of the success or failure of previous actions.
+            type: string
+            enum: [ always, on_success, on_failure ]
+            default: on_success
       - oneOf:
           - properties:
               custom:
@@ -661,6 +671,16 @@ $defs:
           This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
           unlimited and 0 means using the default value defined in the instance action timeout.
         type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
       id:
         title: Benchmark ID
         description: |
@@ -705,6 +725,16 @@ $defs:
           This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
           unlimited and 0 means using the default value defined in the instance action timeout.
         type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
       id:
         title: Request ID
         description: Identifies request which can be then used in response expectation.
@@ -749,6 +779,16 @@ $defs:
           This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
           unlimited and 0 means using the default value defined in the instance action timeout.
         type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
       reload:
         title: Reload services
         description: |
@@ -783,6 +823,16 @@ $defs:
           This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
           unlimited and 0 means using the default value defined in the instance action timeout.
         type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
 
   actionStop:
     title: Stop action
@@ -810,6 +860,16 @@ $defs:
           This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
           unlimited and 0 means using the default value defined in the instance action timeout.
         type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: always
 
   actionItem:
     title: Action item

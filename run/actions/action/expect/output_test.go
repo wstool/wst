@@ -12,6 +12,7 @@ import (
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
@@ -44,13 +45,17 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 	}{
 		{
 			name: "successful output action creation",
-			config: &types.OutputExpectationAction{Service: "validService", Output: types.OutputExpectation{
-				Order:          "fixed",
-				Match:          "exact",
-				Type:           "any",
-				RenderTemplate: true,
-				Messages:       []string{"test"},
-			}},
+			config: &types.OutputExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Output: types.OutputExpectation{
+					Order:          "fixed",
+					Match:          "exact",
+					Type:           "any",
+					RenderTemplate: true,
+					Messages:       []string{"test"},
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -80,6 +85,7 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 						fnd:     fndMock,
 						service: svc,
 						timeout: 5000 * 1e6,
+						when:    action.OnSuccess,
 					},
 					OutputExpectation: expectation,
 					parameters:        parameters.Parameters{},
@@ -88,13 +94,17 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 		},
 		{
 			name: "failed output action creation because no service found",
-			config: &types.OutputExpectationAction{Service: "invalidService", Output: types.OutputExpectation{
-				Order:          "fixed",
-				Match:          "exact",
-				Type:           "any",
-				RenderTemplate: true,
-				Messages:       []string{"test"},
-			}},
+			config: &types.OutputExpectationAction{
+				Service: "invalidService",
+				When:    "on_success",
+				Output: types.OutputExpectation{
+					Order:          "fixed",
+					Match:          "exact",
+					Type:           "any",
+					RenderTemplate: true,
+					Messages:       []string{"test"},
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -111,13 +121,17 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 		},
 		{
 			name: "failed output action creation because output expectation creation failed",
-			config: &types.OutputExpectationAction{Service: "validService", Output: types.OutputExpectation{
-				Order:          "fixed",
-				Match:          "exact",
-				Type:           "any",
-				RenderTemplate: true,
-				Messages:       []string{"test"},
-			}},
+			config: &types.OutputExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Output: types.OutputExpectation{
+					Order:          "fixed",
+					Match:          "exact",
+					Type:           "any",
+					RenderTemplate: true,
+					Messages:       []string{"test"},
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,

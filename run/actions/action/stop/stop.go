@@ -74,6 +74,7 @@ func (m *ActionMaker) Make(
 		fnd:      m.fnd,
 		services: stopServices,
 		timeout:  time.Duration(config.Timeout * 1e6),
+		when:     action.When(config.When),
 	}, nil
 }
 
@@ -81,6 +82,11 @@ type Action struct {
 	fnd      app.Foundation
 	services services.Services
 	timeout  time.Duration
+	when     action.When
+}
+
+func (a *Action) When() action.When {
+	return a.when
 }
 
 func (a *Action) Timeout() time.Duration {

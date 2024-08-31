@@ -14,6 +14,7 @@ import (
 	serversMocks "github.com/bukka/wst/mocks/generated/run/servers"
 	actionsMocks "github.com/bukka/wst/mocks/generated/run/servers/actions"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/actions/action/request"
 	"github.com/bukka/wst/run/environments/environment/output"
 	"github.com/bukka/wst/run/expectations"
@@ -51,8 +52,15 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 		expectedErrorMsg  string
 	}{
 		{
-			name:           "successful custom action creation",
-			config:         &types.CustomExpectationAction{Service: "validService", Name: "validAction", Parameters: types.Parameters{"key": "value"}},
+			name: "successful custom action creation",
+			config: &types.CustomExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Custom: types.CustomExpectation{
+					Name:       "validAction",
+					Parameters: types.Parameters{"key": "value"},
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
@@ -72,6 +80,7 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 						fnd:     fndMock,
 						service: svc,
 						timeout: 5000 * 1e6,
+						when:    action.OnSuccess,
 					},
 					OutputExpectation:   outputExpectation,
 					ResponseExpectation: responseExpectation,
@@ -80,8 +89,15 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 			},
 		},
 		{
-			name:           "parameters maker error",
-			config:         &types.CustomExpectationAction{Service: "validService", Name: "invalidAction", Parameters: types.Parameters{"key": "value"}},
+			name: "parameters maker error",
+			config: &types.CustomExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Custom: types.CustomExpectation{
+					Name:       "invalidAction",
+					Parameters: types.Parameters{"key": "value"},
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
@@ -95,8 +111,14 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 			expectedErrorMsg: "no params",
 		},
 		{
-			name:           "expectation action not found",
-			config:         &types.CustomExpectationAction{Service: "validService", Name: "invalidAction"},
+			name: "expectation action not found",
+			config: &types.CustomExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Custom: types.CustomExpectation{
+					Name: "invalidAction",
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
@@ -108,8 +130,14 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 			expectedErrorMsg: "expectation action invalidAction not found",
 		},
 		{
-			name:           "service locator error",
-			config:         &types.CustomExpectationAction{Service: "invalidService", Name: "validAction"},
+			name: "service locator error",
+			config: &types.CustomExpectationAction{
+				Service: "invalidService",
+				When:    "on_success",
+				Custom: types.CustomExpectation{
+					Name: "validAction",
+				},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
 				sl.On("Find", "invalidService").Return(nil, fmt.Errorf("service not found"))

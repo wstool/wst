@@ -63,6 +63,7 @@ func (m *ActionMaker) Make(
 		fnd:     m.fnd,
 		service: svc,
 		timeout: time.Duration(config.Timeout * 1e6),
+		when:    action.When(config.When),
 		id:      config.Id,
 		path:    config.Path,
 		method:  config.Method,
@@ -80,10 +81,15 @@ type Action struct {
 	fnd     app.Foundation
 	service services.Service
 	timeout time.Duration
+	when    action.When
 	id      string
 	path    string
 	method  string
 	headers types.Headers
+}
+
+func (a *Action) When() action.When {
+	return a.when
 }
 
 func (a *Action) Timeout() time.Duration {

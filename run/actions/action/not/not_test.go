@@ -8,6 +8,7 @@ import (
 	actionMocks "github.com/bukka/wst/mocks/generated/run/actions/action"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -44,6 +45,7 @@ func TestActionMaker_Make(t *testing.T) {
 		actionMakerErr   error
 		expectError      bool
 		expectedErrorMsg string
+		expectedWhen     action.When
 	}{
 		{
 			name: "successful action creation with config timeout",
@@ -52,12 +54,15 @@ func TestActionMaker_Make(t *testing.T) {
 					Service:  "name",
 					Services: nil,
 					Timeout:  4000,
+					When:     "on_success",
 				},
 				Timeout: 3000,
+				When:    "on_success",
 			},
 			defaultTimeout:  5000,
 			passedTimeout:   3000,
 			expectedTimeout: time.Duration(3000 * 1e6),
+			expectedWhen:    action.OnSuccess,
 		},
 		{
 			name: "successful action creation with default timeout",
@@ -66,12 +71,15 @@ func TestActionMaker_Make(t *testing.T) {
 					Service:  "name",
 					Services: nil,
 					Timeout:  4000,
+					When:     "on_success",
 				},
 				Timeout: 0,
+				When:    "on_success",
 			},
 			defaultTimeout:  5000,
 			passedTimeout:   5000,
 			expectedTimeout: time.Duration(5000 * 1e6),
+			expectedWhen:    action.OnSuccess,
 		},
 		{
 			name: "failed action creation because of action maker failure",
@@ -80,6 +88,7 @@ func TestActionMaker_Make(t *testing.T) {
 					Service:  "name",
 					Services: nil,
 					Timeout:  4000,
+					When:     "on_success",
 				},
 				Timeout: 0,
 			},
@@ -124,6 +133,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.True(ok)
 				assert.Equal(actionMock, act.action)
 				assert.Equal(tt.expectedTimeout, act.Timeout())
+				assert.Equal(tt.expectedWhen, act.When())
 			}
 		})
 	}

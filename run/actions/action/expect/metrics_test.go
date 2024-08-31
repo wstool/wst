@@ -11,6 +11,7 @@ import (
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/metrics"
 	"github.com/bukka/wst/run/parameters"
@@ -42,16 +43,20 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 	}{
 		{
 			name: "successful metrics action creation",
-			config: &types.MetricsExpectationAction{Service: "validService", Metrics: types.MetricsExpectation{
-				Id: "eid1",
-				Rules: []types.MetricRule{
-					{
-						Metric:   "test",
-						Operator: "eq",
-						Value:    0,
+			config: &types.MetricsExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Metrics: types.MetricsExpectation{
+					Id: "eid1",
+					Rules: []types.MetricRule{
+						{
+							Metric:   "test",
+							Operator: "eq",
+							Value:    0,
+						},
 					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -84,6 +89,7 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 						fnd:     fndMock,
 						service: svc,
 						timeout: 5000 * 1e6,
+						when:    action.OnSuccess,
 					},
 					MetricsExpectation: expectation,
 					parameters:         parameters.Parameters{},
@@ -92,16 +98,20 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 		},
 		{
 			name: "failed metrics action creation because no service found",
-			config: &types.MetricsExpectationAction{Service: "invalidService", Metrics: types.MetricsExpectation{
-				Id: "eid1",
-				Rules: []types.MetricRule{
-					{
-						Metric:   "test",
-						Operator: "eq",
-						Value:    0,
+			config: &types.MetricsExpectationAction{
+				Service: "invalidService",
+				When:    "on_success",
+				Metrics: types.MetricsExpectation{
+					Id: "eid1",
+					Rules: []types.MetricRule{
+						{
+							Metric:   "test",
+							Operator: "eq",
+							Value:    0,
+						},
 					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,
@@ -118,16 +128,20 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 		},
 		{
 			name: "failed metrics action creation because metrics expectation creation failed",
-			config: &types.MetricsExpectationAction{Service: "validService", Metrics: types.MetricsExpectation{
-				Id: "eid1",
-				Rules: []types.MetricRule{
-					{
-						Metric:   "test",
-						Operator: "eq",
-						Value:    0,
+			config: &types.MetricsExpectationAction{
+				Service: "validService",
+				When:    "on_success",
+				Metrics: types.MetricsExpectation{
+					Id: "eid1",
+					Rules: []types.MetricRule{
+						{
+							Metric:   "test",
+							Operator: "eq",
+							Value:    0,
+						},
 					},
 				},
-			}},
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(
 				t *testing.T,

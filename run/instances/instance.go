@@ -155,19 +155,18 @@ func (i *nativeInstance) Run() error {
 
 	ictx, cancel := i.runtimeMaker.MakeContextWithTimeout(ctx, i.timeout)
 	defer cancel()
+	var actionErr error = nil
 	for pos, act := range i.actions {
 		i.fnd.Logger().Debugf("Executing action number %d", pos)
-		if err = i.executeAction(ictx, act); err != nil {
-			break
-		}
+		actionErr = i.executeAction(ictx, act, actionErr)
 	}
 
 	destroyErr := i.destroyEnvironments(ctx, initializedEnvs)
-	if err == nil {
-		err = destroyErr
+	if actionErr == nil {
+		return destroyErr
 	}
 
-	return err
+	return actionErr
 }
 
 func (i *nativeInstance) destroyEnvironments(ctx context.Context, initializedEnvs map[providers.Type]bool) error {
@@ -176,22 +175,31 @@ func (i *nativeInstance) destroyEnvironments(ctx context.Context, initializedEnv
 		env := i.envs[envName]
 		i.fnd.Logger().Debugf("Destroying %s environment", envName)
 		if destroyErr := env.Destroy(ctx); destroyErr != nil {
-			i.fnd.Logger().Errorf("Failed to destroy %s environment: %v", envName, err)
 			err = destroyErr
 		}
 	}
 	return err
 }
 
-func (i *nativeInstance) executeAction(actionsCtx context.Context, action action.Action) error {
-	ctx, cancel := i.runtimeMaker.MakeContextWithTimeout(actionsCtx, action.Timeout())
+func (i *nativeInstance) executeAction(actionsCtx context.Context, act action.Action, actErr error) error {
+	if actErr != nil && act.When() == action.OnSuccess {
+		return actErr
+	}
+	if actErr == nil && act.When() == action.OnFailure {
+		return nil
+	}
+	ctx, cancel := i.runtimeMaker.MakeContextWithTimeout(actionsCtx, act.Timeout())
 	defer cancel()
-	success, err := action.Execute(ctx, i.runData)
+	success, err := act.Execute(ctx, i.runData)
 	if err != nil {
+		if actErr != nil {
+			i.fnd.Logger().Errorf("Failed to to run action: %v", err)
+			return actErr
+		}
 		return err
 	}
 	if !success {
 		return errors.Errorf("action execution failed")
 	}
-	return nil
+	return actErr
 }

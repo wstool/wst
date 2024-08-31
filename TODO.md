@@ -5,11 +5,14 @@ in the future.
 
 ## Code
 
-### Build and CI
+### Build, CI and Docs
 
 - update Go to latest 1.22 and then 1.23 (re-run mockery)
 - update deps
 - add pipeline to run unit test
+- document parallel, not and reload actions in schema
+- review the schema if it matches the config
+- extend and update README docs
 - integration tests
 
 ### App
@@ -18,10 +21,6 @@ in the future.
 
 ### Run
 
-- proper shut down of service when error - FPM is still running
-  - it is probably sending SIGKILL straight away as children are not cleaned up
-  - add more logging into this part to see what's going on
-  - improve stop so it waits for service to shut down
 - clean up workspace when starting new instance run
 - set correct path for dirs - /run is not in the workspace
 - look into doing some partial expectation - some sort of contains mode rather than full match
@@ -39,6 +38,8 @@ in the future.
   - support for UDS in address
   - consider reporting closing output streams in Destroy
 - support metrics server expectation
+- integrate better instance action identification
+  - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
 - replace environment.ServiceSettings struct with environment.Service interface

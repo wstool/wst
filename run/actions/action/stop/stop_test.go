@@ -8,6 +8,7 @@ import (
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,7 @@ func TestActionMaker_Make(t *testing.T) {
 			config: &types.StopAction{
 				Service:  "validService3",
 				Services: []string{"validService1", "validService2"},
+				When:     "always",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
@@ -72,6 +74,7 @@ func TestActionMaker_Make(t *testing.T) {
 					fnd:      fndMock,
 					services: svcs,
 					timeout:  5000 * time.Millisecond,
+					when:     action.Always,
 				}
 			},
 		},
@@ -80,6 +83,7 @@ func TestActionMaker_Make(t *testing.T) {
 			config: &types.StopAction{
 				Service: "validService",
 				Timeout: 3000,
+				When:    "always",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
@@ -95,12 +99,15 @@ func TestActionMaker_Make(t *testing.T) {
 					fnd:      fndMock,
 					services: svcs,
 					timeout:  3000 * time.Millisecond,
+					when:     action.Always,
 				}
 			},
 		},
 		{
-			name:           "successful stop action creation without any service",
-			config:         &types.StopAction{},
+			name: "successful stop action creation without any service",
+			config: &types.StopAction{
+				When: "always",
+			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
 				svcs := services.Services{
@@ -115,6 +122,7 @@ func TestActionMaker_Make(t *testing.T) {
 					fnd:      fndMock,
 					services: svcs,
 					timeout:  5000 * time.Millisecond,
+					when:     action.Always,
 				}
 			},
 		},

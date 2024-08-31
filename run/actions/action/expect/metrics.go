@@ -33,7 +33,7 @@ func (m *ExpectationActionMaker) MakeMetricsAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
+	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +54,10 @@ type metricsAction struct {
 	*CommonExpectation
 	*expectations.MetricsExpectation
 	parameters parameters.Parameters
+}
+
+func (a *metricsAction) When() action.When {
+	return a.when
 }
 
 func (a *metricsAction) Timeout() time.Duration {

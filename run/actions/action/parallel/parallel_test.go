@@ -42,6 +42,7 @@ func TestActionMaker_Make(t *testing.T) {
 		defaultTimeout   int
 		passedTimeout    int
 		expectedTimeout  time.Duration
+		expectedWhen     action.When
 		actionMakerErr   error
 		expectError      bool
 		expectedErrorMsg string
@@ -60,10 +61,12 @@ func TestActionMaker_Make(t *testing.T) {
 					},
 				},
 				Timeout: 3000,
+				When:    "on_success",
 			},
 			defaultTimeout:  5000,
 			passedTimeout:   3000,
 			expectedTimeout: time.Duration(3000 * 1e6),
+			expectedWhen:    action.OnSuccess,
 		},
 		{
 			name: "successful action creation with default timeout",
@@ -79,10 +82,12 @@ func TestActionMaker_Make(t *testing.T) {
 					},
 				},
 				Timeout: 0,
+				When:    "on_success",
 			},
 			defaultTimeout:  5000,
 			passedTimeout:   5000,
 			expectedTimeout: time.Duration(5000 * 1e6),
+			expectedWhen:    action.OnSuccess,
 		},
 		{
 			name: "failed action creation because of action maker failure",
@@ -98,6 +103,7 @@ func TestActionMaker_Make(t *testing.T) {
 					},
 				},
 				Timeout: 0,
+				When:    "on_success",
 			},
 			defaultTimeout:   5000,
 			passedTimeout:    5000,
@@ -105,6 +111,7 @@ func TestActionMaker_Make(t *testing.T) {
 			actionMakerErr:   errors.New("make failed"),
 			expectError:      true,
 			expectedErrorMsg: "make failed",
+			expectedWhen:     action.OnSuccess,
 		},
 	}
 	for _, tt := range tests {
@@ -145,6 +152,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.True(ok)
 				assert.Equal([]action.Action{action1Mock, action2Mock}, act.actions)
 				assert.Equal(tt.expectedTimeout, act.Timeout())
+				assert.Equal(tt.expectedWhen, act.When())
 			}
 		})
 	}

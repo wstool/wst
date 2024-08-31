@@ -6,6 +6,7 @@ import (
 	expectationsMocks "github.com/bukka/wst/mocks/generated/run/expectations"
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/expectations"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/pkg/errors"
@@ -46,6 +47,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 		name              string
 		defaultTimeout    int
 		timeout           int
+		when              string
 		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator) *servicesMocks.MockService
 		getExpectedAction func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService) *CommonExpectation
 		expectError       bool
@@ -55,6 +57,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 			name:           "successful common action creation with default timeout used",
 			defaultTimeout: 5000,
 			timeout:        0,
+			when:           "on_success",
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) *servicesMocks.MockService {
 				svc := servicesMocks.NewMockService(t)
 				sl.On("Find", serviceName).Return(svc, nil)
@@ -65,6 +68,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 					fnd:     fndMock,
 					service: svc,
 					timeout: 5000 * 1e6,
+					when:    action.OnSuccess,
 				}
 			},
 		},
@@ -72,6 +76,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 			name:           "successful common action creation with timeout used",
 			defaultTimeout: 5000,
 			timeout:        3000,
+			when:           "on_success",
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) *servicesMocks.MockService {
 				svc := servicesMocks.NewMockService(t)
 				sl.On("Find", serviceName).Return(svc, nil)
@@ -82,6 +87,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 					fnd:     fndMock,
 					service: svc,
 					timeout: 3000 * 1e6,
+					when:    action.OnSuccess,
 				}
 			},
 		},
@@ -89,6 +95,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 			name:           "failed common action because no service found",
 			defaultTimeout: 5000,
 			timeout:        3000,
+			when:           "on_success",
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) *servicesMocks.MockService {
 				sl.On("Find", serviceName).Return(nil, errors.New("no service"))
 				return nil
@@ -110,7 +117,7 @@ func TestExpectationActionMaker_MakeCommonExpectation(t *testing.T) {
 
 			svc := tt.setupMocks(t, slMock)
 
-			got, err := m.MakeCommonExpectation(slMock, serviceName, tt.timeout, tt.defaultTimeout)
+			got, err := m.MakeCommonExpectation(slMock, serviceName, tt.timeout, tt.defaultTimeout, tt.when)
 
 			if tt.expectError {
 				assert.Error(t, err)

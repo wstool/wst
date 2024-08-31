@@ -25,8 +25,17 @@ import (
 type Action interface {
 	Execute(ctx context.Context, runData runtime.Data) (bool, error)
 	Timeout() time.Duration
+	When() When
 }
 
 type Maker interface {
 	MakeAction(config types.Action, sl services.ServiceLocator, defaultTimeout int) (Action, error)
 }
+
+type When string
+
+const (
+	Always    When = "always"
+	OnSuccess When = "on_success"
+	OnFailure When = "on_failure"
+)

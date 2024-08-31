@@ -8,6 +8,7 @@ import (
 	app2 "github.com/bukka/wst/mocks/generated/app"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -51,6 +52,7 @@ func TestActionMaker_Make(t *testing.T) {
 			config: &types.RequestAction{
 				Service: "validService",
 				Timeout: 0,
+				When:    "on_success",
 				Id:      "last",
 				Path:    "/test",
 				Method:  "GET",
@@ -69,6 +71,7 @@ func TestActionMaker_Make(t *testing.T) {
 					fnd:     fndMock,
 					service: svc,
 					timeout: 5000 * time.Millisecond,
+					when:    action.OnSuccess,
 					id:      "last",
 					path:    "/test",
 					method:  "GET",
@@ -83,6 +86,7 @@ func TestActionMaker_Make(t *testing.T) {
 			config: &types.RequestAction{
 				Service: "validService",
 				Timeout: 3000,
+				When:    "on_success",
 				Id:      "new",
 				Path:    "/t1",
 				Method:  "POST",
@@ -101,6 +105,7 @@ func TestActionMaker_Make(t *testing.T) {
 					fnd:     fndMock,
 					service: svc,
 					timeout: 3000 * time.Millisecond,
+					when:    action.OnSuccess,
 					id:      "new",
 					path:    "/t1",
 					method:  "POST",
@@ -115,6 +120,7 @@ func TestActionMaker_Make(t *testing.T) {
 			config: &types.RequestAction{
 				Service: "validService",
 				Timeout: 3000,
+				When:    "on_success",
 				Id:      "new",
 				Path:    "/t1",
 				Method:  "POST",

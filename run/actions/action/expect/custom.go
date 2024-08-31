@@ -17,7 +17,7 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout)
+	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +47,10 @@ type customAction struct {
 	*expectations.OutputExpectation
 	*expectations.ResponseExpectation
 	parameters parameters.Parameters
+}
+
+func (a *customAction) When() action.When {
+	return a.when
 }
 
 func (a *customAction) Timeout() time.Duration {

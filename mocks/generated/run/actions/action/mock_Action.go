@@ -5,8 +5,11 @@ package action
 import (
 	context "context"
 
-	runtime "github.com/bukka/wst/run/instances/runtime"
+	action "github.com/bukka/wst/run/actions/action"
+
 	mock "github.com/stretchr/testify/mock"
+
+	runtime "github.com/bukka/wst/run/instances/runtime"
 
 	time "time"
 )
@@ -122,6 +125,51 @@ func (_c *MockAction_Timeout_Call) Return(_a0 time.Duration) *MockAction_Timeout
 }
 
 func (_c *MockAction_Timeout_Call) RunAndReturn(run func() time.Duration) *MockAction_Timeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// When provides a mock function with given fields:
+func (_m *MockAction) When() action.When {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for When")
+	}
+
+	var r0 action.When
+	if rf, ok := ret.Get(0).(func() action.When); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(action.When)
+	}
+
+	return r0
+}
+
+// MockAction_When_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'When'
+type MockAction_When_Call struct {
+	*mock.Call
+}
+
+// When is a helper method to define mock.On call
+func (_e *MockAction_Expecter) When() *MockAction_When_Call {
+	return &MockAction_When_Call{Call: _e.mock.On("When")}
+}
+
+func (_c *MockAction_When_Call) Run(run func()) *MockAction_When_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAction_When_Call) Return(_a0 action.When) *MockAction_When_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAction_When_Call) RunAndReturn(run func() action.When) *MockAction_When_Call {
 	_c.Call.Return(run)
 	return _c
 }

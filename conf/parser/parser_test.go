@@ -1872,10 +1872,12 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									Service:  "web_service",
 									Services: nil,
 									Timeout:  0,
+									When:     "on_success",
 								},
 								&types.RequestAction{
 									Service: "web_service",
 									Timeout: 0,
+									When:    "on_success",
 									Id:      "last",
 									Path:    "/api/status",
 									Method:  "GET",
@@ -1883,6 +1885,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								&types.CustomExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
+									When:    "on_success",
 									Custom: types.CustomExpectation{
 										Name: "status",
 										Parameters: types.Parameters{
@@ -1893,6 +1896,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								&types.CustomExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
+									When:    "on_success",
 									Custom: types.CustomExpectation{
 										Name: "status",
 										Parameters: types.Parameters{
@@ -1903,6 +1907,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								&types.ResponseExpectationAction{
 									Service: "web_service",
 									Timeout: 0,
+									When:    "on_success",
 									Response: types.ResponseExpectation{
 										Request: "last",
 										Body: types.ResponseBody{

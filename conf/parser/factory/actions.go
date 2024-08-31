@@ -82,6 +82,7 @@ func (f *NativeActionsFactory) parseExpectationAction(
 	if meta.customName != "" {
 		return &types.CustomExpectationAction{
 			Service: meta.serviceName,
+			When:    "on_success",
 			Custom: types.CustomExpectation{
 				Name:       meta.customName,
 				Parameters: data,
