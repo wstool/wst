@@ -18,6 +18,13 @@ in the future.
 
 ### Run
 
+- proper shut down of service when error - FPM is still running
+  - it is probably sending SIGKILL straight away as children are not cleaned up
+  - add more logging into this part to see what's going on
+  - improve stop so it waits for service to shut down
+- clean up workspace when starting new instance run
+- set correct path for dirs - /run is not in the workspace
+- look into doing some partial expectation - some sort of contains mode rather than full match
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - identify server circular extending and error instead of current stack panic
@@ -32,6 +39,8 @@ in the future.
   - support for UDS in address
   - consider reporting closing output streams in Destroy
 - support metrics server expectation
+- consider some internal options in the config
+  - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
 - replace environment.ServiceSettings struct with environment.Service interface
   - code clean up really with saving some calls - it just messy to pre-create this struct
 
