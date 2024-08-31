@@ -50,9 +50,9 @@ type Service interface {
 	User() string
 	Group() string
 	Dirs() map[dir.DirType]string
-	ConfDir() string
-	RunDir() string
-	ScriptDir() string
+	ConfDir() (string, error)
+	RunDir() (string, error)
+	ScriptDir() (string, error)
 	Port() int32
 	EnvironmentConfigPaths() map[string]string
 	WorkspaceConfigPaths() map[string]string
@@ -299,16 +299,24 @@ func (s *nativeService) Dirs() map[dir.DirType]string {
 	return s.Sandbox().Dirs()
 }
 
-func (s *nativeService) ConfDir() string {
-	return s.Sandbox().Dirs()[dir.ConfDirType]
+func (s *nativeService) rootPathDir(dirType dir.DirType) (string, error) {
+	sandboxDir := s.Sandbox().Dirs()[dirType]
+	rootPath := s.environment.RootPath(s.workspace)
+	fullDir := filepath.Join(rootPath, sandboxDir)
+	err := s.environment.Mkdir(s.name, fullDir, 0755)
+	return fullDir, err
 }
 
-func (s *nativeService) RunDir() string {
-	return s.Sandbox().Dirs()[dir.RunDirType]
+func (s *nativeService) ConfDir() (string, error) {
+	return s.rootPathDir(dir.ConfDirType)
 }
 
-func (s *nativeService) ScriptDir() string {
-	return s.Sandbox().Dirs()[dir.ScriptDirType]
+func (s *nativeService) RunDir() (string, error) {
+	return s.rootPathDir(dir.RunDirType)
+}
+
+func (s *nativeService) ScriptDir() (string, error) {
+	return s.rootPathDir(dir.ScriptDirType)
 }
 
 func (s *nativeService) Server() servers.Server {

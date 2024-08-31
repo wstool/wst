@@ -2501,6 +2501,11 @@ func Test_kubernetesEnvironment_RootPath(t *testing.T) {
 	assert.Equal(t, "", env.RootPath("/www/ws"))
 }
 
+func Test_kubernetesEnvironment_Mkdir(t *testing.T) {
+	env := &kubernetesEnvironment{}
+	assert.Nil(t, env.Mkdir("svc", "/www/ws", 0755))
+}
+
 func Test_kubernetesEnvironment_ServiceAddress(t *testing.T) {
 	env := &kubernetesEnvironment{}
 	assert.Equal(t, "svc", env.ServiceAddress("svc", 1234))

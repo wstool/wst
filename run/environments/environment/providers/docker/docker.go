@@ -340,6 +340,11 @@ func (e *dockerEnvironment) RootPath(workspace string) string {
 	return ""
 }
 
+func (e *dockerEnvironment) Mkdir(serviceName string, path string, perm os.FileMode) error {
+	// Currently it is a user responsibility to make sure that directory exists in the container
+	return nil
+}
+
 func (e *dockerEnvironment) ServiceAddress(serviceName string, port int32) string {
 	return serviceName
 }

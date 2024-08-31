@@ -1231,22 +1231,51 @@ func Test_nativeService_Dirs(t *testing.T) {
 	assert.Equal(t, sandboxDirs, svc.Dirs())
 }
 
+func testDirsGetters(t *testing.T, expectedDir string, cb func(svc *nativeService) (string, error)) {
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{
+			name: "successful result",
+			err:  nil,
+		},
+		{
+			name: "error during mkdir",
+			err:  errors.New("mkdir fail"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testingNativeService(t)
+			svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
+			envMock := svc.environment.(*environmentMocks.MockEnvironment)
+			envMock.On("RootPath", "/tmp/ws/svc").Return("/ws")
+			envMock.On("Mkdir", "svc", expectedDir, os.FileMode(0755)).Return(tt.err)
+			result, err := cb(svc)
+			assert.Equal(t, expectedDir, result)
+			assert.Equal(t, err, tt.err)
+		})
+	}
+}
+
 func Test_nativeService_ConfDir(t *testing.T) {
-	svc := testingNativeService(t)
-	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
-	assert.Equal(t, "/conf/dir", svc.ConfDir())
+	testDirsGetters(t, "/ws/conf/dir", func(svc *nativeService) (string, error) {
+		return svc.ConfDir()
+	})
 }
 
 func Test_nativeService_RunDir(t *testing.T) {
-	svc := testingNativeService(t)
-	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
-	assert.Equal(t, "/run/dir", svc.RunDir())
+	testDirsGetters(t, "/ws/run/dir", func(svc *nativeService) (string, error) {
+		return svc.RunDir()
+	})
 }
 
 func Test_nativeService_ScriptDir(t *testing.T) {
-	svc := testingNativeService(t)
-	svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
-	assert.Equal(t, "/script/dir", svc.ScriptDir())
+	testDirsGetters(t, "/ws/script/dir", func(svc *nativeService) (string, error) {
+		return svc.ScriptDir()
+	})
 }
 
 func Test_nativeService_Server(t *testing.T) {

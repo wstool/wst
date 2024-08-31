@@ -130,6 +130,27 @@ func Test_localEnvironment_RootPath(t *testing.T) {
 	assert.Equal(t, "/tmp/ws/svc", l.RootPath("/tmp/ws/svc"))
 }
 
+func Test_localEnvironment_Mkdir(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	fsMock := appMocks.NewMockFs(t)
+	fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+	fndMock.On("Fs").Return(fsMock)
+	l := &localEnvironment{
+		CommonEnvironment: environment.CommonEnvironment{
+			Fnd:  fndMock,
+			Used: false,
+			Ports: environment.Ports{
+				Start: 8000,
+				Used:  8000,
+				End:   8500,
+			},
+		},
+		tasks:     make(map[string]*localTask),
+		workspace: "/tmp/ws/envs/local",
+	}
+	assert.Nil(t, l.Mkdir("svc", "/fake/path", os.FileMode(0755)))
+}
+
 func Test_localEnvironment_ServiceAddress(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	l := &localEnvironment{

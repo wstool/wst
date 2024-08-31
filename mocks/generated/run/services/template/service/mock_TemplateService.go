@@ -63,7 +63,7 @@ func (_c *MockTemplateService_Address_Call) RunAndReturn(run func() string) *Moc
 }
 
 // ConfDir provides a mock function with given fields:
-func (_m *MockTemplateService) ConfDir() string {
+func (_m *MockTemplateService) ConfDir() (string, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -71,13 +71,23 @@ func (_m *MockTemplateService) ConfDir() string {
 	}
 
 	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockTemplateService_ConfDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfDir'
@@ -97,12 +107,12 @@ func (_c *MockTemplateService_ConfDir_Call) Run(run func()) *MockTemplateService
 	return _c
 }
 
-func (_c *MockTemplateService_ConfDir_Call) Return(_a0 string) *MockTemplateService_ConfDir_Call {
-	_c.Call.Return(_a0)
+func (_c *MockTemplateService_ConfDir_Call) Return(_a0 string, _a1 error) *MockTemplateService_ConfDir_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockTemplateService_ConfDir_Call) RunAndReturn(run func() string) *MockTemplateService_ConfDir_Call {
+func (_c *MockTemplateService_ConfDir_Call) RunAndReturn(run func() (string, error)) *MockTemplateService_ConfDir_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -365,7 +375,7 @@ func (_c *MockTemplateService_PrivateUrl_Call) RunAndReturn(run func() (string, 
 }
 
 // RunDir provides a mock function with given fields:
-func (_m *MockTemplateService) RunDir() string {
+func (_m *MockTemplateService) RunDir() (string, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -373,13 +383,23 @@ func (_m *MockTemplateService) RunDir() string {
 	}
 
 	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockTemplateService_RunDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunDir'
@@ -399,18 +419,18 @@ func (_c *MockTemplateService_RunDir_Call) Run(run func()) *MockTemplateService_
 	return _c
 }
 
-func (_c *MockTemplateService_RunDir_Call) Return(_a0 string) *MockTemplateService_RunDir_Call {
-	_c.Call.Return(_a0)
+func (_c *MockTemplateService_RunDir_Call) Return(_a0 string, _a1 error) *MockTemplateService_RunDir_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockTemplateService_RunDir_Call) RunAndReturn(run func() string) *MockTemplateService_RunDir_Call {
+func (_c *MockTemplateService_RunDir_Call) RunAndReturn(run func() (string, error)) *MockTemplateService_RunDir_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ScriptDir provides a mock function with given fields:
-func (_m *MockTemplateService) ScriptDir() string {
+func (_m *MockTemplateService) ScriptDir() (string, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -418,13 +438,23 @@ func (_m *MockTemplateService) ScriptDir() string {
 	}
 
 	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockTemplateService_ScriptDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ScriptDir'
@@ -444,12 +474,12 @@ func (_c *MockTemplateService_ScriptDir_Call) Run(run func()) *MockTemplateServi
 	return _c
 }
 
-func (_c *MockTemplateService_ScriptDir_Call) Return(_a0 string) *MockTemplateService_ScriptDir_Call {
-	_c.Call.Return(_a0)
+func (_c *MockTemplateService_ScriptDir_Call) Return(_a0 string, _a1 error) *MockTemplateService_ScriptDir_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockTemplateService_ScriptDir_Call) RunAndReturn(run func() string) *MockTemplateService_ScriptDir_Call {
+func (_c *MockTemplateService_ScriptDir_Call) RunAndReturn(run func() (string, error)) *MockTemplateService_ScriptDir_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1719,6 +1719,11 @@ func Test_dockerEnvironment_RootPath(t *testing.T) {
 	assert.Equal(t, "", env.RootPath("/www/ws"))
 }
 
+func Test_dockerEnvironment_Mkdir(t *testing.T) {
+	env := &dockerEnvironment{}
+	assert.Nil(t, env.Mkdir("svc", "/www/ws", 0755))
+}
+
 func Test_dockerEnvironment_ServiceAddress(t *testing.T) {
 	env := &dockerEnvironment{}
 	assert.Equal(t, "svc", env.ServiceAddress("svc", 1234))

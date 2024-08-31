@@ -4,9 +4,11 @@ package environment
 
 import (
 	context "context"
-	io "io"
+	fs "io/fs"
 
 	environment "github.com/bukka/wst/run/environments/environment"
+
+	io "io"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -340,6 +342,54 @@ func (_c *MockEnvironment_MarkUsed_Call) Return() *MockEnvironment_MarkUsed_Call
 }
 
 func (_c *MockEnvironment_MarkUsed_Call) RunAndReturn(run func()) *MockEnvironment_MarkUsed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Mkdir provides a mock function with given fields: serviceName, path, perm
+func (_m *MockEnvironment) Mkdir(serviceName string, path string, perm fs.FileMode) error {
+	ret := _m.Called(serviceName, path, perm)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Mkdir")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, fs.FileMode) error); ok {
+		r0 = rf(serviceName, path, perm)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockEnvironment_Mkdir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Mkdir'
+type MockEnvironment_Mkdir_Call struct {
+	*mock.Call
+}
+
+// Mkdir is a helper method to define mock.On call
+//   - serviceName string
+//   - path string
+//   - perm fs.FileMode
+func (_e *MockEnvironment_Expecter) Mkdir(serviceName interface{}, path interface{}, perm interface{}) *MockEnvironment_Mkdir_Call {
+	return &MockEnvironment_Mkdir_Call{Call: _e.mock.On("Mkdir", serviceName, path, perm)}
+}
+
+func (_c *MockEnvironment_Mkdir_Call) Run(run func(serviceName string, path string, perm fs.FileMode)) *MockEnvironment_Mkdir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(fs.FileMode))
+	})
+	return _c
+}
+
+func (_c *MockEnvironment_Mkdir_Call) Return(_a0 error) *MockEnvironment_Mkdir_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEnvironment_Mkdir_Call) RunAndReturn(run func(string, string, fs.FileMode) error) *MockEnvironment_Mkdir_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -71,6 +71,10 @@ func (l *localEnvironment) RootPath(workspace string) string {
 	return workspace
 }
 
+func (l *localEnvironment) Mkdir(serviceName string, path string, perm os.FileMode) error {
+	return l.Fnd.Fs().MkdirAll(path, perm)
+}
+
 func (l *localEnvironment) ServiceAddress(serviceName string, port int32) string {
 	return fmt.Sprintf("127.0.0.1:%d", port)
 }

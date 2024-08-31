@@ -6,9 +6,9 @@ type TemplateService interface {
 	PrivateUrl() (string, error)
 	Executable() (string, error)
 	Pid() (int, error)
-	ConfDir() string
-	RunDir() string
-	ScriptDir() string
+	ConfDir() (string, error)
+	RunDir() (string, error)
+	ScriptDir() (string, error)
 	Group() string
 	User() string
 	EnvironmentConfigPaths() map[string]string

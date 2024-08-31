@@ -64,6 +64,7 @@ type Environment interface {
 	Init(ctx context.Context) error
 	Destroy(ctx context.Context) error
 	RootPath(workspace string) string
+	Mkdir(serviceName string, path string, perm os.FileMode) error
 	ServiceAddress(serviceName string, port int32) string
 	RunTask(ctx context.Context, ss *ServiceSettings, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command) error
