@@ -110,6 +110,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			want: []types.Action{
 				&types.CustomExpectationAction{
 					Service: "serviceName",
+					When:    "on_success",
 					Custom: types.CustomExpectation{
 						Name:       "customName",
 						Parameters: map[string]interface{}{"response": "expectedResponse"},
