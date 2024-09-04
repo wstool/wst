@@ -54,7 +54,7 @@ func (m *ActionMaker) Make(
 		return nil, err
 	}
 
-	if config.Timeout == 0 {
+	if config.Timeout == 0 && config.Duration != 0 {
 		if defaultTimeout > config.Duration {
 			config.Timeout = defaultTimeout
 		} else {
@@ -62,11 +62,19 @@ func (m *ActionMaker) Make(
 		}
 	}
 
+	if config.Duration == 0 {
+		if config.Timeout >= 200 {
+			config.Duration = config.Timeout - 100
+		} else {
+			config.Duration = config.Timeout
+		}
+	}
+
 	return &Action{
 		fnd:      m.fnd,
 		service:  svc,
-		timeout:  time.Duration(config.Timeout * 1e6),
-		duration: time.Duration(config.Duration * 1e6),
+		timeout:  time.Duration(config.Timeout) * time.Millisecond,
+		duration: time.Duration(config.Duration) * time.Millisecond,
 		when:     action.When(config.When),
 		freq:     config.Frequency,
 		id:       config.Id,

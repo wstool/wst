@@ -41,6 +41,7 @@ func TestActionMaker_Make(t *testing.T) {
 		config           *types.BenchAction
 		defaultTimeout   int
 		expectedTimeout  time.Duration
+		expectedDuration time.Duration
 		locatorErr       error
 		expectError      bool
 		expectedErrorMsg string
@@ -56,8 +57,9 @@ func TestActionMaker_Make(t *testing.T) {
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
 			},
-			defaultTimeout:  5000,
-			expectedTimeout: time.Duration(5000 * 1e6),
+			defaultTimeout:   5000,
+			expectedTimeout:  5000 * time.Millisecond,
+			expectedDuration: 3000 * time.Millisecond,
 		},
 		{
 			name: "successful action creation with calculated timeout",
@@ -70,8 +72,41 @@ func TestActionMaker_Make(t *testing.T) {
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
 			},
-			defaultTimeout:  5000,
-			expectedTimeout: time.Duration(11000 * 1e6), // Duration + 5000
+			defaultTimeout:   5000,
+			expectedTimeout:  11000 * time.Millisecond,
+			expectedDuration: 6000 * time.Millisecond,
+		},
+		{
+			name: "successful action creation with calculated duration",
+			config: &types.BenchAction{
+				Service:   "validService",
+				Duration:  0,
+				Timeout:   10000,
+				Frequency: 1,
+				Id:        "testAction",
+				Path:      "/test",
+				Method:    "GET",
+				Headers:   types.Headers{"Content-Type": "application/json"},
+			},
+			defaultTimeout:   5000,
+			expectedTimeout:  10000 * time.Millisecond,
+			expectedDuration: 9900 * time.Millisecond,
+		},
+		{
+			name: "successful action creation with zero timeout and duration",
+			config: &types.BenchAction{
+				Service:   "validService",
+				Duration:  0,
+				Timeout:   0,
+				Frequency: 1,
+				Id:        "testAction",
+				Path:      "/test",
+				Method:    "GET",
+				Headers:   types.Headers{"Content-Type": "application/json"},
+			},
+			defaultTimeout:   0,
+			expectedTimeout:  0,
+			expectedDuration: 0,
 		},
 		{
 			name:             "service locator failure",
@@ -108,7 +143,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.True(ok)
 				assert.Equal(svcMock, action.service)
 				assert.Equal(tt.expectedTimeout, action.Timeout())
-				assert.Equal(time.Duration(tt.config.Duration*1e6), action.duration)
+				assert.Equal(tt.expectedDuration, action.duration)
 				assert.Equal(tt.config.Frequency, action.freq)
 				assert.Equal(tt.config.Id, action.id)
 				assert.Equal(tt.config.Path, action.path)
