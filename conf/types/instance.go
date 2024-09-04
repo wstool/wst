@@ -7,6 +7,9 @@ type InstanceTimeouts struct {
 
 type Instance struct {
 	Name         string                 `wst:"name"`
+	Title        string                 `wst:"title"`
+	Description  string                 `wst:"description"`
+	Labels       []string               `wst:"labels"`
 	Resources    Resources              `wst:"resources"`
 	Services     map[string]Service     `wst:"services,loadable"`
 	Timeouts     InstanceTimeouts       `wst:"timeouts"`

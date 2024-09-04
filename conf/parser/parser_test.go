@@ -1726,7 +1726,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 					},
 					"instances": []interface{}{
 						map[string]interface{}{
-							"name": "Instance 1",
+							"title":       "Instance 1",
+							"name":        "instance-1",
+							"description": "test instance",
+							"labels":      []interface{}{"test", "nginx"},
 							"environments": map[string]interface{}{
 								"local": map[string]interface{}{
 									"ports": map[string]interface{}{
@@ -1832,7 +1835,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 					},
 					Instances: []types.Instance{
 						{
-							Name: "Instance 1",
+							Title:       "Instance 1",
+							Name:        "instance-1",
+							Description: "test instance",
+							Labels:      []string{"test", "nginx"},
 							Resources: types.Resources{
 								Scripts: map[string]types.Script{
 									"index_php": {

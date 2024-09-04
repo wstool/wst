@@ -929,6 +929,25 @@ $defs:
         description: |
           The name is used for reporting which is mainly useful when more instances are used. If not specified, the
           name is generated from instance index and file name.
+        type: string
+      title:
+        title: Instance title
+        description: |
+          The title is meant as a user friendly name for the instance. It should be capitalized and words separated by
+          spaces.
+      description:
+        title: Instance description
+        description: |
+          The description should be a text describing what the instance is for and any useful notes including links to
+          the related resources. Markdown should be used for formatting.
+        type: string
+      labels:
+        title: Instance labels
+        description: |
+          The list of labels that could be used for searching between instances.
+        type: array
+        items:
+          type: string
       environments:
         $ref: '#/$defs/environments'
       resources:
