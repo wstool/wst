@@ -22,7 +22,6 @@ in the future.
 ### Run
 
 - investigate why template include is not found and make it work (status expectation)
-- look into why timeouts in custom action are not honoured
 - look into doing some partial expectation - some sort of contains mode rather than full match
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)

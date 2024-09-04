@@ -62,13 +62,14 @@ func CreateInstanceMaker(
 	expectationsMaker expectations.Maker,
 	parametersMaker parameters.Maker,
 ) InstanceMaker {
+	runtimeMaker := runtime.CreateMaker(fnd)
 	return &nativeInstanceMaker{
 		fnd:              fnd,
-		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker),
+		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker, runtimeMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
 		scriptsMaker:     scripts.CreateMaker(fnd, parametersMaker),
 		environmentMaker: environments.CreateMaker(fnd),
-		runtimeMaker:     runtime.CreateMaker(fnd),
+		runtimeMaker:     runtimeMaker,
 	}
 }
 
@@ -162,7 +163,7 @@ func (i *nativeInstance) Run() error {
 	defer cancel()
 	var actionErr error = nil
 	for pos, act := range i.actions {
-		i.fnd.Logger().Debugf("Executing action number %d", pos)
+		i.fnd.Logger().Debugf("Executing action number %d with timeout %s", pos, i.timeout)
 		actionErr = i.executeAction(ictx, act, actionErr)
 	}
 

@@ -36,12 +36,14 @@ type Maker interface {
 }
 
 type ActionMaker struct {
-	fnd app.Foundation
+	fnd          app.Foundation
+	runtimeMaker runtime.Maker
 }
 
-func CreateActionMaker(fnd app.Foundation) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation, runtimeMaker runtime.Maker) *ActionMaker {
 	return &ActionMaker{
-		fnd: fnd,
+		fnd:          fnd,
+		runtimeMaker: runtimeMaker,
 	}
 }
 
@@ -64,18 +66,20 @@ func (m *ActionMaker) Make(
 		parallelActions = append(parallelActions, newAction)
 	}
 	return &Action{
-		fnd:     m.fnd,
-		actions: parallelActions,
-		timeout: time.Duration(config.Timeout * 1e6),
-		when:    action.When(config.When),
+		fnd:          m.fnd,
+		runtimeMaker: m.runtimeMaker,
+		actions:      parallelActions,
+		timeout:      time.Duration(config.Timeout * 1e6),
+		when:         action.When(config.When),
 	}, nil
 }
 
 type Action struct {
-	fnd     app.Foundation
-	actions []action.Action
-	timeout time.Duration
-	when    action.When
+	fnd          app.Foundation
+	runtimeMaker runtime.Maker
+	actions      []action.Action
+	timeout      time.Duration
+	when         action.When
 }
 
 func (a *Action) When() action.When {
@@ -101,10 +105,13 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	for pos, act := range a.actions {
 		go func(act action.Action, pos int) {
 			defer wg.Done()
-
-			// Execute the action, passing the context.
-			logger.Debugf("Executing parallel action %d", pos)
-			success, err := act.Execute(ctx, runData)
+			actTimeout := act.Timeout()
+			logger.Debugf("Executing parallel action %d with timeout %s", pos, actTimeout)
+			// Create context for action
+			actCtx, cancel := a.runtimeMaker.MakeContextWithTimeout(ctx, actTimeout)
+			defer cancel()
+			// Execute action with context
+			success, err := act.Execute(actCtx, runData)
 			if err != nil {
 				errs <- fmt.Errorf("parallel action %d failed with error %v", pos, err)
 			} else if !success {

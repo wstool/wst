@@ -34,12 +34,14 @@ type Maker interface {
 }
 
 type ActionMaker struct {
-	fnd app.Foundation
+	fnd          app.Foundation
+	runtimeMaker runtime.Maker
 }
 
-func CreateActionMaker(fnd app.Foundation) *ActionMaker {
+func CreateActionMaker(fnd app.Foundation, runtimeMaker runtime.Maker) *ActionMaker {
 	return &ActionMaker{
-		fnd: fnd,
+		fnd:          fnd,
+		runtimeMaker: runtimeMaker,
 	}
 }
 
@@ -59,18 +61,20 @@ func (m *ActionMaker) Make(
 	}
 
 	return &Action{
-		fnd:     m.fnd,
-		action:  newAction,
-		timeout: time.Duration(config.Timeout * 1e6),
-		when:    action.When(config.When),
+		fnd:          m.fnd,
+		runtimeMaker: m.runtimeMaker,
+		action:       newAction,
+		timeout:      time.Duration(config.Timeout * 1e6),
+		when:         action.When(config.When),
 	}, nil
 }
 
 type Action struct {
-	fnd     app.Foundation
-	action  action.Action
-	timeout time.Duration
-	when    action.When
+	fnd          app.Foundation
+	runtimeMaker runtime.Maker
+	action       action.Action
+	timeout      time.Duration
+	when         action.When
 }
 
 func (a *Action) When() action.When {
@@ -82,8 +86,11 @@ func (a *Action) Timeout() time.Duration {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing not action")
-	success, err := a.action.Execute(ctx, runData)
+	actTimeout := a.action.Timeout()
+	a.fnd.Logger().Infof("Executing not action with timeout %s", actTimeout)
+	actCtx, cancel := a.runtimeMaker.MakeContextWithTimeout(ctx, actTimeout)
+	defer cancel()
+	success, err := a.action.Execute(actCtx, runData)
 	if err != nil {
 		return false, err
 	}

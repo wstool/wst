@@ -28,6 +28,7 @@ import (
 	"github.com/bukka/wst/run/actions/action/start"
 	"github.com/bukka/wst/run/actions/action/stop"
 	"github.com/bukka/wst/run/expectations"
+	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
@@ -39,6 +40,7 @@ type ActionMaker interface {
 
 type nativeActionMaker struct {
 	fnd           app.Foundation
+	runtimeMaker  runtime.Maker
 	benchMaker    bench.Maker
 	expectMaker   expect.Maker
 	notMaker      not.Maker
@@ -54,13 +56,15 @@ func CreateActionMaker(
 	fnd app.Foundation,
 	expectationsMaker expectations.Maker,
 	parametersMaker parameters.Maker,
+	runtimeMaker runtime.Maker,
 ) ActionMaker {
 	return &nativeActionMaker{
 		fnd:           fnd,
+		runtimeMaker:  runtimeMaker,
 		benchMaker:    bench.CreateActionMaker(fnd),
 		expectMaker:   expect.CreateExpectationActionMaker(fnd, expectationsMaker, parametersMaker),
-		notMaker:      not.CreateActionMaker(fnd),
-		parallelMaker: parallel.CreateActionMaker(fnd),
+		notMaker:      not.CreateActionMaker(fnd, runtimeMaker),
+		parallelMaker: parallel.CreateActionMaker(fnd, runtimeMaker),
 		requestMaker:  request.CreateActionMaker(fnd),
 		reloadMaker:   reload.CreateActionMaker(fnd),
 		restartMaker:  restart.CreateActionMaker(fnd),

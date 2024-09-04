@@ -10,6 +10,7 @@ import (
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
 	"github.com/bukka/wst/run/actions/action"
+	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,18 +19,21 @@ import (
 
 func TestCreateActionMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
+	runtimeMock := runtimeMocks.NewMockMaker(t)
 	tests := []struct {
-		name string
-		fnd  app.Foundation
+		name        string
+		fnd         app.Foundation
+		runtimeMock runtime.Maker
 	}{
 		{
-			name: "create maker",
-			fnd:  fndMock,
+			name:        "create maker",
+			fnd:         fndMock,
+			runtimeMock: runtimeMock,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateActionMaker(tt.fnd)
+			got := CreateActionMaker(tt.fnd, tt.runtimeMock)
 			assert.Equal(t, tt.fnd, got.fnd)
 		})
 	}
@@ -117,8 +121,10 @@ func TestActionMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			runtimeMakerMock := runtimeMocks.NewMockMaker(t)
 			m := &ActionMaker{
-				fnd: fndMock,
+				fnd:          fndMock,
+				runtimeMaker: runtimeMakerMock,
 			}
 			slMock := servicesMocks.NewMockServiceLocator(t)
 			amMock := actionMocks.NewMockMaker(t)
@@ -150,6 +156,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.NotNil(got)
 				act, ok := got.(*Action)
 				assert.True(ok)
+				assert.Equal(runtimeMakerMock, act.runtimeMaker)
 				assert.Equal([]action.Action{action1Mock, action2Mock}, act.actions)
 				assert.Equal(tt.expectedTimeout, act.Timeout())
 				assert.Equal(tt.expectedWhen, act.When())
@@ -258,26 +265,39 @@ func TestAction_Execute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			baseCtx, baseCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			actCtx, actCancel := context.WithTimeout(baseCtx, 3*time.Second)
+			defer actCancel()
+			defer baseCancel()
+			timeout := 3 * time.Second
+			cancelCalled := false
+			cancel := context.CancelFunc(func() { cancelCalled = true })
 			runDataMock := runtimeMocks.NewMockData(t)
-			ctx := context.Background()
+			runMakerMock := runtimeMocks.NewMockMaker(t)
+			runMakerMock.On("MakeContextWithTimeout", baseCtx, timeout).Return(actCtx, cancel)
 			actionMocks := []*actionMocks.MockAction{
 				actionMocks.NewMockAction(t),
 				actionMocks.NewMockAction(t),
 				actionMocks.NewMockAction(t),
 			}
+			for _, actionMock := range actionMocks {
+				actionMock.On("Timeout").Return(timeout).Maybe()
+			}
+
 			mockLogger := external.NewMockLogger()
 			fndMock.On("Logger").Return(mockLogger.SugaredLogger)
 
-			tt.setupMocks(t, fndMock, actionMocks, runDataMock, ctx)
+			tt.setupMocks(t, fndMock, actionMocks, runDataMock, actCtx)
 
 			actions := []action.Action{actionMocks[0], actionMocks[1], actionMocks[2]}
 
 			a := &Action{
-				fnd:     fndMock,
-				actions: actions,
+				fnd:          fndMock,
+				runtimeMaker: runMakerMock,
+				actions:      actions,
 			}
 
-			got, err := a.Execute(ctx, runDataMock)
+			got, err := a.Execute(baseCtx, runDataMock)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -286,6 +306,7 @@ func TestAction_Execute(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.want, got)
+				assert.True(t, cancelCalled)
 			}
 		})
 	}

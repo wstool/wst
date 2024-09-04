@@ -15,10 +15,12 @@ import (
 	startMocks "github.com/bukka/wst/mocks/generated/run/actions/action/start"
 	stopMocks "github.com/bukka/wst/mocks/generated/run/actions/action/stop"
 	expectationsMocks "github.com/bukka/wst/mocks/generated/run/expectations"
+	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
 	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/expectations"
+	"github.com/bukka/wst/run/instances/runtime"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -28,25 +30,29 @@ func TestCreateActionMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	expectationsMakerMock := expectationsMocks.NewMockMaker(t)
 	parametersMakerMock := parametersMocks.NewMockMaker(t)
+	runtimeMakerMock := runtimeMocks.NewMockMaker(t)
 	tests := []struct {
 		name              string
 		fnd               app.Foundation
 		expectationsMaker expectations.Maker
 		parametersMaker   parameters.Maker
+		runtimeMaker      runtime.Maker
 	}{
 		{
 			name:              "create maker",
 			fnd:               fndMock,
 			expectationsMaker: expectationsMakerMock,
 			parametersMaker:   parametersMakerMock,
+			runtimeMaker:      runtimeMakerMock,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateActionMaker(tt.fnd, tt.expectationsMaker, tt.parametersMaker)
+			got := CreateActionMaker(tt.fnd, tt.expectationsMaker, tt.parametersMaker, tt.runtimeMaker)
 			m, ok := got.(*nativeActionMaker)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, m.fnd)
+			assert.Equal(t, tt.runtimeMaker, m.runtimeMaker)
 			assert.NotNil(t, m.benchMaker)
 			assert.NotNil(t, m.expectMaker)
 			assert.NotNil(t, m.notMaker)
