@@ -8,6 +8,7 @@ import (
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
+	"github.com/bukka/wst/run/actions/action"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -347,4 +348,13 @@ func TestAction_Timeout(t *testing.T) {
 		timeout: 2000 * time.Millisecond,
 	}
 	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
+}
+
+func TestAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:  fndMock,
+		when: action.OnSuccess,
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
 }

@@ -675,3 +675,15 @@ func Test_outputAction_Timeout(t *testing.T) {
 	}
 	assert.Equal(t, timeout, a.Timeout())
 }
+
+func Test_outputAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &outputAction{
+		CommonExpectation: &CommonExpectation{
+			fnd:     fndMock,
+			service: nil,
+			when:    action.OnSuccess,
+		},
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
+}

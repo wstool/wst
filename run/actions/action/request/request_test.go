@@ -5,7 +5,7 @@ import (
 	"github.com/bukka/wst/app"
 	"github.com/bukka/wst/conf/types"
 	"github.com/bukka/wst/mocks/authored/external"
-	app2 "github.com/bukka/wst/mocks/generated/app"
+	appMocks "github.com/bukka/wst/mocks/generated/app"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
 	"github.com/bukka/wst/run/actions/action"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestCreateActionMaker(t *testing.T) {
-	fndMock := app2.NewMockFoundation(t)
+	fndMock := appMocks.NewMockFoundation(t)
 	tests := []struct {
 		name string
 		fnd  app.Foundation
@@ -43,7 +43,7 @@ func TestActionMaker_Make(t *testing.T) {
 		config            *types.RequestAction
 		defaultTimeout    int
 		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator) services.Service
-		getExpectedAction func(*app2.MockFoundation, services.Service) *Action
+		getExpectedAction func(*appMocks.MockFoundation, services.Service) *Action
 		expectError       bool
 		expectedErrorMsg  string
 	}{
@@ -66,7 +66,7 @@ func TestActionMaker_Make(t *testing.T) {
 				sl.On("Find", "validService").Return(svc, nil)
 				return svc
 			},
-			getExpectedAction: func(fndMock *app2.MockFoundation, svc services.Service) *Action {
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
 				return &Action{
 					fnd:     fndMock,
 					service: svc,
@@ -100,7 +100,7 @@ func TestActionMaker_Make(t *testing.T) {
 				sl.On("Find", "validService").Return(svc, nil)
 				return svc
 			},
-			getExpectedAction: func(fndMock *app2.MockFoundation, svc services.Service) *Action {
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
 				return &Action{
 					fnd:     fndMock,
 					service: svc,
@@ -140,7 +140,7 @@ func TestActionMaker_Make(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fndMock := app2.NewMockFoundation(t)
+			fndMock := appMocks.NewMockFoundation(t)
 			slMock := servicesMocks.NewMockServiceLocator(t)
 			m := &ActionMaker{
 				fnd: fndMock,
@@ -198,7 +198,7 @@ func TestAction_Execute(t *testing.T) {
 			t *testing.T,
 			ctx context.Context,
 			rd *runtimeMocks.MockData,
-			fnd *app2.MockFoundation,
+			fnd *appMocks.MockFoundation,
 			svc *servicesMocks.MockService,
 		)
 		contextSetup     func() context.Context
@@ -219,7 +219,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -236,7 +236,7 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
-				client := app2.NewMockHttpClient(t)
+				client := appMocks.NewMockHttpClient(t)
 				fnd.On("HttpClient").Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 				rd.On("Store", "response/r1", ResponseData{
@@ -259,7 +259,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -276,7 +276,7 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
-				client := app2.NewMockHttpClient(t)
+				client := appMocks.NewMockHttpClient(t)
 				fnd.On("HttpClient").Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 				rd.On("Store", "response/r1", ResponseData{
@@ -301,7 +301,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -318,7 +318,7 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
-				client := app2.NewMockHttpClient(t)
+				client := appMocks.NewMockHttpClient(t)
 				fnd.On("HttpClient").Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 			},
@@ -339,7 +339,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -356,7 +356,7 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
-				client := app2.NewMockHttpClient(t)
+				client := appMocks.NewMockHttpClient(t)
 				fnd.On("HttpClient").Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 			},
@@ -382,7 +382,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -391,7 +391,7 @@ func TestAction_Execute(t *testing.T) {
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
-				client := app2.NewMockHttpClient(t)
+				client := appMocks.NewMockHttpClient(t)
 				fnd.On("HttpClient").Return(client)
 				client.On("Do", expectedRequest).Return(nil, errors.New("client fail"))
 			},
@@ -412,7 +412,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
@@ -435,7 +435,7 @@ func TestAction_Execute(t *testing.T) {
 				t *testing.T,
 				ctx context.Context,
 				rd *runtimeMocks.MockData,
-				fnd *app2.MockFoundation,
+				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
 				svc.On("PublicUrl", "/test").Return("", errors.New("pub url"))
@@ -448,7 +448,7 @@ func TestAction_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fndMock := app2.NewMockFoundation(t)
+			fndMock := appMocks.NewMockFoundation(t)
 			runDataMock := runtimeMocks.NewMockData(t)
 			svcMock := servicesMocks.NewMockService(t)
 			mockLogger := external.NewMockLogger()
@@ -487,10 +487,19 @@ func TestAction_Execute(t *testing.T) {
 }
 
 func TestAction_Timeout(t *testing.T) {
-	fndMock := app2.NewMockFoundation(t)
+	fndMock := appMocks.NewMockFoundation(t)
 	a := &Action{
 		fnd:     fndMock,
 		timeout: 2000 * time.Millisecond,
 	}
 	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
+}
+
+func TestAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:  fndMock,
+		when: action.OnSuccess,
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
 }

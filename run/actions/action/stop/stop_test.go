@@ -260,3 +260,12 @@ func TestAction_Timeout(t *testing.T) {
 	}
 	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
 }
+
+func TestAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:  fndMock,
+		when: action.OnSuccess,
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
+}
