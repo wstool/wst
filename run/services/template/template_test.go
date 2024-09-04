@@ -170,9 +170,9 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 				sm.On("Pid").Return(1234, nil)
 				sm.On("User").Return("grp")
 				sm.On("Group").Return("usr")
-				sm.On("ConfDir").Return("/etc")
-				sm.On("RunDir").Return("/var/run")
-				sm.On("ScriptDir").Return("/var/www")
+				sm.On("ConfDir").Return("/etc", nil)
+				sm.On("RunDir").Return("/var/run", nil)
+				sm.On("ScriptDir").Return("/var/www", nil)
 				sm.On("EnvironmentConfigPaths").Return(map[string]string{
 					"p1": "/var/p1",
 					"p2": "/var/p2",
