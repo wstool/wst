@@ -214,6 +214,43 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 			expected: "Hello, pk:pv!",
 		},
 		{
+			name:        "Valid template with nested includes",
+			templateStr: "Hello, {{ include \"t1.tpl\" . }}!",
+			setupFunc: func(
+				fm *appMocks.MockFoundation,
+				sm *serviceMocks.MockTemplateService,
+				st templates.Templates,
+			) (parameters.Parameters, Services) {
+				sm.On("EnvironmentConfigPaths").Return(map[string]string{"path1": "/config/path1"})
+				pm := parameterMocks.NewMockParameter(t)
+				pm.On("StringValue").Return("pv", nil)
+
+				memMapFs := afero.NewMemMapFs()
+				firstFilePath := "/var/www/t1.tpl"
+				firstFileContent := "inc:{{ include \"t2.tpl\" .}}"
+				secondFilePath := "/var/www/t2.tpl"
+				secondFileContent := "pk:{{ .Parameters.GetString \"key\" }}"
+
+				_ = afero.WriteFile(memMapFs, firstFilePath, []byte(firstFileContent), 0644)
+				_ = afero.WriteFile(memMapFs, secondFilePath, []byte(secondFileContent), 0644)
+				fm.On("Fs").Return(memMapFs)
+
+				tm1 := templatesMocks.NewMockTemplate(t)
+				tm1.On("FilePath").Return(firstFilePath)
+				tm2 := templatesMocks.NewMockTemplate(t)
+				tm2.On("FilePath").Return(secondFilePath)
+
+				svcs := Services{"svc": sm}
+				st["t1.tpl"] = tm1
+				st["t2.tpl"] = tm2
+
+				return parameters.Parameters{
+					"key": pm,
+				}, svcs
+			},
+			expected: "Hello, inc:pk:pv!",
+		},
+		{
 			name:        "Error due to service private url",
 			templateStr: "{{ .Service.PrivateUrl }};{{ .Service.Pid }}",
 			setupFunc: func(

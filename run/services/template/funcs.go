@@ -26,7 +26,7 @@ func (t *nativeTemplate) include(tmplName string, data interface{}) (string, err
 		return "", errors.Errorf("failed to read template file: %v", err)
 	}
 
-	tmpl, err := template.New(tmplName).Parse(string(tmplContent))
+	tmpl, err := template.New(tmplName).Funcs(t.funcs()).Parse(string(tmplContent))
 	if err != nil {
 		return "", errors.Errorf("failed to parse template: %v", err)
 	}
