@@ -21,31 +21,60 @@ in the future.
 
 ### Run
 
-- investigate why template include is not found and make it work (status expectation)
-- look into doing some partial expectation - some sort of contains mode rather than full match
-- look to removing Service Requires or rethink how it should work
-  - if kept, it should define semantic what started really is (e.g. after checking start logs)
+- introduce spec defaults
+  - this is to be able to easily overwrite values
+- instance environment local port do not seem to be respected (used)
+- server and service parameters merging for configs does not seem to work correctly
+  - issues with missing FPM parameters when just partially defined in service server config
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
-- add detailed info and debug logging
+- extend and improve debug logging
+  - bench action should log vegeta command alternative and a bit more info
+  - request - sending request should not print request and response struct but properly format it for better readability
+  - storing response metrics logs some object reference
+  - pattern matching does not need to repeat pattern for each match
+  - or maybe put line first
+  - there should be also log for successful debug log
+- log 'Task x started for service ...' rather than command
+- test non debug logs - whether it is useful info and how errors are reported
+- integrate better instance action identification
+  - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
+- introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
+  - might be worth to consider whether top action should be wrapped to reduce code needed
+- custom server actions for sequential action
+  - useful to wrap multiple action - e.g. fpm start + expectations
+- support metrics server expectation
+- look into doing some partial expectation
+  - some sort of contains mode rather than full match
+- add labels based filtering for the run
+  - new options for selecting labels - only instances with those labels will run
+- look to removing Service Requires or rethink how it should work
+  - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - kubernetes environment improvements
   - add health probes setup
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
-  - custom docker 
+  - custom docker
 - local environment improvements
   - support for UDS in address
   - consider reporting closing output streams in Destroy
-- support metrics server expectation
-- integrate better instance action identification
-  - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
+- add generation of execution shell script to easily start services in workspace
+  - should be probably bin for each service
+- root mode execution
 - come up with custom error wrapping and types
   - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
   - removal of deprecated (archived) github.com/pkg/errors
 - replace environment.ServiceSettings struct with environment.Service interface
   - code clean up really with saving some calls - it just messy to pre-create this struct
+- fuzzing action
+
+### List
+
+- Introduce list command to list all instances
+  - it should also allow listing description
+  - some basic search
 
 ### Config
 
