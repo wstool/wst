@@ -7,12 +7,14 @@ in the future.
 
 ### Build, CI and Docs
 
-- update Go to latest 1.22 and then 1.23 (re-run mockery)
+- rename bukka/wst to wstool/wst
+- update Go to latest 1.22 (re-run mockery)
 - update deps
 - add pipeline to run unit test
 - document parallel, not and reload actions in schema
 - review the schema if it matches the config
 - extend and update README docs
+- update Go to latest 1.23
 - integration tests
 
 ### App
@@ -23,7 +25,9 @@ in the future.
 
 - introduce spec defaults
   - this is to be able to easily overwrite values
-- instance environment local port do not seem to be respected (used)
+- instance environment local ports do not seem to be respected (used)
+- test and fix kubernetes environment
+- test and fix docker environment
 - server and service parameters merging for configs does not seem to work correctly
   - issues with missing FPM parameters when just partially defined in service server config
 - identify server circular extending and error instead of current stack panic
@@ -35,7 +39,7 @@ in the future.
   - pattern matching does not need to repeat pattern for each match
   - or maybe put line first
   - there should be also log for successful debug log
-- log 'Task x started for service ...' rather than command
+  - log 'Task x started for service ...' rather than command
 - test non debug logs - whether it is useful info and how errors are reported
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
