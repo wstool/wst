@@ -23,7 +23,6 @@ in the future.
 
 ### Run
 
-- instance environment local ports do not seem to be respected (used)
 - test and fix kubernetes environment
 - test and fix docker environment
 - identify server circular extending and error instead of current stack panic
