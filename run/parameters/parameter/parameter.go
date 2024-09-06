@@ -30,9 +30,9 @@ package parameter
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
 	"strconv"
 )
 

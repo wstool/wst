@@ -1,9 +1,9 @@
 package actions
 
 import (
-	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/parameters"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/run/expectations"
+	"github.com/wstool/wst/run/parameters"
 	"testing"
 )
 

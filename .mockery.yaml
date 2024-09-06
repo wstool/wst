@@ -1,6 +1,6 @@
 with-expecter: true
 packages:
-  github.com/bukka/wst/app:
+  github.com/wstool/wst/app:
     config:
       dir: mocks/generated/app
     interfaces:
@@ -11,127 +11,127 @@ packages:
       HttpClient: {}
       VegetaAttacker: {}
       VegetaMetrics: {}
-  github.com/bukka/wst/conf:
+  github.com/wstool/wst/conf:
     config:
       dir: mocks/generated/conf
     interfaces:
       Maker: {}
-  github.com/bukka/wst/conf/loader:
+  github.com/wstool/wst/conf/loader:
     config:
       dir: mocks/generated/conf/loader
     interfaces:
       LoadedConfig: {}
       Loader: {}
-  github.com/bukka/wst/conf/merger:
+  github.com/wstool/wst/conf/merger:
     config:
       dir: mocks/generated/conf/merger
     interfaces:
       Merger: {}
-  github.com/bukka/wst/conf/overwrites:
+  github.com/wstool/wst/conf/overwrites:
     config:
       dir: mocks/generated/conf/overwrites
     interfaces:
       Overwriter: {}
-  github.com/bukka/wst/conf/parser:
+  github.com/wstool/wst/conf/parser:
     config:
       dir: mocks/generated/conf/parser
     interfaces:
       Parser: {}
-  github.com/bukka/wst/conf/parser/factory:
+  github.com/wstool/wst/conf/parser/factory:
     config:
       dir: mocks/generated/conf/parser/factory
     interfaces:
       Functions: {}
-  github.com/bukka/wst/run/actions:
+  github.com/wstool/wst/run/actions:
     config:
       dir: mocks/generated/run/actions
     interfaces:
       ActionMaker: {}
-  github.com/bukka/wst/run/actions/action:
+  github.com/wstool/wst/run/actions/action:
     config:
       dir: mocks/generated/run/actions/action
     interfaces:
       Action: {}
       Maker: {}
-  github.com/bukka/wst/run/actions/action/bench:
+  github.com/wstool/wst/run/actions/action/bench:
     config:
       dir: mocks/generated/run/actions/action/bench
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/expect:
+  github.com/wstool/wst/run/actions/action/expect:
     config:
       dir: mocks/generated/run/actions/action/expect
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/not:
+  github.com/wstool/wst/run/actions/action/not:
     config:
       dir: mocks/generated/run/actions/action/not
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/parallel:
+  github.com/wstool/wst/run/actions/action/parallel:
     config:
       dir: mocks/generated/run/actions/action/parallel
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/reload:
+  github.com/wstool/wst/run/actions/action/reload:
     config:
       dir: mocks/generated/run/actions/action/reload
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/request:
+  github.com/wstool/wst/run/actions/action/request:
     config:
       dir: mocks/generated/run/actions/action/request
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/restart:
+  github.com/wstool/wst/run/actions/action/restart:
     config:
       dir: mocks/generated/run/actions/action/restart
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/start:
+  github.com/wstool/wst/run/actions/action/start:
     config:
       dir: mocks/generated/run/actions/action/start
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/actions/action/stop:
+  github.com/wstool/wst/run/actions/action/stop:
     config:
       dir: mocks/generated/run/actions/action/stop
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/environments:
+  github.com/wstool/wst/run/environments:
     config:
       dir: mocks/generated/run/environments
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/environments/environment:
+  github.com/wstool/wst/run/environments/environment:
     config:
       dir: mocks/generated/run/environments/environment
     interfaces:
       Environment: {}
 
-  github.com/bukka/wst/run/environments/environment/output:
+  github.com/wstool/wst/run/environments/environment/output:
     config:
       dir: mocks/generated/run/environments/environment/output
     interfaces:
       Collector: {}
       Maker: {}
-  github.com/bukka/wst/run/environments/environment/providers/docker:
+  github.com/wstool/wst/run/environments/environment/providers/docker:
     config:
       dir: mocks/generated/run/environments/environment/providers/docker
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/environments/environment/providers/docker/client:
+  github.com/wstool/wst/run/environments/environment/providers/docker/client:
     config:
       dir: mocks/generated/run/environments/environment/providers/docker/client
     interfaces:
       Client: {}
       Maker: {}
-  github.com/bukka/wst/run/environments/environment/providers/kubernetes:
+  github.com/wstool/wst/run/environments/environment/providers/kubernetes:
     config:
       dir: mocks/generated/run/environments/environment/providers/kubernetes
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/environments/environment/providers/kubernetes/clients:
+  github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients:
     config:
       dir: mocks/generated/run/environments/environment/providers/kubernetes/clients
     interfaces:
@@ -140,146 +140,146 @@ packages:
       PodClient: {}
       ServiceClient: {}
       Maker: {}
-  github.com/bukka/wst/run/environments/environment/providers/local:
+  github.com/wstool/wst/run/environments/environment/providers/local:
     config:
       dir: mocks/generated/run/environments/environment/providers/local
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/environments/task:
+  github.com/wstool/wst/run/environments/task:
     config:
       dir: mocks/generated/run/environments/task
     interfaces:
       Task: {}
-  github.com/bukka/wst/run/expectations:
+  github.com/wstool/wst/run/expectations:
     config:
       dir: mocks/generated/run/expectations
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/instances:
+  github.com/wstool/wst/run/instances:
     config:
       dir: mocks/generated/run/instances
     interfaces:
       Instance: { }
       InstanceMaker: { }
-  github.com/bukka/wst/run/instances/runtime:
+  github.com/wstool/wst/run/instances/runtime:
     config:
       dir: mocks/generated/run/instances/runtime
     interfaces:
       Data: {}
       Maker: {}
-  github.com/bukka/wst/run/metrics:
+  github.com/wstool/wst/run/metrics:
     config:
       dir: mocks/generated/run/metrics
     interfaces:
       Metric: {}
       Metrics: {}
-  github.com/bukka/wst/run/parameters:
+  github.com/wstool/wst/run/parameters:
     config:
       dir: mocks/generated/run/parameters
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/parameters/parameter:
+  github.com/wstool/wst/run/parameters/parameter:
     config:
       dir: mocks/generated/run/parameters/parameter
     interfaces:
       Maker: {}
       Parameter: {}
-  github.com/bukka/wst/run/resources/scripts:
+  github.com/wstool/wst/run/resources/scripts:
     config:
       dir: mocks/generated/run/resources/scripts
     interfaces:
       Maker: {}
       Script: {}
-  github.com/bukka/wst/run/sandboxes:
+  github.com/wstool/wst/run/sandboxes:
     config:
       dir: mocks/generated/run/sandboxes
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/hooks:
+  github.com/wstool/wst/run/sandboxes/hooks:
     config:
       dir: mocks/generated/run/sandboxes/hooks
     interfaces:
       Hook: {}
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/sandbox:
+  github.com/wstool/wst/run/sandboxes/sandbox:
     config:
       dir: mocks/generated/run/sandboxes/sandbox
     interfaces:
       Sandbox: {}
-  github.com/bukka/wst/run/sandboxes/sandbox/common:
+  github.com/wstool/wst/run/sandboxes/sandbox/common:
     config:
       dir: mocks/generated/run/sandboxes/sandbox/common
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/sandbox/container:
+  github.com/wstool/wst/run/sandboxes/sandbox/container:
     config:
       dir: mocks/generated/run/sandboxes/sandbox/container
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/sandbox/docker:
+  github.com/wstool/wst/run/sandboxes/sandbox/docker:
     config:
       dir: mocks/generated/run/sandboxes/sandbox/docker
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/sandbox/kubernetes:
+  github.com/wstool/wst/run/sandboxes/sandbox/kubernetes:
     config:
       dir: mocks/generated/run/sandboxes/sandbox/kubernetes
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/sandboxes/sandbox/local:
+  github.com/wstool/wst/run/sandboxes/sandbox/local:
     config:
       dir: mocks/generated/run/sandboxes/sandbox/local
     interfaces:
       Maker: {}
-  github.com/bukka/wst/run/servers:
+  github.com/wstool/wst/run/servers:
     config:
       dir: mocks/generated/run/servers
     interfaces:
       Maker: {}
       Server: {}
-  github.com/bukka/wst/run/servers/actions:
+  github.com/wstool/wst/run/servers/actions:
     config:
       dir: mocks/generated/run/servers/actions
     interfaces:
       ExpectAction: {}
       Maker: {}
-  github.com/bukka/wst/run/servers/configs:
+  github.com/wstool/wst/run/servers/configs:
     config:
       dir: mocks/generated/run/servers/configs
     interfaces:
       Config: {}
       Maker: {}
-  github.com/bukka/wst/run/servers/templates:
+  github.com/wstool/wst/run/servers/templates:
     config:
       dir: mocks/generated/run/servers/templates
     interfaces:
       Maker: {}
       Template: {}
-  github.com/bukka/wst/run/services:
+  github.com/wstool/wst/run/services:
     config:
       dir: mocks/generated/run/services
     interfaces:
       Maker: {}
       ServiceLocator: {}
       Service: {}
-  github.com/bukka/wst/run/services/template:
+  github.com/wstool/wst/run/services/template:
     config:
       dir: mocks/generated/run/services/template
     interfaces:
       Maker: {}
       Template: {}
-  github.com/bukka/wst/run/services/template/service:
+  github.com/wstool/wst/run/services/template/service:
     config:
       dir: mocks/generated/run/services/template/service
     interfaces:
       TemplateService: {}
-  github.com/bukka/wst/run/spec:
+  github.com/wstool/wst/run/spec:
     config:
       dir: mocks/generated/run/spec
     interfaces:
       Maker: {}
       Spec: {}
-  github.com/bukka/wst/run/spec/defaults:
+  github.com/wstool/wst/run/spec/defaults:
     config:
       dir: mocks/generated/run/spec/defaults
     interfaces:

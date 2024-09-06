@@ -16,16 +16,16 @@ package sandboxes
 
 import (
 	"errors"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/environments/environment/providers"
-	"github.com/bukka/wst/run/sandboxes/hooks"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
-	"github.com/bukka/wst/run/sandboxes/sandbox/common"
-	"github.com/bukka/wst/run/sandboxes/sandbox/container"
-	"github.com/bukka/wst/run/sandboxes/sandbox/docker"
-	"github.com/bukka/wst/run/sandboxes/sandbox/kubernetes"
-	"github.com/bukka/wst/run/sandboxes/sandbox/local"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/sandboxes/hooks"
+	"github.com/wstool/wst/run/sandboxes/sandbox"
+	"github.com/wstool/wst/run/sandboxes/sandbox/common"
+	"github.com/wstool/wst/run/sandboxes/sandbox/container"
+	"github.com/wstool/wst/run/sandboxes/sandbox/docker"
+	"github.com/wstool/wst/run/sandboxes/sandbox/kubernetes"
+	"github.com/wstool/wst/run/sandboxes/sandbox/local"
 )
 
 type Sandboxes map[providers.Type]sandbox.Sandbox

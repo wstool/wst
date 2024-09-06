@@ -15,14 +15,14 @@
 package environments
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/environments/environment"
-	"github.com/bukka/wst/run/environments/environment/providers"
-	"github.com/bukka/wst/run/environments/environment/providers/docker"
-	"github.com/bukka/wst/run/environments/environment/providers/kubernetes"
-	"github.com/bukka/wst/run/environments/environment/providers/local"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/environments/environment"
+	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/environments/environment/providers/docker"
+	"github.com/wstool/wst/run/environments/environment/providers/kubernetes"
+	"github.com/wstool/wst/run/environments/environment/providers/local"
 )
 
 type Environments map[providers.Type]environment.Environment

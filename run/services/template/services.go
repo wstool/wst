@@ -16,7 +16,7 @@ package template
 
 import (
 	"errors"
-	"github.com/bukka/wst/run/services/template/service"
+	"github.com/wstool/wst/run/services/template/service"
 )
 
 type Services map[string]service.TemplateService

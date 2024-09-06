@@ -17,10 +17,10 @@ package loader
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bukka/wst/app"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
+	"github.com/wstool/wst/app"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
 )

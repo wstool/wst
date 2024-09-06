@@ -16,12 +16,12 @@ package environment
 
 import (
 	"context"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/environments/environment/output"
-	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/sandboxes/containers"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/environments/environment/output"
+	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
 	"os"
 )

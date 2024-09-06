@@ -16,12 +16,12 @@ package hooks
 
 import (
 	"context"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/environments/environment"
-	"github.com/bukka/wst/run/environments/task"
-	"github.com/bukka/wst/run/services/template"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/environments/environment"
+	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/services/template"
 	"os"
 	"reflect"
 	"syscall"

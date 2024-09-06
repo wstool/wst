@@ -15,14 +15,14 @@
 package spec
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/instances"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/servers"
-	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/expectations"
+	"github.com/wstool/wst/run/instances"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/servers"
+	"github.com/wstool/wst/run/spec/defaults"
 	"strings"
 )
 

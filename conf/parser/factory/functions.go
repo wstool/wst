@@ -15,10 +15,10 @@
 package factory
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/parser/location"
-	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/parser/location"
+	"github.com/wstool/wst/conf/types"
 	"reflect"
 	"strings"
 )

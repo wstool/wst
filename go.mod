@@ -1,4 +1,4 @@
-module github.com/bukka/wst
+module github.com/wstool/wst
 
 go 1.21
 

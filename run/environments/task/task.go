@@ -14,7 +14,7 @@
 
 package task
 
-import "github.com/bukka/wst/run/environments/environment/providers"
+import "github.com/wstool/wst/run/environments/environment/providers"
 
 type Task interface {
 	Name() string

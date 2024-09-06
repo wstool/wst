@@ -2,13 +2,13 @@ package factory
 
 import (
 	"errors"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/parser/location"
-	"github.com/bukka/wst/conf/types"
-	localMocks "github.com/bukka/wst/mocks/authored/local"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/parser/location"
+	"github.com/wstool/wst/conf/types"
+	localMocks "github.com/wstool/wst/mocks/authored/local"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

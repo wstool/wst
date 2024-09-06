@@ -2,14 +2,14 @@ package template
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	templatesMocks "github.com/bukka/wst/mocks/generated/run/servers/templates"
-	"github.com/bukka/wst/run/servers/templates"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/app"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	templatesMocks "github.com/wstool/wst/mocks/generated/run/servers/templates"
+	"github.com/wstool/wst/run/servers/templates"
 	"testing"
 )
 

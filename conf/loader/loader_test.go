@@ -15,12 +15,12 @@
 package loader
 
 import (
-	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/app"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

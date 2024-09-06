@@ -15,7 +15,7 @@
 package output
 
 import (
-	"github.com/bukka/wst/app"
+	"github.com/wstool/wst/app"
 )
 
 type Type int

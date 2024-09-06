@@ -16,8 +16,8 @@ package bench
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/run/metrics"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/run/metrics"
 	"time"
 )
 

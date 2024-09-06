@@ -1,16 +1,16 @@
 package expect
 
 import (
-	"github.com/bukka/wst/app"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	expectationsMocks "github.com/bukka/wst/mocks/generated/run/expectations"
-	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
-	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
-	"github.com/bukka/wst/run/actions/action"
-	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/parameters"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/app"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	expectationsMocks "github.com/wstool/wst/mocks/generated/run/expectations"
+	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
+	servicesMocks "github.com/wstool/wst/mocks/generated/run/services"
+	"github.com/wstool/wst/run/actions/action"
+	"github.com/wstool/wst/run/expectations"
+	"github.com/wstool/wst/run/parameters"
 	"testing"
 )
 

@@ -1,11 +1,11 @@
 package parameters
 
 import (
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/mocks/generated/app"
-	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/mocks/generated/app"
+	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
 	"testing"
 )
 

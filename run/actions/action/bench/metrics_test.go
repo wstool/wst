@@ -1,10 +1,10 @@
 package bench
 
 import (
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	"github.com/bukka/wst/run/metrics"
 	"github.com/stretchr/testify/assert"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	"github.com/wstool/wst/run/metrics"
 	"testing"
 	"time"
 )

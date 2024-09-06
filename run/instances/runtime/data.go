@@ -15,7 +15,7 @@
 package runtime
 
 import (
-	"github.com/bukka/wst/app"
+	"github.com/wstool/wst/app"
 	"sync"
 )
 

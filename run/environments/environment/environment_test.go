@@ -1,10 +1,10 @@
 package environment
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

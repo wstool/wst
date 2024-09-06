@@ -17,17 +17,18 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/environments/environment"
-	"github.com/bukka/wst/run/environments/environment/output"
-	"github.com/bukka/wst/run/environments/environment/providers"
-	"github.com/bukka/wst/run/environments/environment/providers/kubernetes/clients"
-	"github.com/bukka/wst/run/environments/task"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/environments/environment"
+	"github.com/wstool/wst/run/environments/environment/output"
+	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
+	"github.com/wstool/wst/run/environments/task"
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
@@ -35,8 +36,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 type Maker interface {

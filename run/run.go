@@ -15,9 +15,9 @@
 package run
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf"
-	"github.com/bukka/wst/run/spec"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf"
+	"github.com/wstool/wst/run/spec"
 	"os"
 	"path/filepath"
 )

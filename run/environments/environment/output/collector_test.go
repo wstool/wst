@@ -3,10 +3,10 @@ package output
 import (
 	"bytes"
 	"context"
-	"github.com/bukka/wst/mocks/authored/external"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/mocks/authored/external"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"io"
 	"sync"
 	"testing"

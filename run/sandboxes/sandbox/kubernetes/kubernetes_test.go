@@ -1,16 +1,16 @@
 package kubernetes
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	containerMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox/container"
-	"github.com/bukka/wst/run/sandboxes/containers"
-	"github.com/bukka/wst/run/sandboxes/dir"
-	"github.com/bukka/wst/run/sandboxes/hooks"
-	"github.com/bukka/wst/run/sandboxes/sandbox/common"
-	"github.com/bukka/wst/run/sandboxes/sandbox/container"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	containerMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox/container"
+	"github.com/wstool/wst/run/sandboxes/containers"
+	"github.com/wstool/wst/run/sandboxes/dir"
+	"github.com/wstool/wst/run/sandboxes/hooks"
+	"github.com/wstool/wst/run/sandboxes/sandbox/common"
+	"github.com/wstool/wst/run/sandboxes/sandbox/container"
 	"testing"
 )
 

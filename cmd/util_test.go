@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/mocks/authored/external"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/mocks/authored/external"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"reflect"
 	"testing"
 )

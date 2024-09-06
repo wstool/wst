@@ -16,13 +16,13 @@ package parser
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/conf/parser/factory"
-	"github.com/bukka/wst/conf/parser/location"
-	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/loader"
+	"github.com/wstool/wst/conf/parser/factory"
+	"github.com/wstool/wst/conf/parser/location"
+	"github.com/wstool/wst/conf/types"
 	"math"
 	"path/filepath"
 	"reflect"

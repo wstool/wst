@@ -5,7 +5,7 @@ package app
 import (
 	context "context"
 
-	app "github.com/bukka/wst/app"
+	app "github.com/wstool/wst/app"
 
 	mock "github.com/stretchr/testify/mock"
 

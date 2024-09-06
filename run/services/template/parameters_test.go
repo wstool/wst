@@ -1,11 +1,11 @@
 package template
 
 import (
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
-	serviceMocks "github.com/bukka/wst/mocks/generated/run/services/template/service"
-	"github.com/bukka/wst/run/parameters/parameter"
 	"github.com/stretchr/testify/assert"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
+	serviceMocks "github.com/wstool/wst/mocks/generated/run/services/template/service"
+	"github.com/wstool/wst/run/parameters/parameter"
 	"testing"
 )
 

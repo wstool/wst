@@ -1,14 +1,14 @@
 package configs
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
-	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
-	"github.com/bukka/wst/run/parameters"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
+	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
+	"github.com/wstool/wst/run/parameters"
 	"testing"
 )
 

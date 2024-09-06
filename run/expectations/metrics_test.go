@@ -1,10 +1,10 @@
 package expectations
 
 import (
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/metrics"
 	"testing"
 )
 

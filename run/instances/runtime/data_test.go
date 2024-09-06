@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

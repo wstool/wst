@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/bukka/wst/cmd"
+import "github.com/wstool/wst/cmd"
 
 func main() {
 	cmd.Run()

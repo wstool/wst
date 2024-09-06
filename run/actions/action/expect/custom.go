@@ -16,13 +16,13 @@ package expect
 
 import (
 	"context"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions/action"
-	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/instances/runtime"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/services"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/actions/action"
+	"github.com/wstool/wst/run/expectations"
+	"github.com/wstool/wst/run/instances/runtime"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/services"
 	"time"
 )
 

@@ -1,14 +1,14 @@
 package common
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	hooksMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/hooks"
-	sandboxMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox"
-	"github.com/bukka/wst/run/sandboxes/dir"
-	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	hooksMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/hooks"
+	sandboxMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox"
+	"github.com/wstool/wst/run/sandboxes/dir"
+	"github.com/wstool/wst/run/sandboxes/hooks"
 	"testing"
 )
 

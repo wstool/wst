@@ -15,10 +15,10 @@
 package kubernetes
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
-	"github.com/bukka/wst/run/sandboxes/sandbox/container"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/sandboxes/sandbox"
+	"github.com/wstool/wst/run/sandboxes/sandbox/container"
 )
 
 type Maker interface {

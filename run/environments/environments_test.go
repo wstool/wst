@@ -1,16 +1,16 @@
 package environments
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	envMocks "github.com/bukka/wst/mocks/generated/run/environments/environment"
-	dockerMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/providers/docker"
-	kubernetesMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/providers/kubernetes"
-	localMocks "github.com/bukka/wst/mocks/generated/run/environments/environment/providers/local"
-	"github.com/bukka/wst/run/environments/environment/providers"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	envMocks "github.com/wstool/wst/mocks/generated/run/environments/environment"
+	dockerMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/docker"
+	kubernetesMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/kubernetes"
+	localMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/local"
+	"github.com/wstool/wst/run/environments/environment/providers"
 	"testing"
 )
 

@@ -17,12 +17,12 @@ package bench
 import (
 	"context"
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/actions/action"
-	"github.com/bukka/wst/run/instances/runtime"
-	"github.com/bukka/wst/run/services"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/actions/action"
+	"github.com/wstool/wst/run/instances/runtime"
+	"github.com/wstool/wst/run/services"
 	"time"
 )
 

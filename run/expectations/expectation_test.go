@@ -1,9 +1,9 @@
 package expectations
 
 import (
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
 	"github.com/stretchr/testify/assert"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
 	"testing"
 )
 

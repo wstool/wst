@@ -5,11 +5,11 @@ package action
 import (
 	context "context"
 
-	action "github.com/bukka/wst/run/actions/action"
+	action "github.com/wstool/wst/run/actions/action"
 
 	mock "github.com/stretchr/testify/mock"
 
-	runtime "github.com/bukka/wst/run/instances/runtime"
+	runtime "github.com/wstool/wst/run/instances/runtime"
 
 	time "time"
 )

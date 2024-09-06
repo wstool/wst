@@ -2,13 +2,13 @@ package overwrites
 
 import (
 	"errors"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/parser"
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	loaderMocks "github.com/bukka/wst/mocks/generated/conf/loader"
-	parserMocks "github.com/bukka/wst/mocks/generated/conf/parser"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/parser"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	loaderMocks "github.com/wstool/wst/mocks/generated/conf/loader"
+	parserMocks "github.com/wstool/wst/mocks/generated/conf/parser"
 	"reflect"
 	"testing"
 )

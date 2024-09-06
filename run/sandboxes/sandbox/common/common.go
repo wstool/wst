@@ -18,13 +18,13 @@ package common
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/sandboxes/containers"
-	"github.com/bukka/wst/run/sandboxes/dir"
-	"github.com/bukka/wst/run/sandboxes/hooks"
-	"github.com/bukka/wst/run/sandboxes/sandbox"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/sandboxes/containers"
+	"github.com/wstool/wst/run/sandboxes/dir"
+	"github.com/wstool/wst/run/sandboxes/hooks"
+	"github.com/wstool/wst/run/sandboxes/sandbox"
 )
 
 type Maker interface {

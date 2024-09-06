@@ -16,8 +16,8 @@ package template
 
 import (
 	"fmt"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/parameters/parameter"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/parameters/parameter"
 	"reflect"
 )
 

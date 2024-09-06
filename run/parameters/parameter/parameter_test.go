@@ -2,9 +2,9 @@ package parameter
 
 import (
 	"fmt"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

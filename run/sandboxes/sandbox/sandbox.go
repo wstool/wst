@@ -15,9 +15,9 @@
 package sandbox
 
 import (
-	"github.com/bukka/wst/run/sandboxes/containers"
-	"github.com/bukka/wst/run/sandboxes/dir"
-	"github.com/bukka/wst/run/sandboxes/hooks"
+	"github.com/wstool/wst/run/sandboxes/containers"
+	"github.com/wstool/wst/run/sandboxes/dir"
+	"github.com/wstool/wst/run/sandboxes/hooks"
 )
 
 type Sandbox interface {

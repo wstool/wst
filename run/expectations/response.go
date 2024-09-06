@@ -16,7 +16,7 @@ package expectations
 
 import (
 	"fmt"
-	"github.com/bukka/wst/conf/types"
+	"github.com/wstool/wst/conf/types"
 )
 
 func (m *nativeMaker) MakeResponseExpectation(

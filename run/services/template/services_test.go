@@ -1,8 +1,8 @@
 package template
 
 import (
-	serviceMocks "github.com/bukka/wst/mocks/generated/run/services/template/service"
 	"github.com/stretchr/testify/assert"
+	serviceMocks "github.com/wstool/wst/mocks/generated/run/services/template/service"
 	"testing"
 )
 

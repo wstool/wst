@@ -2,17 +2,17 @@ package conf
 
 import (
 	"errors"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/conf/parser"
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	loader2 "github.com/bukka/wst/mocks/generated/conf/loader"
-	mergerMocks "github.com/bukka/wst/mocks/generated/conf/merger"
-	overwritesMocks "github.com/bukka/wst/mocks/generated/conf/overwrites"
-	parserMocks "github.com/bukka/wst/mocks/generated/conf/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/loader"
+	"github.com/wstool/wst/conf/parser"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	loader2 "github.com/wstool/wst/mocks/generated/conf/loader"
+	mergerMocks "github.com/wstool/wst/mocks/generated/conf/merger"
+	overwritesMocks "github.com/wstool/wst/mocks/generated/conf/overwrites"
+	parserMocks "github.com/wstool/wst/mocks/generated/conf/parser"
 	"testing"
 )
 

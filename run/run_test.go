@@ -1,15 +1,15 @@
 package run
 
 import (
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/mocks/authored/external"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	confMocks "github.com/bukka/wst/mocks/generated/conf"
-	specMocks "github.com/bukka/wst/mocks/generated/run/spec"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/mocks/authored/external"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	confMocks "github.com/wstool/wst/mocks/generated/conf"
+	specMocks "github.com/wstool/wst/mocks/generated/run/spec"
 	"testing"
 )
 

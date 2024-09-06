@@ -5,7 +5,7 @@ package clients
 import (
 	context "context"
 
-	clients "github.com/bukka/wst/run/environments/environment/providers/kubernetes/clients"
+	clients "github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

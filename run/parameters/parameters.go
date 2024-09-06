@@ -15,9 +15,9 @@
 package parameters
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/parameters/parameter"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/parameters/parameter"
 )
 
 type Parameters map[string]parameter.Parameter

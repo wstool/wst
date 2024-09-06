@@ -1,20 +1,20 @@
 package spec
 
 import (
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/mocks/authored/external"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	instancesMocks "github.com/bukka/wst/mocks/generated/run/instances"
-	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
-	serversMocks "github.com/bukka/wst/mocks/generated/run/servers"
-	defaultsMocks "github.com/bukka/wst/mocks/generated/run/spec/defaults"
-	"github.com/bukka/wst/run/instances"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/servers"
-	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/mocks/authored/external"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	instancesMocks "github.com/wstool/wst/mocks/generated/run/instances"
+	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
+	serversMocks "github.com/wstool/wst/mocks/generated/run/servers"
+	defaultsMocks "github.com/wstool/wst/mocks/generated/run/spec/defaults"
+	"github.com/wstool/wst/run/instances"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/servers"
+	"github.com/wstool/wst/run/spec/defaults"
 	"testing"
 )
 

@@ -1,8 +1,8 @@
 package output
 
 import (
-	appMocks "github.com/bukka/wst/mocks/generated/app"
 	"github.com/stretchr/testify/assert"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"testing"
 )
 

@@ -16,7 +16,7 @@ package runtime
 
 import (
 	"context"
-	"github.com/bukka/wst/app"
+	"github.com/wstool/wst/app"
 	"time"
 )
 

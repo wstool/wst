@@ -1,17 +1,17 @@
 package sandboxes
 
 import (
-	"github.com/bukka/wst/conf/types"
-	appMocks "github.com/bukka/wst/mocks/generated/app"
-	sandboxMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox"
-	dockerMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox/docker"
-	kubernetesMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox/kubernetes"
-	localMocks "github.com/bukka/wst/mocks/generated/run/sandboxes/sandbox/local"
-	"github.com/bukka/wst/run/environments/environment/providers"
-	"github.com/bukka/wst/run/sandboxes/hooks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/wstool/wst/conf/types"
+	appMocks "github.com/wstool/wst/mocks/generated/app"
+	sandboxMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox"
+	dockerMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox/docker"
+	kubernetesMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox/kubernetes"
+	localMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox/local"
+	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/sandboxes/hooks"
 	"testing"
 )
 

@@ -16,11 +16,11 @@ package template
 
 import (
 	"bytes"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/run/parameters"
-	"github.com/bukka/wst/run/servers/templates"
-	"github.com/bukka/wst/run/services/template/service"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/servers/templates"
+	"github.com/wstool/wst/run/services/template/service"
 	"io"
 	"os"
 	"path/filepath"

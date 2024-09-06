@@ -16,8 +16,8 @@ package clients
 
 import (
 	"context"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

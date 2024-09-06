@@ -16,9 +16,9 @@ package action
 
 import (
 	"context"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/instances/runtime"
-	"github.com/bukka/wst/run/services"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/instances/runtime"
+	"github.com/wstool/wst/run/services"
 	"time"
 )
 

@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/bukka/wst/app"
+	"github.com/wstool/wst/app"
 	"strings"
 )
 

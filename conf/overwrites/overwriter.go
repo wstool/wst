@@ -15,10 +15,10 @@
 package overwrites
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/parser"
-	"github.com/bukka/wst/conf/types"
 	"github.com/pkg/errors"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/parser"
+	"github.com/wstool/wst/conf/types"
 	"reflect"
 	"regexp"
 	"strconv"

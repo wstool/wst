@@ -5,8 +5,8 @@ package runtime
 import (
 	context "context"
 
-	runtime "github.com/bukka/wst/run/instances/runtime"
 	mock "github.com/stretchr/testify/mock"
+	runtime "github.com/wstool/wst/run/instances/runtime"
 
 	time "time"
 )

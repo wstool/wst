@@ -16,8 +16,8 @@ package merger
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/types"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/types"
 	"reflect"
 )
 

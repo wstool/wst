@@ -15,8 +15,8 @@
 package expectations
 
 import (
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/metrics"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/metrics"
 )
 
 func (m *nativeMaker) MakeMetricsExpectation(

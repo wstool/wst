@@ -15,12 +15,12 @@
 package conf
 
 import (
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/conf/loader"
-	"github.com/bukka/wst/conf/merger"
-	"github.com/bukka/wst/conf/overwrites"
-	"github.com/bukka/wst/conf/parser"
-	"github.com/bukka/wst/conf/types"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/conf/loader"
+	"github.com/wstool/wst/conf/merger"
+	"github.com/wstool/wst/conf/overwrites"
+	"github.com/wstool/wst/conf/parser"
+	"github.com/wstool/wst/conf/types"
 )
 
 type Maker interface {

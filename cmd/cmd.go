@@ -16,9 +16,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/bukka/wst/app"
-	"github.com/bukka/wst/run"
 	"github.com/spf13/cobra"
+	"github.com/wstool/wst/app"
+	"github.com/wstool/wst/run"
 	"go.uber.org/zap"
 	"os"
 )

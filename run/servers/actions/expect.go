@@ -16,9 +16,9 @@ package actions
 
 import (
 	"fmt"
-	"github.com/bukka/wst/conf/types"
-	"github.com/bukka/wst/run/expectations"
-	"github.com/bukka/wst/run/parameters"
+	"github.com/wstool/wst/conf/types"
+	"github.com/wstool/wst/run/expectations"
+	"github.com/wstool/wst/run/parameters"
 )
 
 type ExpectAction interface {
