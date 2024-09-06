@@ -23,8 +23,6 @@ in the future.
 
 ### Run
 
-- server and service parameters merging for configs does not seem to work correctly
-  - issues with missing FPM parameters when just partially defined in service server config
 - instance environment local ports do not seem to be respected (used)
 - test and fix kubernetes environment
 - test and fix docker environment
@@ -65,6 +63,8 @@ in the future.
   - consider reporting closing output streams in Destroy
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
+- enhance parameters merging
+  - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
 - add generation of execution shell script to easily start services in workspace
   - should be probably bin for each service
 - root mode execution
