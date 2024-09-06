@@ -8,7 +8,7 @@ design strategy ensures it can be extended or customized for other services as n
 
 ## Installation
 
-WST, a Go-based tool, can be smoothly installed from the source using the following steps:
+WST, a Go-based tool, can be installed from the source using the following steps:
 
 ```shell
 git clone https://github.com/wstool/wst.git
@@ -72,7 +72,7 @@ directory, `~/.wst/wst.yaml`, and `~/.config/wst/wst.yaml` if they exist.
 values. It provides a way to dynamically adjust the configuration directly from the command line. The overwrite value
 is composed of `key=value` string where `key` is the config position in dot notation and the `value` is the actual
 value to overwrite it with. For example to overwrite the name of the first instance, it could be done using
-`spec.instances[0].name=new name`.
+`spec.instances[0].name=new_name`.
 - `--no-envs` - WST, by default, checks the environment variables for WST customization. Activating this option
 prevents environment variables from being checked.
 - `--dry-run` - This option activates the dry-run mode. In this mode, WST processes the configuration and performs all
@@ -99,9 +99,31 @@ and ease of editing.
 ### Execution Architecture
 
 The execution is designed with flexibility and scalability in mind, accommodating various execution contexts through
-a structured yet adaptable architecture. This architecture is built upon four key entities: Sandboxes, Servers,
-Services, and Environments. Each plays a crucial role in ensuring that our application can be deployed and managed
+a structured yet adaptable architecture. This architecture is built upon key entities: Actions, Environments, Instances,
+Sandboxes, Servers and Services. Each plays a crucial role in ensuring that our application can be deployed and managed
 effectively across different platforms.
+
+#### Actions
+
+Actions create an execution pipeline that allow executing actions in order as well as supporting parallel execution.
+
+#### Environments
+
+An Environment is a higher-level abstraction that groups together Sandboxes of a specific type, facilitating
+communication and interaction among services deployed within them. It serves as a shared context or domain where:
+
+- For **Local** execution, it might represent a specific filesystem root where configurations are stored.
+- In **Docker**, it could imply a shared network that allows containerized services to communicate.
+- For **Kubernetes**, it generally encompasses a namespace, providing a unified operational scope for deployments.
+
+The concept of an Environment is essential for managing and scaling our application's deployment across different
+execution contexts. It allows for a cohesive management layer that abstracts the underlying complexities of service
+interaction and network communication, ensuring that services can seamlessly discover and communicate with each other
+regardless of their deployment context.
+
+#### Instances
+
+Instance is a base block that defines all services and actions and glue everything together.
 
 #### Sandboxes
 
@@ -126,17 +148,3 @@ A Service represents the actual execution instance of a Server, complete with al
 execution information. This design allows a single Server to be instantiated as multiple Services, each with 
 potentially unique configurations. Services are executed within Sandboxes, leveraging the Server's definitions
 to ensure consistent management and operation.
-
-#### Environments
-
-An Environment is a higher-level abstraction that groups together Sandboxes of a specific type, facilitating
-communication and interaction among services deployed within them. It serves as a shared context or domain where:
-
-- For **Local** execution, it might represent a specific filesystem root where configurations are stored.
-- In **Docker**, it could imply a shared network that allows containerized services to communicate.
-- For **Kubernetes**, it generally encompasses a namespace, providing a unified operational scope for deployments.
-
-The concept of an Environment is essential for managing and scaling our application's deployment across different 
-execution contexts. It allows for a cohesive management layer that abstracts the underlying complexities of service 
-interaction and network communication, ensuring that services can seamlessly discover and communicate with each other
-regardless of their deployment context.

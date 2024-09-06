@@ -7,12 +7,10 @@ in the future.
 
 ### Build, CI and Docs
 
-- update Go to latest 1.22 (re-run mockery)
-- update deps
-- add pipeline to run unit test
+- Update README and extend README - align with the current logic
 - document parallel, not and reload actions in schema
 - review the schema if it matches the config
-- extend and update README docs
+- further extend README docs
 - update Go to latest 1.23
 - integration tests
 
