@@ -7,6 +7,8 @@ import (
 
 	container "github.com/docker/docker/api/types/container"
 
+	image "github.com/docker/docker/api/types/image"
+
 	io "io"
 
 	mock "github.com/stretchr/testify/mock"
@@ -416,7 +418,7 @@ func (_c *MockClient_ContainerWait_Call) RunAndReturn(run func(context.Context, 
 }
 
 // ImagePull provides a mock function with given fields: ctx, refStr, options
-func (_m *MockClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (_m *MockClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
 	ret := _m.Called(ctx, refStr, options)
 
 	if len(ret) == 0 {
@@ -425,10 +427,10 @@ func (_m *MockClient) ImagePull(ctx context.Context, refStr string, options type
 
 	var r0 io.ReadCloser
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.ImagePullOptions) (io.ReadCloser, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, image.PullOptions) (io.ReadCloser, error)); ok {
 		return rf(ctx, refStr, options)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.ImagePullOptions) io.ReadCloser); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, image.PullOptions) io.ReadCloser); ok {
 		r0 = rf(ctx, refStr, options)
 	} else {
 		if ret.Get(0) != nil {
@@ -436,7 +438,7 @@ func (_m *MockClient) ImagePull(ctx context.Context, refStr string, options type
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, types.ImagePullOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, image.PullOptions) error); ok {
 		r1 = rf(ctx, refStr, options)
 	} else {
 		r1 = ret.Error(1)
@@ -453,14 +455,14 @@ type MockClient_ImagePull_Call struct {
 // ImagePull is a helper method to define mock.On call
 //   - ctx context.Context
 //   - refStr string
-//   - options types.ImagePullOptions
+//   - options image.PullOptions
 func (_e *MockClient_Expecter) ImagePull(ctx interface{}, refStr interface{}, options interface{}) *MockClient_ImagePull_Call {
 	return &MockClient_ImagePull_Call{Call: _e.mock.On("ImagePull", ctx, refStr, options)}
 }
 
-func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr string, options types.ImagePullOptions)) *MockClient_ImagePull_Call {
+func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr string, options image.PullOptions)) *MockClient_ImagePull_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(types.ImagePullOptions))
+		run(args[0].(context.Context), args[1].(string), args[2].(image.PullOptions))
 	})
 	return _c
 }
@@ -470,31 +472,31 @@ func (_c *MockClient_ImagePull_Call) Return(_a0 io.ReadCloser, _a1 error) *MockC
 	return _c
 }
 
-func (_c *MockClient_ImagePull_Call) RunAndReturn(run func(context.Context, string, types.ImagePullOptions) (io.ReadCloser, error)) *MockClient_ImagePull_Call {
+func (_c *MockClient_ImagePull_Call) RunAndReturn(run func(context.Context, string, image.PullOptions) (io.ReadCloser, error)) *MockClient_ImagePull_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NetworkCreate provides a mock function with given fields: ctx, name, options
-func (_m *MockClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+func (_m *MockClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
 	ret := _m.Called(ctx, name, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NetworkCreate")
 	}
 
-	var r0 types.NetworkCreateResponse
+	var r0 network.CreateResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.NetworkCreate) (types.NetworkCreateResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, network.CreateOptions) (network.CreateResponse, error)); ok {
 		return rf(ctx, name, options)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.NetworkCreate) types.NetworkCreateResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, network.CreateOptions) network.CreateResponse); ok {
 		r0 = rf(ctx, name, options)
 	} else {
-		r0 = ret.Get(0).(types.NetworkCreateResponse)
+		r0 = ret.Get(0).(network.CreateResponse)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, types.NetworkCreate) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, network.CreateOptions) error); ok {
 		r1 = rf(ctx, name, options)
 	} else {
 		r1 = ret.Error(1)
@@ -511,24 +513,24 @@ type MockClient_NetworkCreate_Call struct {
 // NetworkCreate is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - options types.NetworkCreate
+//   - options network.CreateOptions
 func (_e *MockClient_Expecter) NetworkCreate(ctx interface{}, name interface{}, options interface{}) *MockClient_NetworkCreate_Call {
 	return &MockClient_NetworkCreate_Call{Call: _e.mock.On("NetworkCreate", ctx, name, options)}
 }
 
-func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name string, options types.NetworkCreate)) *MockClient_NetworkCreate_Call {
+func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name string, options network.CreateOptions)) *MockClient_NetworkCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(types.NetworkCreate))
+		run(args[0].(context.Context), args[1].(string), args[2].(network.CreateOptions))
 	})
 	return _c
 }
 
-func (_c *MockClient_NetworkCreate_Call) Return(_a0 types.NetworkCreateResponse, _a1 error) *MockClient_NetworkCreate_Call {
+func (_c *MockClient_NetworkCreate_Call) Return(_a0 network.CreateResponse, _a1 error) *MockClient_NetworkCreate_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClient_NetworkCreate_Call) RunAndReturn(run func(context.Context, string, types.NetworkCreate) (types.NetworkCreateResponse, error)) *MockClient_NetworkCreate_Call {
+func (_c *MockClient_NetworkCreate_Call) RunAndReturn(run func(context.Context, string, network.CreateOptions) (network.CreateResponse, error)) *MockClient_NetworkCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -7,7 +7,6 @@ in the future.
 
 ### Build, CI and Docs
 
-- rename bukka/wst to wstool/wst
 - update Go to latest 1.22 (re-run mockery)
 - update deps
 - add pipeline to run unit test

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -45,8 +46,8 @@ type Client interface {
 		containerID string,
 		condition container.WaitCondition,
 	) (<-chan container.WaitResponse, <-chan error)
-	ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error)
-	NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error)
+	ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error)
+	NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (types.NetworkCreateResponse, error)
 	NetworkRemove(ctx context.Context, networkID string) error
 }
 
@@ -113,12 +114,12 @@ func (d dockerClient) ContainerWait(ctx context.Context, containerID string, con
 }
 
 // ImagePull pulls an image from a docker registry.
-func (d dockerClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (d dockerClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
 	return d.cli.ImagePull(ctx, refStr, options)
 }
 
 // NetworkCreate creates a new network with the specified options.
-func (d dockerClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+func (d dockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (types.NetworkCreateResponse, error) {
 	return d.cli.NetworkCreate(ctx, name, options)
 }
 

@@ -17,8 +17,8 @@ package docker
 import (
 	"context"
 	"fmt"
-	apitypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
@@ -140,7 +140,7 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context, dryRun bool) erro
 	}
 	e.networkName = e.namePrefix
 	if !dryRun {
-		_, err := e.cli.NetworkCreate(ctx, e.networkName, apitypes.NetworkCreate{
+		_, err := e.cli.NetworkCreate(ctx, e.networkName, network.CreateOptions{
 			Driver: "bridge",
 		})
 		if err != nil {
@@ -169,7 +169,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 
 	// Pull the Docker image if not already present
 	if !dryRun {
-		pullOut, err := e.cli.ImagePull(ctx, imageName, apitypes.ImagePullOptions{})
+		pullOut, err := e.cli.ImagePull(ctx, imageName, image.PullOptions{})
 		if err != nil {
 			return nil, errors.Errorf("failed to pull Docker image %s - %v", imageName, err)
 		}

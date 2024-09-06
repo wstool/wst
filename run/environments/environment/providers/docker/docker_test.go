@@ -4,6 +4,7 @@ import (
 	"context"
 	apitypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -399,11 +400,11 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("NetworkCreate", ctx, "wt", apitypes.NetworkCreate{
+				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
 					Driver: "bridge",
 				}).Return(apitypes.NetworkCreateResponse{}, nil)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -499,7 +500,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -651,7 +652,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -739,7 +740,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -838,7 +839,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -919,7 +920,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -994,7 +995,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -1073,7 +1074,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -1142,7 +1143,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -1211,7 +1212,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
 				cli.On(
 					"ContainerCreate",
@@ -1278,7 +1279,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to bind script test_php for service svc",
@@ -1326,7 +1327,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to bind config main_conf for service svc",
@@ -1373,7 +1374,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("ImagePull", ctx, "wst:test", apitypes.ImagePullOptions{}).Return(nil, errors.New("pull err"))
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(nil, errors.New("pull err"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to pull Docker image wst:test - pull err",
@@ -1420,7 +1421,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("NetworkCreate", ctx, "wt", apitypes.NetworkCreate{
+				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
 					Driver: "bridge",
 				}).Return(apitypes.NetworkCreateResponse{}, errors.New("net create err"))
 			},
