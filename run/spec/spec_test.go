@@ -5,9 +5,13 @@ import (
 	"github.com/bukka/wst/mocks/authored/external"
 	appMocks "github.com/bukka/wst/mocks/generated/app"
 	instancesMocks "github.com/bukka/wst/mocks/generated/run/instances"
+	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	serversMocks "github.com/bukka/wst/mocks/generated/run/servers"
+	defaultsMocks "github.com/bukka/wst/mocks/generated/run/spec/defaults"
 	"github.com/bukka/wst/run/instances"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +26,7 @@ func TestCreateMaker(t *testing.T) {
 	nm, ok := m.(*nativeMaker)
 	assert.True(t, ok)
 	assert.Equal(t, fndMock, nm.fnd)
+	assert.NotNil(t, nm.defaultsMaker)
 	assert.NotNil(t, nm.instanceMaker)
 	assert.NotNil(t, nm.serversMaker)
 }
@@ -30,10 +35,45 @@ func Test_nativeMaker_Make(t *testing.T) {
 	envsConfig := map[string]types.Environment{
 		"local": types.LocalEnvironment{},
 	}
+	defaultsConfig := types.SpecDefaults{
+		Service: types.SpecServiceDefaults{
+			Sandbox: "docker",
+			Server: types.SpecServiceServerDefaults{
+				Tag: "latest",
+			},
+		},
+		Timeouts: types.SpecTimeouts{
+			Actions: 11000,
+			Action:  7000,
+		},
+		Parameters: types.Parameters{
+			"dk": "dv",
+		},
+	}
+	dflts := &defaults.Defaults{
+		Service: defaults.ServiceDefaults{
+			Sandbox: "docker",
+			Server: defaults.ServiceServerDefaults{
+				Tag: "latest",
+			},
+		},
+		Timeouts: defaults.TimeoutsDefaults{
+			Actions: 11000,
+			Action:  7000,
+		},
+		Parameters: parameters.Parameters{
+			"dk": parameterMocks.NewMockParameter(t),
+		},
+	}
 	tests := []struct {
-		name             string
-		config           *types.Spec
-		setupMocks       func(*types.Spec, *serversMocks.MockMaker, *instancesMocks.MockInstanceMaker) []instances.Instance
+		name       string
+		config     *types.Spec
+		setupMocks func(
+			*types.Spec,
+			*defaultsMocks.MockMaker,
+			*serversMocks.MockMaker,
+			*instancesMocks.MockInstanceMaker,
+		) []instances.Instance
 		expectError      bool
 		expectedErrorMsg string
 	}{
@@ -42,21 +82,28 @@ func Test_nativeMaker_Make(t *testing.T) {
 			config: &types.Spec{
 				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
 				Environments: envsConfig,
+				Defaults:     defaultsConfig,
 				Workspace:    "/workspace",
 			},
-			setupMocks: func(cfg *types.Spec, sm *serversMocks.MockMaker, im *instancesMocks.MockInstanceMaker) []instances.Instance {
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
 				srvs := servers.Servers{
 					"php": {
 						"base": serversMocks.NewMockServer(t),
 					},
 				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
 				i1 := instancesMocks.NewMockInstance(t)
 				i1.TestData().Set("id", "i1")
 				i2 := instancesMocks.NewMockInstance(t)
 				i2.TestData().Set("id", "i1")
-				sm.On("Make", cfg).Return(srvs, nil)
-				im.On("Make", types.Instance{Name: "i1"}, envsConfig, srvs, "/workspace").Return(i1, nil)
-				im.On("Make", types.Instance{Name: "i2"}, envsConfig, srvs, "/workspace").Return(i2, nil)
+				im.On("Make", types.Instance{Name: "i1"}, envsConfig, dflts, srvs, "/workspace").Return(i1, nil)
+				im.On("Make", types.Instance{Name: "i2"}, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
 				return []instances.Instance{i1, i2}
 			},
 			expectError: false,
@@ -66,18 +113,25 @@ func Test_nativeMaker_Make(t *testing.T) {
 			config: &types.Spec{
 				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
 				Environments: envsConfig,
+				Defaults:     defaultsConfig,
 				Workspace:    "/workspace",
 			},
-			setupMocks: func(cfg *types.Spec, sm *serversMocks.MockMaker, im *instancesMocks.MockInstanceMaker) []instances.Instance {
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
 				srvs := servers.Servers{
 					"php": {
 						"base": serversMocks.NewMockServer(t),
 					},
 				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
 				i1 := instancesMocks.NewMockInstance(t)
 				i1.TestData().Set("id", "i1")
-				sm.On("Make", cfg).Return(srvs, nil)
-				im.On("Make", types.Instance{Name: "i1"}, envsConfig, srvs, "/workspace").Return(
+				im.On("Make", types.Instance{Name: "i1"}, envsConfig, dflts, srvs, "/workspace").Return(
 					nil,
 					errors.New("instance fail"),
 				)
@@ -91,28 +145,67 @@ func Test_nativeMaker_Make(t *testing.T) {
 			config: &types.Spec{
 				Instances:    []types.Instance{{Name: ""}, {Name: "i2"}},
 				Environments: envsConfig,
+				Defaults:     defaultsConfig,
 				Workspace:    "/workspace",
 			},
-			setupMocks: func(cfg *types.Spec, sm *serversMocks.MockMaker, im *instancesMocks.MockInstanceMaker) []instances.Instance {
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
 				srvs := servers.Servers{
 					"php": {
 						"base": serversMocks.NewMockServer(t),
 					},
 				}
 				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
 				return nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "instance 0 name is empty",
 		},
 		{
+			name: "failed spec creation on defaults make fail",
+			config: &types.Spec{
+				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
+				Environments: envsConfig,
+				Defaults:     defaultsConfig,
+				Workspace:    "/workspace",
+			},
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
+				srvs := servers.Servers{
+					"php": {
+						"base": serversMocks.NewMockServer(t),
+					},
+				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(nil, errors.New("defaults fail"))
+				return nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "defaults fail",
+		},
+		{
 			name: "failed spec creation on servers make fail",
 			config: &types.Spec{
 				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
 				Environments: envsConfig,
+				Defaults:     defaultsConfig,
 				Workspace:    "/workspace",
 			},
-			setupMocks: func(cfg *types.Spec, sm *serversMocks.MockMaker, im *instancesMocks.MockInstanceMaker) []instances.Instance {
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
 				sm.On("Make", cfg).Return(nil, errors.New("servers fail"))
 				return nil
 			},
@@ -126,12 +219,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			serverMakerMock := serversMocks.NewMockMaker(t)
 			instanceMakerMock := instancesMocks.NewMockInstanceMaker(t)
+			defaultsMaker := defaultsMocks.NewMockMaker(t)
 			maker := &nativeMaker{
 				fnd:           fndMock,
+				defaultsMaker: defaultsMaker,
 				serversMaker:  serverMakerMock,
 				instanceMaker: instanceMakerMock,
 			}
-			expectedInstances := tt.setupMocks(tt.config, serverMakerMock, instanceMakerMock)
+			expectedInstances := tt.setupMocks(tt.config, defaultsMaker, serverMakerMock, instanceMakerMock)
 
 			result, err := maker.Make(tt.config)
 

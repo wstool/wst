@@ -279,3 +279,8 @@ packages:
     interfaces:
       Maker: {}
       Spec: {}
+  github.com/bukka/wst/run/spec/defaults:
+    config:
+      dir: mocks/generated/run/spec/defaults
+    interfaces:
+      Maker: {}

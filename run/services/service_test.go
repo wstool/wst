@@ -30,6 +30,7 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/templates"
 	"github.com/bukka/wst/run/services/template"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -124,9 +125,15 @@ func TestCreateMaker(t *testing.T) {
 	assert.NotNil(t, nm.templateMaker)
 }
 
+var paramMocks = make(map[string]*parameterMocks.MockParameter)
+
 func createParamMock(t *testing.T, val string) *parameterMocks.MockParameter {
-	paramMock := parameterMocks.NewMockParameter(t)
-	paramMock.TestData().Set("value", val)
+	paramMock, found := paramMocks[val]
+	if !found {
+		paramMock = parameterMocks.NewMockParameter(t)
+		paramMock.TestData().Set("value", val)
+		paramMocks[val] = paramMock
+	}
 	return paramMock
 }
 
@@ -147,6 +154,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 	tests := []struct {
 		name              string
 		config            map[string]types.Service
+		defaults          defaults.Defaults
 		instanceName      string
 		instanceWorkspace string
 		setupMocks        func(
@@ -230,8 +238,8 @@ func Test_nativeMaker_Make(t *testing.T) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv.On("MarkUsed").Return()
-				dockerEnv.On("ReservePort").Return(int32(8500)).Once()
-				dockerEnv.On("ReservePort").Return(int32(8501))
+				// in reality, it will return different values but it is fine to keep it the same for this test
+				dockerEnv.On("ReservePort").Return(int32(8500))
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
 				envs := environments.Environments{
 					providers.LocalType:      localEnv,
@@ -364,7 +372,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					name:             "nginx",
 					fullName:         "ti-nginx",
 					public:           true,
-					port:             int32(8501),
+					port:             int32(8500),
 					scripts:          scrs,
 					server:           nginxDebSrv,
 					serverParameters: nginxServerParams,
@@ -405,12 +413,11 @@ func Test_nativeMaker_Make(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "successful single service creation",
+			name: "successful single service creation with defaults used",
 			config: map[string]types.Service{
 				"svc": {
 					Server: types.ServiceServer{
-						Name:    "php/debian",
-						Sandbox: "local",
+						Name: "php",
 						Configs: map[string]types.ServiceConfig{
 							"c": {
 								Parameters: types.Parameters{
@@ -431,6 +438,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Public: true,
+				},
+			},
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "debian",
+					},
+				},
+				Parameters: parameters.Parameters{
+					"dp": createParamMock(t, "dp"),
+					"p1": createParamMock(t, "dp1"),
 				},
 			},
 			instanceName:      "testInstance",
@@ -502,15 +521,21 @@ func Test_nativeMaker_Make(t *testing.T) {
 					scripts: scripts.Scripts{
 						"s1": scriptsMocks.NewMockScript(t),
 					},
-					server:           debSrv,
-					serverParameters: serverParams,
-					sandbox:          sb,
-					task:             nil,
-					environment:      localEnv,
+					server: debSrv,
+					serverParameters: parameters.Parameters{
+						"dp": createParamMock(t, "dp"),
+						"p1": createParamMock(t, "p1"),
+						"p2": createParamMock(t, "p2"),
+						"ps": createParamMock(t, "ps"),
+					},
+					sandbox:     sb,
+					task:        nil,
+					environment: localEnv,
 					configs: map[string]nativeServiceConfig{
 						"c": {
 							parameters: parameters.Parameters{
 								"cp": createParamMock(t, "cp"),
+								"dp": createParamMock(t, "dp"),
 								"p0": createParamMock(t, "p0"),
 								"p1": createParamMock(t, "p1"),
 								"p2": createParamMock(t, "p2"),
@@ -1100,7 +1125,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 
 			envs, srvs, scrs, svcs := tt.setupMocks(t, parametersMakerMock, templateMakerMock)
 
-			locator, err := maker.Make(tt.config, scrs, srvs, envs, tt.instanceName, tt.instanceWorkspace)
+			locator, err := maker.Make(tt.config, &tt.defaults, scrs, srvs, envs, tt.instanceName, tt.instanceWorkspace)
 
 			if tt.expectError {
 				assert.Error(t, err)

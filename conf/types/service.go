@@ -41,7 +41,8 @@ type ServiceResources struct {
 
 type ServiceServer struct {
 	Name       string                   `wst:"name"`
-	Sandbox    string                   `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
+	Tag        string                   `wst:"tag"`
+	Sandbox    string                   `wst:"sandbox,enum=local|docker|kubernetes"`
 	Configs    map[string]ServiceConfig `wst:"configs"`
 	Parameters Parameters               `wst:"parameters,factory=createParameters"`
 }

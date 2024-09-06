@@ -23,18 +23,19 @@ in the future.
 
 ### Run
 
-- introduce spec defaults
-  - this is to be able to easily overwrite values
+- server and service parameters merging for configs does not seem to work correctly
+  - issues with missing FPM parameters when just partially defined in service server config
 - instance environment local ports do not seem to be respected (used)
 - test and fix kubernetes environment
 - test and fix docker environment
-- server and service parameters merging for configs does not seem to work correctly
-  - issues with missing FPM parameters when just partially defined in service server config
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
+- currently nothing is printed if the start binary does not exist - it should print proper error
+  - change fpm_binary to php-f to recreate
 - extend and improve debug logging
   - bench action should log vegeta command alternative and a bit more info
   - request - sending request should not print request and response struct but properly format it for better readability
+  - message "Creating config for paths" should not use %v for overwrites ideally 
   - storing response metrics logs some object reference
   - pattern matching does not need to repeat pattern for each match
   - or maybe put line first

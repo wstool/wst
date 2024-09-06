@@ -28,6 +28,7 @@ import (
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/services"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"path/filepath"
 	"time"
@@ -43,6 +44,7 @@ type InstanceMaker interface {
 	Make(
 		instanceConfig types.Instance,
 		envsConfig map[string]types.Environment,
+		dflts *defaults.Defaults,
 		srvs servers.Servers,
 		specWorkspace string,
 	) (Instance, error)
@@ -76,10 +78,11 @@ func CreateInstanceMaker(
 func (m *nativeInstanceMaker) Make(
 	instanceConfig types.Instance,
 	envsConfig map[string]types.Environment,
+	dflts *defaults.Defaults,
 	srvs servers.Servers,
 	specWorkspace string,
 ) (Instance, error) {
-	scriptResources, err := m.scriptsMaker.Make(instanceConfig.Resources.Scripts)
+	scrpts, err := m.scriptsMaker.Make(instanceConfig.Resources.Scripts)
 	if err != nil {
 		return nil, err
 	}
@@ -92,25 +95,37 @@ func (m *nativeInstanceMaker) Make(
 		return nil, err
 	}
 
-	sl, err := m.servicesMaker.Make(instanceConfig.Services, scriptResources, srvs, envs, name, instanceWorkspace)
+	sl, err := m.servicesMaker.Make(instanceConfig.Services, dflts, scrpts, srvs, envs, name, instanceWorkspace)
 	if err != nil {
 		return nil, err
 	}
 
+	actTimeout := instanceConfig.Timeouts.Action
+	if actTimeout == 0 {
+		actTimeout = dflts.Timeouts.Action
+	}
+
 	instanceActions := make([]action.Action, len(instanceConfig.Actions))
+	var act action.Action
 	for i, actionConfig := range instanceConfig.Actions {
-		act, err := m.actionMaker.MakeAction(actionConfig, sl, instanceConfig.Timeouts.Action)
+		act, err = m.actionMaker.MakeAction(actionConfig, sl, actTimeout)
 		if err != nil {
 			return nil, err
 		}
 		instanceActions[i] = act
 	}
+
+	instanceTimeout := instanceConfig.Timeouts.Actions
+	if instanceTimeout == 0 {
+		instanceTimeout = dflts.Timeouts.Actions
+	}
+
 	runData := m.runtimeMaker.MakeData()
 	return &nativeInstance{
 		fnd:          m.fnd,
 		runtimeMaker: m.runtimeMaker,
 		name:         name,
-		timeout:      time.Duration(instanceConfig.Timeouts.Actions * 1e6),
+		timeout:      time.Duration(instanceTimeout) * time.Millisecond,
 		actions:      instanceActions,
 		envs:         envs,
 		runData:      runData,

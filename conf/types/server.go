@@ -47,6 +47,7 @@ type ServerTemplate struct {
 
 type Server struct {
 	Name       string                    `wst:"name"`
+	Tag        string                    `wst:"tag"`
 	Extends    string                    `wst:"extends"`
 	User       string                    `wst:"user"`
 	Group      string                    `wst:"group"`

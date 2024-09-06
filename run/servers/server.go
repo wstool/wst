@@ -45,16 +45,19 @@ type Server interface {
 
 type Servers map[string]map[string]Server
 
-func splitFullName(fullName string) (string, string) {
-	parts := strings.Split(fullName, "/")
+func composeNameAndTag(name string, tag string) (string, string) {
+	parts := strings.Split(name, "/")
 	if len(parts) >= 2 {
 		return parts[0], parts[1]
 	}
-	return fullName, "default"
+	if tag == "" {
+		return name, "default"
+	}
+	return name, tag
 }
 
-func (s Servers) GetServer(fullName string) (Server, bool) {
-	name, tag := splitFullName(fullName)
+func (s Servers) GetServer(name string, tag string) (Server, bool) {
+	name, tag = composeNameAndTag(name, tag)
 	server, ok := s[name][tag]
 	return server, ok
 }
@@ -90,7 +93,7 @@ func CreateMaker(
 func (m *nativeMaker) Make(config *types.Spec) (Servers, error) {
 	srvs := make(map[string]map[string]Server)
 	for _, server := range config.Servers {
-		name, tag := splitFullName(server.Name)
+		name, tag := composeNameAndTag(server.Name, server.Tag)
 
 		serverActions, err := m.actionsMaker.Make(&server.Actions)
 		if err != nil {
@@ -141,7 +144,7 @@ func (m *nativeMaker) Make(config *types.Spec) (Servers, error) {
 		for tag, srv := range nameServers {
 			nativeSrv := srv.(*nativeServer)
 			if nativeSrv.parentName != "" {
-				parentName, parentTag := splitFullName(nativeSrv.parentName)
+				parentName, parentTag := composeNameAndTag(nativeSrv.parentName, "")
 				parent, ok := srvs[parentName][parentTag]
 				if !ok {
 					return nil, fmt.Errorf(

@@ -12,14 +12,17 @@ import (
 	expectationsMocks "github.com/bukka/wst/mocks/generated/run/expectations"
 	runtimeMocks "github.com/bukka/wst/mocks/generated/run/instances/runtime"
 	parametersMocks "github.com/bukka/wst/mocks/generated/run/parameters"
+	parameterMocks "github.com/bukka/wst/mocks/generated/run/parameters/parameter"
 	scriptsMocks "github.com/bukka/wst/mocks/generated/run/resources/scripts"
 	serversMocks "github.com/bukka/wst/mocks/generated/run/servers"
 	servicesMocks "github.com/bukka/wst/mocks/generated/run/services"
 	"github.com/bukka/wst/run/actions/action"
 	"github.com/bukka/wst/run/environments"
 	"github.com/bukka/wst/run/environments/environment/providers"
+	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/resources/scripts"
 	"github.com/bukka/wst/run/servers"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,6 +98,9 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 		},
 	}
 	testData := runtimeMocks.NewMockData(t)
+	testDefaultsParams := parameters.Parameters{
+		"default_key": parameterMocks.NewMockParameter(t),
+	}
 	tests := []struct {
 		name       string
 		setupMocks func(
@@ -104,11 +110,13 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			*scriptsMocks.MockMaker,
 			*environmentsMocks.MockMaker,
 			*runtimeMocks.MockMaker,
+			*defaults.Defaults,
 		) []action.Action
 		expectError         bool
 		expectedErrorMsg    string
 		instanceConfig      types.Instance
 		envsConfig          map[string]types.Environment
+		defaults            defaults.Defaults
 		srvs                servers.Servers
 		instanceWorkspace   string
 		getExpectedInstance func(
@@ -118,7 +126,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 		) *nativeInstance
 	}{
 		{
-			name: "successful creation",
+			name: "successful creation with instance timeouts",
 			setupMocks: func(
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
@@ -126,6 +134,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				scriptMaker *scriptsMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
 			) []action.Action {
 				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
 				envMaker.On(
@@ -138,6 +147,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				serviceMaker.On(
 					"Make",
 					testServices,
+					dflts,
 					testScriptResources,
 					testServers,
 					testEnvironments,
@@ -168,7 +178,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
-			envsConfig:        testSpecEnvironments,
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			getExpectedInstance: func(
@@ -189,7 +212,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			},
 		},
 		{
-			name: "error creation due to action fail",
+			name: "successful creation with default timeouts",
 			setupMocks: func(
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
@@ -197,6 +220,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				scriptMaker *scriptsMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
 			) []action.Action {
 				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
 				envMaker.On(
@@ -209,6 +233,90 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				serviceMaker.On(
 					"Make",
 					testServices,
+					dflts,
+					testScriptResources,
+					testServers,
+					testEnvironments,
+					"test-instance",
+					"/workspace/test-instance",
+				).Return(sl, nil)
+				acts := []action.Action{
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+				}
+				actionMaker.On("MakeAction", testActions[0], sl, 8000).Return(acts[0], nil)
+				actionMaker.On("MakeAction", testActions[1], sl, 8000).Return(acts[1], nil)
+				actionMaker.On("MakeAction", testActions[2], sl, 8000).Return(acts[2], nil)
+				runtimeMaker.On("MakeData").Return(testData)
+				return acts
+			},
+			instanceConfig: types.Instance{
+				Name:     "test-instance",
+				Actions:  testActions,
+				Timeouts: types.InstanceTimeouts{},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			srvs:              testServers,
+			instanceWorkspace: "/workspace",
+			getExpectedInstance: func(
+				fndMock *appMocks.MockFoundation,
+				acts []action.Action,
+				runtimeMaker *runtimeMocks.MockMaker,
+			) *nativeInstance {
+				return &nativeInstance{
+					fnd:          fndMock,
+					runtimeMaker: runtimeMaker,
+					name:         "test-instance",
+					timeout:      15 * time.Second,
+					actions:      acts,
+					envs:         testEnvironments,
+					runData:      testData,
+					workspace:    "/workspace/test-instance",
+				}
+			},
+		},
+		{
+			name: "error creation due to action fail",
+			setupMocks: func(
+				t *testing.T,
+				actionMaker *actionsMocks.MockActionMaker,
+				serviceMaker *servicesMocks.MockMaker,
+				scriptMaker *scriptsMocks.MockMaker,
+				envMaker *environmentsMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) []action.Action {
+				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				envMaker.On(
+					"Make",
+					testSpecEnvironments,
+					testInstanceEnvironments,
+					"/workspace/test-instance",
+				).Return(testEnvironments, nil)
+				sl := servicesMocks.NewMockServiceLocator(t)
+				serviceMaker.On(
+					"Make",
+					testServices,
+					dflts,
 					testScriptResources,
 					testServers,
 					testEnvironments,
@@ -237,7 +345,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
-			envsConfig:        testSpecEnvironments,
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			expectError:       true,
@@ -252,6 +373,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				scriptMaker *scriptsMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
 			) []action.Action {
 				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
 				envMaker.On(
@@ -263,6 +385,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				serviceMaker.On(
 					"Make",
 					testServices,
+					dflts,
 					testScriptResources,
 					testServers,
 					testEnvironments,
@@ -284,7 +407,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
-			envsConfig:        testSpecEnvironments,
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			expectError:       true,
@@ -299,6 +435,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				scriptMaker *scriptsMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
 			) []action.Action {
 				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
 				envMaker.On(
@@ -322,7 +459,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
-			envsConfig:        testSpecEnvironments,
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			expectError:       true,
@@ -337,6 +487,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				scriptMaker *scriptsMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
 			) []action.Action {
 				scriptMaker.On("Make", testScripts).Return(nil, errors.New("script fail"))
 				return nil
@@ -354,7 +505,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
-			envsConfig:        testSpecEnvironments,
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			expectError:       true,
@@ -380,9 +544,9 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				runtimeMaker:     runtimeMaker,
 			}
 
-			acts := tt.setupMocks(t, actionMaker, serviceMaker, scriptsMaker, envMaker, runtimeMaker)
+			acts := tt.setupMocks(t, actionMaker, serviceMaker, scriptsMaker, envMaker, runtimeMaker, &tt.defaults)
 
-			got, err := maker.Make(tt.instanceConfig, tt.envsConfig, tt.srvs, tt.instanceWorkspace)
+			got, err := maker.Make(tt.instanceConfig, tt.envsConfig, &tt.defaults, tt.srvs, tt.instanceWorkspace)
 
 			if tt.expectError {
 				assert.Error(t, err)

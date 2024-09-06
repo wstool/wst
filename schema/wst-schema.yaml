@@ -462,6 +462,9 @@ $defs:
       name:
         title: Server name
         type: string
+      tag:
+        title: Server tag
+        description: The tag is used if not part of the name as a server tag.
       user:
         title: Server user
         description: Default user for the server. If not set, then currently logged in user is used.
@@ -559,11 +562,13 @@ $defs:
             name:
               title: Server name
               description: The name is used for selecting the server used by service.
+            tag:
+              title: Server tag
+              description: The tag is used if not part of the name as a server tag.
             sandbox:
               title: Sandbox to use
               description: |
                 Sandbox should define the server sandbox in which to run the service.
-              default: local
               type: string
               enum: [ local, docker, kubernetes ]
             configs:
@@ -968,9 +973,9 @@ $defs:
             title: Action timeout
             description: |
               This sets the default action timeout in milliseconds. It can be overwritten in each action. Negative value
-              and 0 means unlimited.
+              means unlimited and zero means that it gets set from the global spec time outs.
             type: integer
-            default: 30000
+            default: 0
           actions:
             title: Actions total timeout
             description: |
@@ -1003,6 +1008,61 @@ $defs:
         $ref: '#/$defs/sandboxes'
       servers:
         $ref: '#/$defs/servers'
+      defaults:
+        title: Spec default values
+        description: |
+          The defaults allow setting global default values that can be easily overwritten. This is especially useful for
+          changing environments without changing each instance. It also allow setting global parameters and action
+          timeouts so those values do not have to be set repeatedly.
+        type: object
+        properties:
+          service:
+            title: Service default values
+            description: |
+              The service is used to change environments for each service that does not define it explicitly.
+            type: object
+            properties:
+              sandbox:
+                title: Default service sandbox
+                description: |
+                  The default sandbox is used to set a sandbox that will be used for all services not specifying the
+                  sandbox explicitly.
+                default: local
+                type: string
+                enum: [ local, docker, kubernetes ]
+              server:
+                title: Default service server options
+                description: |
+                  The default service server allows setting some global customization for the server that can be changed
+                  globally.
+                type: object
+                properties:
+                  tag:
+                    title: Default service server tag
+                    description: |
+                      The default service server tag allows setting tag for all service servers that do not define tag
+                      explicitly or set it in the server name.
+                    default: default
+                    type: string
+          timeouts:
+            title: Default timeouts
+            type: object
+            properties:
+              action:
+                title: Action timeout
+                description: |
+                  This sets the default action timeout in milliseconds. It can be overwritten in each action. Negative
+                  value or 0 means unlimited.
+                type: integer
+                default: 30000
+              actions:
+                title: Actions total timeout
+                description: |
+                  This sets the total timeout on running all actions. Default is 0 which means unlimited
+                type: integer
+                default: 0
+          parameters:
+            $ref: '#/$defs/parameters'
       workspace:
         title: Workspace location
         description: |

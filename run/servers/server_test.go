@@ -30,19 +30,33 @@ func TestServers_GetServer(t *testing.T) {
 	tests := []struct {
 		name          string
 		servers       Servers
-		fullName      string
+		serverName    string
+		serverTag     string
 		expectedName  string
 		expectedTag   string
 		expectedFound bool
 	}{
 		{
-			name: "Existing server with tag",
+			name: "Existing server with tag in name",
 			servers: Servers{
 				"server1": {
 					"production": &nativeServer{name: "s1"},
 				},
 			},
-			fullName:      "server1/production",
+			serverName:    "server1/production",
+			expectedName:  "server1",
+			expectedTag:   "production",
+			expectedFound: true,
+		},
+		{
+			name: "Existing server with separate tag",
+			servers: Servers{
+				"server1": {
+					"production": &nativeServer{name: "s1"},
+				},
+			},
+			serverName:    "server1",
+			serverTag:     "production",
 			expectedName:  "server1",
 			expectedTag:   "production",
 			expectedFound: true,
@@ -54,7 +68,7 @@ func TestServers_GetServer(t *testing.T) {
 					"default": &nativeServer{name: "s2"},
 				},
 			},
-			fullName:      "server1",
+			serverName:    "server1",
 			expectedName:  "server1",
 			expectedTag:   "default",
 			expectedFound: true,
@@ -62,7 +76,7 @@ func TestServers_GetServer(t *testing.T) {
 		{
 			name:          "Non-existing server",
 			servers:       Servers{},
-			fullName:      "unknown",
+			serverName:    "unknown",
 			expectedName:  "unknown",
 			expectedTag:   "default",
 			expectedFound: false,
@@ -74,7 +88,7 @@ func TestServers_GetServer(t *testing.T) {
 					"staging": &nativeServer{name: "s3"},
 				},
 			},
-			fullName:      "server1/production",
+			serverName:    "server1/production",
 			expectedName:  "server1",
 			expectedTag:   "production",
 			expectedFound: false,
@@ -83,8 +97,8 @@ func TestServers_GetServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server, found := tt.servers.GetServer(tt.fullName)
-			name, tag := splitFullName(tt.fullName)
+			server, found := tt.servers.GetServer(tt.serverName, tt.serverTag)
+			name, tag := composeNameAndTag(tt.serverName, tt.serverTag)
 			assert.Equal(t, tt.expectedName, name, "server name should match")
 			assert.Equal(t, tt.expectedTag, tag, "server tag should match")
 			assert.Equal(t, tt.expectedFound, found, "server found state should match")

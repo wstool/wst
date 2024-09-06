@@ -32,6 +32,7 @@ import (
 	"github.com/bukka/wst/run/servers"
 	"github.com/bukka/wst/run/servers/configs"
 	"github.com/bukka/wst/run/services/template"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"io"
 	"net/url"
@@ -114,6 +115,7 @@ func NewServiceLocator(services Services) ServiceLocator {
 type Maker interface {
 	Make(
 		config map[string]types.Service,
+		dflts *defaults.Defaults,
 		scriptResources scripts.Scripts,
 		srvs servers.Servers,
 		environments environments.Environments,
@@ -138,7 +140,8 @@ func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
 
 func (m *nativeMaker) Make(
 	config map[string]types.Service,
-	scriptResources scripts.Scripts,
+	dflts *defaults.Defaults,
+	scrpts scripts.Scripts,
 	srvs servers.Servers,
 	environments environments.Environments,
 	instanceName string,
@@ -150,11 +153,11 @@ func (m *nativeMaker) Make(
 		var includedScripts scripts.Scripts
 
 		if serviceConfig.Resources.Scripts.IncludeAll {
-			includedScripts = scriptResources
+			includedScripts = scrpts
 		} else {
 			includedScripts = make(scripts.Scripts)
 			for _, scriptName := range serviceConfig.Resources.Scripts.IncludeList {
-				script, ok := scriptResources[scriptName]
+				script, ok := scrpts[scriptName]
 				if !ok {
 					return nil, errors.Errorf("script %s not found for service %s", scriptName, serviceName)
 				}
@@ -162,7 +165,11 @@ func (m *nativeMaker) Make(
 			}
 		}
 
-		server, ok := srvs.GetServer(serviceConfig.Server.Name)
+		tag := serviceConfig.Server.Tag
+		if tag == "" {
+			tag = dflts.Service.Server.Tag
+		}
+		server, ok := srvs.GetServer(serviceConfig.Server.Name, tag)
 		if !ok {
 			return nil, errors.Errorf("server %s not found for service %s", serviceConfig.Server.Name, serviceName)
 		}
@@ -171,9 +178,12 @@ func (m *nativeMaker) Make(
 		if err != nil {
 			return nil, err
 		}
-		serverParameters.Inherit(server.Parameters())
+		serverParameters.Inherit(server.Parameters()).Inherit(dflts.Parameters)
 
 		sandboxName := serviceConfig.Server.Sandbox
+		if sandboxName == "" {
+			sandboxName = dflts.Service.Sandbox
+		}
 		providerType := providers.Type(sandboxName)
 
 		sb, ok := server.Sandbox(providerType)

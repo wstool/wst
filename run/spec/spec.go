@@ -21,6 +21,7 @@ import (
 	"github.com/bukka/wst/run/instances"
 	"github.com/bukka/wst/run/parameters"
 	"github.com/bukka/wst/run/servers"
+	"github.com/bukka/wst/run/spec/defaults"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -35,6 +36,7 @@ type Maker interface {
 
 type nativeMaker struct {
 	fnd           app.Foundation
+	defaultsMaker defaults.Maker
 	instanceMaker instances.InstanceMaker
 	serversMaker  servers.Maker
 }
@@ -44,6 +46,7 @@ func CreateMaker(fnd app.Foundation) Maker {
 	expectationsMaker := expectations.CreateMaker(fnd, parametersMaker)
 	return &nativeMaker{
 		fnd:           fnd,
+		defaultsMaker: defaults.CreateMaker(fnd, parametersMaker),
 		instanceMaker: instances.CreateInstanceMaker(fnd, expectationsMaker, parametersMaker),
 		serversMaker:  servers.CreateMaker(fnd, expectationsMaker, parametersMaker),
 	}
@@ -55,13 +58,18 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		return nil, err
 	}
 
+	dflts, err := m.defaultsMaker.Make(&config.Defaults)
+	if err != nil {
+		return nil, err
+	}
+
 	var insts []instances.Instance
 	var inst instances.Instance
 	for i, configInst := range config.Instances {
 		if configInst.Name == "" {
 			return nil, errors.Errorf("instance %d name is empty", i)
 		}
-		inst, err = m.instanceMaker.Make(configInst, config.Environments, serversMap, config.Workspace)
+		inst, err = m.instanceMaker.Make(configInst, config.Environments, dflts, serversMap, config.Workspace)
 		if err != nil {
 			return nil, err
 		}

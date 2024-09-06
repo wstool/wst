@@ -20,4 +20,25 @@ type Spec struct {
 	Sandboxes    map[string]Sandbox     `wst:"sandboxes,loadable,factory=createSandboxes"`
 	Servers      []Server               `wst:"servers,loadable"`
 	Workspace    string                 `wst:"workspace,path=virtual"`
+	Defaults     SpecDefaults           `wst:"defaults,loadable"`
+}
+
+type SpecDefaults struct {
+	Service    SpecServiceDefaults `wst:"service"`
+	Timeouts   SpecTimeouts        `wst:"timeouts"`
+	Parameters Parameters          `wst:"parameters,factory=createParameters"`
+}
+
+type SpecServiceDefaults struct {
+	Sandbox string                    `wst:"sandbox,enum=local|docker|kubernetes,default=local"`
+	Server  SpecServiceServerDefaults `wst:"server"`
+}
+
+type SpecServiceServerDefaults struct {
+	Tag string `wst:"tag,default=default"`
+}
+
+type SpecTimeouts struct {
+	Action  int `wst:"action,default=0"`
+	Actions int `wst:"actions,default=0"`
 }

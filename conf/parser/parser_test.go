@@ -1604,6 +1604,21 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				"name":        "WST Project",
 				"description": "A project to demonstrate JSON Schema representation in Go",
 				"spec": map[string]interface{}{
+					"defaults": map[string]interface{}{
+						"service": map[string]interface{}{
+							"sandbox": "local",
+							"server": map[string]interface{}{
+								"tag": "default",
+							},
+						},
+						"timeouts": map[string]interface{}{
+							"actions": 10000,
+							"action":  5000,
+						},
+						"parameters": map[string]interface{}{
+							"default_key": "default_value",
+						},
+					},
 					"environments": map[string]interface{}{
 						"common": map[string]interface{}{
 							"ports": map[string]interface{}{
@@ -1808,6 +1823,21 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				Name:        "WST Project",
 				Description: "A project to demonstrate JSON Schema representation in Go",
 				Spec: types.Spec{
+					Defaults: types.SpecDefaults{
+						Service: types.SpecServiceDefaults{
+							Sandbox: "local",
+							Server: types.SpecServiceServerDefaults{
+								Tag: "default",
+							},
+						},
+						Timeouts: types.SpecTimeouts{
+							Action:  5000,
+							Actions: 10000,
+						},
+						Parameters: types.Parameters{
+							"default_key": "default_value",
+						},
+					},
 					Environments: map[string]types.Environment{
 						string(types.CommonEnvironmentType): &types.CommonEnvironment{
 							Ports: types.EnvironmentPorts{
@@ -1853,7 +1883,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								"web_service": types.Service{
 									Server: types.ServiceServer{
 										Name:    "web_server",
-										Sandbox: "local",
+										Sandbox: "",
 									},
 									Resources: types.ServiceResources{
 										Scripts: types.ServiceScripts{
@@ -1994,7 +2024,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							Configs: map[string]types.ServerConfig{
 								"nginx.conf": {
 									File: "/etc/nginx/nginx.conf",
-									Parameters: types.Parameters{ // Assuming Parameters is a map[string]interface{} or similar
+									Parameters: types.Parameters{
 										"worker_processes": "2",
 									},
 								},

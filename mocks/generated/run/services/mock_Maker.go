@@ -4,6 +4,8 @@ package services
 
 import (
 	environments "github.com/bukka/wst/run/environments"
+	defaults "github.com/bukka/wst/run/spec/defaults"
+
 	mock "github.com/stretchr/testify/mock"
 
 	scripts "github.com/bukka/wst/run/resources/scripts"
@@ -28,9 +30,9 @@ func (_m *MockMaker) EXPECT() *MockMaker_Expecter {
 	return &MockMaker_Expecter{mock: &_m.Mock}
 }
 
-// Make provides a mock function with given fields: config, scriptResources, srvs, _a3, instanceName, instanceWorkspace
-func (_m *MockMaker) Make(config map[string]types.Service, scriptResources scripts.Scripts, srvs servers.Servers, _a3 environments.Environments, instanceName string, instanceWorkspace string) (services.ServiceLocator, error) {
-	ret := _m.Called(config, scriptResources, srvs, _a3, instanceName, instanceWorkspace)
+// Make provides a mock function with given fields: config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace
+func (_m *MockMaker) Make(config map[string]types.Service, dflts *defaults.Defaults, scriptResources scripts.Scripts, srvs servers.Servers, _a4 environments.Environments, instanceName string, instanceWorkspace string) (services.ServiceLocator, error) {
+	ret := _m.Called(config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Make")
@@ -38,19 +40,19 @@ func (_m *MockMaker) Make(config map[string]types.Service, scriptResources scrip
 
 	var r0 services.ServiceLocator
 	var r1 error
-	if rf, ok := ret.Get(0).(func(map[string]types.Service, scripts.Scripts, servers.Servers, environments.Environments, string, string) (services.ServiceLocator, error)); ok {
-		return rf(config, scriptResources, srvs, _a3, instanceName, instanceWorkspace)
+	if rf, ok := ret.Get(0).(func(map[string]types.Service, *defaults.Defaults, scripts.Scripts, servers.Servers, environments.Environments, string, string) (services.ServiceLocator, error)); ok {
+		return rf(config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace)
 	}
-	if rf, ok := ret.Get(0).(func(map[string]types.Service, scripts.Scripts, servers.Servers, environments.Environments, string, string) services.ServiceLocator); ok {
-		r0 = rf(config, scriptResources, srvs, _a3, instanceName, instanceWorkspace)
+	if rf, ok := ret.Get(0).(func(map[string]types.Service, *defaults.Defaults, scripts.Scripts, servers.Servers, environments.Environments, string, string) services.ServiceLocator); ok {
+		r0 = rf(config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(services.ServiceLocator)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(map[string]types.Service, scripts.Scripts, servers.Servers, environments.Environments, string, string) error); ok {
-		r1 = rf(config, scriptResources, srvs, _a3, instanceName, instanceWorkspace)
+	if rf, ok := ret.Get(1).(func(map[string]types.Service, *defaults.Defaults, scripts.Scripts, servers.Servers, environments.Environments, string, string) error); ok {
+		r1 = rf(config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -65,18 +67,19 @@ type MockMaker_Make_Call struct {
 
 // Make is a helper method to define mock.On call
 //   - config map[string]types.Service
+//   - dflts *defaults.Defaults
 //   - scriptResources scripts.Scripts
 //   - srvs servers.Servers
-//   - _a3 environments.Environments
+//   - _a4 environments.Environments
 //   - instanceName string
 //   - instanceWorkspace string
-func (_e *MockMaker_Expecter) Make(config interface{}, scriptResources interface{}, srvs interface{}, _a3 interface{}, instanceName interface{}, instanceWorkspace interface{}) *MockMaker_Make_Call {
-	return &MockMaker_Make_Call{Call: _e.mock.On("Make", config, scriptResources, srvs, _a3, instanceName, instanceWorkspace)}
+func (_e *MockMaker_Expecter) Make(config interface{}, dflts interface{}, scriptResources interface{}, srvs interface{}, _a4 interface{}, instanceName interface{}, instanceWorkspace interface{}) *MockMaker_Make_Call {
+	return &MockMaker_Make_Call{Call: _e.mock.On("Make", config, dflts, scriptResources, srvs, _a4, instanceName, instanceWorkspace)}
 }
 
-func (_c *MockMaker_Make_Call) Run(run func(config map[string]types.Service, scriptResources scripts.Scripts, srvs servers.Servers, _a3 environments.Environments, instanceName string, instanceWorkspace string)) *MockMaker_Make_Call {
+func (_c *MockMaker_Make_Call) Run(run func(config map[string]types.Service, dflts *defaults.Defaults, scriptResources scripts.Scripts, srvs servers.Servers, _a4 environments.Environments, instanceName string, instanceWorkspace string)) *MockMaker_Make_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(map[string]types.Service), args[1].(scripts.Scripts), args[2].(servers.Servers), args[3].(environments.Environments), args[4].(string), args[5].(string))
+		run(args[0].(map[string]types.Service), args[1].(*defaults.Defaults), args[2].(scripts.Scripts), args[3].(servers.Servers), args[4].(environments.Environments), args[5].(string), args[6].(string))
 	})
 	return _c
 }
@@ -86,7 +89,7 @@ func (_c *MockMaker_Make_Call) Return(_a0 services.ServiceLocator, _a1 error) *M
 	return _c
 }
 
-func (_c *MockMaker_Make_Call) RunAndReturn(run func(map[string]types.Service, scripts.Scripts, servers.Servers, environments.Environments, string, string) (services.ServiceLocator, error)) *MockMaker_Make_Call {
+func (_c *MockMaker_Make_Call) RunAndReturn(run func(map[string]types.Service, *defaults.Defaults, scripts.Scripts, servers.Servers, environments.Environments, string, string) (services.ServiceLocator, error)) *MockMaker_Make_Call {
 	_c.Call.Return(run)
 	return _c
 }
