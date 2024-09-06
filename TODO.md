@@ -61,6 +61,7 @@ in the future.
 - local environment improvements
   - support for UDS in address
   - consider reporting closing output streams in Destroy
+- test dry run and how it works in all environments
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
 - enhance parameters merging
