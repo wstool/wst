@@ -21,6 +21,8 @@ in the future.
 ### Run
 
 - test and fix kubernetes environment
+  - restructure config paths to /etc/<service>/<config_name>
+    - currently all MountPaths are /etc which is not unique (error)
 - test and fix docker environment
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
@@ -49,7 +51,10 @@ in the future.
   - new options for selecting labels - only instances with those labels will run
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
+- consider moving server port to sandbox port
+  - currently the server port is really just container specific and not used for local
 - kubernetes environment improvements
+  - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
   - add health probes setup
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
