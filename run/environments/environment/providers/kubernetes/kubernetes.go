@@ -375,7 +375,7 @@ func (e *kubernetesEnvironment) createDeployment(
 
 	var command []string
 	var args []string
-	if cmd.Name != "" {
+	if cmd != nil && cmd.Name != "" {
 		command = append(command, cmd.Name)
 		args = cmd.Args
 	}
