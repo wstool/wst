@@ -62,44 +62,44 @@ func (m *nativeMaker) Make(
 		return nil, err
 	}
 
-	commonSb, commonFound := mergedEnvironments[types.CommonEnvironmentType]
-	localSb, localFound := mergedEnvironments[types.LocalEnvironmentType]
-	containerSb, containerFound := mergedEnvironments[types.ContainerEnvironmentType]
-	dockerSb, dockerFound := mergedEnvironments[types.DockerEnvironmentType]
-	kubernetesSb, kubernetesFound := mergedEnvironments[types.KubernetesEnvironmentType]
+	commonEnv, commonFound := mergedEnvironments[types.CommonEnvironmentType]
+	localEnv, localFound := mergedEnvironments[types.LocalEnvironmentType]
+	containerEnv, containerFound := mergedEnvironments[types.ContainerEnvironmentType]
+	dockerEnv, dockerFound := mergedEnvironments[types.DockerEnvironmentType]
+	kubernetesEnv, kubernetesFound := mergedEnvironments[types.KubernetesEnvironmentType]
 	if commonFound {
 		// Local merging
-		localSb = m.mergeLocalAndCommon(localSb, commonSb)
+		localEnv = m.mergeLocalAndCommon(localEnv, commonEnv)
 		localFound = true
 		// Container merging
-		containerSb = m.mergeContainerAndCommon(containerSb, commonSb)
+		containerEnv = m.mergeContainerAndCommon(containerEnv, commonEnv)
 		containerFound = true
 	}
 	if containerFound {
 		// Docker merging
-		dockerSb = m.mergeDockerAndContainer(dockerSb, containerSb)
+		dockerEnv = m.mergeDockerAndContainer(dockerEnv, containerEnv)
 		dockerFound = true
 		// Kubernetes merging
-		kubernetesSb = m.mergeKubernetesAndContainer(kubernetesSb, containerSb)
+		kubernetesEnv = m.mergeKubernetesAndContainer(kubernetesEnv, containerEnv)
 		kubernetesFound = true
 	}
 
 	envs := make(Environments)
 
 	if localFound {
-		envs[providers.LocalType], err = m.localMaker.Make(localSb.(*types.LocalEnvironment), instanceWorkspace)
+		envs[providers.LocalType], err = m.localMaker.Make(localEnv.(*types.LocalEnvironment), instanceWorkspace)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if dockerFound {
-		envs[providers.DockerType], err = m.dockerMaker.Make(dockerSb.(*types.DockerEnvironment))
+		envs[providers.DockerType], err = m.dockerMaker.Make(dockerEnv.(*types.DockerEnvironment))
 		if err != nil {
 			return nil, err
 		}
 	}
 	if kubernetesFound {
-		envs[providers.KubernetesType], err = m.kubernetesMaker.Make(kubernetesSb.(*types.KubernetesEnvironment))
+		envs[providers.KubernetesType], err = m.kubernetesMaker.Make(kubernetesEnv.(*types.KubernetesEnvironment))
 		if err != nil {
 			return nil, err
 		}
