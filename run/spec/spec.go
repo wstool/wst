@@ -66,10 +66,11 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 	var insts []instances.Instance
 	var inst instances.Instance
 	for i, configInst := range config.Instances {
+		idx := i + 1
 		if configInst.Name == "" {
-			return nil, errors.Errorf("instance %d name is empty", i)
+			return nil, errors.Errorf("instance %d name is empty", idx)
 		}
-		inst, err = m.instanceMaker.Make(configInst, config.Environments, dflts, serversMap, config.Workspace)
+		inst, err = m.instanceMaker.Make(configInst, idx, config.Environments, dflts, serversMap, config.Workspace)
 		if err != nil {
 			return nil, err
 		}

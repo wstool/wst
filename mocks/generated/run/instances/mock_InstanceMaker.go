@@ -26,9 +26,9 @@ func (_m *MockInstanceMaker) EXPECT() *MockInstanceMaker_Expecter {
 	return &MockInstanceMaker_Expecter{mock: &_m.Mock}
 }
 
-// Make provides a mock function with given fields: instanceConfig, envsConfig, dflts, srvs, specWorkspace
-func (_m *MockInstanceMaker) Make(instanceConfig types.Instance, envsConfig map[string]types.Environment, dflts *defaults.Defaults, srvs servers.Servers, specWorkspace string) (instances.Instance, error) {
-	ret := _m.Called(instanceConfig, envsConfig, dflts, srvs, specWorkspace)
+// Make provides a mock function with given fields: instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace
+func (_m *MockInstanceMaker) Make(instanceConfig types.Instance, instanceId int, envsConfig map[string]types.Environment, dflts *defaults.Defaults, srvs servers.Servers, specWorkspace string) (instances.Instance, error) {
+	ret := _m.Called(instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Make")
@@ -36,19 +36,19 @@ func (_m *MockInstanceMaker) Make(instanceConfig types.Instance, envsConfig map[
 
 	var r0 instances.Instance
 	var r1 error
-	if rf, ok := ret.Get(0).(func(types.Instance, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) (instances.Instance, error)); ok {
-		return rf(instanceConfig, envsConfig, dflts, srvs, specWorkspace)
+	if rf, ok := ret.Get(0).(func(types.Instance, int, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) (instances.Instance, error)); ok {
+		return rf(instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)
 	}
-	if rf, ok := ret.Get(0).(func(types.Instance, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) instances.Instance); ok {
-		r0 = rf(instanceConfig, envsConfig, dflts, srvs, specWorkspace)
+	if rf, ok := ret.Get(0).(func(types.Instance, int, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) instances.Instance); ok {
+		r0 = rf(instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(instances.Instance)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(types.Instance, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) error); ok {
-		r1 = rf(instanceConfig, envsConfig, dflts, srvs, specWorkspace)
+	if rf, ok := ret.Get(1).(func(types.Instance, int, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) error); ok {
+		r1 = rf(instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,17 +63,18 @@ type MockInstanceMaker_Make_Call struct {
 
 // Make is a helper method to define mock.On call
 //   - instanceConfig types.Instance
+//   - instanceId int
 //   - envsConfig map[string]types.Environment
 //   - dflts *defaults.Defaults
 //   - srvs servers.Servers
 //   - specWorkspace string
-func (_e *MockInstanceMaker_Expecter) Make(instanceConfig interface{}, envsConfig interface{}, dflts interface{}, srvs interface{}, specWorkspace interface{}) *MockInstanceMaker_Make_Call {
-	return &MockInstanceMaker_Make_Call{Call: _e.mock.On("Make", instanceConfig, envsConfig, dflts, srvs, specWorkspace)}
+func (_e *MockInstanceMaker_Expecter) Make(instanceConfig interface{}, instanceId interface{}, envsConfig interface{}, dflts interface{}, srvs interface{}, specWorkspace interface{}) *MockInstanceMaker_Make_Call {
+	return &MockInstanceMaker_Make_Call{Call: _e.mock.On("Make", instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)}
 }
 
-func (_c *MockInstanceMaker_Make_Call) Run(run func(instanceConfig types.Instance, envsConfig map[string]types.Environment, dflts *defaults.Defaults, srvs servers.Servers, specWorkspace string)) *MockInstanceMaker_Make_Call {
+func (_c *MockInstanceMaker_Make_Call) Run(run func(instanceConfig types.Instance, instanceId int, envsConfig map[string]types.Environment, dflts *defaults.Defaults, srvs servers.Servers, specWorkspace string)) *MockInstanceMaker_Make_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(types.Instance), args[1].(map[string]types.Environment), args[2].(*defaults.Defaults), args[3].(servers.Servers), args[4].(string))
+		run(args[0].(types.Instance), args[1].(int), args[2].(map[string]types.Environment), args[3].(*defaults.Defaults), args[4].(servers.Servers), args[5].(string))
 	})
 	return _c
 }
@@ -83,7 +84,7 @@ func (_c *MockInstanceMaker_Make_Call) Return(_a0 instances.Instance, _a1 error)
 	return _c
 }
 
-func (_c *MockInstanceMaker_Make_Call) RunAndReturn(run func(types.Instance, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) (instances.Instance, error)) *MockInstanceMaker_Make_Call {
+func (_c *MockInstanceMaker_Make_Call) RunAndReturn(run func(types.Instance, int, map[string]types.Environment, *defaults.Defaults, servers.Servers, string) (instances.Instance, error)) *MockInstanceMaker_Make_Call {
 	_c.Call.Return(run)
 	return _c
 }

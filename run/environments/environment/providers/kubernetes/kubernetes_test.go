@@ -2,6 +2,11 @@ package kubernetes
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/mocks/authored/external"
@@ -12,11 +17,6 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/sandboxes/containers"
-	"github.com/pkg/errors"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -130,6 +130,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					deploymentClient: deploymentClient,
 					podClient:        podClient,
 					serviceClient:    serviceClient,
+					useUniqueName:    true,
 					namespace:        "test",
 					kubeconfigPath:   "/home/kubeconfig/config.yaml",
 					tasks:            make(map[string]*kubernetesTask),
@@ -662,7 +663,7 @@ func getTestingConfigMaps(serviceName string) []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: serviceName + "-main-conf",
+				Name: serviceName + "-configs-1",
 			},
 			Data: map[string]string{
 				"main.conf": "main: data",
@@ -670,10 +671,10 @@ func getTestingConfigMaps(serviceName string) []*corev1.ConfigMap {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: serviceName + "-test-php",
+				Name: serviceName + "-scripts-1",
 			},
 			Data: map[string]string{
-				"my_test.php": "<?php echo 1; ?>",
+				"test.php": "<?php echo 1; ?>",
 			},
 		},
 	}
@@ -700,7 +701,7 @@ func getTestingDeployment(serviceName string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:    "svc",
+							Name:    serviceName,
 							Image:   "wst:test",
 							Command: []string{"php"},
 							Args:    []string{"test.php", "run"},
@@ -711,11 +712,11 @@ func getTestingDeployment(serviceName string) *appsv1.Deployment {
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      serviceName + "-main-conf-volume",
+									Name:      serviceName + "-configs-1-volume",
 									MountPath: "/etc",
 								},
 								{
-									Name:      serviceName + "-test-php-volume",
+									Name:      serviceName + "-scripts-1-volume",
 									MountPath: "/www",
 								},
 							},
@@ -723,27 +724,21 @@ func getTestingDeployment(serviceName string) *appsv1.Deployment {
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: serviceName + "-main-conf-volume",
+							Name: serviceName + "-configs-1-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: serviceName + "-main-conf",
+										Name: serviceName + "-configs-1",
 									},
 								},
 							},
 						},
 						{
-							Name: serviceName + "-test-php-volume",
+							Name: serviceName + "-scripts-1-volume",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: serviceName + "-test-php",
-									},
-									Items: []corev1.KeyToPath{
-										{
-											Key:  "my_test.php",
-											Path: "test.php",
-										},
+										Name: serviceName + "-scripts-1",
 									},
 								},
 							},
@@ -781,7 +776,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 		name           string
 		namespace      string
 		kubeconfigPath string
-		useFullName    bool
+		useUniqueName  bool
 		envStartPort   int32
 		fs             map[string]string
 		ss             *environment.ServiceSettings
@@ -804,7 +799,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "successful kubernetes private run",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    true,
+			useUniqueName:  true,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -813,6 +808,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     false,
@@ -849,23 +845,23 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				sc *k8sClientMocks.MockServiceClient,
 			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
 				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("mysvc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
+				cm := getTestingConfigMaps("i1-svc")
 				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("mysvc")
+				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil).Once()
+				d := getTestingDeployment("i1-svc")
 				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
 
 				mockDeploymentWatchResult := &MockWatchResult{
 					Events: make(chan watch.Event),
 				}
 				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=mysvc",
+					FieldSelector: "metadata.name=i1-svc",
 				}).Return(mockDeploymentWatchResult, nil)
 				go func() {
 					mockDeploymentWatchResult.Events <- watch.Event{
 						Type: watch.Added,
 						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "mysv"},
+							ObjectMeta: metav1.ObjectMeta{Name: "i1-svc"},
 							Status: appsv1.DeploymentStatus{
 								ReadyReplicas: 3,
 							},
@@ -876,14 +872,14 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					}
 				}()
 
-				s := getTestingService(corev1.ServiceTypeClusterIP, "mysvc", 1234)
+				s := getTestingService(corev1.ServiceTypeClusterIP, "i1-svc", 1234)
 				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
 
 				mockServiceWatchResult := &MockWatchResult{
 					Events: make(chan watch.Event, 1),
 				}
 				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=mysvc",
+					FieldSelector: "metadata.name=i1-svc",
 				}).Return(mockServiceWatchResult, nil)
 				go func() {
 					mockServiceWatchResult.Events <- watch.Event{
@@ -911,17 +907,18 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					deployment:        d,
 					service:           s,
 					executable:        "php",
-					serviceName:       "mysvc",
+					serviceName:       "i1-svc",
 					servicePublicUrl:  "",
-					servicePrivateUrl: "http://mysvc:1234",
+					servicePrivateUrl: "http://i1-svc:1234",
 					deploymentReady:   true,
 				}
 			},
-		}, {
+		},
+		{
 			name:           "successful kubernetes public run",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -930,6 +927,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1039,7 +1037,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "successful kubernetes public dry run",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1048,6 +1046,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1112,7 +1111,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed run due to service watch result object not being Service",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1121,6 +1120,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1211,7 +1211,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed run due to service watch resulted in deleted event",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1220,6 +1220,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1307,7 +1308,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed run due to context being cancelled before service watch",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1316,6 +1317,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1400,7 +1402,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to service create error",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1409,6 +1411,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1484,7 +1487,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to service watch error",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1493,6 +1496,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1574,7 +1578,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to deployment added object not being Deployment",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1583,6 +1587,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1649,7 +1654,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to deployment watch deleted event",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1658,6 +1663,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1721,7 +1727,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to context being done during deployment watching",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1730,6 +1736,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1790,7 +1797,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to deployment watching failures",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1799,6 +1806,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1856,7 +1864,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to deployment creation failures",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1865,6 +1873,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1906,8 +1915,8 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
 				d := getTestingDeployment("svc")
 				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(nil, errors.New("dc fail"))
-				cmc.On("Delete", ctx, "svc-main-conf", metav1.DeleteOptions{}).Return(nil)
-				cmc.On("Delete", ctx, "svc-test-php", metav1.DeleteOptions{}).Return(nil)
+				cmc.On("Delete", ctx, "svc-configs-1", metav1.DeleteOptions{}).Return(nil)
+				cmc.On("Delete", ctx, "svc-scripts-1", metav1.DeleteOptions{}).Return(nil)
 
 				return cm, d, nil
 			},
@@ -1918,7 +1927,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to second config map creation failures",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
@@ -1927,6 +1936,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -1966,26 +1976,27 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				cm := getTestingConfigMaps("svc")
 				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
 				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], errors.New("cm1 fail"))
-				cmc.On("Delete", ctx, "svc-main-conf", metav1.DeleteOptions{}).Return(nil)
+				cmc.On("Delete", ctx, "svc-configs-1", metav1.DeleteOptions{}).Return(nil)
 
 				return cm, nil, nil
 			},
 			expectError:      true,
-			expectedErrorMsg: "failed to create configMap svc-test-php: cm1 fail",
+			expectedErrorMsg: "failed to create configMap svc-scripts-1: cm1 fail",
 		},
 		{
 			name:           "failed due to first config map creation failures",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/main.conf":   "main: data",
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
 			},
 			ss: &environment.ServiceSettings{
-				Name:       "svc",
+				Name:       strings.Repeat("test012345", 26),
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -2024,7 +2035,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				cm := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "svc-test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test01234",
+						Name: "test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345tes",
 					},
 					Data: map[string]string{
 						"main.conf": "main: data",
@@ -2034,13 +2045,13 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				return nil, nil, nil
 			},
 			expectError:      true,
-			expectedErrorMsg: "failed to create configMap svc-test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test01234: cm0 fail",
+			expectedErrorMsg: "failed to create configMap test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345tes: cm0 fail",
 		},
 		{
 			name:           "failed due to not found first conf",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			fs: map[string]string{
 				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
@@ -2048,6 +2059,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -2093,11 +2105,12 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to env and workspace maps mismatch",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    false,
+			useUniqueName:  false,
 			envStartPort:   8080,
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   "mysvc",
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -2143,11 +2156,12 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 			name:           "failed due to missing container config",
 			namespace:      "wt",
 			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useFullName:    true,
+			useUniqueName:  true,
 			envStartPort:   8080,
 			ss: &environment.ServiceSettings{
 				Name:       "svc",
 				FullName:   strings.Repeat("a", 260),
+				UniqueName: "i1-svc",
 				Port:       8080,
 				ServerPort: 1234,
 				Public:     true,
@@ -2221,7 +2235,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 				},
 				kubeconfigPath:   tt.kubeconfigPath,
 				namespace:        tt.namespace,
-				useFullName:      tt.useFullName,
+				useUniqueName:    tt.useUniqueName,
 				deploymentClient: dc,
 				configMapClient:  cmc,
 				serviceClient:    sc,

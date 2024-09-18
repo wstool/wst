@@ -101,6 +101,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 	testDefaultsParams := parameters.Parameters{
 		"default_key": parameterMocks.NewMockParameter(t),
 	}
+	instanceIdx := 1
 	tests := []struct {
 		name       string
 		setupMocks func(
@@ -152,6 +153,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					testServers,
 					testEnvironments,
 					"test-instance",
+					instanceIdx,
 					"/workspace/test-instance",
 				).Return(sl, nil)
 				acts := []action.Action{
@@ -203,6 +205,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					fnd:          fndMock,
 					runtimeMaker: runtimeMaker,
 					name:         "test-instance",
+					index:        instanceIdx,
 					timeout:      10 * time.Second,
 					actions:      acts,
 					envs:         testEnvironments,
@@ -238,6 +241,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					testServers,
 					testEnvironments,
 					"test-instance",
+					instanceIdx,
 					"/workspace/test-instance",
 				).Return(sl, nil)
 				acts := []action.Action{
@@ -286,6 +290,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					fnd:          fndMock,
 					runtimeMaker: runtimeMaker,
 					name:         "test-instance",
+					index:        instanceIdx,
 					timeout:      15 * time.Second,
 					actions:      acts,
 					envs:         testEnvironments,
@@ -321,6 +326,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					testServers,
 					testEnvironments,
 					"test-instance",
+					instanceIdx,
 					"/workspace/test-instance",
 				).Return(sl, nil)
 				acts := []action.Action{
@@ -390,6 +396,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					testServers,
 					testEnvironments,
 					"test-instance",
+					instanceIdx,
 					"/workspace/test-instance",
 				).Return(nil, errors.New("svc fail"))
 				return nil
@@ -546,7 +553,8 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 
 			acts := tt.setupMocks(t, actionMaker, serviceMaker, scriptsMaker, envMaker, runtimeMaker, &tt.defaults)
 
-			got, err := maker.Make(tt.instanceConfig, tt.envsConfig, &tt.defaults, tt.srvs, tt.instanceWorkspace)
+			got, err := maker.Make(
+				tt.instanceConfig, instanceIdx, tt.envsConfig, &tt.defaults, tt.srvs, tt.instanceWorkspace)
 
 			if tt.expectError {
 				assert.Error(t, err)

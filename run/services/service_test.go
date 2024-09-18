@@ -152,12 +152,13 @@ func createConfigMock(t *testing.T, id string) *configsMocks.MockConfig {
 func Test_nativeMaker_Make(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	tests := []struct {
-		name              string
-		config            map[string]types.Service
-		defaults          defaults.Defaults
-		instanceName      string
-		instanceWorkspace string
-		setupMocks        func(
+		name         string
+		config       map[string]types.Service
+		defaults     defaults.Defaults
+		instanceName string
+		instanceIdx  int
+		instanceWs   string
+		setupMocks   func(
 			t *testing.T,
 			pm *parametersMocks.MockMaker,
 			tm *templateMocks.MockMaker,
@@ -228,8 +229,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "ti",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "ti",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -331,6 +333,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					fnd:              fndMock,
 					name:             "fpm",
 					fullName:         "ti-fpm",
+					uniqueName:       "i1-fpm",
 					public:           false,
 					port:             int32(8500),
 					scripts:          scrs,
@@ -371,6 +374,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					fnd:              fndMock,
 					name:             "nginx",
 					fullName:         "ti-nginx",
+					uniqueName:       "i1-nginx",
 					public:           true,
 					port:             int32(8500),
 					scripts:          scrs,
@@ -452,8 +456,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"p1": createParamMock(t, "dp1"),
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  2,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -513,11 +518,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 				}
 				tmpl := templateMocks.NewMockTemplate(t)
 				svc := &nativeService{
-					fnd:      fndMock,
-					name:     "svc",
-					fullName: "testInstance-svc",
-					public:   true,
-					port:     int32(8500),
+					fnd:        fndMock,
+					name:       "svc",
+					fullName:   "testInstance-svc",
+					uniqueName: "i2-svc",
+					public:     true,
+					port:       int32(8500),
 					scripts: scripts.Scripts{
 						"s1": scriptsMocks.NewMockScript(t),
 					},
@@ -590,8 +596,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -669,8 +676,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -743,8 +751,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -813,8 +822,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -885,8 +895,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -955,8 +966,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -1019,8 +1031,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -1079,8 +1092,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					Public: true,
 				},
 			},
-			instanceName:      "testInstance",
-			instanceWorkspace: "/test/workspace",
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
 			setupMocks: func(
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
@@ -1125,7 +1139,8 @@ func Test_nativeMaker_Make(t *testing.T) {
 
 			envs, srvs, scrs, svcs := tt.setupMocks(t, parametersMakerMock, templateMakerMock)
 
-			locator, err := maker.Make(tt.config, &tt.defaults, scrs, srvs, envs, tt.instanceName, tt.instanceWorkspace)
+			locator, err := maker.Make(
+				tt.config, &tt.defaults, scrs, srvs, envs, tt.instanceName, tt.instanceIdx, tt.instanceWs)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1609,11 +1624,11 @@ func Test_nativeService_Start(t *testing.T) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
 				ss := testingServiceSettings(svc)
 				ss.EnvironmentConfigPaths = map[string]string{
-					"fpm_conf": "/tmp/svc/conf/fpm.conf",
-					"php_ini":  "/tmp/svc/conf/php.ini",
+					"fpm_conf": "/tmp/svc/conf/svc/fpm.conf",
+					"php_ini":  "/tmp/svc/conf/svc/php.ini",
 				}
 				ss.EnvironmentScriptPaths = map[string]string{
-					"index.php": "/tmp/svc/scr/index.php",
+					"index.php": "/tmp/svc/scr/svc/index.php",
 				}
 				ss.WorkspaceConfigPaths = map[string]string{
 					"fpm_conf": "/tmp/ws/svc/conf/fpm.conf",
@@ -1711,11 +1726,11 @@ func Test_nativeService_Start(t *testing.T) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
 				ss := testingServiceSettings(svc)
 				ss.EnvironmentConfigPaths = map[string]string{
-					"fpm_conf": "/tmp/svc/conf/fpm.conf",
-					"php_ini":  "/tmp/svc/conf/php.ini",
+					"fpm_conf": "/tmp/svc/conf/svc/fpm.conf",
+					"php_ini":  "/tmp/svc/conf/svc/php.ini",
 				}
 				ss.EnvironmentScriptPaths = map[string]string{
-					"index": "/tmp/svc/scr/index.php",
+					"index": "/tmp/svc/scr/svc/index.php",
 				}
 				ss.WorkspaceConfigPaths = map[string]string{
 					"fpm_conf": "/tmp/ws/svc/conf/fpm.conf",

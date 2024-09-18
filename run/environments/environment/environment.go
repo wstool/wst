@@ -49,6 +49,7 @@ type ContainerRegistry struct {
 type ServiceSettings struct {
 	Name                   string
 	FullName               string
+	UniqueName             string
 	Port                   int32
 	Public                 bool
 	ContainerConfig        *containers.ContainerConfig

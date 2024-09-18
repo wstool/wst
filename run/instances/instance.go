@@ -43,6 +43,7 @@ type Instance interface {
 type InstanceMaker interface {
 	Make(
 		instanceConfig types.Instance,
+		instanceId int,
 		envsConfig map[string]types.Environment,
 		dflts *defaults.Defaults,
 		srvs servers.Servers,
@@ -77,6 +78,7 @@ func CreateInstanceMaker(
 
 func (m *nativeInstanceMaker) Make(
 	instanceConfig types.Instance,
+	instanceIdx int,
 	envsConfig map[string]types.Environment,
 	dflts *defaults.Defaults,
 	srvs servers.Servers,
@@ -88,14 +90,14 @@ func (m *nativeInstanceMaker) Make(
 	}
 
 	name := instanceConfig.Name
-	instanceWorkspace := filepath.Join(specWorkspace, name)
+	instanceWs := filepath.Join(specWorkspace, name)
 
-	envs, err := m.environmentMaker.Make(envsConfig, instanceConfig.Environments, instanceWorkspace)
+	envs, err := m.environmentMaker.Make(envsConfig, instanceConfig.Environments, instanceWs)
 	if err != nil {
 		return nil, err
 	}
 
-	sl, err := m.servicesMaker.Make(instanceConfig.Services, dflts, scrpts, srvs, envs, name, instanceWorkspace)
+	sl, err := m.servicesMaker.Make(instanceConfig.Services, dflts, scrpts, srvs, envs, name, instanceIdx, instanceWs)
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +127,12 @@ func (m *nativeInstanceMaker) Make(
 		fnd:          m.fnd,
 		runtimeMaker: m.runtimeMaker,
 		name:         name,
+		index:        instanceIdx,
 		timeout:      time.Duration(instanceTimeout) * time.Millisecond,
 		actions:      instanceActions,
 		envs:         envs,
 		runData:      runData,
-		workspace:    instanceWorkspace,
+		workspace:    instanceWs,
 	}, nil
 }
 
@@ -137,6 +140,7 @@ type nativeInstance struct {
 	fnd          app.Foundation
 	runtimeMaker runtime.Maker
 	name         string
+	index        int
 	actions      []action.Action
 	envs         environments.Environments
 	runData      runtime.Data

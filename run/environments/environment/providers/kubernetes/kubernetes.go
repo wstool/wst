@@ -79,7 +79,7 @@ func (m *kubernetesMaker) Make(config *types.KubernetesEnvironment) (environment
 		}),
 		kubeconfigPath:   config.Kubeconfig,
 		namespace:        config.Namespace,
-		useFullName:      false,
+		useUniqueName:    true,
 		configMapClient:  configMapClient,
 		deploymentClient: deploymentClient,
 		podClient:        podClient,
@@ -92,7 +92,7 @@ type kubernetesEnvironment struct {
 	environment.ContainerEnvironment
 	kubeconfigPath   string
 	namespace        string
-	useFullName      bool
+	useUniqueName    bool
 	deploymentClient clients.DeploymentClient
 	configMapClient  clients.ConfigMapClient
 	podClient        clients.PodClient
@@ -220,8 +220,8 @@ func int32Ptr(i int32) *int32 {
 }
 
 func (e *kubernetesEnvironment) serviceName(ss *environment.ServiceSettings) string {
-	if e.useFullName {
-		return ss.FullName
+	if e.useUniqueName {
+		return ss.UniqueName
 	} else {
 		return ss.Name
 	}
@@ -268,6 +268,7 @@ func (e *kubernetesEnvironment) loadFileContent(filePath string) (string, error)
 // The function assumes volumeMounts and volumes are pre-initialized and passed by reference.
 func (e *kubernetesEnvironment) processWorkspacePaths(
 	ctx context.Context,
+	configType string,
 	serviceName string,
 	workspacePaths,
 	envPaths map[string]string,
@@ -275,6 +276,7 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 	volumes *[]corev1.Volume,
 ) ([]*corev1.ConfigMap, error) {
 	configMaps := make([]*corev1.ConfigMap, 0, len(workspacePaths))
+	data := make(map[string]map[string]string)
 	for name, hostPath := range workspacePaths {
 		envPath, found := envPaths[name]
 		if !found {
@@ -288,13 +290,19 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 		}
 
 		// Create a ConfigMap for the file content
-		configMapName := sanitizeName(fmt.Sprintf("%s-%s", serviceName, name))
-		baseHostPath := filepath.Base(hostPath)
-		data := map[string]string{
-			baseHostPath: content, // Use the file name as the key
-		}
+		baseEnvPath := filepath.Base(envPath)
+		dirEnvPath := filepath.Dir(envPath)
 
-		configMap, err := e.createConfigMap(ctx, configMapName, data)
+		if _, ok := data[dirEnvPath]; !ok {
+			data[dirEnvPath] = make(map[string]string)
+		}
+		data[dirEnvPath][baseEnvPath] = content
+	}
+
+	configMapIndex := 1
+	for dirEnvPath, baseData := range data {
+		configMapName := sanitizeName(fmt.Sprintf("%s-%s-%d", serviceName, configType, configMapIndex))
+		configMap, err := e.createConfigMap(ctx, configMapName, baseData)
 		if err != nil {
 			return configMaps, errors.Errorf("failed to create configMap %s: %v", configMapName, err)
 		}
@@ -312,22 +320,14 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 				},
 			},
 		}
-		baseEnvPath := filepath.Base(envPath)
-		if baseEnvPath != baseHostPath {
-			volume.VolumeSource.ConfigMap.Items = []corev1.KeyToPath{
-				{
-					Key:  baseHostPath,
-					Path: baseEnvPath,
-				},
-			}
-		}
-
 		*volumes = append(*volumes, volume)
 
 		*volumeMounts = append(*volumeMounts, corev1.VolumeMount{
 			Name:      volumeName,
-			MountPath: filepath.Dir(envPath),
+			MountPath: dirEnvPath,
 		})
+
+		configMapIndex++
 	}
 
 	return configMaps, nil
@@ -336,6 +336,7 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 func (e *kubernetesEnvironment) createDeployment(
 	ctx context.Context,
 	serviceName string,
+	shortServiceName string,
 	ss *environment.ServiceSettings,
 	cmd *environment.Command,
 ) (*kubernetesTask, error) {
@@ -350,6 +351,7 @@ func (e *kubernetesEnvironment) createDeployment(
 
 	configConfigMaps, err := e.processWorkspacePaths(
 		ctx,
+		"configs",
 		serviceName,
 		ss.WorkspaceConfigPaths,
 		ss.EnvironmentConfigPaths,
@@ -361,6 +363,7 @@ func (e *kubernetesEnvironment) createDeployment(
 	}
 	scriptConfigMaps, err := e.processWorkspacePaths(
 		ctx,
+		"scripts",
 		serviceName,
 		ss.WorkspaceScriptPaths,
 		ss.EnvironmentScriptPaths,
@@ -375,9 +378,13 @@ func (e *kubernetesEnvironment) createDeployment(
 
 	var command []string
 	var args []string
+	var executable string
 	if cmd != nil && cmd.Name != "" {
-		command = append(command, cmd.Name)
+		executable = cmd.Name
+		command = append(command, executable)
 		args = cmd.Args
+	} else {
+		executable = shortServiceName
 	}
 
 	// Define the deployment
@@ -401,7 +408,7 @@ func (e *kubernetesEnvironment) createDeployment(
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:    ss.Name,
+							Name:    serviceName,
 							Image:   containerConfig.Image(),
 							Command: command,
 							Args:    args,
@@ -428,7 +435,7 @@ func (e *kubernetesEnvironment) createDeployment(
 		serviceName: serviceName,
 		configMaps:  configMaps,
 		deployment:  result,
-		executable:  cmd.Name,
+		executable:  executable,
 	}
 	e.tasks[serviceName] = kubeTask
 
@@ -553,7 +560,7 @@ func (e *kubernetesEnvironment) createService(
 
 func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
 	serviceName := e.serviceName(ss)
-	kubeTask, err := e.createDeployment(ctx, serviceName, ss, cmd)
+	kubeTask, err := e.createDeployment(ctx, serviceName, ss.Name, ss, cmd)
 	if err != nil {
 		return nil, err
 	}

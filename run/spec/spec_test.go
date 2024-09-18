@@ -102,8 +102,8 @@ func Test_nativeMaker_Make(t *testing.T) {
 				i1.TestData().Set("id", "i1")
 				i2 := instancesMocks.NewMockInstance(t)
 				i2.TestData().Set("id", "i1")
-				im.On("Make", types.Instance{Name: "i1"}, envsConfig, dflts, srvs, "/workspace").Return(i1, nil)
-				im.On("Make", types.Instance{Name: "i2"}, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
+				im.On("Make", types.Instance{Name: "i1"}, 1, envsConfig, dflts, srvs, "/workspace").Return(i1, nil)
+				im.On("Make", types.Instance{Name: "i2"}, 2, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
 				return []instances.Instance{i1, i2}
 			},
 			expectError: false,
@@ -131,7 +131,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
 				i1 := instancesMocks.NewMockInstance(t)
 				i1.TestData().Set("id", "i1")
-				im.On("Make", types.Instance{Name: "i1"}, envsConfig, dflts, srvs, "/workspace").Return(
+				im.On("Make", types.Instance{Name: "i1"}, 1, envsConfig, dflts, srvs, "/workspace").Return(
 					nil,
 					errors.New("instance fail"),
 				)
@@ -164,7 +164,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				return nil
 			},
 			expectError:      true,
-			expectedErrorMsg: "instance 0 name is empty",
+			expectedErrorMsg: "instance 1 name is empty",
 		},
 		{
 			name: "failed spec creation on defaults make fail",

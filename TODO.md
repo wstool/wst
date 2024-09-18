@@ -21,8 +21,7 @@ in the future.
 ### Run
 
 - test and fix kubernetes environment
-  - restructure config paths to /etc/<service>/<config_name>
-    - currently all MountPaths are /etc which is not unique (error)
+  - pods watching after deployment to catch pod CrashLoopBackOff and Error
 - test and fix docker environment
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
@@ -55,6 +54,7 @@ in the future.
   - currently the server port is really just container specific and not used for local
 - kubernetes environment improvements
   - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
+  - support and test native hook start where command is nil (set better executable - ideally configurable)
   - add health probes setup
 - docker environment improvements
   - health check - waiting for container to be able to serve the traffic
@@ -67,9 +67,14 @@ in the future.
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
 - enhance parameters merging
   - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
+- separate workspace for each environment and reset only the env that is being run
+  - it's to keep the local for potential debugging
 - add generation of execution shell script to easily start services in workspace
-  - should be probably bin for each service
+  - should be probably bin for each service in local env
+  - consider what to do for Docker - maybe some simple Docker compose
+  - consider what to do for Kubernetes - maybe yaml files and shell to start and stop them
 - root mode execution
+  - add support for template condition whether service starts under root (e.g. in containers)
 - come up with custom error wrapping and types
   - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
   - removal of deprecated (archived) github.com/pkg/errors

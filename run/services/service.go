@@ -17,6 +17,7 @@ package services
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
@@ -120,6 +121,7 @@ type Maker interface {
 		srvs servers.Servers,
 		environments environments.Environments,
 		instanceName string,
+		instanceIdx int,
 		instanceWorkspace string,
 	) (ServiceLocator, error)
 }
@@ -145,6 +147,7 @@ func (m *nativeMaker) Make(
 	srvs servers.Servers,
 	environments environments.Environments,
 	instanceName string,
+	instanceIdx int,
 	instanceWorkspace string,
 ) (ServiceLocator, error) {
 	svcs := make(Services)
@@ -225,6 +228,7 @@ func (m *nativeMaker) Make(
 			fnd:              m.fnd,
 			name:             serviceName,
 			fullName:         instanceName + "-" + serviceName,
+			uniqueName:       fmt.Sprintf("i%d-%s", instanceIdx, serviceName),
 			public:           serviceConfig.Public,
 			port:             env.ReservePort(),
 			environment:      env,
@@ -256,6 +260,7 @@ type nativeService struct {
 	fnd                    app.Foundation
 	name                   string
 	fullName               string
+	uniqueName             string
 	public                 bool
 	port                   int32
 	scripts                scripts.Scripts
@@ -359,8 +364,10 @@ func (s *nativeService) renderingPaths(path string, dirType dir.DirType) (string
 	if err != nil {
 		return "", "", err
 	}
-	basePath := filepath.Join(sandboxDir, filepath.Base(path))
-	return filepath.Join(s.workspace, basePath), filepath.Join(environmentRootPath, basePath), nil
+	basePath := filepath.Base(path)
+	wsPath := filepath.Join(s.workspace, sandboxDir, basePath)
+	envPath := filepath.Join(environmentRootPath, sandboxDir, s.name, basePath)
+	return wsPath, envPath, nil
 }
 
 func (s *nativeService) renderConfig(configParameters parameters.Parameters, configPath, wsPath string) error {
@@ -446,6 +453,7 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 	return &environment.ServiceSettings{
 		Name:                   s.name,
 		FullName:               s.fullName,
+		UniqueName:             s.uniqueName,
 		Port:                   s.port,
 		ServerPort:             s.server.Port(),
 		Public:                 s.public,
