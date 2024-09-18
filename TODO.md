@@ -21,8 +21,9 @@ in the future.
 ### Run
 
 - test and fix kubernetes environment
-  - pods watching after deployment to catch pod CrashLoopBackOff and Error
+  - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
+  - container wait does not finish even if the container is running
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
 - currently nothing is printed if the start binary does not exist - it should print proper error
