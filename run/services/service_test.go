@@ -1348,6 +1348,7 @@ func Test_nativeService_OutputScanner(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupMocks     func(*environmentMocks.MockEnvironment, task.Task)
+		taskNotSet     bool
 		expectError    bool
 		expectedErrMsg string
 	}{
@@ -1362,17 +1363,27 @@ func Test_nativeService_OutputScanner(t *testing.T) {
 		{
 			name: "error during output fetching",
 			setupMocks: func(env *environmentMocks.MockEnvironment, tsk task.Task) {
-				env.On("Output", ctx, tsk, outputType).Return(nil, assert.AnError)
+				env.On("Output", ctx, tsk, outputType).Return(nil, errors.New("out err"))
 			},
 			expectError:    true,
-			expectedErrMsg: assert.AnError.Error(),
+			expectedErrMsg: "out err",
+		},
+		{
+			name:           "error when task not set",
+			taskNotSet:     true,
+			expectError:    true,
+			expectedErrMsg: "service has not started yet",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := testingNativeService(t)
-			tt.setupMocks(svc.environment.(*environmentMocks.MockEnvironment), svc.task)
+			if tt.taskNotSet {
+				svc.task = nil
+			} else {
+				tt.setupMocks(svc.environment.(*environmentMocks.MockEnvironment), svc.task)
+			}
 
 			scanner, err := svc.OutputScanner(ctx, outputType)
 

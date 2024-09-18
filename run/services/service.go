@@ -351,6 +351,10 @@ func (s *nativeService) Workspace() string {
 }
 
 func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
+		return nil, errors.Errorf("service has not started yet")
+	}
+
 	reader, err := s.environment.Output(ctx, s.task, outputType)
 	if err != nil {
 		return nil, err
