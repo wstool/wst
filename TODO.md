@@ -20,10 +20,12 @@ in the future.
 
 ### Run
 
+- fix local env paths
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
-  - container wait does not finish even if the container is running
+  - pulling of image is not awaited - waiting to fully download the image does not work
+  - container wait does not finish even if the container is running - wait condition does not work
 - identify server circular extending and error instead of current stack panic
 - identify template include recursion (nesting limit)
 - currently nothing is printed if the start binary does not exist - it should print proper error
@@ -49,6 +51,10 @@ in the future.
   - some sort of contains mode rather than full match
 - add labels based filtering for the run
   - new options for selecting labels - only instances with those labels will run
+- look into more consistent naming for public and private url vs local and private address
+  - private has got different meaning in both
+  - maybe address is not the best name
+  - check what naming is used elsewhere and consider matching that
 - look to removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - consider moving server port to sandbox port

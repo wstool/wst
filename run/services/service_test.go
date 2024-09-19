@@ -1201,12 +1201,28 @@ func testingServiceSettings(s *nativeService) *environment.ServiceSettings {
 	}
 }
 
-func Test_nativeService_Address(t *testing.T) {
+func Test_nativeService_PrivateAddress(t *testing.T) {
 	svc := testingNativeService(t)
-	svc.environment.(*environmentMocks.MockEnvironment).On("ServiceAddress", "svc", int32(8500)).Return(
-		"127.0.0.1:8500",
-	)
-	assert.Equal(t, "127.0.0.1:8500", svc.Address())
+	svc.environment.(*environmentMocks.MockEnvironment).On(
+		"ServicePrivateAddress",
+		"svc",
+		int32(8500),
+		int32(80),
+	).Return("127.0.0.1:8500")
+	svc.server.(*serversMocks.MockServer).On("Port").Return(int32(80))
+	assert.Equal(t, "127.0.0.1:8500", svc.PrivateAddress())
+}
+
+func Test_nativeService_LocalAddress(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.environment.(*environmentMocks.MockEnvironment).On(
+		"ServiceLocalAddress",
+		"svc",
+		int32(8500),
+		int32(80),
+	).Return("127.0.0.1:80")
+	svc.server.(*serversMocks.MockServer).On("Port").Return(int32(80))
+	assert.Equal(t, "127.0.0.1:80", svc.LocalAddress())
 }
 
 func Test_nativeService_Port(t *testing.T) {

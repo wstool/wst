@@ -344,7 +344,11 @@ func (e *dockerEnvironment) Mkdir(serviceName string, path string, perm os.FileM
 	return nil
 }
 
-func (e *dockerEnvironment) ServiceAddress(serviceName string, port int32) string {
+func (e *dockerEnvironment) ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string {
+	return fmt.Sprintf("127.0.0.1:%d", serverPort)
+}
+
+func (e *dockerEnvironment) ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string {
 	return serviceName
 }
 

@@ -151,7 +151,7 @@ func Test_localEnvironment_Mkdir(t *testing.T) {
 	assert.Nil(t, l.Mkdir("svc", "/fake/path", os.FileMode(0755)))
 }
 
-func Test_localEnvironment_ServiceAddress(t *testing.T) {
+func Test_localEnvironment_ServiceLocalAddress(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	l := &localEnvironment{
 		CommonEnvironment: environment.CommonEnvironment{
@@ -166,7 +166,25 @@ func Test_localEnvironment_ServiceAddress(t *testing.T) {
 		tasks:     make(map[string]*localTask),
 		workspace: "/tmp/ws/envs/local",
 	}
-	assert.Equal(t, "127.0.0.1:1234", l.ServiceAddress("svc", 1234))
+	assert.Equal(t, "127.0.0.1:1234", l.ServiceLocalAddress("svc", 1234, 80))
+}
+
+func Test_localEnvironment_ServicePrivateAddress(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	l := &localEnvironment{
+		CommonEnvironment: environment.CommonEnvironment{
+			Fnd:  fndMock,
+			Used: false,
+			Ports: environment.Ports{
+				Start: 8000,
+				Used:  8000,
+				End:   8500,
+			},
+		},
+		tasks:     make(map[string]*localTask),
+		workspace: "/tmp/ws/envs/local",
+	}
+	assert.Equal(t, "127.0.0.1:1234", l.ServicePrivateAddress("svc", 1234, 80))
 }
 
 func Test_localEnvironment_Init(t *testing.T) {

@@ -42,9 +42,10 @@ import (
 )
 
 type Service interface {
-	Address() string
-	PublicUrl(path string) (string, error)
+	LocalAddress() string
+	PrivateAddress() string
 	PrivateUrl() (string, error)
+	PublicUrl(path string) (string, error)
 	Pid() (int, error)
 	Name() string
 	FullName() string
@@ -543,8 +544,12 @@ func (s *nativeService) FullName() string {
 	return s.fullName
 }
 
-func (s *nativeService) Address() string {
-	return s.environment.ServiceAddress(s.name, s.port)
+func (s *nativeService) PrivateAddress() string {
+	return s.environment.ServicePrivateAddress(s.name, s.port, s.server.Port())
+}
+
+func (s *nativeService) LocalAddress() string {
+	return s.environment.ServiceLocalAddress(s.name, s.port, s.server.Port())
 }
 
 func (s *nativeService) Executable() (string, error) {

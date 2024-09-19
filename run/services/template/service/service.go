@@ -16,7 +16,8 @@ package service
 
 // TemplateService defines template specific service subset
 type TemplateService interface {
-	Address() string
+	LocalAddress() string
+	PrivateAddress() string
 	PrivateUrl() (string, error)
 	Executable() (string, error)
 	Pid() (int, error)

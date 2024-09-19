@@ -695,17 +695,17 @@ func (_c *MockEnvironment_RunTask_Call) RunAndReturn(run func(context.Context, *
 	return _c
 }
 
-// ServiceAddress provides a mock function with given fields: serviceName, port
-func (_m *MockEnvironment) ServiceAddress(serviceName string, port int32) string {
-	ret := _m.Called(serviceName, port)
+// ServiceLocalAddress provides a mock function with given fields: serviceName, servicePort, serverPort
+func (_m *MockEnvironment) ServiceLocalAddress(serviceName string, servicePort int32, serverPort int32) string {
+	ret := _m.Called(serviceName, servicePort, serverPort)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ServiceAddress")
+		panic("no return value specified for ServiceLocalAddress")
 	}
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, int32) string); ok {
-		r0 = rf(serviceName, port)
+	if rf, ok := ret.Get(0).(func(string, int32, int32) string); ok {
+		r0 = rf(serviceName, servicePort, serverPort)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -713,31 +713,80 @@ func (_m *MockEnvironment) ServiceAddress(serviceName string, port int32) string
 	return r0
 }
 
-// MockEnvironment_ServiceAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceAddress'
-type MockEnvironment_ServiceAddress_Call struct {
+// MockEnvironment_ServiceLocalAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceLocalAddress'
+type MockEnvironment_ServiceLocalAddress_Call struct {
 	*mock.Call
 }
 
-// ServiceAddress is a helper method to define mock.On call
+// ServiceLocalAddress is a helper method to define mock.On call
 //   - serviceName string
-//   - port int32
-func (_e *MockEnvironment_Expecter) ServiceAddress(serviceName interface{}, port interface{}) *MockEnvironment_ServiceAddress_Call {
-	return &MockEnvironment_ServiceAddress_Call{Call: _e.mock.On("ServiceAddress", serviceName, port)}
+//   - servicePort int32
+//   - serverPort int32
+func (_e *MockEnvironment_Expecter) ServiceLocalAddress(serviceName interface{}, servicePort interface{}, serverPort interface{}) *MockEnvironment_ServiceLocalAddress_Call {
+	return &MockEnvironment_ServiceLocalAddress_Call{Call: _e.mock.On("ServiceLocalAddress", serviceName, servicePort, serverPort)}
 }
 
-func (_c *MockEnvironment_ServiceAddress_Call) Run(run func(serviceName string, port int32)) *MockEnvironment_ServiceAddress_Call {
+func (_c *MockEnvironment_ServiceLocalAddress_Call) Run(run func(serviceName string, servicePort int32, serverPort int32)) *MockEnvironment_ServiceLocalAddress_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(int32))
+		run(args[0].(string), args[1].(int32), args[2].(int32))
 	})
 	return _c
 }
 
-func (_c *MockEnvironment_ServiceAddress_Call) Return(_a0 string) *MockEnvironment_ServiceAddress_Call {
+func (_c *MockEnvironment_ServiceLocalAddress_Call) Return(_a0 string) *MockEnvironment_ServiceLocalAddress_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockEnvironment_ServiceAddress_Call) RunAndReturn(run func(string, int32) string) *MockEnvironment_ServiceAddress_Call {
+func (_c *MockEnvironment_ServiceLocalAddress_Call) RunAndReturn(run func(string, int32, int32) string) *MockEnvironment_ServiceLocalAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ServicePrivateAddress provides a mock function with given fields: serviceName, servicePort, serverPort
+func (_m *MockEnvironment) ServicePrivateAddress(serviceName string, servicePort int32, serverPort int32) string {
+	ret := _m.Called(serviceName, servicePort, serverPort)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ServicePrivateAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string, int32, int32) string); ok {
+		r0 = rf(serviceName, servicePort, serverPort)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockEnvironment_ServicePrivateAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServicePrivateAddress'
+type MockEnvironment_ServicePrivateAddress_Call struct {
+	*mock.Call
+}
+
+// ServicePrivateAddress is a helper method to define mock.On call
+//   - serviceName string
+//   - servicePort int32
+//   - serverPort int32
+func (_e *MockEnvironment_Expecter) ServicePrivateAddress(serviceName interface{}, servicePort interface{}, serverPort interface{}) *MockEnvironment_ServicePrivateAddress_Call {
+	return &MockEnvironment_ServicePrivateAddress_Call{Call: _e.mock.On("ServicePrivateAddress", serviceName, servicePort, serverPort)}
+}
+
+func (_c *MockEnvironment_ServicePrivateAddress_Call) Run(run func(serviceName string, servicePort int32, serverPort int32)) *MockEnvironment_ServicePrivateAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(int32), args[2].(int32))
+	})
+	return _c
+}
+
+func (_c *MockEnvironment_ServicePrivateAddress_Call) Return(_a0 string) *MockEnvironment_ServicePrivateAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEnvironment_ServicePrivateAddress_Call) RunAndReturn(run func(string, int32, int32) string) *MockEnvironment_ServicePrivateAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }

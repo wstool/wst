@@ -75,8 +75,12 @@ func (l *localEnvironment) Mkdir(serviceName string, path string, perm os.FileMo
 	return l.Fnd.Fs().MkdirAll(path, perm)
 }
 
-func (l *localEnvironment) ServiceAddress(serviceName string, port int32) string {
-	return fmt.Sprintf("127.0.0.1:%d", port)
+func (l *localEnvironment) ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string {
+	return fmt.Sprintf("127.0.0.1:%d", servicePort)
+}
+
+func (l *localEnvironment) ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string {
+	return l.ServiceLocalAddress(serviceName, servicePort, serverPort)
 }
 
 func (l *localEnvironment) Init(ctx context.Context) error {

@@ -1725,9 +1725,14 @@ func Test_dockerEnvironment_Mkdir(t *testing.T) {
 	assert.Nil(t, env.Mkdir("svc", "/www/ws", 0755))
 }
 
-func Test_dockerEnvironment_ServiceAddress(t *testing.T) {
+func Test_dockerEnvironment_ServiceLocalAddress(t *testing.T) {
 	env := &dockerEnvironment{}
-	assert.Equal(t, "svc", env.ServiceAddress("svc", 1234))
+	assert.Equal(t, "127.0.0.1:80", env.ServiceLocalAddress("svc", 1234, 80))
+}
+
+func Test_dockerEnvironment_ServicePrivateAddress(t *testing.T) {
+	env := &dockerEnvironment{}
+	assert.Equal(t, "svc", env.ServicePrivateAddress("svc", 1234, 80))
 }
 
 func getTestTask() *dockerTask {

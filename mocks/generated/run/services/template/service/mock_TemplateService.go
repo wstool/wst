@@ -17,51 +17,6 @@ func (_m *MockTemplateService) EXPECT() *MockTemplateService_Expecter {
 	return &MockTemplateService_Expecter{mock: &_m.Mock}
 }
 
-// Address provides a mock function with given fields:
-func (_m *MockTemplateService) Address() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Address")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockTemplateService_Address_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Address'
-type MockTemplateService_Address_Call struct {
-	*mock.Call
-}
-
-// Address is a helper method to define mock.On call
-func (_e *MockTemplateService_Expecter) Address() *MockTemplateService_Address_Call {
-	return &MockTemplateService_Address_Call{Call: _e.mock.On("Address")}
-}
-
-func (_c *MockTemplateService_Address_Call) Run(run func()) *MockTemplateService_Address_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockTemplateService_Address_Call) Return(_a0 string) *MockTemplateService_Address_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockTemplateService_Address_Call) RunAndReturn(run func() string) *MockTemplateService_Address_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ConfDir provides a mock function with given fields:
 func (_m *MockTemplateService) ConfDir() (string, error) {
 	ret := _m.Called()
@@ -264,6 +219,51 @@ func (_c *MockTemplateService_Group_Call) RunAndReturn(run func() string) *MockT
 	return _c
 }
 
+// LocalAddress provides a mock function with given fields:
+func (_m *MockTemplateService) LocalAddress() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LocalAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockTemplateService_LocalAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LocalAddress'
+type MockTemplateService_LocalAddress_Call struct {
+	*mock.Call
+}
+
+// LocalAddress is a helper method to define mock.On call
+func (_e *MockTemplateService_Expecter) LocalAddress() *MockTemplateService_LocalAddress_Call {
+	return &MockTemplateService_LocalAddress_Call{Call: _e.mock.On("LocalAddress")}
+}
+
+func (_c *MockTemplateService_LocalAddress_Call) Run(run func()) *MockTemplateService_LocalAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTemplateService_LocalAddress_Call) Return(_a0 string) *MockTemplateService_LocalAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockTemplateService_LocalAddress_Call) RunAndReturn(run func() string) *MockTemplateService_LocalAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Pid provides a mock function with given fields:
 func (_m *MockTemplateService) Pid() (int, error) {
 	ret := _m.Called()
@@ -315,6 +315,51 @@ func (_c *MockTemplateService_Pid_Call) Return(_a0 int, _a1 error) *MockTemplate
 }
 
 func (_c *MockTemplateService_Pid_Call) RunAndReturn(run func() (int, error)) *MockTemplateService_Pid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PrivateAddress provides a mock function with given fields:
+func (_m *MockTemplateService) PrivateAddress() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PrivateAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockTemplateService_PrivateAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PrivateAddress'
+type MockTemplateService_PrivateAddress_Call struct {
+	*mock.Call
+}
+
+// PrivateAddress is a helper method to define mock.On call
+func (_e *MockTemplateService_Expecter) PrivateAddress() *MockTemplateService_PrivateAddress_Call {
+	return &MockTemplateService_PrivateAddress_Call{Call: _e.mock.On("PrivateAddress")}
+}
+
+func (_c *MockTemplateService_PrivateAddress_Call) Run(run func()) *MockTemplateService_PrivateAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTemplateService_PrivateAddress_Call) Return(_a0 string) *MockTemplateService_PrivateAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockTemplateService_PrivateAddress_Call) RunAndReturn(run func() string) *MockTemplateService_PrivateAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }

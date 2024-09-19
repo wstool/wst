@@ -628,7 +628,11 @@ func (e *kubernetesEnvironment) Mkdir(serviceName string, path string, perm os.F
 	return nil
 }
 
-func (e *kubernetesEnvironment) ServiceAddress(serviceName string, port int32) string {
+func (e *kubernetesEnvironment) ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string {
+	return fmt.Sprintf("127.0.0.1:%d", serverPort)
+}
+
+func (e *kubernetesEnvironment) ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string {
 	return serviceName
 }
 
