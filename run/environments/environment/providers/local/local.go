@@ -68,7 +68,7 @@ type localEnvironment struct {
 }
 
 func (l *localEnvironment) RootPath(workspace string) string {
-	return workspace
+	return filepath.Join(workspace, "_env")
 }
 
 func (l *localEnvironment) Mkdir(serviceName string, path string, perm os.FileMode) error {
@@ -140,6 +140,54 @@ func (l *localEnvironment) awaitTask(t *localTask) {
 	}
 }
 
+func copyFile(fs app.Fs, src, dst string) error {
+	srcFile, err := fs.Open(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to open source file %s", src)
+	}
+	defer srcFile.Close()
+
+	dstFile, err := fs.Create(dst)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create destination file %s", dst)
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to copy contents from %s to %s", src, dst)
+	}
+
+	return nil
+}
+
+func (l *localEnvironment) copyWorkspacePaths(
+	configType string,
+	workspacePaths,
+	envPaths map[string]string,
+) error {
+	fs := l.Fnd.Fs()
+	for name, wsPath := range workspacePaths {
+		envPath, found := envPaths[name]
+		if !found {
+			return errors.Errorf("%s environment path not found for %s", configType, name)
+		}
+
+		envDir := filepath.Dir(envPath)
+		err := fs.MkdirAll(envDir, 0755)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create %s environment directory for %s", configType, envDir)
+		}
+
+		err = copyFile(fs, wsPath, envPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to copy %s file from workspace path %s to environment path %s",
+				configType, wsPath, envPath)
+		}
+	}
+	return nil
+}
+
 func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
 	logger := l.Fnd.Logger()
 	if !l.initialized {
@@ -151,6 +199,15 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 		}
 	}
 
+	err := l.copyWorkspacePaths("configs", ss.WorkspaceConfigPaths, ss.EnvironmentConfigPaths)
+	if err != nil {
+		return nil, err
+	}
+	err = l.copyWorkspacePaths("scripts", ss.WorkspaceScriptPaths, ss.EnvironmentScriptPaths)
+	if err != nil {
+		return nil, err
+	}
+
 	command := l.Fnd.ExecCommand(l.ctx, cmd.Name, cmd.Args)
 
 	logger.Debugf("Creating command: %s", command)
@@ -160,7 +217,7 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 	command.SetStdout(outputCollector.StdoutWriter())
 	command.SetStderr(outputCollector.StderrWriter())
 
-	if err := command.Start(); err != nil {
+	if err = command.Start(); err != nil {
 		return nil, err
 	}
 

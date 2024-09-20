@@ -1317,19 +1317,19 @@ func testDirsGetters(t *testing.T, expectedDir string, cb func(svc *nativeServic
 }
 
 func Test_nativeService_ConfDir(t *testing.T) {
-	testDirsGetters(t, "/ws/conf/dir", func(svc *nativeService) (string, error) {
+	testDirsGetters(t, "/ws/conf/dir/svc", func(svc *nativeService) (string, error) {
 		return svc.ConfDir()
 	})
 }
 
 func Test_nativeService_RunDir(t *testing.T) {
-	testDirsGetters(t, "/ws/run/dir", func(svc *nativeService) (string, error) {
+	testDirsGetters(t, "/ws/run/dir/svc", func(svc *nativeService) (string, error) {
 		return svc.RunDir()
 	})
 }
 
 func Test_nativeService_ScriptDir(t *testing.T) {
-	testDirsGetters(t, "/ws/script/dir", func(svc *nativeService) (string, error) {
+	testDirsGetters(t, "/ws/script/dir/svc", func(svc *nativeService) (string, error) {
 		return svc.ScriptDir()
 	})
 }

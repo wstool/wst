@@ -127,7 +127,7 @@ func Test_localEnvironment_RootPath(t *testing.T) {
 		tasks:     make(map[string]*localTask),
 		workspace: "/tmp/ws/envs/local",
 	}
-	assert.Equal(t, "/tmp/ws/svc", l.RootPath("/tmp/ws/svc"))
+	assert.Equal(t, "/tmp/ws/svc/_env", l.RootPath("/tmp/ws/svc"))
 }
 
 func Test_localEnvironment_Mkdir(t *testing.T) {
@@ -346,15 +346,30 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			*appMocks.MockFoundation,
 			*outputMocks.MockMaker,
 		) (*appMocks.MockCommand, chan struct{})
-		expectError    bool
-		expectedErrMsg string
-		expectedLogs   []string
-		expectTask     bool
-		uuid           string // UUID for each task
+		updateServiceSetting func(ss *environment.ServiceSettings)
+		expectError          bool
+		expectedErrMsg       string
+		expectedLogs         []string
+		expectTask           bool
+		uuid                 string // UUID for each task
 	}{
 		{
-			name:      "successfully runs task",
+			name:      "successfully runs task with configs and scripts",
 			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+				ss.WorkspaceScriptPaths = map[string]string{
+					"script": "/ws/path/s/script.sh",
+				}
+				ss.EnvironmentScriptPaths = map[string]string{
+					"script": "/env/path/s/script.sh",
+				}
+			},
 			setupMocks: func(
 				t *testing.T,
 				actionCtx context.Context,
@@ -364,6 +379,32 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			) (*appMocks.MockCommand, chan struct{}) {
 				fsMock := appMocks.NewMockFs(t)
 				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/s", os.FileMode(0755)).Return(nil)
+
+				srcConfigFile := appMocks.NewMockFile(t)
+				srcConfigFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcConfigFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcConfigFile.On("Close").Return(nil).Once()
+
+				dstConfigFile := appMocks.NewMockFile(t)
+				dstConfigFile.On("Write", mock.Anything).Return(len("content of the file"), nil).Once()
+				dstConfigFile.On("Close").Return(nil).Once()
+
+				srcScriptFile := appMocks.NewMockFile(t)
+				srcScriptFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcScriptFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcScriptFile.On("Close").Return(nil).Once()
+
+				dstScriptFile := appMocks.NewMockFile(t)
+				dstScriptFile.On("Write", mock.Anything).Return(len("content of the file"), nil).Once()
+				dstScriptFile.On("Close").Return(nil).Once()
+
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(srcConfigFile, nil)
+				fsMock.On("Create", "/env/path/c/cfg.json").Return(dstConfigFile, nil)
+				fsMock.On("Open", "/ws/path/s/script.sh").Return(srcScriptFile, nil)
+				fsMock.On("Create", "/env/path/s/script.sh").Return(dstScriptFile, nil)
+
 				fndMock.On("Fs").Return(fsMock)
 				mockCommand := appMocks.NewMockCommand(t)
 				mockCommand.On("String").Return("test-command arg1")
@@ -418,6 +459,9 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				fndMock *appMocks.MockFoundation,
 				outMakerMock *outputMocks.MockMaker,
 			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fndMock.On("Fs").Return(fsMock)
+
 				mockCommand := appMocks.NewMockCommand(t)
 				mockCommand.On("String").Return("test-command arg1")
 				fndMock.On("ExecCommand", envCtx, "test-command", []string{"arg1"}).Return(mockCommand)
@@ -553,6 +597,235 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			expectedErrMsg: "command start error",
 		},
 		{
+			name:      "dst write error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+				ss.WorkspaceScriptPaths = map[string]string{
+					"script": "/ws/path/s/script.sh",
+				}
+				ss.EnvironmentScriptPaths = map[string]string{
+					"script": "/env/path/s/script.sh",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/s", os.FileMode(0755)).Return(nil)
+
+				srcConfigFile := appMocks.NewMockFile(t)
+				srcConfigFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcConfigFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcConfigFile.On("Close").Return(nil).Once()
+
+				dstConfigFile := appMocks.NewMockFile(t)
+				dstConfigFile.On("Write", mock.Anything).Return(len("content of the file"), nil).Once()
+				dstConfigFile.On("Close").Return(nil).Once()
+
+				srcScriptFile := appMocks.NewMockFile(t)
+				srcScriptFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcScriptFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcScriptFile.On("Close").Return(nil).Once()
+
+				dstScriptFile := appMocks.NewMockFile(t)
+				dstScriptFile.On("Write", mock.Anything).Return(0, errors.New("dst write error")).Once()
+				dstScriptFile.On("Close").Return(nil).Once()
+
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(srcConfigFile, nil)
+				fsMock.On("Create", "/env/path/c/cfg.json").Return(dstConfigFile, nil)
+				fsMock.On("Open", "/ws/path/s/script.sh").Return(srcScriptFile, nil)
+				fsMock.On("Create", "/env/path/s/script.sh").Return(dstScriptFile, nil)
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "dst write error",
+		},
+		{
+			name:      "src read error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+				ss.WorkspaceScriptPaths = map[string]string{
+					"script": "/ws/path/s/script.sh",
+				}
+				ss.EnvironmentScriptPaths = map[string]string{
+					"script": "/env/path/s/script.sh",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+
+				srcConfigFile := appMocks.NewMockFile(t)
+				srcConfigFile.On("Read", mock.Anything).Return(0, errors.New("src read error"))
+				srcConfigFile.On("Close").Return(nil).Once()
+
+				dstConfigFile := appMocks.NewMockFile(t)
+				dstConfigFile.On("Close").Return(nil).Once()
+
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(srcConfigFile, nil)
+				fsMock.On("Create", "/env/path/c/cfg.json").Return(dstConfigFile, nil)
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "src read error",
+		},
+		{
+			name:      "dst create error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+
+				srcConfigFile := appMocks.NewMockFile(t)
+				srcConfigFile.On("Close").Return(nil).Once()
+
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(srcConfigFile, nil)
+				fsMock.On("Create", "/env/path/c/cfg.json").Return(
+					nil, errors.New("dst create error"))
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "dst create error",
+		},
+		{
+			name:      "src open error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(
+					nil, errors.New("src open error"))
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "src open error",
+		},
+		{
+			name:      "dst mkdir error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(
+					errors.New("dst mkdir error"))
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "dst mkdir error",
+		},
+		{
+			name:      "paths mismatch error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"unknown": "/env/path/c/cfg.json",
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "configs environment path not found for cfg",
+		},
+		{
 			name:      "mkdir error",
 			workspace: "/fake/path",
 			setupMocks: func(
@@ -566,7 +839,6 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				fndMock.On("Fs").Return(fsMock)
 				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(fmt.Errorf("mkdir error"))
 
-				// No need for taskFinishedChan in this error scenario
 				return nil, nil
 			},
 			expectError:    true,
@@ -597,6 +869,9 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 			ss := &environment.ServiceSettings{
 				Name: "test-service",
 				Port: 8080,
+			}
+			if tt.updateServiceSetting != nil {
+				tt.updateServiceSetting(ss)
 			}
 			cmd := &environment.Command{
 				Name: "test-command",

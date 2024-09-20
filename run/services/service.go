@@ -318,7 +318,7 @@ func (s *nativeService) Dirs() map[dir.DirType]string {
 func (s *nativeService) rootPathDir(dirType dir.DirType) (string, error) {
 	sandboxDir := s.Sandbox().Dirs()[dirType]
 	rootPath := s.environment.RootPath(s.workspace)
-	fullDir := filepath.Join(rootPath, sandboxDir)
+	fullDir := filepath.Join(rootPath, sandboxDir, s.name)
 	err := s.environment.Mkdir(s.name, fullDir, 0755)
 	return fullDir, err
 }

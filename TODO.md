@@ -20,7 +20,6 @@ in the future.
 
 ### Run
 
-- fix local env paths
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
@@ -59,6 +58,7 @@ in the future.
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
 - consider moving server port to sandbox port
   - currently the server port is really just container specific and not used for local
+  - consider more consistent naming differentiating that service port is public and server port is private
 - kubernetes environment improvements
   - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
   - support and test native hook start where command is nil (set better executable - ideally configurable)
@@ -76,6 +76,7 @@ in the future.
   - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
 - separate workspace for each environment and reset only the env that is being run
   - it's to keep the local for potential debugging
+  - also move local env files under a single dir (compare to multiple _env dirs) and get rid of duplicated service naming in path
 - add generation of execution shell script to easily start services in workspace
   - should be probably bin for each service in local env
   - consider what to do for Docker - maybe some simple Docker compose
