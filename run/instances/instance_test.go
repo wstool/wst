@@ -1143,14 +1143,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				rm.On("MakeBackgroundContext").Return(ctx)
 
 				localEnv := inst.envs[providers.LocalType].(*environmentMocks.MockEnvironment)
-				localEnv.On("IsUsed").Return(true)
-				localEnv.On("Init", ctx).Return(nil)
+				localEnv.On("IsUsed").Maybe().Return(true)
+				localEnv.On("Init", ctx).Maybe().Return(nil)
 
 				dockerEnv := inst.envs[providers.DockerType].(*environmentMocks.MockEnvironment)
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(errors.New("docker fail"))
 
-				localEnv.On("Destroy", ctx).Return(nil)
+				localEnv.On("Destroy", ctx).Maybe().Return(nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "docker fail",
