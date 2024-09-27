@@ -1600,7 +1600,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 		{
 			name: "successfully parse big compact config",
 			data: map[string]interface{}{
-				"version":     "1.0",
+				"version":     "0.1",
 				"name":        "WST Project",
 				"description": "A project to demonstrate JSON Schema representation in Go",
 				"spec": map[string]interface{}{
@@ -1819,7 +1819,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 				"/etc/nginx/nginx.conf": "nginx on",
 			},
 			expectedConfig: &types.Config{
-				Version:     "1.0",
+				Version:     "0.1",
 				Name:        "WST Project",
 				Description: "A project to demonstrate JSON Schema representation in Go",
 				Spec: types.Spec{

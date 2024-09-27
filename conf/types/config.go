@@ -15,7 +15,7 @@
 package types
 
 type Config struct {
-	Version     string `wst:"version,enum=1.0"`
+	Version     string `wst:"version,enum=0.1"`
 	Name        string `wst:"name"`
 	Description string `wst:"description"`
 	Spec        Spec   `wst:"spec"`
