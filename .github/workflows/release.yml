@@ -8,6 +8,7 @@ on:
 jobs:
   # Create a draft release
   create_release:
+    permissions: write-all
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Draft Release
@@ -23,6 +24,7 @@ jobs:
 
   # Build and upload artifacts
   build_and_upload:
+    permissions: write-all
     runs-on: ubuntu-latest
     needs: create_release
     strategy:
@@ -64,6 +66,7 @@ jobs:
 
   # Mark the release as not a draft
   publish_release:
+    permissions: write-all
     runs-on: ubuntu-latest
     needs: build_and_upload
     steps:
