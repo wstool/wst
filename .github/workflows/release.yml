@@ -10,6 +10,8 @@ jobs:
   create_release:
     permissions: write-all
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Create GitHub Draft Release
         id: create_release
