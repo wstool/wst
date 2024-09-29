@@ -31,7 +31,7 @@ jobs:
     needs: create_release
     strategy:
       matrix:
-        goos: [linux, darwin, windows]
+        goos: [linux, darwin]
         goarch: [amd64]
 
     steps:
