@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_and_upload
     steps:
+      - uses: actions/checkout@v4
       - name: Update Release to Not a Draft
         run: |
           gh release edit ${{ github.ref_name }} --draft=false
