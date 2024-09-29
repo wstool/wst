@@ -45,7 +45,7 @@ jobs:
           RELEASE_DIR="release-${{ matrix.goos }}-${{ matrix.goarch }}"
           mkdir -p "$RELEASE_DIR"
           OUTPUT_NAME="$RELEASE_DIR/wst"
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o "$OUTPUT_NAME" ./...
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o "$OUTPUT_NAME" .
           cp LICENSE.md README.md "$RELEASE_DIR/"
           cd "$RELEASE_DIR"
           if [ "${{ matrix.goos }}" == "windows" ]; then
