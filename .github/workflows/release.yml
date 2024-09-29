@@ -46,14 +46,14 @@ jobs:
           mkdir -p "$RELEASE_DIR"
           OUTPUT_NAME="$RELEASE_DIR/wst"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o "$OUTPUT_NAME" .
-          cp LICENSE.md README.md "$RELEASE_DIR/"
+          cp LICENSE README.md "$RELEASE_DIR/"
           cd "$RELEASE_DIR"
           if [ "${{ matrix.goos }}" == "windows" ]; then
             # Zip for Windows
-            zip "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" wst LICENSE.md README.md
+            zip "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" wst LICENSE README.md
           else
             # Tarball for Linux/macOS
-            tar -czf "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" wst LICENSE.md README.md
+            tar -czf "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" wst LICENSE README.md
           fi
           cd ..
 
