@@ -42,17 +42,23 @@ jobs:
 
       - name: Build binary
         run: |
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o "wst" ./...  # Build the binary for the platform
+          OUTPUT_NAME="wst-${{ matrix.goos }}-${{ matrix.goarch }}"
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o "$OUTPUT_NAME" ./...
 
       - name: Prepare release folder
         run: |
-          mkdir -p release
-          cp wst LICENSE.md README.md ./release/  # Copy the binary, LICENSE.md, and README.md
-          cd release
+          RELEASE_DIR="release-${{ matrix.goos }}-${{ matrix.goarch }}"
+          mkdir -p "$RELEASE_DIR"
+          OUTPUT_NAME="wst-${{ matrix.goos }}-${{ matrix.goarch }}"
+          cp "$OUTPUT_NAME" "$RELEASE_DIR/wst"
+          cp LICENSE.md README.md "$RELEASE_DIR/"
+          cd "$RELEASE_DIR"
           if [ "${{ matrix.goos }}" == "windows" ]; then
-            zip "wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" wst LICENSE.md README.md  # Zip for Windows
+            # Zip for Windows
+            zip "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" wst LICENSE.md README.md
           else
-            tar -czf "wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" wst LICENSE.md README.md  # Tarball for Linux/macOS
+            # Tarball for Linux/macOS
+            tar -czf "../wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" wst LICENSE.md README.md
           fi
           cd ..
 
@@ -60,9 +66,10 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: release/*
+          asset_path: "wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.*"  # Upload the .tar.gz or .zip file
           asset_name: "wst-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           asset_content_type: application/gzip
+
 
   # Mark the release as not a draft
   publish_release:
