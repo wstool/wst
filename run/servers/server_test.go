@@ -863,6 +863,375 @@ func Test_nativeMaker_Make(t *testing.T) {
 					{
 						Name:    "server1/prod",
 						Extends: "base/default",
+						Port:    0,
+						Configs: map[string]types.ServerConfig{
+							"ct": {File: "test-prod.php"},
+						},
+						Templates: map[string]types.ServerTemplate{
+							"tt": {File: "t-prod.tmpl"},
+						},
+						Sandboxes: map[string]types.Sandbox{
+							"local": &types.LocalSandbox{Available: true, Dirs: map[string]string{
+								"run": "test",
+							}},
+						},
+						Parameters: types.Parameters{
+							"prod_key": "prod_value",
+						},
+						Actions: types.ServerActions{
+							Expect: map[string]types.ServerExpectationAction{
+								"resp": &types.ServerResponseExpectation{
+									Response: types.ResponseExpectation{
+										Request: "y",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name:    "server1/dev",
+						Extends: "server1/prod",
+						Port:    1234,
+						Configs: map[string]types.ServerConfig{
+							"ct": {File: "test.php"},
+						},
+						Templates: map[string]types.ServerTemplate{
+							"tt": {File: "t.tmpl"},
+						},
+						Sandboxes: map[string]types.Sandbox{
+							"local": &types.LocalSandbox{Available: true},
+						},
+						Parameters: types.Parameters{
+							"key": "value",
+						},
+						Actions: types.ServerActions{
+							Expect: map[string]types.ServerExpectationAction{
+								"resp": &types.ServerResponseExpectation{
+									Response: types.ResponseExpectation{
+										Request: "x",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name:    "base/default",
+						Extends: "",
+						Port:    1234,
+						Configs: map[string]types.ServerConfig{
+							"ct": {File: "test-base.php"},
+						},
+						Templates: map[string]types.ServerTemplate{
+							"tt": {File: "t-base.tmpl"},
+						},
+						Sandboxes: map[string]types.Sandbox{
+							"local": &types.LocalSandbox{Available: true, Dirs: map[string]string{
+								"run": "base",
+							}},
+						},
+						Parameters: types.Parameters{
+							"key_base": "value_base",
+							"key":      "value_base_base",
+						},
+						Actions: types.ServerActions{
+							Expect: map[string]types.ServerExpectationAction{
+								"resp": &types.ServerResponseExpectation{
+									Response: types.ResponseExpectation{
+										Request: "z",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T,
+				nm *nativeMaker,
+				fndMock *appMocks.MockFoundation,
+				actionsMock *actionsMocks.MockMaker,
+				configsMock *configsMocks.MockMaker,
+				parametersMock *parametersMocks.MockMaker,
+				templatesMock *templatesMocks.MockMaker,
+				sandboxesMock *sandboxesMocks.MockMaker,
+				snbs []*sandboxMocks.MockSandbox,
+			) {
+				actionsMock.On("Make", &types.ServerActions{
+					Expect: map[string]types.ServerExpectationAction{
+						"resp": &types.ServerResponseExpectation{
+							Response: types.ResponseExpectation{
+								Request: "z",
+							},
+						},
+					},
+				}).Return(&actions.Actions{
+					Expect: map[string]actions.ExpectAction{
+						"resp": eas[2],
+					},
+				}, nil)
+				actionsMock.On("Make", &types.ServerActions{
+					Expect: map[string]types.ServerExpectationAction{
+						"resp": &types.ServerResponseExpectation{
+							Response: types.ResponseExpectation{
+								Request: "y",
+							},
+						},
+					},
+				}).Return(&actions.Actions{
+					Expect: map[string]actions.ExpectAction{
+						"resp": eas[1],
+					},
+				}, nil)
+				actionsMock.On("Make", &types.ServerActions{
+					Expect: map[string]types.ServerExpectationAction{
+						"resp": &types.ServerResponseExpectation{
+							Response: types.ResponseExpectation{
+								Request: "x",
+							},
+						},
+					},
+				}).Return(&actions.Actions{
+					Expect: map[string]actions.ExpectAction{
+						"resp": eas[0],
+					},
+				}, nil)
+				configsMock.On("Make", map[string]types.ServerConfig{
+					"ct": {File: "test-base.php"},
+				}).Return(configs.Configs{
+					"ct": confs[2],
+				}, nil)
+				configsMock.On("Make", map[string]types.ServerConfig{
+					"ct": {File: "test-prod.php"},
+				}).Return(configs.Configs{
+					"ct": confs[1],
+				}, nil)
+				configsMock.On("Make", map[string]types.ServerConfig{
+					"ct": {File: "test.php"},
+				}).Return(configs.Configs{
+					"ct": confs[0],
+				}, nil)
+				templatesMock.On("Make", map[string]types.ServerTemplate{
+					"tt": {File: "t-base.tmpl"},
+				}).Return(templates.Templates{
+					"tt": tmpls[2],
+				}, nil)
+
+				templatesMock.On("Make", map[string]types.ServerTemplate{
+					"tt": {File: "t-prod.tmpl"},
+				}).Return(templates.Templates{
+					"tt": tmpls[1],
+				}, nil)
+				templatesMock.On("Make", map[string]types.ServerTemplate{
+					"tt": {File: "t.tmpl"},
+				}).Return(templates.Templates{
+					"tt": tmpls[0],
+				}, nil)
+				parametersMock.On("Make", types.Parameters{
+					"key_base": "value_base",
+					"key":      "value_base_base",
+				}).Return(parameters.Parameters{
+					"key":      params[2],
+					"key_base": params[3],
+				}, nil)
+				parametersMock.On("Make", types.Parameters{
+					"prod_key": "prod_value",
+				}).Return(parameters.Parameters{
+					"prod_key": params[1],
+				}, nil)
+				parametersMock.On("Make", types.Parameters{
+					"key": "value",
+				}).Return(parameters.Parameters{
+					"key": params[0],
+				}, nil)
+				sandboxesMock.On(
+					"MakeSandboxes",
+					map[string]types.Sandbox{
+						"docker": &types.DockerSandbox{
+							Available: true,
+							Image: types.ContainerImage{
+								Name: "img",
+							},
+						},
+					},
+					map[string]types.Sandbox{
+						"local": &types.LocalSandbox{Available: true, Dirs: map[string]string{
+							"run": "base",
+						}},
+					},
+				).Return(sandboxes.Sandboxes{
+					providers.DockerType: snbs[0],
+					providers.LocalType:  snbs[3],
+				}, nil)
+				sandboxesMock.On(
+					"MakeSandboxes",
+					map[string]types.Sandbox{
+						"docker": &types.DockerSandbox{
+							Available: true,
+							Image: types.ContainerImage{
+								Name: "img",
+							},
+						},
+					},
+					map[string]types.Sandbox{
+						"local": &types.LocalSandbox{Available: true, Dirs: map[string]string{
+							"run": "test",
+						}},
+					},
+				).Return(sandboxes.Sandboxes{
+					providers.DockerType: snbs[0],
+					providers.LocalType:  snbs[2],
+				}, nil)
+				sandboxesMock.On(
+					"MakeSandboxes",
+					map[string]types.Sandbox{
+						"docker": &types.DockerSandbox{
+							Available: true,
+							Image: types.ContainerImage{
+								Name: "img",
+							},
+						},
+					},
+					map[string]types.Sandbox{
+						"local": &types.LocalSandbox{Available: true},
+					},
+				).Return(sandboxes.Sandboxes{
+					providers.DockerType: snbs[0],
+					providers.LocalType:  snbs[1],
+				}, nil)
+				u := &user.User{
+					Uid:      "1000",
+					Gid:      "1100",
+					Username: "du",
+					Name:     "Default User",
+					HomeDir:  "/home/du",
+				}
+				g := &user.Group{
+					Gid:  "1100",
+					Name: "dg",
+				}
+				fndMock.On("CurrentUser").Return(u, nil).Once()
+				fndMock.On("UserGroup", u).Return(g, nil).Once()
+				snbs[1].On("Inherit", snbs[2]).Return(nil)
+				snbs[2].On("Inherit", snbs[3]).Return(nil)
+			},
+			expectedServers: func(fndMock app.Foundation, snbs []*sandboxMocks.MockSandbox) Servers {
+				defaultServer := &nativeServer{
+					fnd:        fndMock,
+					name:       "base",
+					tag:        "default",
+					parentName: "",
+					user:       "du",
+					group:      "dg",
+					port:       1234,
+					extended:   true,
+					actions: &actions.Actions{
+						Expect: map[string]actions.ExpectAction{
+							"resp": eas[2],
+						},
+					},
+					configs: configs.Configs{
+						"ct": confs[2],
+					},
+					templates: templates.Templates{
+						"tt": tmpls[2],
+					},
+					parameters: parameters.Parameters{
+						"key":      params[2],
+						"key_base": params[3],
+					},
+					sandboxes: sandboxes.Sandboxes{
+						providers.DockerType: snbs[0],
+						providers.LocalType:  snbs[3],
+					},
+				}
+				prodServer := &nativeServer{
+					fnd:        fndMock,
+					name:       "server1",
+					tag:        "prod",
+					parentName: "base/default",
+					parent:     defaultServer,
+					user:       "du",
+					group:      "dg",
+					port:       1234,
+					extended:   true,
+					actions: &actions.Actions{
+						Expect: map[string]actions.ExpectAction{
+							"resp": eas[1],
+						},
+					},
+					configs: configs.Configs{
+						"ct": confs[1],
+					},
+					templates: templates.Templates{
+						"tt": tmpls[1],
+					},
+					parameters: parameters.Parameters{
+						"prod_key": params[1],
+						"key":      params[2],
+						"key_base": params[3],
+					},
+					sandboxes: sandboxes.Sandboxes{
+						providers.DockerType: snbs[0],
+						providers.LocalType:  snbs[2],
+					},
+				}
+				devServer := &nativeServer{
+					fnd:        fndMock,
+					name:       "server1",
+					tag:        "dev",
+					parentName: "server1/prod",
+					parent:     prodServer,
+					user:       "du",
+					group:      "dg",
+					port:       1234,
+					extended:   true,
+					actions: &actions.Actions{
+						Expect: map[string]actions.ExpectAction{
+							"resp": eas[0],
+						},
+					},
+					configs: configs.Configs{
+						"ct": confs[0],
+					},
+					templates: templates.Templates{
+						"tt": tmpls[0],
+					},
+					parameters: parameters.Parameters{
+						"prod_key": params[1],
+						"key":      params[0],
+						"key_base": params[3],
+					},
+					sandboxes: sandboxes.Sandboxes{
+						providers.DockerType: snbs[0],
+						providers.LocalType:  snbs[1],
+					},
+				}
+
+				return Servers{
+					"base": {
+						"default": defaultServer,
+					},
+					"server1": {
+						"dev":  devServer,
+						"prod": prodServer,
+					},
+				}
+			},
+		},
+		{
+			name: "Failure in circular server inheriting",
+			spec: &types.Spec{
+				Sandboxes: map[string]types.Sandbox{
+					"docker": &types.DockerSandbox{
+						Available: true,
+						Image: types.ContainerImage{
+							Name: "img",
+						},
+					},
+				},
+				Servers: []types.Server{
+					{
+						Name:    "server1/prod",
+						Extends: "base/default",
 						User:    "u1",
 						Group:   "g1",
 						Port:    1234,
@@ -920,7 +1289,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 					},
 					{
 						Name:    "base/default",
-						Extends: "",
+						Extends: "server1/dev",
 						User:    "user",
 						Group:   "grp",
 						Port:    1234,
@@ -1103,112 +1472,9 @@ func Test_nativeMaker_Make(t *testing.T) {
 					providers.DockerType: snbs[0],
 					providers.LocalType:  snbs[1],
 				}, nil)
-				snbs[1].On("Inherit", snbs[2]).Return(nil)
-				snbs[2].On("Inherit", snbs[3]).Return(nil)
 			},
-			expectedServers: func(fndMock app.Foundation, snbs []*sandboxMocks.MockSandbox) Servers {
-				defaultServer := &nativeServer{
-					fnd:        fndMock,
-					name:       "base",
-					tag:        "default",
-					parentName: "",
-					user:       "user",
-					group:      "grp",
-					port:       1234,
-					extended:   true,
-					actions: &actions.Actions{
-						Expect: map[string]actions.ExpectAction{
-							"resp": eas[2],
-						},
-					},
-					configs: configs.Configs{
-						"ct": confs[2],
-					},
-					templates: templates.Templates{
-						"tt": tmpls[2],
-					},
-					parameters: parameters.Parameters{
-						"key":      params[2],
-						"key_base": params[3],
-					},
-					sandboxes: sandboxes.Sandboxes{
-						providers.DockerType: snbs[0],
-						providers.LocalType:  snbs[3],
-					},
-				}
-				prodServer := &nativeServer{
-					fnd:        fndMock,
-					name:       "server1",
-					tag:        "prod",
-					parentName: "base/default",
-					parent:     defaultServer,
-					user:       "u1",
-					group:      "g1",
-					port:       1234,
-					extended:   true,
-					actions: &actions.Actions{
-						Expect: map[string]actions.ExpectAction{
-							"resp": eas[1],
-						},
-					},
-					configs: configs.Configs{
-						"ct": confs[1],
-					},
-					templates: templates.Templates{
-						"tt": tmpls[1],
-					},
-					parameters: parameters.Parameters{
-						"prod_key": params[1],
-						"key":      params[2],
-						"key_base": params[3],
-					},
-					sandboxes: sandboxes.Sandboxes{
-						providers.DockerType: snbs[0],
-						providers.LocalType:  snbs[2],
-					},
-				}
-				devServer := &nativeServer{
-					fnd:        fndMock,
-					name:       "server1",
-					tag:        "dev",
-					parentName: "server1/prod",
-					parent:     prodServer,
-					user:       "u1",
-					group:      "g1",
-					port:       1234,
-					extended:   true,
-					actions: &actions.Actions{
-						Expect: map[string]actions.ExpectAction{
-							"resp": eas[0],
-						},
-					},
-					configs: configs.Configs{
-						"ct": confs[0],
-					},
-					templates: templates.Templates{
-						"tt": tmpls[0],
-					},
-					parameters: parameters.Parameters{
-						"prod_key": params[1],
-						"key":      params[0],
-						"key_base": params[3],
-					},
-					sandboxes: sandboxes.Sandboxes{
-						providers.DockerType: snbs[0],
-						providers.LocalType:  snbs[1],
-					},
-				}
-
-				return Servers{
-					"base": {
-						"default": defaultServer,
-					},
-					"server1": {
-						"dev":  devServer,
-						"prod": prodServer,
-					},
-				}
-			},
+			expectedError:    true,
+			expectedErrorMsg: "circular server inheritance identified for server",
 		},
 		{
 			name: "Failure in inheriting sandbox",

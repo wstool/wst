@@ -23,9 +23,9 @@ in the future.
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
-  - pulling of image is not awaited - waiting to fully download the image does not work
+  - container create fails if container already exist - remove the container like cli `docker container create --rm`
   - container wait does not finish even if the container is running - wait condition does not work
-- identify server circular extending and error instead of current stack panic
+  - pulling of image is not awaited - waiting to fully download the image does not work
 - identify template include recursion (nesting limit)
 - currently nothing is printed if the start binary does not exist - it should print proper error
   - change fpm_binary to php-f to recreate

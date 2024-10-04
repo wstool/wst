@@ -16,6 +16,7 @@ package servers
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/run/environments/environment/providers"
@@ -186,6 +187,7 @@ type nativeServer struct {
 	parentName string
 	parent     *nativeServer
 	extended   bool
+	inheriting bool
 	actions    *actions.Actions
 	configs    configs.Configs
 	templates  templates.Templates
@@ -197,7 +199,12 @@ func (s *nativeServer) inherit() error {
 	var err error
 
 	if s.parent != nil && !s.parent.extended {
+		if s.inheriting {
+			return errors.Errorf("circular server inheritance identified for server %s/%s", s.name, s.tag)
+		}
+		s.inheriting = true
 		err = s.parent.inherit()
+		s.inheriting = false
 		if err != nil {
 			return err
 		}
