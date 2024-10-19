@@ -27,6 +27,9 @@ import (
 	"text/template"
 )
 
+// DefaultIncludeMaxDepth is a max depth set to not allow too big slow down.
+const DefaultIncludeMaxDepth = 100
+
 type Template interface {
 	RenderToWriter(content string, parameters parameters.Parameters, writer io.Writer) error
 	RenderToFile(content string, parameters parameters.Parameters, filePath string, perm os.FileMode) error
@@ -61,6 +64,7 @@ func (m *nativeMaker) Make(
 		service:         service,
 		services:        services,
 		serverTemplates: serverTemplates,
+		maxIncludeDepth: DefaultIncludeMaxDepth,
 	}
 }
 
@@ -73,6 +77,10 @@ type nativeTemplate struct {
 	service service.TemplateService
 	// Server templates
 	serverTemplates templates.Templates
+	// Inclusion depth
+	includeDepth int
+	// Max inclusion depth
+	maxIncludeDepth int
 }
 
 type Data struct {

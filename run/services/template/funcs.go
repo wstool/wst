@@ -16,7 +16,6 @@ package template
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -24,14 +23,18 @@ import (
 )
 
 func (t *nativeTemplate) include(tmplName string, data interface{}) (string, error) {
+	if t.includeDepth > t.maxIncludeDepth {
+		return "", errors.Errorf("template inclusion depth limit %d exceeded", t.maxIncludeDepth)
+	}
+
 	serverTemplate, found := t.serverTemplates[tmplName]
 	if !found {
-		return "", fmt.Errorf("failed to find template: %s", tmplName)
+		return "", errors.Errorf("failed to find template: %s", tmplName)
 	}
 	fs := t.fnd.Fs()
 	file, err := fs.Open(serverTemplate.FilePath())
 	if err != nil {
-		return "", fmt.Errorf("failed to open template file: %w", err)
+		return "", errors.Errorf("failed to open template file: %v", err)
 	}
 	defer file.Close()
 
@@ -45,10 +48,14 @@ func (t *nativeTemplate) include(tmplName string, data interface{}) (string, err
 		return "", errors.Errorf("failed to parse template: %v", err)
 	}
 
+	t.includeDepth++
+
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, data); err != nil {
 		return "", errors.Errorf("failed to execute template: %v", err)
 	}
+
+	t.includeDepth--
 
 	return buf.String(), nil
 }

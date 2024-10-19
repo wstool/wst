@@ -41,6 +41,22 @@ func Test_nativeTemplate_include(t *testing.T) {
 			expected: "Hello, World!",
 		},
 		{
+			name:     "Template recursion error",
+			tmplName: "validTemplate",
+			setupMocks: func(mt *templatesMocks.MockTemplate) {
+				mt.On("FilePath").Return("/validTemplate.tpl")
+			},
+			setupFs: func() app.Fs {
+				memMapFs := afero.NewMemMapFs()
+				fileContent := "{{ include \"validTemplate\" . }}!"
+				_ = afero.WriteFile(memMapFs, "/validTemplate.tpl", []byte(fileContent), 0644)
+				return memMapFs
+			},
+			data:           struct{ Name string }{Name: "World"},
+			expectError:    true,
+			expectedErrMsg: "template inclusion depth limit 10 exceeded",
+		},
+		{
 			name:             "Template not found",
 			tmplName:         "nonExistentTemplate",
 			includedTmplName: "missingFileTemplate",
@@ -127,6 +143,7 @@ func Test_nativeTemplate_include(t *testing.T) {
 				serverTemplates: templates.Templates{
 					tt.tmplName: mockTemplate,
 				},
+				maxIncludeDepth: 10,
 			}
 
 			includedTmplName := tt.includedTmplName

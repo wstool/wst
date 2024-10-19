@@ -320,6 +320,7 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 				service:         serviceMock,
 				services:        svcs,
 				serverTemplates: serverTemplates,
+				maxIncludeDepth: DefaultIncludeMaxDepth,
 			}
 			buffer := &bytes.Buffer{}
 			err := nativeTmpl.RenderToWriter(tt.templateStr, params, buffer)
