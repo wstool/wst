@@ -21,6 +21,8 @@ in the future.
 ### Run
 
 - add http client mode to not do automatic url escaping
+  - investigate the current http client implementation and see if it is possible to disable escaping
+  - if it is not possible to disable, create custom client
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
@@ -29,7 +31,7 @@ in the future.
   - pulling of image is not awaited - waiting to fully download the image does not work
 - extend and improve debug logging
   - pattern matching does not need to repeat pattern for each match
-  - or maybe put line first
+    - or maybe put line first
   - there should be also log for successful debug log
   - log 'Task x started for service ...' rather than command
 - test non debug logs - whether it is useful info and how errors are reported
