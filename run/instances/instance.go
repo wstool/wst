@@ -217,8 +217,8 @@ func (i *nativeInstance) executeAction(actionsCtx context.Context, act action.Ac
 	defer cancel()
 	success, err := act.Execute(ctx, i.runData)
 	if err != nil {
+		i.fnd.Logger().Errorf("Failed to to run action: %v", err)
 		if actErr != nil {
-			i.fnd.Logger().Errorf("Failed to to run action: %v", err)
 			return actErr
 		}
 		return err

@@ -26,9 +26,6 @@ in the future.
   - container create fails if container already exist - remove the container like cli `docker container create --rm`
   - container wait does not finish even if the container is running - wait condition does not work
   - pulling of image is not awaited - waiting to fully download the image does not work
-- identify template include recursion (nesting limit)
-- currently nothing is printed if the start binary does not exist - it should print proper error
-  - change fpm_binary to php-f to recreate
 - extend and improve debug logging
   - bench action should log vegeta command alternative and a bit more info
   - request - sending request should not print request and response struct but properly format it for better readability
