@@ -15,6 +15,7 @@
 package run
 
 import (
+	"encoding/json"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf"
 	"github.com/wstool/wst/run/spec"
@@ -56,7 +57,10 @@ func (r *Runner) Execute(options *Options) error {
 
 	r.fnd.Logger().Info("Executing configuration")
 
-	r.fnd.Logger().Debugf("Creating config for paths %v and overwrites %v", configPaths, options.Overwrites)
+	configPathsJSON, _ := json.Marshal(configPaths)
+	overwritesJSON, _ := json.Marshal(options.Overwrites)
+	r.fnd.Logger().Debugf("Creating config for paths %v and overwrites %v",
+		string(configPathsJSON), string(overwritesJSON))
 	config, err := r.configMaker.Make(configPaths, options.Overwrites)
 	if err != nil {
 		return err
