@@ -229,6 +229,7 @@ func Test_metricsAction_Execute(t *testing.T) {
 				metricMock := metricsMocks.NewMockMetric(t)
 				rd.On("Load", "metrics/mid").Return(metricsMock, true)
 				metricsMock.On("Find", "latency").Return(metricMock, nil)
+				metricsMock.On("String").Return("metrics").Maybe()
 				metricMock.On("Compare", metrics.MetricLtOperator, 12.0).Return(true, nil)
 			},
 			want: true,
@@ -256,6 +257,7 @@ func Test_metricsAction_Execute(t *testing.T) {
 				metricMock := metricsMocks.NewMockMetric(t)
 				rd.On("Load", "metrics/mid").Return(metricsMock, true)
 				metricsMock.On("Find", "latency").Return(metricMock, nil)
+				metricsMock.On("String").Return("metrics").Maybe()
 				metricMock.On("Compare", metrics.MetricLtOperator, 12.0).Return(false, nil)
 			},
 			want: true,
@@ -283,6 +285,7 @@ func Test_metricsAction_Execute(t *testing.T) {
 				metricMock := metricsMocks.NewMockMetric(t)
 				rd.On("Load", "metrics/mid").Return(metricsMock, true)
 				metricsMock.On("Find", "latency").Return(metricMock, nil)
+				metricsMock.On("String").Return("metrics").Maybe()
 				metricMock.On("Compare", metrics.MetricLtOperator, 12.0).Return(false, nil)
 			},
 			want: false,
@@ -309,6 +312,7 @@ func Test_metricsAction_Execute(t *testing.T) {
 				metricMock := metricsMocks.NewMockMetric(t)
 				rd.On("Load", "metrics/mid").Return(metricsMock, true)
 				metricsMock.On("Find", "latency").Return(metricMock, nil)
+				metricsMock.On("String").Return("metrics").Maybe()
 				metricMock.On("Compare", metrics.MetricLtOperator, 12.0).Return(false, errors.New("compare fail"))
 			},
 			want:             false,
@@ -336,6 +340,7 @@ func Test_metricsAction_Execute(t *testing.T) {
 				metricsMock := metricsMocks.NewMockMetrics(t)
 				rd.On("Load", "metrics/mid").Return(metricsMock, true)
 				metricsMock.On("Find", "latency").Return(nil, errors.New("find fail"))
+				metricsMock.On("String").Return("metrics").Maybe()
 			},
 			want:             false,
 			expectErr:        true,
