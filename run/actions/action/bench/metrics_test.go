@@ -1,8 +1,10 @@
 package bench
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
+	"github.com/wstool/wst/app"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	"github.com/wstool/wst/run/metrics"
 	"testing"
@@ -126,4 +128,34 @@ func TestMetrics_Find(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMetrics_String(t *testing.T) {
+	vm := &vegeta.Metrics{
+		Latencies: vegeta.LatencyMetrics{
+			Total: time.Millisecond * 100,
+			Mean:  time.Millisecond * 10,
+			P50:   time.Millisecond * 5,
+			P90:   time.Millisecond * 15,
+			P95:   time.Millisecond * 20,
+			P99:   time.Millisecond * 30,
+			Max:   time.Millisecond * 40,
+			Min:   time.Millisecond * 2,
+		},
+		Duration:   5 * time.Second,
+		Requests:   100,
+		Rate:       25.0,
+		Throughput: 20.0,
+		Success:    0.95,
+	}
+
+	m := &Metrics{metrics: app.DefaultVegetaMetrics{
+		VegetaMetrics: vm,
+	}}
+
+	expected := "{Requests: 100, Rate: 25.00, Throughput: 20.00, Duration: 5s, Success: 0.95, " +
+		"LatencyTotal: 100ms, LatencyMean: 10ms, LatencyP50: 5ms, LatencyP90: 15ms, LatencyP95: 20ms, " +
+		"LatencyP99: 30ms, LatencyMax: 40ms, LatencyMin: 2ms}"
+
+	assert.Equal(t, expected, fmt.Sprintf("%s", m))
 }

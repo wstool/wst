@@ -27,7 +27,6 @@ in the future.
   - container wait does not finish even if the container is running - wait condition does not work
   - pulling of image is not awaited - waiting to fully download the image does not work
 - extend and improve debug logging
-  - storing response metrics logs some object reference
   - pattern matching does not need to repeat pattern for each match
   - or maybe put line first
   - there should be also log for successful debug log

@@ -86,4 +86,5 @@ func (g GenericMetric[T]) Compare(operator MetricOperator, value float64) (bool,
 
 type Metrics interface {
 	Find(name string) (Metric, error)
+	String() string
 }

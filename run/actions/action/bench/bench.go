@@ -137,7 +137,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		metricsData := &Metrics{
 			metrics: metrics,
 		}
-		a.fnd.Logger().Debugf("Storing response %s: %v", key, metricsData)
+		a.fnd.Logger().Debugf("Storing response %s: %s", key, metricsData)
 		if err = runData.Store(key, metricsData); err != nil {
 			a.fnd.Logger().Errorf("Error storing metrics data: %v", err)
 			errChan <- err

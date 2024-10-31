@@ -159,6 +159,23 @@ func TestAction_Execute(t *testing.T) {
 	serviceName := "svc"
 	duration := time.Duration(5000000)
 	freq := 30
+	vm := &vegeta.Metrics{
+		Latencies: vegeta.LatencyMetrics{
+			Total: time.Millisecond * 100,
+			Mean:  time.Millisecond * 10,
+			P50:   time.Millisecond * 5,
+			P90:   time.Millisecond * 15,
+			P95:   time.Millisecond * 20,
+			P99:   time.Millisecond * 30,
+			Max:   time.Millisecond * 40,
+			Min:   time.Millisecond * 2,
+		},
+		Duration:   5 * time.Second,
+		Requests:   100,
+		Rate:       25.0,
+		Throughput: 20.0,
+		Success:    0.95,
+	}
 	tests := []struct {
 		name          string
 		setupMocks    func(*testing.T, *appMocks.MockFoundation, *servicesMocks.MockService, *runtimeMocks.MockData)
@@ -192,6 +209,7 @@ func TestAction_Execute(t *testing.T) {
 				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
 				vegetaMetricsMock.On("Add", result).Return()
 				vegetaMetricsMock.On("Close").Return()
+				vegetaMetricsMock.On("Metrics").Return(vm)
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
@@ -231,6 +249,7 @@ func TestAction_Execute(t *testing.T) {
 				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
 				vegetaMetricsMock.On("Add", result).Maybe().Return()
 				vegetaMetricsMock.On("Close").Maybe().Return()
+				vegetaMetricsMock.On("Metrics").Maybe().Return(vm)
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
@@ -273,6 +292,7 @@ func TestAction_Execute(t *testing.T) {
 				vegetaMetricsMock := appMocks.NewMockVegetaMetrics(t)
 				vegetaMetricsMock.On("Add", result).Return()
 				vegetaMetricsMock.On("Close").Return()
+				vegetaMetricsMock.On("Metrics").Return(vm)
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)

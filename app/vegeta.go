@@ -78,23 +78,23 @@ type VegetaMetrics interface {
 }
 
 type DefaultVegetaMetrics struct {
-	metrics *vegeta.Metrics
+	VegetaMetrics *vegeta.Metrics
 }
 
 func (m DefaultVegetaMetrics) Add(r *vegeta.Result) {
-	m.metrics.Add(r)
+	m.VegetaMetrics.Add(r)
 }
 
 func (m DefaultVegetaMetrics) Close() {
-	m.metrics.Close()
+	m.VegetaMetrics.Close()
 }
 
 func (m DefaultVegetaMetrics) Metrics() *vegeta.Metrics {
-	return m.metrics
+	return m.VegetaMetrics
 }
 
 func NewDefaultVegetaMetrics() VegetaMetrics {
 	return &DefaultVegetaMetrics{
-		metrics: &vegeta.Metrics{},
+		VegetaMetrics: &vegeta.Metrics{},
 	}
 }

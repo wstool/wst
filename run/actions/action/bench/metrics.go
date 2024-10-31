@@ -58,3 +58,25 @@ func (m *Metrics) Find(name string) (metrics.Metric, error) {
 		return nil, fmt.Errorf("metric %s not found", name)
 	}
 }
+
+func (m *Metrics) String() string {
+	vm := m.metrics.Metrics()
+	return fmt.Sprintf(
+		"{Requests: %d, Rate: %.2f, Throughput: %.2f, Duration: %v, Success: %.2f, LatencyTotal: %v, "+
+			"LatencyMean: %v, LatencyP50: %v, LatencyP90: %v, LatencyP95: %v, LatencyP99: %v, "+
+			"LatencyMax: %v, LatencyMin: %v}",
+		vm.Requests,
+		vm.Rate,
+		vm.Throughput,
+		vm.Duration,
+		vm.Success,
+		vm.Latencies.Total,
+		vm.Latencies.Mean,
+		vm.Latencies.P50,
+		vm.Latencies.P90,
+		vm.Latencies.P95,
+		vm.Latencies.P99,
+		vm.Latencies.Max,
+		vm.Latencies.Min,
+	)
+}
