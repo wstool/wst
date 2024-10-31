@@ -73,8 +73,27 @@ func (m *ActionMaker) Make(
 
 // ResponseData holds the response body and headers from an HTTP request.
 type ResponseData struct {
-	Body    string
-	Headers http.Header
+	Status     string
+	StatusCode int
+	Proto      string
+	Body       string
+	Headers    http.Header
+}
+
+func (r ResponseData) String() string {
+	var headers string
+	for name, values := range r.Headers {
+		for _, value := range values {
+			headers += fmt.Sprintf("\n%s: %s", name, value)
+		}
+	}
+
+	body := ""
+	if r.Body != "" {
+		body = "\n\n" + r.Body
+	}
+
+	return fmt.Sprintf("%s %s%s%s", r.Proto, r.Status, headers, body)
 }
 
 type Action struct {
@@ -114,7 +133,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	for key, value := range a.headers {
 		req.Header.Add(key, value)
 	}
-	a.fnd.Logger().Debugf("Sending request: %v", req)
+	a.fnd.Logger().Debugf("Sending request: %s", requestToString(req))
 
 	// Send the request.
 	client := a.fnd.HttpClient()
@@ -132,18 +151,32 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 
 	// Create a ResponseData instance to hold both body and headers.
 	responseData := ResponseData{
-		Body:    body,
-		Headers: resp.Header,
+		Status:     resp.Status,
+		StatusCode: resp.StatusCode,
+		Proto:      resp.Proto,
+		Body:       body,
+		Headers:    resp.Header,
 	}
 
 	// Store the ResponseData in runData.
 	key := fmt.Sprintf("response/%s", a.id)
-	a.fnd.Logger().Debugf("Storing response %s: %v", key, responseData)
+	a.fnd.Logger().Debugf("Storing response %s: %s", key, responseData)
 	if err := runData.Store(key, responseData); err != nil {
 		return false, err
 	}
 
 	return true, nil
+}
+
+func requestToString(req *http.Request) string {
+	var headers string
+	for name, values := range req.Header {
+		for _, value := range values {
+			headers += fmt.Sprintf("\n%s: %s", name, value)
+		}
+	}
+
+	return fmt.Sprintf("%s %s %s%s", req.Method, req.URL, req.Proto, headers)
 }
 
 func readResponse(ctx context.Context, body io.ReadCloser) (string, error) {

@@ -28,7 +28,6 @@ in the future.
   - pulling of image is not awaited - waiting to fully download the image does not work
 - extend and improve debug logging
   - bench action should log vegeta command alternative and a bit more info
-  - request - sending request should not print request and response struct but properly format it for better readability
   - message "Creating config for paths" should not use %v for overwrites ideally 
   - storing response metrics logs some object reference
   - pattern matching does not need to repeat pattern for each match
