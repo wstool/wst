@@ -118,6 +118,9 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	})
 	attacker := a.fnd.VegetaAttacker()
 
+	a.fnd.Logger().Debugf("Starting vegeta attack equal to cmd execution: "+
+		"echo \"%s %s\" | vegeta attack -duration=%ds -rate=%d/1s | vegeta report",
+		a.method, url, a.duration/time.Second, a.freq)
 	results := attacker.Attack(targeter, rate, a.duration, a.service.Name())
 
 	metrics := a.fnd.VegetaMetrics()
