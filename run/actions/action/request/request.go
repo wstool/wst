@@ -24,6 +24,7 @@ import (
 	"github.com/wstool/wst/run/services"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -60,14 +61,15 @@ func (m *ActionMaker) Make(
 	}
 
 	return &Action{
-		fnd:     m.fnd,
-		service: svc,
-		timeout: time.Duration(config.Timeout * 1e6),
-		when:    action.When(config.When),
-		id:      config.Id,
-		path:    config.Path,
-		method:  config.Method,
-		headers: config.Headers,
+		fnd:        m.fnd,
+		service:    svc,
+		timeout:    time.Duration(config.Timeout * 1e6),
+		when:       action.When(config.When),
+		id:         config.Id,
+		path:       config.Path,
+		encodePath: config.EncodePath,
+		method:     config.Method,
+		headers:    config.Headers,
 	}, nil
 }
 
@@ -97,14 +99,15 @@ func (r ResponseData) String() string {
 }
 
 type Action struct {
-	fnd     app.Foundation
-	service services.Service
-	timeout time.Duration
-	when    action.When
-	id      string
-	path    string
-	method  string
-	headers types.Headers
+	fnd        app.Foundation
+	service    services.Service
+	timeout    time.Duration
+	when       action.When
+	id         string
+	path       string
+	encodePath bool
+	method     string
+	headers    types.Headers
 }
 
 func (a *Action) When() action.When {
@@ -118,15 +121,24 @@ func (a *Action) Timeout() time.Duration {
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing request action")
 
-	url, err := a.service.PublicUrl(a.path)
+	publicUrl, err := a.service.PublicUrl(a.path)
 	if err != nil {
 		return false, err
 	}
 
 	// Create the HTTP request.
-	req, err := http.NewRequestWithContext(ctx, a.method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, a.method, publicUrl, nil)
 	if err != nil {
 		return false, err
+	}
+	if !a.encodePath {
+		// Error is ignored because this can never fail (invalid URL would fail in NewRequestWithContext call).
+		parsedUrl, _ := url.Parse(publicUrl)
+		req.URL = &url.URL{
+			Scheme: parsedUrl.Scheme,
+			Host:   parsedUrl.Host,
+			Opaque: fmt.Sprintf("//%s%s", parsedUrl.Host, a.path),
+		}
 	}
 
 	// Add headers to the request.

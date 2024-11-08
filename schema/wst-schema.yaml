@@ -698,6 +698,12 @@ $defs:
         description: Request URL path used for benchmark which can also contain query parameters.
         type: string
         default: /
+      encode_path:
+        title: Whether the path should be URL encoded
+        description: |
+          There are test cases when it is convenient to pass not URL encoded path and this is the option to disabled it.
+        type: boolean
+        default: true
       method:
         title: Benchmark request method
         type: string

@@ -20,9 +20,7 @@ in the future.
 
 ### Run
 
-- add http client mode to not do automatic url escaping
-  - investigate the current http client implementation and see if it is possible to disable escaping
-  - if it is not possible to disable, create custom client
+- check why Apache httpd is failing for request with not escaped URL
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment

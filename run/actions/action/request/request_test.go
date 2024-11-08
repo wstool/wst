@@ -14,6 +14,7 @@ import (
 	"github.com/wstool/wst/run/services"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -50,12 +51,13 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "successful request action creation with default timeout",
 			config: &types.RequestAction{
-				Service: "validService",
-				Timeout: 0,
-				When:    "on_success",
-				Id:      "last",
-				Path:    "/test",
-				Method:  "GET",
+				Service:    "validService",
+				Timeout:    0,
+				When:       "on_success",
+				Id:         "last",
+				Path:       "/test",
+				EncodePath: true,
+				Method:     "GET",
 				Headers: types.Headers{
 					"content-type": "application/json",
 				},
@@ -68,13 +70,14 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
 				return &Action{
-					fnd:     fndMock,
-					service: svc,
-					timeout: 5000 * time.Millisecond,
-					when:    action.OnSuccess,
-					id:      "last",
-					path:    "/test",
-					method:  "GET",
+					fnd:        fndMock,
+					service:    svc,
+					timeout:    5000 * time.Millisecond,
+					when:       action.OnSuccess,
+					id:         "last",
+					path:       "/test",
+					encodePath: true,
+					method:     "GET",
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
@@ -192,6 +195,7 @@ func TestAction_Execute(t *testing.T) {
 		name       string
 		id         string
 		path       string
+		encodePath bool
 		method     string
 		headers    types.Headers
 		setupMocks func(
@@ -207,10 +211,11 @@ func TestAction_Execute(t *testing.T) {
 		expectedErrorMsg string
 	}{
 		{
-			name:   "successful execution",
-			id:     "r1",
-			path:   "/test",
-			method: "GET",
+			name:       "successful execution with path encoding",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -247,10 +252,57 @@ func TestAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name:   "failed execution due to failed storing",
-			id:     "r1",
-			path:   "/test",
-			method: "GET",
+			name:       "successful execution without path encoding",
+			id:         "r1",
+			path:       "/test",
+			encodePath: false,
+			method:     "GET",
+			headers: types.Headers{
+				"content-type": "application/json",
+				"user-agent":   "wst",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				publicUrl := "https://example.com/test"
+				svc.On("PublicUrl", "/test").Return(publicUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", publicUrl, nil)
+				assert.Nil(t, err)
+				expectedRequest.Header.Add("content-type", "application/json")
+				expectedRequest.Header.Add("user-agent", "wst")
+				expectedRequest.URL = &url.URL{
+					Scheme: "https",
+					Host:   "example.com",
+					Opaque: "//example.com/test",
+				}
+				body := &bodyReader{msg: "test"}
+				header := http.Header{
+					"content-type": []string{"application/json"},
+				}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient").Return(client)
+				client.On("Do", expectedRequest).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "failed execution due to failed storing",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -289,10 +341,11 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrorMsg: "store failed",
 		},
 		{
-			name:   "failed execution due to failed response reading",
-			id:     "r1",
-			path:   "/test",
-			method: "GET",
+			name:       "failed execution due to failed response reading",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -327,10 +380,11 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrorMsg: "failed read",
 		},
 		{
-			name:   "failed execution due to context being done",
-			id:     "r1",
-			path:   "/test",
-			method: "GET",
+			name:       "failed execution due to context being done",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -370,10 +424,11 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrorMsg: "context canceled",
 		},
 		{
-			name:   "failed execution due to client do failure",
-			id:     "r1",
-			path:   "/test",
-			method: "GET",
+			name:       "failed execution due to client do failure",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -400,10 +455,11 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrorMsg: "client fail",
 		},
 		{
-			name:   "failed execution due to invalid request",
-			id:     "r1",
-			path:   "/test",
-			method: "=",
+			name:       "failed execution due to invalid request",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "=",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -423,10 +479,11 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrorMsg: "invalid method",
 		},
 		{
-			name:   "failed execution due to public url failing",
-			id:     "r1",
-			path:   "/test",
-			method: "=",
+			name:       "failed execution due to public url failing",
+			id:         "r1",
+			path:       "/test",
+			encodePath: true,
+			method:     "=",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
@@ -463,13 +520,14 @@ func TestAction_Execute(t *testing.T) {
 			tt.setupMocks(t, ctx, runDataMock, fndMock, svcMock)
 
 			a := &Action{
-				fnd:     fndMock,
-				service: svcMock,
-				timeout: 3000 * time.Millisecond,
-				id:      tt.id,
-				path:    tt.path,
-				method:  tt.method,
-				headers: tt.headers,
+				fnd:        fndMock,
+				service:    svcMock,
+				timeout:    3000 * time.Millisecond,
+				id:         tt.id,
+				path:       tt.path,
+				encodePath: tt.encodePath,
+				method:     tt.method,
+				headers:    tt.headers,
 			}
 
 			got, err := a.Execute(ctx, runDataMock)

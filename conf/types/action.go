@@ -85,13 +85,14 @@ type ExpectationAction interface {
 }
 
 type RequestAction struct {
-	Service string  `wst:"service"`
-	Timeout int     `wst:"timeout"`
-	When    string  `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Id      string  `wst:"id,default=last"`
-	Path    string  `wst:"path"`
-	Method  string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
-	Headers Headers `wst:"headers"`
+	Service    string  `wst:"service"`
+	Timeout    int     `wst:"timeout"`
+	When       string  `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Id         string  `wst:"id,default=last"`
+	Path       string  `wst:"path"`
+	EncodePath bool    `wst:"encode_path,default=true"`
+	Method     string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
+	Headers    Headers `wst:"headers"`
 }
 
 type BenchAction struct {
