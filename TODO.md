@@ -8,6 +8,7 @@ in the future.
 ### Build, CI and Docs
 
 - Update README and extend README - align with the current logic
+- document encode_path request action option
 - document parallel, not and reload actions in schema
 - review the schema if it matches the config
 - further extend README docs
@@ -20,7 +21,7 @@ in the future.
 
 ### Run
 
-- check why Apache httpd is failing for request with not escaped URL
+- check why expect/service_name does not work without service option
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment
