@@ -83,12 +83,23 @@ func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool,
 		noMatchResult = true
 	}
 
+	// Compare status code.
+	if a.StatusCode != 0 {
+		a.fnd.Logger().Debugf("Comparing status code %d against expected status code %d",
+			responseData.StatusCode, a.StatusCode)
+		if responseData.StatusCode != a.StatusCode {
+			a.fnd.Logger().Infof("Status code did not match")
+			return noMatchResult, nil
+		}
+	}
+
 	// Compare headers.
 	for key, expectedValue := range a.Headers {
 		value, ok := responseData.Headers[key]
-		a.fnd.Logger().Debugf("Comparing header %s with value %s against expected value %s", key, value, expectedValue)
+		a.fnd.Logger().Debugf("Comparing header %s with value %s against expected value %s",
+			key, value, expectedValue)
 		if !ok || (len(value) > 0 && value[0] != expectedValue) {
-			a.fnd.Logger().Debugf("Headers did not match")
+			a.fnd.Logger().Infof("Headers did not match")
 			return noMatchResult, nil
 		}
 	}
@@ -103,7 +114,7 @@ func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool,
 	case expectations.MatchTypeExact:
 		a.fnd.Logger().Debugf("Matching body %s with expected content %s", responseData.Body, content)
 		if responseData.Body != content {
-			a.fnd.Logger().Debugf("Body did not exactly match")
+			a.fnd.Logger().Infof("Body did not exactly match")
 			return noMatchResult, nil
 		}
 	case expectations.MatchTypeRegexp:
@@ -113,7 +124,7 @@ func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool,
 			return noMatchResult, err
 		}
 		if !matched {
-			a.fnd.Logger().Debugf("Body did not match the pattern")
+			a.fnd.Logger().Infof("Body did not match the pattern")
 			return noMatchResult, nil
 		}
 	}

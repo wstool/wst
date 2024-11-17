@@ -234,6 +234,11 @@ $defs:
               The switch selects whether the template rendering is used for body content.
             type: boolean
             default: true
+      status:
+        title: Status code to match
+        description: |
+          The status is the expected status code for the response of the selected request.
+        type: integer
 
   serverExpectation:
     title: Server expectation action definition

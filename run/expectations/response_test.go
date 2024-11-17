@@ -25,6 +25,7 @@ func Test_nativeMaker_MakeResponseExpectation(t *testing.T) {
 					Content:        "Expected content",
 					RenderTemplate: false,
 				},
+				Status: 200,
 			},
 			expectError: false,
 			expected: &ResponseExpectation{
@@ -33,6 +34,7 @@ func Test_nativeMaker_MakeResponseExpectation(t *testing.T) {
 				BodyContent:        "Expected content",
 				BodyMatch:          MatchTypeExact,
 				BodyRenderTemplate: false,
+				StatusCode:         200,
 			},
 		},
 		{
@@ -53,6 +55,26 @@ func Test_nativeMaker_MakeResponseExpectation(t *testing.T) {
 				BodyContent:        "^Expected.*content$",
 				BodyMatch:          MatchTypeRegexp,
 				BodyRenderTemplate: true,
+			},
+		},
+		{
+			name: "valid none match",
+			config: &types.ResponseExpectation{
+				Request: "/api/data",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body: types.ResponseBody{
+					Match:          "",
+					Content:        "",
+					RenderTemplate: false,
+				},
+			},
+			expectError: false,
+			expected: &ResponseExpectation{
+				Request:            "/api/data",
+				Headers:            map[string]string{"Content-Type": "application/json"},
+				BodyContent:        "",
+				BodyMatch:          MatchTypeNone,
+				BodyRenderTemplate: false,
 			},
 		},
 		{

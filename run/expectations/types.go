@@ -17,6 +17,7 @@ package expectations
 type MatchType string
 
 const (
+	MatchTypeNone   MatchType = ""
 	MatchTypeExact  MatchType = "exact"
 	MatchTypeRegexp MatchType = "regexp"
 )

@@ -203,7 +203,7 @@ func Test_responseAction_Execute(t *testing.T) {
 		expectedErrorMsg string
 	}{
 		{
-			name: "successful response exact match",
+			name: "successful response with exact body match and default status",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -216,8 +216,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
@@ -232,7 +233,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "successful response exact no match",
+			name: "successful response with exact body match specific status",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -245,8 +246,40 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "test",
+				BodyMatch:          expectations.MatchTypeExact,
+				BodyRenderTemplate: true,
+				StatusCode:         200,
+			},
+			want: true,
+		},
+		{
+			name: "successful response with exact no body match",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 				svc.On("RenderTemplate", "test x", params).Return("test x", nil)
@@ -260,9 +293,8 @@ func Test_responseAction_Execute(t *testing.T) {
 			},
 			want: false,
 		},
-
 		{
-			name: "successful response exact no match with dry run",
+			name: "successful response with exact no body match and dry run",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -275,8 +307,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(true)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 				svc.On("RenderTemplate", "test x", params).Return("test x", nil)
@@ -291,7 +324,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "successful response regexp match",
+			name: "successful response with regexp body match",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -304,8 +337,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -319,7 +353,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "successful response regexp no match",
+			name: "successful response with regexp no body match",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -332,8 +366,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -347,7 +382,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "successful response regexp no match with dry run",
+			name: "successful response with regexp no body match and dry run",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -360,8 +395,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(true)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -375,7 +411,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "failed response regexp match because invalid pattern",
+			name: "failed response with regexp body match because invalid pattern",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -388,8 +424,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -404,7 +441,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "failed response match because rendering failed",
+			name: "failed response with body match because rendering failed",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -417,8 +454,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 				svc.On("RenderTemplate", "tex", params).Return("", errors.New("failed render"))
@@ -435,7 +473,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			expectedErrorMsg: "failed render",
 		},
 		{
-			name: "successful response headers no match",
+			name: "successful response with no headers match",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -448,8 +486,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -463,7 +502,7 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "successful response headers no match with dry run",
+			name: "successful response with no headers match and dry run",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -476,8 +515,9 @@ func Test_responseAction_Execute(t *testing.T) {
 				fnd.On("DryRun").Return(true)
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				response := request.ResponseData{
-					Body:    "test tmp",
-					Headers: http.Header{"content-type": []string{"application/json"}},
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
 				}
 				rd.On("Load", "response/last").Return(response, true)
 			},
@@ -487,6 +527,66 @@ func Test_responseAction_Execute(t *testing.T) {
 				BodyContent:        "tex",
 				BodyMatch:          expectations.MatchTypeRegexp,
 				BodyRenderTemplate: true,
+			},
+			want: true,
+		},
+		{
+			name: "successful response with no status code match",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 201,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"accept": "application/json"},
+				BodyContent:        "tex",
+				BodyMatch:          expectations.MatchTypeRegexp,
+				BodyRenderTemplate: true,
+				StatusCode:         200,
+			},
+			want: false,
+		},
+		{
+			name: "successful response with no status code match and dry run",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(true)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 201,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"accept": "application/json"},
+				BodyContent:        "tex",
+				BodyMatch:          expectations.MatchTypeRegexp,
+				BodyRenderTemplate: true,
+				StatusCode:         200,
 			},
 			want: true,
 		},

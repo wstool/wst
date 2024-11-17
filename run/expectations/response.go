@@ -15,7 +15,7 @@
 package expectations
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/wstool/wst/conf/types"
 )
 
@@ -23,8 +23,8 @@ func (m *nativeMaker) MakeResponseExpectation(
 	config *types.ResponseExpectation,
 ) (*ResponseExpectation, error) {
 	match := MatchType(config.Body.Match)
-	if match != MatchTypeExact && match != MatchTypeRegexp {
-		return nil, fmt.Errorf("invalid MatchType: %v", config.Body.Match)
+	if match != MatchTypeNone && match != MatchTypeExact && match != MatchTypeRegexp {
+		return nil, errors.Errorf("invalid MatchType: %v", config.Body.Match)
 	}
 
 	return &ResponseExpectation{
@@ -33,6 +33,7 @@ func (m *nativeMaker) MakeResponseExpectation(
 		BodyContent:        config.Body.Content,
 		BodyMatch:          match,
 		BodyRenderTemplate: config.Body.RenderTemplate,
+		StatusCode:         config.Status,
 	}, nil
 }
 
@@ -42,4 +43,5 @@ type ResponseExpectation struct {
 	BodyContent        string
 	BodyMatch          MatchType
 	BodyRenderTemplate bool
+	StatusCode         int
 }
