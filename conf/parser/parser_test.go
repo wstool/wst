@@ -1784,7 +1784,8 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 								map[string]interface{}{
 									"expect/web_service/status": map[string]interface{}{
-										"body": "2",
+										"body":   "2",
+										"status": 200,
 									},
 								},
 								map[string]interface{}{
@@ -1911,12 +1912,13 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									When:     "on_success",
 								},
 								&types.RequestAction{
-									Service: "web_service",
-									Timeout: 0,
-									When:    "on_success",
-									Id:      "last",
-									Path:    "/api/status",
-									Method:  "GET",
+									Service:    "web_service",
+									Timeout:    0,
+									When:       "on_success",
+									Id:         "last",
+									Path:       "/api/status",
+									EncodePath: true,
+									Method:     "GET",
 								},
 								&types.CustomExpectationAction{
 									Service: "web_service",
@@ -1925,7 +1927,8 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									Custom: types.CustomExpectation{
 										Name: "status",
 										Parameters: types.Parameters{
-											"body": "2",
+											"body":   "2",
+											"status": 200,
 										},
 									},
 								},
