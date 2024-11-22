@@ -19,6 +19,7 @@ type TemplateService interface {
 	LocalAddress() string
 	PrivateAddress() string
 	PrivateUrl() (string, error)
+	UdsPath() (string, error)
 	Executable() (string, error)
 	Pid() (int, error)
 	ConfDir() (string, error)

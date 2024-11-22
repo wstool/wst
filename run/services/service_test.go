@@ -1225,6 +1225,37 @@ func Test_nativeService_LocalAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:80", svc.LocalAddress())
 }
 
+func Test_nativeService_UdsPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		expectedPath string
+		err          error
+	}{
+		{
+			name:         "successful result",
+			expectedPath: "/ws/run/dir/svc/svc.sock",
+			err:          nil,
+		},
+		{
+			name: "error during mkdir",
+			err:  errors.New("mkdir fail"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testingNativeService(t)
+			svc.sandbox.(*sandboxMocks.MockSandbox).On("Dirs").Return(testSandboxDirs())
+			envMock := svc.environment.(*environmentMocks.MockEnvironment)
+			envMock.On("RootPath", "/tmp/ws/svc").Return("/ws")
+			envMock.On("Mkdir", "svc", "/ws/run/dir/svc", os.FileMode(0755)).Return(tt.err)
+			result, err := svc.UdsPath()
+			assert.Equal(t, tt.expectedPath, result)
+			assert.Equal(t, err, tt.err)
+		})
+	}
+}
+
 func Test_nativeService_Port(t *testing.T) {
 	svc := testingNativeService(t)
 	svc.server.(*serversMocks.MockServer).On("Port").Return(int32(1234))

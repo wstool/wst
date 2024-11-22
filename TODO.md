@@ -61,7 +61,6 @@ in the future.
   - health check - waiting for container to be able to serve the traffic
   - custom docker
 - local environment improvements
-  - support for UDS in address
   - consider reporting closing output streams in Destroy
 - test dry run and how it works in all environments
 - consider some internal options in the config

@@ -46,6 +46,7 @@ type Service interface {
 	PrivateAddress() string
 	PrivateUrl() (string, error)
 	PublicUrl(path string) (string, error)
+	UdsPath() (string, error)
 	Pid() (int, error)
 	Name() string
 	FullName() string
@@ -577,6 +578,14 @@ func (s *nativeService) PrivateUrl() (string, error) {
 	}
 
 	return s.task.PrivateUrl(), nil
+}
+
+func (s *nativeService) UdsPath() (string, error) {
+	rd, err := s.RunDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(rd, fmt.Sprintf("%s.sock", s.name)), nil
 }
 
 func (s *nativeService) Pid() (int, error) {

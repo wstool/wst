@@ -529,6 +529,61 @@ func (_c *MockTemplateService_ScriptDir_Call) RunAndReturn(run func() (string, e
 	return _c
 }
 
+// UdsPath provides a mock function with given fields:
+func (_m *MockTemplateService) UdsPath() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for UdsPath")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTemplateService_UdsPath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UdsPath'
+type MockTemplateService_UdsPath_Call struct {
+	*mock.Call
+}
+
+// UdsPath is a helper method to define mock.On call
+func (_e *MockTemplateService_Expecter) UdsPath() *MockTemplateService_UdsPath_Call {
+	return &MockTemplateService_UdsPath_Call{Call: _e.mock.On("UdsPath")}
+}
+
+func (_c *MockTemplateService_UdsPath_Call) Run(run func()) *MockTemplateService_UdsPath_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTemplateService_UdsPath_Call) Return(_a0 string, _a1 error) *MockTemplateService_UdsPath_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTemplateService_UdsPath_Call) RunAndReturn(run func() (string, error)) *MockTemplateService_UdsPath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // User provides a mock function with given fields:
 func (_m *MockTemplateService) User() string {
 	ret := _m.Called()
