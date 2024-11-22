@@ -33,6 +33,8 @@ in the future.
   - there should be also log for successful debug log
   - log 'Task x started for service ...' rather than command
 - test non debug logs - whether it is useful info and how errors are reported
+- look into instance inheritance to reduce duplications for test that differs only in some server parameters
+  - example of that is in wst-php-fpm where httpd tests are pretty much the same except some server parameters
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
@@ -62,6 +64,8 @@ in the future.
   - custom docker
 - local environment improvements
   - consider reporting closing output streams in Destroy
+  - find some smarter way for ports ranges so it does not need to be in each instance
+    - maybe some global ports pool
 - test dry run and how it works in all environments
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
