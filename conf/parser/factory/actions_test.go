@@ -157,6 +157,41 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Valid custom expectation with inline service",
+			actions: []interface{}{
+				map[string]interface{}{
+					"expect/serviceName": map[string]interface{}{
+						"timeout": 1000,
+						"name":    "cname",
+						"custom": map[string]interface{}{
+							"id": "data",
+						},
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				path string
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"timeout": 1000,
+						"name":    "cname",
+						"custom": map[string]interface{}{
+							"id": "data",
+						},
+					},
+					path: "testPath",
+					err:  nil,
+				},
+			},
+			want: []types.Action{
+				&types.CustomExpectationAction{Service: "serviceName"},
+			},
+			wantErr: false,
+		},
+		{
 			name: "Valid metrics expectation action",
 			actions: []interface{}{
 				map[string]interface{}{
@@ -198,6 +233,45 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Valid metrics expectation action with inline service",
+			actions: []interface{}{
+				map[string]interface{}{
+					"expect/serviceName": map[string]interface{}{
+						"timeout": 1000,
+						"metrics": map[string]interface{}{
+							"id": "data",
+							"rules": map[string]interface{}{
+								"metric": "name",
+							},
+						},
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				path string
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"timeout": 1000,
+						"metrics": map[string]interface{}{
+							"id": "data",
+							"rules": map[string]interface{}{
+								"metric": "name",
+							},
+						},
+					},
+					path: "testPath",
+					err:  nil,
+				},
+			},
+			want: []types.Action{
+				&types.MetricsExpectationAction{Service: "serviceName"},
+			},
+			wantErr: false,
+		},
+		{
 			name: "Valid output expectation action",
 			actions: []interface{}{
 				map[string]interface{}{
@@ -229,6 +303,39 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			},
 			want: []types.Action{
 				&types.OutputExpectationAction{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Valid output expectation action with inline service",
+			actions: []interface{}{
+				map[string]interface{}{
+					"expect/serviceName": map[string]interface{}{
+						"timeout": 1000,
+						"output": map[string]interface{}{
+							"message": "data",
+						},
+					},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				path string
+				err  error
+			}{
+				{
+					data: map[string]interface{}{
+						"timeout": 1000,
+						"output": map[string]interface{}{
+							"message": "data",
+						},
+					},
+					path: "testPath",
+					err:  nil,
+				},
+			},
+			want: []types.Action{
+				&types.OutputExpectationAction{Service: "serviceName"},
 			},
 			wantErr: false,
 		},

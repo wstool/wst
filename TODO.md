@@ -21,7 +21,6 @@ in the future.
 
 ### Run
 
-- check why expect/service_name does not work without service option
 - test and fix kubernetes environment
   - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - test and fix docker environment

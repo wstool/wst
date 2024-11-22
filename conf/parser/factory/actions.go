@@ -100,13 +100,13 @@ func (f *NativeActionsFactory) parseExpectationAction(
 		case "timeout":
 			continue
 		case "custom":
-			structure = &types.CustomExpectationAction{}
+			structure = &types.CustomExpectationAction{Service: meta.serviceName}
 		case "metrics":
-			structure = &types.MetricsExpectationAction{}
+			structure = &types.MetricsExpectationAction{Service: meta.serviceName}
 		case "output":
-			structure = &types.OutputExpectationAction{}
+			structure = &types.OutputExpectationAction{Service: meta.serviceName}
 		case "response":
-			structure = &types.ResponseExpectationAction{}
+			structure = &types.ResponseExpectationAction{Service: meta.serviceName}
 		default:
 			return nil, errors.Errorf("invalid expectation key %s at %s", expKey, f.loc.String())
 		}
