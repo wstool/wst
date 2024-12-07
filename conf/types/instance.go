@@ -19,11 +19,18 @@ type InstanceTimeouts struct {
 	Actions int `wst:"actions,default=0"`
 }
 
+type InstanceExtends struct {
+	Name       string     `wst:"name"`
+	Parameters Parameters `wst:"parameters,factory=createParameters"`
+}
+
 type Instance struct {
 	Name         string                 `wst:"name"`
 	Title        string                 `wst:"title"`
 	Description  string                 `wst:"description"`
 	Labels       []string               `wst:"labels"`
+	Abstract     bool                   `wst:"abstract,default=false"`
+	Extends      InstanceExtends        `wst:"extends,string=name"`
 	Resources    Resources              `wst:"resources"`
 	Services     map[string]Service     `wst:"services,loadable"`
 	Timeouts     InstanceTimeouts       `wst:"timeouts"`

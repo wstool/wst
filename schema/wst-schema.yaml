@@ -964,6 +964,26 @@ $defs:
         type: array
         items:
           type: string
+      abstract:
+        title: Abstract instance flag
+        description: |
+          The abstract instance can be only extended and cannot be executed on its own.
+        type: boolean
+      extends:
+        title: Parent instance and the supplied parameters
+        description: |
+          This property selects the parent instance from which environments, resources, services, and actions are
+          inherited. If only a string is specified, it is equivalent to specifying the name with the string value and
+          empty parameters. Parameters, if provided, can be used to customize the parent instance. This helps reduce
+          configuration duplication.
+        type: object|string
+        properties:
+          name:
+            title: Parent instance name
+            description: The name needs match the name of the instance that should be extended.
+            type: string
+          parameters:
+            $ref: '#/$defs/parameters'
       environments:
         $ref: '#/$defs/environments'
       resources:
