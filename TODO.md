@@ -21,18 +21,8 @@ in the future.
 
 ### Run
 
-- test and fix kubernetes environment
-  - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
-- test and fix docker environment
-  - container create fails if container already exist - remove the container like cli `docker container create --rm`
-  - container wait does not finish even if the container is running - wait condition does not work
-  - pulling of image is not awaited - waiting to fully download the image does not work
-- extend and improve debug logging
-  - pattern matching does not need to repeat pattern for each match
-    - or maybe put line first
-  - there should be also log for successful debug log
-  - log 'Task x started for service ...' rather than command
-- test non debug logs - whether it is useful info and how errors are reported
+#### Structure - Instances, Actions, Servers, Services
+
 - look into instance inheritance to reduce duplications for test that differs only in some server parameters
   - example of that is in wst-php-fpm where httpd tests are pretty much the same except some server parameters
 - integrate better instance action identification
@@ -44,8 +34,6 @@ in the future.
 - support metrics server expectation
 - look into doing some partial expectation
   - some sort of contains mode rather than full match
-- add labels based filtering for the run
-  - new options for selecting labels - only instances with those labels will run
 - look into more consistent naming for public and private url vs local and private address
   - private has got different meaning in both
   - maybe address is not the best name
@@ -55,22 +43,22 @@ in the future.
 - consider moving server port to sandbox port
   - currently the server port is really just container specific and not used for local
   - consider more consistent naming differentiating that service port is public and server port is private
-- kubernetes environment improvements
-  - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
-  - support and test native hook start where command is nil (set better executable - ideally configurable)
-  - add health probes setup
-- docker environment improvements
-  - health check - waiting for container to be able to serve the traffic
-  - custom docker
-- local environment improvements
-  - consider reporting closing output streams in Destroy
-  - find some smarter way for ports ranges so it does not need to be in each instance
-    - maybe some global ports pool
+- enhance parameters merging
+  - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
+- come up with custom error wrapping and types
+  - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
+  - removal of deprecated (archived) github.com/pkg/errors
+- replace environment.ServiceSettings struct with environment.Service interface
+  - code clean up really with saving some calls - it just messy to pre-create this struct
+- fuzzing action
+
+#### Execution
+
+- add labels based filtering for the run
+  - new options for selecting labels - only instances with those labels will run
 - test dry run and how it works in all environments
 - consider some internal options in the config
   - option to keep the old workspace rather than deleting - e.g. moving the whole dir to some archive - for debugging
-- enhance parameters merging
-  - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
 - separate workspace for each environment and reset only the env that is being run
   - it's to keep the local for potential debugging
   - also move local env files under a single dir (compare to multiple _env dirs) and get rid of duplicated service naming in path
@@ -80,12 +68,38 @@ in the future.
   - consider what to do for Kubernetes - maybe yaml files and shell to start and stop them
 - root mode execution
   - add support for template condition whether service starts under root (e.g. in containers)
-- come up with custom error wrapping and types
-  - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
-  - removal of deprecated (archived) github.com/pkg/errors
-- replace environment.ServiceSettings struct with environment.Service interface
-  - code clean up really with saving some calls - it just messy to pre-create this struct
-- fuzzing action
+
+#### Monitoring and debugging
+
+- extend and improve debug logging
+  - pattern matching does not need to repeat pattern for each match
+    - or maybe put line first
+  - there should be also log for successful debug log
+  - log 'Task x started for service ...' rather than command
+- test non debug logs - whether it is useful info and how errors are reported
+
+#### Local environment
+
+- consider reporting closing output streams in Destroy
+- find some smarter way for ports ranges so it does not need to be in each instance
+  - maybe some global ports pool
+
+
+#### Kubernetes environment
+
+- pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
+- allow setting default kubeconfig to ~/.kube/config (will require home dir support)
+- support and test native hook start where command is nil (set better executable - ideally configurable)
+- add health probes setup
+
+#### Docker environment
+
+- container create fails if container already exist - remove the container like cli `docker container create --rm`
+- container wait does not finish even if the container is running - wait condition does not work
+- pulling of image is not awaited - waiting to fully download the image does not work
+- health check - waiting for container to be able to serve the traffic
+- custom docker
+
 
 ### List
 
