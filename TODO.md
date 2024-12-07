@@ -23,8 +23,11 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- look into instance inheritance to reduce duplications for test that differs only in some server parameters
-  - example of that is in wst-php-fpm where httpd tests are pretty much the same except some server parameters
+- implement instance inheritance to reduce duplications for test that differs only in some parameters
+  - add abstract instance boolean field that should cause that instance is not going to be executed on its own
+  - add extends instance object field having name and parameters fields
+  - implement extending logic to work in a similar way as servers and inherit environments, resources, services and actions
+  - integrate parameters rendering support for instance server, server config and possibly other parts
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
