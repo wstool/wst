@@ -258,6 +258,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			instanceConfig: types.Instance{
 				Name:     "test-instance",
 				Actions:  testActions,
+				Abstract: true,
 				Timeouts: types.InstanceTimeouts{},
 				Resources: types.Resources{
 					Scripts: testScripts,
@@ -291,6 +292,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					runtimeMaker: runtimeMaker,
 					name:         "test-instance",
 					index:        instanceIdx,
+					abstract:     true,
 					timeout:      15 * time.Second,
 					actions:      acts,
 					envs:         testEnvironments,
@@ -597,6 +599,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 	tests := []struct {
 		name       string
 		count      int
+		abstract   bool
 		setupMocks func(
 			*nativeInstance,
 			*appMocks.MockFoundation,
@@ -1170,7 +1173,22 @@ func Test_nativeInstance_Run(t *testing.T) {
 				fnd.On("Fs").Return(fsMock)
 			},
 			expectError:      true,
-			expectedErrorMsg: "ailed to remove previous workspace for instance testInstance: remove fail",
+			expectedErrorMsg: "failed to remove previous workspace for instance testInstance: remove fail",
+		},
+		{
+			name:     "fail on abstract action",
+			abstract: true,
+			count:    1,
+			setupMocks: func(
+				inst *nativeInstance,
+				fnd *appMocks.MockFoundation,
+				rm *runtimeMocks.MockMaker,
+				acts []*actionMocks.MockAction,
+				cancelFunc context.CancelFunc,
+			) {
+			},
+			expectError:      true,
+			expectedErrorMsg: "instance testInstance is abstract and cannot be run",
 		},
 	}
 
@@ -1196,6 +1214,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				runtimeMaker: runtimeMakerMock,
 				name:         "testInstance",
 				actions:      acts,
+				abstract:     tt.abstract,
 				envs: environments.Environments{
 					providers.LocalType:  environmentMocks.NewMockEnvironment(t),
 					providers.DockerType: environmentMocks.NewMockEnvironment(t),

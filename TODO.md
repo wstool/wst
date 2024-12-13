@@ -24,7 +24,6 @@ in the future.
 #### Structure - Instances, Actions, Servers, Services
 
 - implement instance inheritance to reduce duplications for test that differs only in some parameters
-  - add abstract instance boolean field that should cause that instance is not going to be executed on its own
   - add extends instance object field having name and parameters fields
   - implement extending logic to work in a similar way as servers and inherit environments, resources, services and actions
   - integrate parameters rendering support for instance server, server config and possibly other parts

@@ -128,6 +128,7 @@ func (m *nativeInstanceMaker) Make(
 		runtimeMaker: m.runtimeMaker,
 		name:         name,
 		index:        instanceIdx,
+		abstract:     instanceConfig.Abstract,
 		timeout:      time.Duration(instanceTimeout) * time.Millisecond,
 		actions:      instanceActions,
 		envs:         envs,
@@ -141,6 +142,7 @@ type nativeInstance struct {
 	runtimeMaker runtime.Maker
 	name         string
 	index        int
+	abstract     bool
 	actions      []action.Action
 	envs         environments.Environments
 	runData      runtime.Data
@@ -157,8 +159,11 @@ func (i *nativeInstance) Name() string {
 }
 
 func (i *nativeInstance) Run() error {
-	var err error
+	if i.abstract {
+		return errors.Errorf("instance %s is abstract and cannot be run", i.name)
+	}
 
+	var err error
 	fs := i.fnd.Fs()
 	if err = fs.RemoveAll(i.workspace); err != nil {
 		return errors.Errorf("failed to remove previous workspace for instance %s: %v", i.name, err)
