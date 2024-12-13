@@ -38,6 +38,12 @@ type Instance interface {
 	Run() error
 	Name() string
 	Workspace() string
+	IsChild() bool
+	IsAbstract() bool
+	Extend(instsMap map[string]Instance) error
+	Parameters() parameters.Parameters
+	Timeout() time.Duration
+	Actions() []action.Action
 }
 
 type InstanceMaker interface {
@@ -54,6 +60,7 @@ type InstanceMaker interface {
 type nativeInstanceMaker struct {
 	fnd              app.Foundation
 	actionMaker      actions.ActionMaker
+	parametersMaker  parameters.Maker
 	servicesMaker    services.Maker
 	scriptsMaker     scripts.Maker
 	environmentMaker environments.Maker
@@ -68,6 +75,7 @@ func CreateInstanceMaker(
 	runtimeMaker := runtime.CreateMaker(fnd)
 	return &nativeInstanceMaker{
 		fnd:              fnd,
+		parametersMaker:  parametersMaker,
 		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker, runtimeMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
 		scriptsMaker:     scripts.CreateMaker(fnd, parametersMaker),
@@ -118,36 +126,111 @@ func (m *nativeInstanceMaker) Make(
 	}
 
 	instanceTimeout := instanceConfig.Timeouts.Actions
-	if instanceTimeout == 0 {
+	instanceTimeoutDefault := instanceTimeout == 0
+	if instanceTimeoutDefault {
 		instanceTimeout = dflts.Timeouts.Actions
+	}
+
+	extendName := instanceConfig.Extends.Name
+	var extendParams parameters.Parameters
+	if extendName != "" {
+		extendParams, err = m.parametersMaker.Make(instanceConfig.Extends.Parameters)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	runData := m.runtimeMaker.MakeData()
 	return &nativeInstance{
-		fnd:          m.fnd,
-		runtimeMaker: m.runtimeMaker,
-		name:         name,
-		index:        instanceIdx,
-		abstract:     instanceConfig.Abstract,
-		timeout:      time.Duration(instanceTimeout) * time.Millisecond,
-		actions:      instanceActions,
-		envs:         envs,
-		runData:      runData,
-		workspace:    instanceWs,
+		fnd:            m.fnd,
+		runtimeMaker:   m.runtimeMaker,
+		name:           name,
+		index:          instanceIdx,
+		abstract:       instanceConfig.Abstract,
+		extendName:     extendName,
+		extendParams:   extendParams,
+		timeout:        time.Duration(instanceTimeout) * time.Millisecond,
+		timeoutDefault: instanceTimeoutDefault,
+		actions:        instanceActions,
+		envs:           envs,
+		runData:        runData,
+		workspace:      instanceWs,
 	}, nil
 }
 
 type nativeInstance struct {
-	fnd          app.Foundation
-	runtimeMaker runtime.Maker
-	name         string
-	index        int
-	abstract     bool
-	actions      []action.Action
-	envs         environments.Environments
-	runData      runtime.Data
-	timeout      time.Duration
-	workspace    string
+	fnd              app.Foundation
+	runtimeMaker     runtime.Maker
+	name             string
+	index            int
+	abstract         bool
+	extendingStarted bool
+	extendName       string
+	extendParams     parameters.Parameters
+	params           parameters.Parameters
+	actions          []action.Action
+	envs             environments.Environments
+	runData          runtime.Data
+	timeout          time.Duration
+	timeoutDefault   bool
+	workspace        string
+}
+
+func (i *nativeInstance) Timeout() time.Duration {
+	return i.timeout
+}
+
+func (i *nativeInstance) Actions() []action.Action {
+	return i.actions
+}
+
+func (i *nativeInstance) Parameters() parameters.Parameters {
+	return i.params
+}
+
+func (i *nativeInstance) IsChild() bool {
+	return i.extendName != ""
+}
+
+func (i *nativeInstance) IsAbstract() bool {
+	return i.abstract
+}
+
+func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
+	// Do nothing for non child instance
+	if i.extendName == "" {
+		return nil
+	}
+	// Skip if all defined
+	if i.actions != nil && !i.timeoutDefault {
+		return nil
+	}
+	// Make sure there is no circular extending
+	if i.extendingStarted {
+		return errors.Errorf("instance %s already extending", i.name)
+	}
+	i.extendingStarted = true
+	extendInst, ok := instsMap[i.extendName]
+	if !ok {
+		i.fnd.Logger().Errorf("Failed to extend instance %s: instance %s not found", i.name, i.extendName)
+	}
+	// Make sure parent is also extended
+	if err := extendInst.Extend(instsMap); err != nil {
+		return err
+	}
+	i.extendingStarted = false
+	// Extend actions if not already defined
+	if i.actions == nil {
+		i.actions = extendInst.Actions()
+	}
+	// Extend timeout if it was not explicitly defined (default used)
+	if i.timeoutDefault {
+		i.timeout = extendInst.Timeout()
+		i.timeoutDefault = false
+	}
+	// inherit parameters
+	i.params.Inherit(i.extendParams).Inherit(extendInst.Parameters())
+	return nil
 }
 
 func (i *nativeInstance) Workspace() string {

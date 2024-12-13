@@ -24,8 +24,7 @@ in the future.
 #### Structure - Instances, Actions, Servers, Services
 
 - implement instance inheritance to reduce duplications for test that differs only in some parameters
-  - add extends instance object field having name and parameters fields
-  - implement extending logic to work in a similar way as servers and inherit environments, resources, services and actions
+  - test extending related logic in instance and changes in spec
   - integrate parameters rendering support for instance server, server config and possibly other parts
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`

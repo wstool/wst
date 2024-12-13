@@ -63,7 +63,8 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		return nil, err
 	}
 
-	var insts []instances.Instance
+	instsMap := make(map[string]instances.Instance)
+	var instsList, childInstsList []instances.Instance
 	var inst instances.Instance
 	for i, configInst := range config.Instances {
 		idx := i + 1
@@ -74,13 +75,24 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		if err != nil {
 			return nil, err
 		}
-		insts = append(insts, inst)
+		instsMap[inst.Name()] = inst
+		instsList = append(instsList, inst)
+		if inst.IsChild() {
+			childInstsList = append(childInstsList, inst)
+		}
+	}
+
+	// Extend all child instances
+	for _, inst = range childInstsList {
+		if err = inst.Extend(instsMap); err != nil {
+			return nil, err
+		}
 	}
 
 	return &nativeSpec{
 		fnd:       m.fnd,
 		workspace: config.Workspace,
-		instances: insts,
+		instances: instsList,
 	}, nil
 }
 
@@ -109,7 +121,7 @@ func (s *nativeSpec) Run(filteredInstances []string) error {
 	for _, instance := range s.instances {
 		instanceName := instance.Name()
 
-		if isFiltered(instanceName, filteredInstances) {
+		if !instance.IsAbstract() && isFiltered(instanceName, filteredInstances) {
 			s.fnd.Logger().Infof("Running instance %s", instanceName)
 			if err := instance.Run(); err != nil {
 				return err
