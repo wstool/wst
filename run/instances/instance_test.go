@@ -42,6 +42,7 @@ func TestCreateInstanceMaker(t *testing.T) {
 	assert.Same(t, actualMaker.fnd, fndMock)
 	assert.NotNil(t, actualMaker.environmentMaker)
 	assert.NotNil(t, actualMaker.actionMaker)
+	assert.Same(t, actualMaker.parametersMaker, parametersMakerMock)
 	assert.NotNil(t, actualMaker.scriptsMaker)
 	assert.NotNil(t, actualMaker.servicesMaker)
 	assert.NotNil(t, actualMaker.runtimeMaker)
@@ -101,6 +102,18 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 	testDefaultsParams := parameters.Parameters{
 		"default_key": parameterMocks.NewMockParameter(t),
 	}
+	testParams := types.Parameters{
+		"test_key": "test_value",
+	}
+	testResultParams := parameters.Parameters{
+		"test_key": parameterMocks.NewMockParameter(t),
+	}
+	testExtendsParams := types.Parameters{
+		"etest_key": "test_value",
+	}
+	testExtendsResultParams := parameters.Parameters{
+		"etest_key": parameterMocks.NewMockParameter(t),
+	}
 	instanceIdx := 1
 	tests := []struct {
 		name       string
@@ -109,6 +122,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			*actionsMocks.MockActionMaker,
 			*servicesMocks.MockMaker,
 			*scriptsMocks.MockMaker,
+			*parametersMocks.MockMaker,
 			*environmentsMocks.MockMaker,
 			*runtimeMocks.MockMaker,
 			*defaults.Defaults,
@@ -133,6 +147,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -164,6 +179,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker.On("MakeAction", testActions[0], sl, 5000).Return(acts[0], nil)
 				actionMaker.On("MakeAction", testActions[1], sl, 5000).Return(acts[1], nil)
 				actionMaker.On("MakeAction", testActions[2], sl, 5000).Return(acts[2], nil)
+				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
 				runtimeMaker.On("MakeData").Return(testData)
 				return acts
 			},
@@ -177,6 +193,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -209,18 +226,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					timeout:      10 * time.Second,
 					actions:      acts,
 					envs:         testEnvironments,
+					params:       testResultParams,
 					runData:      testData,
 					workspace:    "/workspace/test-instance",
 				}
 			},
 		},
 		{
-			name: "successful creation with default timeouts",
+			name: "successful creation with default timeouts and extend name with params",
 			setupMocks: func(
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -252,6 +271,8 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker.On("MakeAction", testActions[0], sl, 8000).Return(acts[0], nil)
 				actionMaker.On("MakeAction", testActions[1], sl, 8000).Return(acts[1], nil)
 				actionMaker.On("MakeAction", testActions[2], sl, 8000).Return(acts[2], nil)
+				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
+				paramsMaker.On("Make", testExtendsParams).Return(testExtendsResultParams, nil)
 				runtimeMaker.On("MakeData").Return(testData)
 				return acts
 			},
@@ -263,6 +284,11 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Extends: types.InstanceExtends{
+					Name:       "another-test-instance",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -288,18 +314,177 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				runtimeMaker *runtimeMocks.MockMaker,
 			) *nativeInstance {
 				return &nativeInstance{
-					fnd:          fndMock,
-					runtimeMaker: runtimeMaker,
-					name:         "test-instance",
-					index:        instanceIdx,
-					abstract:     true,
-					timeout:      15 * time.Second,
-					actions:      acts,
-					envs:         testEnvironments,
-					runData:      testData,
-					workspace:    "/workspace/test-instance",
+					fnd:            fndMock,
+					runtimeMaker:   runtimeMaker,
+					name:           "test-instance",
+					index:          instanceIdx,
+					abstract:       true,
+					timeout:        15 * time.Second,
+					timeoutDefault: true,
+					actions:        acts,
+					extendName:     "another-test-instance",
+					extendParams:   testExtendsResultParams,
+					params:         testResultParams,
+					envs:           testEnvironments,
+					runData:        testData,
+					workspace:      "/workspace/test-instance",
 				}
 			},
+		},
+		{
+			name: "fail due params failure",
+			setupMocks: func(
+				t *testing.T,
+				actionMaker *actionsMocks.MockActionMaker,
+				serviceMaker *servicesMocks.MockMaker,
+				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
+				envMaker *environmentsMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) []action.Action {
+				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				envMaker.On(
+					"Make",
+					testSpecEnvironments,
+					testInstanceEnvironments,
+					"/workspace/test-instance",
+				).Return(testEnvironments, nil)
+				sl := servicesMocks.NewMockServiceLocator(t)
+				serviceMaker.On(
+					"Make",
+					testServices,
+					dflts,
+					testScriptResources,
+					testServers,
+					testEnvironments,
+					"test-instance",
+					instanceIdx,
+					"/workspace/test-instance",
+				).Return(sl, nil)
+				acts := []action.Action{
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+				}
+				actionMaker.On("MakeAction", testActions[0], sl, 8000).Return(acts[0], nil)
+				actionMaker.On("MakeAction", testActions[1], sl, 8000).Return(acts[1], nil)
+				actionMaker.On("MakeAction", testActions[2], sl, 8000).Return(acts[2], nil)
+				paramsMaker.On("Make", testExtendsParams).Return(testExtendsResultParams, nil)
+				paramsMaker.On("Make", testParams).Return(nil, errors.New("main params fail"))
+				return acts
+			},
+			instanceConfig: types.Instance{
+				Name:     "test-instance",
+				Actions:  testActions,
+				Abstract: true,
+				Timeouts: types.InstanceTimeouts{},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Extends: types.InstanceExtends{
+					Name:       "another-test-instance",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			srvs:              testServers,
+			instanceWorkspace: "/workspace",
+			expectError:       true,
+			expectedErrorMsg:  "main params fail",
+		},
+		{
+			name: "fail due params failure",
+			setupMocks: func(
+				t *testing.T,
+				actionMaker *actionsMocks.MockActionMaker,
+				serviceMaker *servicesMocks.MockMaker,
+				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
+				envMaker *environmentsMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) []action.Action {
+				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				envMaker.On(
+					"Make",
+					testSpecEnvironments,
+					testInstanceEnvironments,
+					"/workspace/test-instance",
+				).Return(testEnvironments, nil)
+				sl := servicesMocks.NewMockServiceLocator(t)
+				serviceMaker.On(
+					"Make",
+					testServices,
+					dflts,
+					testScriptResources,
+					testServers,
+					testEnvironments,
+					"test-instance",
+					instanceIdx,
+					"/workspace/test-instance",
+				).Return(sl, nil)
+				acts := []action.Action{
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+					actionMocks.NewMockAction(t),
+				}
+				actionMaker.On("MakeAction", testActions[0], sl, 8000).Return(acts[0], nil)
+				actionMaker.On("MakeAction", testActions[1], sl, 8000).Return(acts[1], nil)
+				actionMaker.On("MakeAction", testActions[2], sl, 8000).Return(acts[2], nil)
+				paramsMaker.On("Make", testExtendsParams).Return(nil, errors.New("extend params fail"))
+				return acts
+			},
+			instanceConfig: types.Instance{
+				Name:     "test-instance",
+				Actions:  testActions,
+				Abstract: true,
+				Timeouts: types.InstanceTimeouts{},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Extends: types.InstanceExtends{
+					Name:       "another-test-instance",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			envsConfig: testSpecEnvironments,
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			srvs:              testServers,
+			instanceWorkspace: "/workspace",
+			expectError:       true,
+			expectedErrorMsg:  "extend params fail",
 		},
 		{
 			name: "error creation due to action fail",
@@ -308,6 +493,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -350,6 +536,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -379,6 +566,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -413,6 +601,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -442,6 +631,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -465,6 +655,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -494,6 +685,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
 				scriptMaker *scriptsMocks.MockMaker,
+				paramsMaker *parametersMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				runtimeMaker *runtimeMocks.MockMaker,
 				dflts *defaults.Defaults,
@@ -511,6 +703,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Resources: types.Resources{
 					Scripts: testScripts,
 				},
+				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
 			},
@@ -541,6 +734,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			actionMaker := actionsMocks.NewMockActionMaker(t)
 			serviceMaker := servicesMocks.NewMockMaker(t)
 			scriptsMaker := scriptsMocks.NewMockMaker(t)
+			paramsMaker := parametersMocks.NewMockMaker(t)
 			envMaker := environmentsMocks.NewMockMaker(t)
 			runtimeMaker := runtimeMocks.NewMockMaker(t)
 
@@ -549,11 +743,13 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker:      actionMaker,
 				servicesMaker:    serviceMaker,
 				scriptsMaker:     scriptsMaker,
+				parametersMaker:  paramsMaker,
 				environmentMaker: envMaker,
 				runtimeMaker:     runtimeMaker,
 			}
 
-			acts := tt.setupMocks(t, actionMaker, serviceMaker, scriptsMaker, envMaker, runtimeMaker, &tt.defaults)
+			acts := tt.setupMocks(
+				t, actionMaker, serviceMaker, scriptsMaker, paramsMaker, envMaker, runtimeMaker, &tt.defaults)
 
 			got, err := maker.Make(
 				tt.instanceConfig, instanceIdx, tt.envsConfig, &tt.defaults, tt.srvs, tt.instanceWorkspace)
@@ -573,6 +769,207 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			serviceMaker.AssertExpectations(t)
 			scriptsMaker.AssertExpectations(t)
 			envMaker.AssertExpectations(t)
+		})
+	}
+}
+
+func Test_nativeInstance_Timeout(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+	}
+	assert.Equal(t, 10*time.Second, instance.Timeout())
+}
+
+func Test_nativeInstance_Actions(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		actions: []action.Action{
+			actionMocks.NewMockAction(t),
+			actionMocks.NewMockAction(t),
+		},
+	}
+	assert.Equal(t, instance.actions, instance.Actions())
+}
+
+func Test_nativeInstance_Parameters(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		params: parameters.Parameters{
+			"p": parameterMocks.NewMockParameter(t),
+		},
+	}
+	assert.Equal(t, instance.params, instance.Parameters())
+}
+
+func Test_nativeInstance_IsChild(t *testing.T) {
+	instance := &nativeInstance{
+		name:       "testInstance",
+		timeout:    10 * time.Second,
+		workspace:  "/fake/workspace",
+		extendName: "anotherInstance",
+	}
+	assert.True(t, instance.IsChild())
+	instance = &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+	}
+	assert.False(t, instance.IsChild())
+}
+
+func Test_nativeInstance_Abstract(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		abstract:  true,
+	}
+	assert.True(t, instance.IsAbstract())
+	instance = &nativeInstance{
+		name:    "testInstance",
+		timeout: 10 * time.Second,
+	}
+	assert.False(t, instance.IsAbstract())
+}
+
+func Test_nativeInstance_Extend(t *testing.T) {
+	action1 := actionMocks.NewMockAction(t)
+	action2 := actionMocks.NewMockAction(t)
+	paramParent := parameterMocks.NewMockParameter(t)
+	paramChild := parameterMocks.NewMockParameter(t)
+	paramExtended := parameterMocks.NewMockParameter(t)
+
+	tests := []struct {
+		name            string
+		parent          *nativeInstance
+		child           *nativeInstance
+		instsMap        map[string]Instance
+		expectedActions []action.Action
+		expectedParams  parameters.Parameters
+		expectedTimeout time.Duration
+		expectedError   string
+	}{
+		{
+			name: "successful extend with parameter merging",
+			parent: &nativeInstance{
+				name: "parentInstance",
+				actions: []action.Action{
+					action1,
+					action2,
+				},
+				params: parameters.Parameters{
+					"parent_key": paramParent,
+				},
+				timeout: 15 * time.Second,
+			},
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "parentInstance",
+				extendParams: parameters.Parameters{
+					"extended_key": paramExtended,
+				},
+				params: parameters.Parameters{
+					"child_key": paramChild,
+				},
+				timeoutDefault: true,
+			},
+			expectedActions: []action.Action{
+				action1,
+				action2,
+			},
+			expectedParams: parameters.Parameters{
+				"parent_key":   paramParent,
+				"child_key":    paramChild,
+				"extended_key": paramExtended,
+			},
+			expectedTimeout: 15 * time.Second,
+		},
+		{
+			name: "successful skip extend if child actions and timeout defined",
+			parent: &nativeInstance{
+				name: "parentInstance",
+				actions: []action.Action{
+					action1,
+					action2,
+				},
+				params: parameters.Parameters{
+					"parent_key": paramParent,
+				},
+				timeout: 15 * time.Second,
+			},
+			child: &nativeInstance{
+				name: "childInstance",
+				actions: []action.Action{
+					action1,
+				},
+				extendName: "parentInstance",
+				extendParams: parameters.Parameters{
+					"extended_key": paramExtended,
+				},
+				params: parameters.Parameters{
+					"child_key": paramChild,
+				},
+				timeoutDefault: false,
+				timeout:        5 * time.Second,
+			},
+			expectedActions: []action.Action{
+				action1,
+			},
+			expectedParams: parameters.Parameters{
+				"child_key": paramChild,
+			},
+			expectedTimeout: 5 * time.Second,
+		},
+		{
+			name:   "missing parent instance",
+			parent: nil,
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "missingParentInstance",
+			},
+			expectedError: "instance missingParentInstance not found",
+		},
+		{
+			name: "circular inheritance",
+			parent: &nativeInstance{
+				name:       "parentInstance",
+				extendName: "childInstance",
+			},
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "parentInstance",
+			},
+			expectedError: "instance childInstance already extending",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instsMap := make(map[string]Instance)
+			if tt.parent != nil {
+				instsMap["parentInstance"] = tt.parent
+			}
+			if tt.child != nil {
+				instsMap["childInstance"] = tt.child
+			}
+
+			err := tt.child.Extend(instsMap)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedActions, tt.child.Actions())
+				assert.Equal(t, tt.expectedParams, tt.child.Parameters())
+				assert.Equal(t, tt.expectedTimeout, tt.child.Timeout())
+			}
 		})
 	}
 }

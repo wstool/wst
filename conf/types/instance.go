@@ -31,6 +31,7 @@ type Instance struct {
 	Labels       []string               `wst:"labels"`
 	Abstract     bool                   `wst:"abstract,default=false"`
 	Extends      InstanceExtends        `wst:"extends,string=name"`
+	Parameters   Parameters             `wst:"parameters,factory=createParameters"`
 	Resources    Resources              `wst:"resources"`
 	Services     map[string]Service     `wst:"services,loadable"`
 	Timeouts     InstanceTimeouts       `wst:"timeouts"`

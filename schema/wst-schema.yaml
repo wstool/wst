@@ -984,6 +984,8 @@ $defs:
             type: string
           parameters:
             $ref: '#/$defs/parameters'
+      parameters:
+        $ref: '#/$defs/parameters'
       environments:
         $ref: '#/$defs/environments'
       resources:

@@ -140,6 +140,11 @@ func (m *nativeInstanceMaker) Make(
 		}
 	}
 
+	params, err := m.parametersMaker.Make(instanceConfig.Parameters)
+	if err != nil {
+		return nil, err
+	}
+
 	runData := m.runtimeMaker.MakeData()
 	return &nativeInstance{
 		fnd:            m.fnd,
@@ -149,6 +154,7 @@ func (m *nativeInstanceMaker) Make(
 		abstract:       instanceConfig.Abstract,
 		extendName:     extendName,
 		extendParams:   extendParams,
+		params:         params,
 		timeout:        time.Duration(instanceTimeout) * time.Millisecond,
 		timeoutDefault: instanceTimeoutDefault,
 		actions:        instanceActions,
@@ -212,7 +218,7 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	i.extendingStarted = true
 	extendInst, ok := instsMap[i.extendName]
 	if !ok {
-		i.fnd.Logger().Errorf("Failed to extend instance %s: instance %s not found", i.name, i.extendName)
+		return errors.Errorf("failed to extend instance %s: instance %s not found", i.name, i.extendName)
 	}
 	// Make sure parent is also extended
 	if err := extendInst.Extend(instsMap); err != nil {
