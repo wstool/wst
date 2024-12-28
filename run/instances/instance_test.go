@@ -882,6 +882,7 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				extendParams: parameters.Parameters{
 					"extended_key": paramExtended,
 				},
+				actions: make([]action.Action, 0),
 				params: parameters.Parameters{
 					"child_key": paramChild,
 				},

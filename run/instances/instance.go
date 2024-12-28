@@ -229,7 +229,7 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	}
 	i.extendingStarted = false
 	// Extend actions if not already defined
-	if i.actions == nil {
+	if len(i.actions) == 0 {
 		i.actions = extendInst.Actions()
 	}
 	// Extend timeout if it was not explicitly defined (default used)
