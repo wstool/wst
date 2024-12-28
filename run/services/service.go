@@ -69,7 +69,6 @@ type Service interface {
 	Sandbox() sandbox.Sandbox
 	Server() servers.Server
 	ServerParameters() parameters.Parameters
-	InheritParameters(parameters parameters.Parameters)
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
@@ -126,6 +125,7 @@ type Maker interface {
 		instanceName string,
 		instanceIdx int,
 		instanceWorkspace string,
+		instanceParameters parameters.Parameters,
 	) (ServiceLocator, error)
 }
 
@@ -152,6 +152,7 @@ func (m *nativeMaker) Make(
 	instanceName string,
 	instanceIdx int,
 	instanceWorkspace string,
+	instanceParameters parameters.Parameters,
 ) (ServiceLocator, error) {
 	svcs := make(Services)
 	tmplSvcs := make(template.Services)
@@ -184,7 +185,7 @@ func (m *nativeMaker) Make(
 		if err != nil {
 			return nil, err
 		}
-		serverParameters.Inherit(server.Parameters()).Inherit(dflts.Parameters)
+		serverParameters.Inherit(server.Parameters()).Inherit(instanceParameters).Inherit(dflts.Parameters)
 
 		sandboxName := serviceConfig.Server.Sandbox
 		if sandboxName == "" {
@@ -343,16 +344,6 @@ func (s *nativeService) Server() servers.Server {
 
 func (s *nativeService) ServerParameters() parameters.Parameters {
 	return s.serverParameters
-}
-
-func (s *nativeService) InheritParameters(parameters parameters.Parameters) {
-	s.serverParameters.Inherit(parameters)
-	for _, cfg := range s.configs {
-		cfg.parameters.Inherit(parameters)
-	}
-	for _, script := range s.scripts {
-		script.Parameters().Inherit(parameters)
-	}
 }
 
 func (s *nativeService) SetTemplate(template template.Template) {

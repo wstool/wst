@@ -103,19 +103,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 				i1.On("Name").Return("i1")
 				i1.On("IsChild").Return(false)
 				i1.On("IsAbstract").Return(false)
-				i1.On("PostUpdateServices")
+				i1.On("Init").Return(nil)
 				i2 := instancesMocks.NewMockInstance(t)
 				i2.TestData().Set("id", "i1")
 				i2.On("Name").Return("i2")
 				i2.On("IsChild").Return(true)
 				i2.On("IsAbstract").Return(false)
-				i2.On("PostUpdateServices")
+				i2.On("Init").Return(nil)
 				i3 := instancesMocks.NewMockInstance(t)
 				i3.TestData().Set("id", "i3")
 				i3.On("Name").Return("i3")
 				i3.On("IsChild").Return(false)
 				i3.On("IsAbstract").Return(true)
-				//i3.On("PostUpdateServices")
 				instsMap := map[string]instances.Instance{
 					"i1": i1,
 					"i2": i2,
@@ -128,6 +127,50 @@ func Test_nativeMaker_Make(t *testing.T) {
 				return []instances.Instance{i1, i2}
 			},
 			expectError: false,
+		},
+		{
+			name: "failed spec creation on extend failure",
+			config: &types.Spec{
+				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
+				Environments: envsConfig,
+				Defaults:     defaultsConfig,
+				Workspace:    "/workspace",
+			},
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
+				srvs := servers.Servers{
+					"php": {
+						"base": serversMocks.NewMockServer(t),
+					},
+				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
+				i1 := instancesMocks.NewMockInstance(t)
+				i1.TestData().Set("id", "i1")
+				i1.On("Name").Return("i1")
+				i1.On("IsChild").Return(false)
+				i1.On("IsAbstract").Return(false)
+				i1.On("Init").Return(errors.New("init fail"))
+				i2 := instancesMocks.NewMockInstance(t)
+				i2.TestData().Set("id", "i1")
+				i2.On("Name").Return("i2")
+				i2.On("IsChild").Return(true)
+				i2.On("IsAbstract").Return(false)
+				instsMap := map[string]instances.Instance{
+					"i1": i1,
+					"i2": i2,
+				}
+				i2.On("Extend", instsMap).Return(nil)
+				im.On("Make", types.Instance{Name: "i1"}, 1, envsConfig, dflts, srvs, "/workspace").Return(i1, nil)
+				im.On("Make", types.Instance{Name: "i2"}, 2, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
+				return []instances.Instance{i1, i2}
+			},
+			expectError:      true,
+			expectedErrorMsg: "init fail",
 		},
 		{
 			name: "failed spec creation on extend failure",

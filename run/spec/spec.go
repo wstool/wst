@@ -91,9 +91,11 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		}
 	}
 
-	// Post update services to inherit extended params
+	// Init instance
 	for _, inst = range runnableInstsList {
-		inst.PostUpdateServices()
+		if err = inst.Init(); err != nil {
+			return nil, err
+		}
 	}
 
 	return &nativeSpec{
@@ -124,6 +126,7 @@ func isFiltered(instanceName string, filteredInstances []string) bool {
 }
 
 func (s *nativeSpec) Run(filteredInstances []string) error {
+
 	// Loop through the instances.
 	for _, instance := range s.instances {
 		instanceName := instance.Name()

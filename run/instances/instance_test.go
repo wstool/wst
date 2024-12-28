@@ -790,17 +790,63 @@ func Test_nativeInstance_Timeout(t *testing.T) {
 	assert.Equal(t, 10*time.Second, instance.Timeout())
 }
 
-func Test_nativeInstance_Actions(t *testing.T) {
+func Test_nativeInstance_ConfigActions(t *testing.T) {
 	instance := &nativeInstance{
 		name:      "testInstance",
 		timeout:   10 * time.Second,
 		workspace: "/fake/workspace",
-		actions: []action.Action{
-			actionMocks.NewMockAction(t),
-			actionMocks.NewMockAction(t),
+		configActions: []types.Action{
+			types.StartAction{},
+			types.StopAction{},
 		},
 	}
-	assert.Equal(t, instance.actions, instance.Actions())
+	assert.Equal(t, instance.configActions, instance.ConfigActions())
+}
+
+func Test_nativeInstance_ConfigServices(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		configServices: map[string]types.Service{
+			"svc": {
+				Server: types.ServiceServer{
+					Name: "svr",
+				},
+			},
+		},
+	}
+	assert.Equal(t, instance.configServices, instance.ConfigServices())
+}
+
+func Test_nativeInstance_ConfigInstanceEnvs(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		configInstanceEnvs: map[string]types.Environment{
+			"local": types.LocalEnvironment{Ports: types.EnvironmentPorts{
+				Start: 10000,
+			}},
+		},
+	}
+	assert.Equal(t, instance.configInstanceEnvs, instance.ConfigInstanceEnvs())
+}
+
+func Test_nativeInstance_ConfigResources(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		timeout:   10 * time.Second,
+		workspace: "/fake/workspace",
+		configResources: types.Resources{
+			Scripts: map[string]types.Script{
+				"s1": {
+					Content: "abc",
+				},
+			},
+		},
+	}
+	assert.Equal(t, instance.configResources, instance.ConfigResources())
 }
 
 func Test_nativeInstance_Parameters(t *testing.T) {
@@ -854,14 +900,14 @@ func Test_nativeInstance_Extend(t *testing.T) {
 	paramExtended := parameterMocks.NewMockParameter(t)
 
 	tests := []struct {
-		name            string
-		parent          *nativeInstance
-		child           *nativeInstance
-		instsMap        map[string]Instance
-		expectedActions []action.Action
-		expectedParams  parameters.Parameters
-		expectedTimeout time.Duration
-		expectedError   string
+		name                  string
+		parent                *nativeInstance
+		child                 *nativeInstance
+		instsMap              map[string]Instance
+		expectedConfigActions []types.Action
+		expectedParams        parameters.Parameters
+		expectedTimeout       time.Duration
+		expectedError         string
 	}{
 		{
 			name: "successful extend with parameter merging",
@@ -888,7 +934,7 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				},
 				timeoutDefault: true,
 			},
-			expectedActions: []action.Action{
+			expectedConfigActions: []types.Action{
 				action1,
 				action2,
 			},
@@ -927,7 +973,7 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				timeoutDefault: false,
 				timeout:        5 * time.Second,
 			},
-			expectedActions: []action.Action{
+			expectedConfigActions: []types.Action{
 				action1,
 			},
 			expectedParams: parameters.Parameters{
@@ -975,7 +1021,7 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedActions, tt.child.Actions())
+				assert.Equal(t, tt.expectedConfigActions, tt.child.ConfigActions())
 				assert.Equal(t, tt.expectedParams, tt.child.Parameters())
 				assert.Equal(t, tt.expectedTimeout, tt.child.Timeout())
 			}
@@ -983,24 +1029,8 @@ func Test_nativeInstance_Extend(t *testing.T) {
 	}
 }
 
-func Test_nativeInstance_PostUpdateServices(t *testing.T) {
-	params := parameters.Parameters{
-		"p1": parameterMocks.NewMockParameter(t),
-		"p2": parameterMocks.NewMockParameter(t),
-	}
-	s1 := servicesMocks.NewMockService(t)
-	s2 := servicesMocks.NewMockService(t)
-	s1.On("InheritParameters", params)
-	s2.On("InheritParameters", params)
-	instance := &nativeInstance{
-		name: "testInstance",
-		services: services.Services{
-			"s1": s1,
-			"s2": s2,
-		},
-		params: params,
-	}
-	instance.PostUpdateServices()
+func Test_nativeInstance_Init(t *testing.T) {
+	// TODO: implement
 }
 
 func Test_nativeInstance_Workspace(t *testing.T) {
