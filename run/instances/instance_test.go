@@ -25,6 +25,7 @@ import (
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/servers"
+	"github.com/wstool/wst/run/services"
 	"github.com/wstool/wst/run/spec/defaults"
 	"testing"
 	"time"
@@ -77,6 +78,9 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				Sandbox: "local",
 			},
 		},
+	}
+	testRunnableService := services.Services{
+		"svc": servicesMocks.NewMockService(t),
 	}
 	testServers := servers.Servers{
 		"t1": map[string]servers.Server{
@@ -181,6 +185,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				actionMaker.On("MakeAction", testActions[2], sl, 5000).Return(acts[2], nil)
 				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
 				runtimeMaker.On("MakeData").Return(testData)
+				sl.On("Services").Return(testRunnableService)
 				return acts
 			},
 			instanceConfig: types.Instance{
@@ -225,6 +230,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					index:        instanceIdx,
 					timeout:      10 * time.Second,
 					actions:      acts,
+					services:     testRunnableService,
 					envs:         testEnvironments,
 					params:       testResultParams,
 					runData:      testData,
@@ -274,6 +280,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
 				paramsMaker.On("Make", testExtendsParams).Return(testExtendsResultParams, nil)
 				runtimeMaker.On("MakeData").Return(testData)
+				sl.On("Services").Return(testRunnableService)
 				return acts
 			},
 			instanceConfig: types.Instance{
@@ -322,6 +329,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					timeout:        15 * time.Second,
 					timeoutDefault: true,
 					actions:        acts,
+					services:       testRunnableService,
 					extendName:     "another-test-instance",
 					extendParams:   testExtendsResultParams,
 					params:         testResultParams,
@@ -972,6 +980,26 @@ func Test_nativeInstance_Extend(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_nativeInstance_PostUpdateServices(t *testing.T) {
+	params := parameters.Parameters{
+		"p1": parameterMocks.NewMockParameter(t),
+		"p2": parameterMocks.NewMockParameter(t),
+	}
+	s1 := servicesMocks.NewMockService(t)
+	s2 := servicesMocks.NewMockService(t)
+	s1.On("InheritParameters", params)
+	s2.On("InheritParameters", params)
+	instance := &nativeInstance{
+		name: "testInstance",
+		services: services.Services{
+			"s1": s1,
+			"s2": s2,
+		},
+		params: params,
+	}
+	instance.PostUpdateServices()
 }
 
 func Test_nativeInstance_Workspace(t *testing.T) {

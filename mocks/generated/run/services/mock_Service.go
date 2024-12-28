@@ -426,6 +426,39 @@ func (_c *MockService_Group_Call) RunAndReturn(run func() string) *MockService_G
 	return _c
 }
 
+// InheritParameters provides a mock function with given fields: _a0
+func (_m *MockService) InheritParameters(_a0 parameters.Parameters) {
+	_m.Called(_a0)
+}
+
+// MockService_InheritParameters_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InheritParameters'
+type MockService_InheritParameters_Call struct {
+	*mock.Call
+}
+
+// InheritParameters is a helper method to define mock.On call
+//   - _a0 parameters.Parameters
+func (_e *MockService_Expecter) InheritParameters(_a0 interface{}) *MockService_InheritParameters_Call {
+	return &MockService_InheritParameters_Call{Call: _e.mock.On("InheritParameters", _a0)}
+}
+
+func (_c *MockService_InheritParameters_Call) Run(run func(_a0 parameters.Parameters)) *MockService_InheritParameters_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(parameters.Parameters))
+	})
+	return _c
+}
+
+func (_c *MockService_InheritParameters_Call) Return() *MockService_InheritParameters_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_InheritParameters_Call) RunAndReturn(run func(parameters.Parameters)) *MockService_InheritParameters_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsPublic provides a mock function with given fields:
 func (_m *MockService) IsPublic() bool {
 	ret := _m.Called()

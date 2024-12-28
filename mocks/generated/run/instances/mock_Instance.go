@@ -301,6 +301,38 @@ func (_c *MockInstance_Parameters_Call) RunAndReturn(run func() parameters.Param
 	return _c
 }
 
+// PostUpdateServices provides a mock function with given fields:
+func (_m *MockInstance) PostUpdateServices() {
+	_m.Called()
+}
+
+// MockInstance_PostUpdateServices_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostUpdateServices'
+type MockInstance_PostUpdateServices_Call struct {
+	*mock.Call
+}
+
+// PostUpdateServices is a helper method to define mock.On call
+func (_e *MockInstance_Expecter) PostUpdateServices() *MockInstance_PostUpdateServices_Call {
+	return &MockInstance_PostUpdateServices_Call{Call: _e.mock.On("PostUpdateServices")}
+}
+
+func (_c *MockInstance_PostUpdateServices_Call) Run(run func()) *MockInstance_PostUpdateServices_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInstance_PostUpdateServices_Call) Return() *MockInstance_PostUpdateServices_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockInstance_PostUpdateServices_Call) RunAndReturn(run func()) *MockInstance_PostUpdateServices_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields:
 func (_m *MockInstance) Run() error {
 	ret := _m.Called()

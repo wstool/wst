@@ -80,7 +80,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 		{
 			name: "successful spec creation",
 			config: &types.Spec{
-				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}},
+				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}, {Name: "i3"}},
 				Environments: envsConfig,
 				Defaults:     defaultsConfig,
 				Workspace:    "/workspace",
@@ -102,17 +102,29 @@ func Test_nativeMaker_Make(t *testing.T) {
 				i1.TestData().Set("id", "i1")
 				i1.On("Name").Return("i1")
 				i1.On("IsChild").Return(false)
+				i1.On("IsAbstract").Return(false)
+				i1.On("PostUpdateServices")
 				i2 := instancesMocks.NewMockInstance(t)
 				i2.TestData().Set("id", "i1")
 				i2.On("Name").Return("i2")
 				i2.On("IsChild").Return(true)
+				i2.On("IsAbstract").Return(false)
+				i2.On("PostUpdateServices")
+				i3 := instancesMocks.NewMockInstance(t)
+				i3.TestData().Set("id", "i3")
+				i3.On("Name").Return("i3")
+				i3.On("IsChild").Return(false)
+				i3.On("IsAbstract").Return(true)
+				//i3.On("PostUpdateServices")
 				instsMap := map[string]instances.Instance{
 					"i1": i1,
 					"i2": i2,
+					"i3": i3,
 				}
 				i2.On("Extend", instsMap).Return(nil)
 				im.On("Make", types.Instance{Name: "i1"}, 1, envsConfig, dflts, srvs, "/workspace").Return(i1, nil)
 				im.On("Make", types.Instance{Name: "i2"}, 2, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
+				im.On("Make", types.Instance{Name: "i3"}, 3, envsConfig, dflts, srvs, "/workspace").Return(i3, nil)
 				return []instances.Instance{i1, i2}
 			},
 			expectError: false,
@@ -142,10 +154,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 				i1.TestData().Set("id", "i1")
 				i1.On("Name").Return("i1")
 				i1.On("IsChild").Return(false)
+				i1.On("IsAbstract").Return(false)
 				i2 := instancesMocks.NewMockInstance(t)
 				i2.TestData().Set("id", "i1")
 				i2.On("Name").Return("i2")
 				i2.On("IsChild").Return(true)
+				i2.On("IsAbstract").Return(false)
 				instsMap := map[string]instances.Instance{
 					"i1": i1,
 					"i2": i2,
@@ -299,22 +313,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 func Test_nativeSpec_Run(t *testing.T) {
 	instance1 := instancesMocks.NewMockInstance(t)
 	instance1.On("Name").Return("instance1").Maybe()
-	instance1.On("IsAbstract").Return(false).Maybe()
 	instance1.On("Run").Return(nil).Maybe()
 
 	instance2 := instancesMocks.NewMockInstance(t)
 	instance2.On("Name").Return("instance2").Maybe()
-	instance2.On("IsAbstract").Return(false).Maybe()
 	instance2.On("Run").Return(errors.New("failure in instance2")).Maybe()
 
 	instance3 := instancesMocks.NewMockInstance(t)
 	instance3.On("Name").Return("instance3").Maybe()
-	instance3.On("IsAbstract").Return(false).Maybe()
 	instance3.On("Run").Return(nil).Maybe()
 
 	instance4 := instancesMocks.NewMockInstance(t)
 	instance4.On("Name").Return("instance3").Maybe()
-	instance4.On("IsAbstract").Return(true).Maybe()
 
 	tests := []struct {
 		name               string

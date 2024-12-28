@@ -69,6 +69,7 @@ type Service interface {
 	Sandbox() sandbox.Sandbox
 	Server() servers.Server
 	ServerParameters() parameters.Parameters
+	InheritParameters(parameters parameters.Parameters)
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
@@ -342,6 +343,16 @@ func (s *nativeService) Server() servers.Server {
 
 func (s *nativeService) ServerParameters() parameters.Parameters {
 	return s.serverParameters
+}
+
+func (s *nativeService) InheritParameters(parameters parameters.Parameters) {
+	s.serverParameters.Inherit(parameters)
+	for _, cfg := range s.configs {
+		cfg.parameters.Inherit(parameters)
+	}
+	for _, script := range s.scripts {
+		script.Parameters().Inherit(parameters)
+	}
 }
 
 func (s *nativeService) SetTemplate(template template.Template) {

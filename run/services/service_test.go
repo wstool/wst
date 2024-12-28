@@ -137,6 +137,12 @@ func createParamMock(t *testing.T, val string) *parameterMocks.MockParameter {
 	return paramMock
 }
 
+func createScriptMock(t *testing.T, id string) *scriptsMocks.MockScript {
+	scriptMock := scriptsMocks.NewMockScript(t)
+	scriptMock.TestData().Set("sid", id)
+	return scriptMock
+}
+
 func createTemplateMock(t *testing.T, id string) *templateMocks.MockTemplate {
 	templateMock := templateMocks.NewMockTemplate(t)
 	templateMock.TestData().Set("tid", id)
@@ -1373,6 +1379,65 @@ func Test_nativeService_Server(t *testing.T) {
 func Test_nativeService_ServerParameters(t *testing.T) {
 	svc := testingNativeService(t)
 	assert.Equal(t, parameters.Parameters{"p1": parameterMocks.NewMockParameter(t)}, svc.ServerParameters())
+}
+
+func Test_nativeService_InheritParameters(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.configs = map[string]nativeServiceConfig{
+		"c1": {
+			parameters: parameters.Parameters{
+				"c1p1": createParamMock(t, "c1p1"),
+				"c1p2": createParamMock(t, "c1p2"),
+			},
+			config: createConfigMock(t, "c1"),
+		},
+		"c2": {
+			parameters: parameters.Parameters{
+				"c2p1": createParamMock(t, "c2p1"),
+				"c2p2": createParamMock(t, "c2p2"),
+			},
+			config: createConfigMock(t, "c2"),
+		},
+	}
+	s1 := createScriptMock(t, "s1")
+	s1.On("Parameters").Return(
+		parameters.Parameters{"s1p1": createParamMock(t, "s1p1")})
+	s2 := createScriptMock(t, "s2")
+	s2.On("Parameters").Return(
+		parameters.Parameters{"s2p1": createParamMock(t, "s2p1")})
+	svc.scripts = scripts.Scripts{
+		"s1": s1,
+		"s2": s2,
+	}
+	params := parameters.Parameters{
+		"p":    createParamMock(t, "p"),
+		"c1p1": createParamMock(t, "p_c1p1"),
+	}
+	svc.InheritParameters(params)
+
+	// Validate svc.serverParameters
+	assert.Equal(t, createParamMock(t, "p"), svc.serverParameters["p"], "svc.serverParameters should inherit 'p'")
+
+	// Validate configs
+	for configName, config := range svc.configs {
+		assert.Equal(t, createParamMock(t, "p"), config.parameters["p"], "config %s should inherit 'p'", configName)
+		if configName == "c1" {
+			assert.Equal(t, createParamMock(t, "c1p1"), config.parameters["c1p1"], "config %s should retain its original 'c1p1'", configName)
+		} else {
+			assert.Equal(t, createParamMock(t, "c2p1"), config.parameters["c2p1"], "config %s should retain its original 'c2p1'", configName)
+		}
+	}
+
+	// Validate scripts
+	for scriptName, script := range svc.scripts {
+		scriptParams := script.Parameters()
+		assert.Equal(t, createParamMock(t, "p"), scriptParams["p"], "script %s should inherit 'p'", scriptName)
+		if scriptName == "s1" {
+			assert.Equal(t, createParamMock(t, "s1p1"), scriptParams["s1p1"], "script %s should retain its original 's1p1'", scriptName)
+		} else {
+			assert.Equal(t, createParamMock(t, "s2p1"), scriptParams["s2p1"], "script %s should retain its original 's2p1'", scriptName)
+		}
+	}
 }
 
 func Test_nativeService_SetTemplate(t *testing.T) {

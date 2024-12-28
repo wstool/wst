@@ -64,7 +64,7 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 	}
 
 	instsMap := make(map[string]instances.Instance)
-	var instsList, childInstsList []instances.Instance
+	var childInstsList, runnableInstsList []instances.Instance
 	var inst instances.Instance
 	for i, configInst := range config.Instances {
 		idx := i + 1
@@ -76,9 +76,11 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 			return nil, err
 		}
 		instsMap[inst.Name()] = inst
-		instsList = append(instsList, inst)
 		if inst.IsChild() {
 			childInstsList = append(childInstsList, inst)
+		}
+		if !inst.IsAbstract() {
+			runnableInstsList = append(runnableInstsList, inst)
 		}
 	}
 
@@ -89,10 +91,15 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		}
 	}
 
+	// Post update services to inherit extended params
+	for _, inst = range runnableInstsList {
+		inst.PostUpdateServices()
+	}
+
 	return &nativeSpec{
 		fnd:       m.fnd,
 		workspace: config.Workspace,
-		instances: instsList,
+		instances: runnableInstsList,
 	}, nil
 }
 
@@ -121,7 +128,7 @@ func (s *nativeSpec) Run(filteredInstances []string) error {
 	for _, instance := range s.instances {
 		instanceName := instance.Name()
 
-		if !instance.IsAbstract() && isFiltered(instanceName, filteredInstances) {
+		if isFiltered(instanceName, filteredInstances) {
 			s.fnd.Logger().Infof("Running instance %s", instanceName)
 			if err := instance.Run(); err != nil {
 				return err

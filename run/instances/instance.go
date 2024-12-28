@@ -41,6 +41,7 @@ type Instance interface {
 	IsChild() bool
 	IsAbstract() bool
 	Extend(instsMap map[string]Instance) error
+	PostUpdateServices()
 	Parameters() parameters.Parameters
 	Timeout() time.Duration
 	Actions() []action.Action
@@ -158,6 +159,7 @@ func (m *nativeInstanceMaker) Make(
 		timeout:        time.Duration(instanceTimeout) * time.Millisecond,
 		timeoutDefault: instanceTimeoutDefault,
 		actions:        instanceActions,
+		services:       sl.Services(),
 		envs:           envs,
 		runData:        runData,
 		workspace:      instanceWs,
@@ -175,6 +177,7 @@ type nativeInstance struct {
 	extendParams     parameters.Parameters
 	params           parameters.Parameters
 	actions          []action.Action
+	services         services.Services
 	envs             environments.Environments
 	runData          runtime.Data
 	timeout          time.Duration
@@ -237,6 +240,12 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	// inherit parameters
 	i.params.Inherit(i.extendParams).Inherit(extendInst.Parameters())
 	return nil
+}
+
+func (i *nativeInstance) PostUpdateServices() {
+	for _, svc := range i.services {
+		svc.InheritParameters(i.params)
+	}
 }
 
 func (i *nativeInstance) Workspace() string {
