@@ -220,6 +220,97 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			expectedActionTimeout:          8000,
 			expectedActionTimeoutDefault:   true,
 		},
+		{
+			name: "failed creation due to params error",
+			setupMocks: func(
+				t *testing.T,
+				paramsMaker *parametersMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) {
+				paramsMaker.On("Make", testExtendsParams).Return(testExtendsResultParams, nil)
+				paramsMaker.On("Make", testParams).Return(
+					nil, errors.New("main param error"))
+			},
+			instanceConfig: types.Instance{
+				Name:    "test-instance",
+				Actions: testActions,
+				Timeouts: types.InstanceTimeouts{
+					Action:  0,
+					Actions: 0,
+				},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Extends: types.InstanceExtends{
+					Name:       "test-extends",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			expectError:      true,
+			expectedErrorMsg: "main param error",
+		},
+		{
+			name: "failed creation due to extend param error",
+			setupMocks: func(
+				t *testing.T,
+				paramsMaker *parametersMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) {
+				paramsMaker.On("Make", testExtendsParams).Return(
+					nil, errors.New("extend param error"))
+			},
+			instanceConfig: types.Instance{
+				Name:    "test-instance",
+				Actions: testActions,
+				Timeouts: types.InstanceTimeouts{
+					Action:  0,
+					Actions: 0,
+				},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Extends: types.InstanceExtends{
+					Name:       "test-extends",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			expectError:      true,
+			expectedErrorMsg: "extend param error",
+		},
 	}
 
 	for _, tt := range tests {
@@ -411,34 +502,65 @@ func Test_nativeInstance_Abstract(t *testing.T) {
 }
 
 func Test_nativeInstance_Extend(t *testing.T) {
-	action1 := actionMocks.NewMockAction(t)
-	action2 := actionMocks.NewMockAction(t)
+	action1 := &types.StartAction{Service: "test"}
+	action2 := &types.StopAction{Service: "test"}
+	svc1 := types.Service{
+		Server: types.ServiceServer{Name: "fpm"},
+	}
+	svc2 := types.Service{
+		Server: types.ServiceServer{Name: "nginx"},
+	}
+	env1 := types.LocalEnvironment{Ports: types.EnvironmentPorts{Start: 10000}}
+	env2 := types.DockerEnvironment{Ports: types.EnvironmentPorts{Start: 20000}}
+	script1 := types.Script{Content: "test content 1"}
+	script2 := types.Script{Content: "test content 2"}
+
 	paramParent := parameterMocks.NewMockParameter(t)
 	paramChild := parameterMocks.NewMockParameter(t)
 	paramExtended := parameterMocks.NewMockParameter(t)
 
 	tests := []struct {
-		name                  string
-		parent                *nativeInstance
-		child                 *nativeInstance
-		instsMap              map[string]Instance
-		expectedConfigActions []types.Action
-		expectedParams        parameters.Parameters
-		expectedTimeout       time.Duration
-		expectedError         string
+		name                       string
+		parent                     *nativeInstance
+		child                      *nativeInstance
+		instsMap                   map[string]Instance
+		expectedConfigActions      []types.Action
+		expectedConfigServices     map[string]types.Service
+		expectedConfigEnvs         map[string]types.Environment
+		expectedConfigInstanceEnvs map[string]types.Environment
+		expectedConfigResources    types.Resources
+		expectedParams             parameters.Parameters
+		expectedInstanceTimeout    time.Duration
+		expectedActionTimeout      int
+		expectedError              string
 	}{
 		{
 			name: "successful extend with parameter merging",
 			parent: &nativeInstance{
 				name: "parentInstance",
-				actions: []action.Action{
+				configActions: []types.Action{
 					action1,
 					action2,
+				},
+				configServices: map[string]types.Service{
+					"s1": svc1,
+					"s2": svc2,
+				},
+				configInstanceEnvs: map[string]types.Environment{
+					"local":  env1,
+					"docker": env2,
+				},
+				configResources: types.Resources{
+					Scripts: map[string]types.Script{
+						"s1": script1,
+						"s2": script2,
+					},
 				},
 				params: parameters.Parameters{
 					"parent_key": paramParent,
 				},
 				instanceTimeout: 15 * time.Second,
+				actionTimeout:   10000,
 			},
 			child: &nativeInstance{
 				name:       "childInstance",
@@ -446,28 +568,44 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				extendParams: parameters.Parameters{
 					"extended_key": paramExtended,
 				},
-				actions: make([]action.Action, 0),
+				configActions: make([]types.Action, 0),
 				params: parameters.Parameters{
 					"child_key": paramChild,
 				},
 				instanceTimeoutDefault: true,
+				actionTimeoutDefault:   true,
 			},
 			expectedConfigActions: []types.Action{
 				action1,
 				action2,
+			},
+			expectedConfigServices: map[string]types.Service{
+				"s1": svc1,
+				"s2": svc2,
+			},
+			expectedConfigInstanceEnvs: map[string]types.Environment{
+				"local":  env1,
+				"docker": env2,
+			},
+			expectedConfigResources: types.Resources{
+				Scripts: map[string]types.Script{
+					"s1": script1,
+					"s2": script2,
+				},
 			},
 			expectedParams: parameters.Parameters{
 				"parent_key":   paramParent,
 				"child_key":    paramChild,
 				"extended_key": paramExtended,
 			},
-			expectedTimeout: 15 * time.Second,
+			expectedInstanceTimeout: 15 * time.Second,
+			expectedActionTimeout:   10000,
 		},
 		{
-			name: "successful skip extend if child actions and timeout defined",
+			name: "successful skip extend if all defined",
 			parent: &nativeInstance{
 				name: "parentInstance",
-				actions: []action.Action{
+				configActions: []types.Action{
 					action1,
 					action2,
 				},
@@ -478,8 +616,19 @@ func Test_nativeInstance_Extend(t *testing.T) {
 			},
 			child: &nativeInstance{
 				name: "childInstance",
-				actions: []action.Action{
+				configActions: []types.Action{
 					action1,
+				},
+				configServices: map[string]types.Service{
+					"s1": svc1,
+				},
+				configInstanceEnvs: map[string]types.Environment{
+					"local": env1,
+				},
+				configResources: types.Resources{
+					Scripts: map[string]types.Script{
+						"s1": script1,
+					},
 				},
 				extendName: "parentInstance",
 				extendParams: parameters.Parameters{
@@ -490,14 +639,28 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				},
 				instanceTimeoutDefault: false,
 				instanceTimeout:        5 * time.Second,
+				actionTimeoutDefault:   false,
+				actionTimeout:          2000,
 			},
 			expectedConfigActions: []types.Action{
 				action1,
 			},
+			expectedConfigServices: map[string]types.Service{
+				"s1": svc1,
+			},
+			expectedConfigInstanceEnvs: map[string]types.Environment{
+				"local": env1,
+			},
+			expectedConfigResources: types.Resources{
+				Scripts: map[string]types.Script{
+					"s1": script1,
+				},
+			},
 			expectedParams: parameters.Parameters{
 				"child_key": paramChild,
 			},
-			expectedTimeout: 5 * time.Second,
+			expectedInstanceTimeout: 5 * time.Second,
+			expectedActionTimeout:   2000,
 		},
 		{
 			name:   "missing parent instance",
@@ -540,8 +703,12 @@ func Test_nativeInstance_Extend(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedConfigActions, tt.child.ConfigActions())
+				assert.Equal(t, tt.expectedConfigInstanceEnvs, tt.child.ConfigInstanceEnvs())
+				assert.Equal(t, tt.expectedConfigServices, tt.child.ConfigServices())
+				assert.Equal(t, tt.expectedConfigResources, tt.child.ConfigResources())
 				assert.Equal(t, tt.expectedParams, tt.child.Parameters())
-				assert.Equal(t, tt.expectedTimeout, tt.child.InstanceTimeout())
+				assert.Equal(t, tt.expectedInstanceTimeout, tt.child.InstanceTimeout())
+				assert.Equal(t, tt.expectedActionTimeout, tt.child.ActionTimeout())
 			}
 		})
 	}

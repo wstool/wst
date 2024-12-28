@@ -157,39 +157,41 @@ func (m *nativeInstanceMaker) Make(
 }
 
 type nativeInstance struct {
-	fnd                app.Foundation
-	runtimeMaker       runtime.Maker
-	scriptsMaker       scripts.Maker
-	environmentMaker   environments.Maker
-	servicesMaker      services.Maker
-	actionMaker        actions.ActionMaker
+	fnd app.Foundation
+	// Makers
+	runtimeMaker     runtime.Maker
+	scriptsMaker     scripts.Maker
+	environmentMaker environments.Maker
+	servicesMaker    services.Maker
+	actionMaker      actions.ActionMaker
+	// Configs
 	configActions      []types.Action
 	configServices     map[string]types.Service
 	configEnvs         map[string]types.Environment
 	configInstanceEnvs map[string]types.Environment
 	configResources    types.Resources
 	// Make runtime fields
-	name             string
-	index            int
-	specWorkspace    string
-	initialized      bool
-	abstract         bool
-	extendingStarted bool
-	extendName       string
-	extendParams     parameters.Parameters
-	params           parameters.Parameters
-	defaults         *defaults.Defaults
-	servers          servers.Servers
-	// Init runtime fields
-	actions                []action.Action
-	services               services.Services
-	envs                   environments.Environments
+	name                   string
+	index                  int
+	specWorkspace          string
+	initialized            bool
+	abstract               bool
+	extendingStarted       bool
+	extendName             string
+	extendParams           parameters.Parameters
+	params                 parameters.Parameters
+	defaults               *defaults.Defaults
+	servers                servers.Servers
 	runData                runtime.Data
 	instanceTimeout        time.Duration
 	instanceTimeoutDefault bool
 	actionTimeout          int
 	actionTimeoutDefault   bool
-	workspace              string
+	// Init runtime fields
+	actions   []action.Action
+	services  services.Services
+	envs      environments.Environments
+	workspace string
 }
 
 func (i *nativeInstance) InstanceTimeout() time.Duration {
@@ -234,8 +236,8 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 		return nil
 	}
 	// Skip if all defined
-	if len(i.configActions) == 0 && len(i.configInstanceEnvs) == 0 && len(i.configResources.Scripts) == 0 &&
-		len(i.configServices) == 0 && !i.instanceTimeoutDefault && !i.actionTimeoutDefault {
+	if len(i.configActions) > 0 && len(i.configInstanceEnvs) > 0 && len(i.configResources.Scripts) > 0 &&
+		len(i.configServices) > 0 && !i.instanceTimeoutDefault && !i.actionTimeoutDefault {
 		return nil
 	}
 	// Make sure there is no circular extending
