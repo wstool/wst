@@ -43,7 +43,8 @@ type Instance interface {
 	Extend(instsMap map[string]Instance) error
 	Init() error
 	Parameters() parameters.Parameters
-	Timeout() time.Duration
+	InstanceTimeout() time.Duration
+	ActionTimeout() int
 	ConfigActions() []types.Action
 	ConfigServices() map[string]types.Service
 	ConfigInstanceEnvs() map[string]types.Environment
@@ -104,6 +105,12 @@ func (m *nativeInstanceMaker) Make(
 		instanceTimeout = dflts.Timeouts.Actions
 	}
 
+	actionTimeout := instanceConfig.Timeouts.Action
+	actionTimeoutDefault := actionTimeout == 0
+	if actionTimeoutDefault {
+		actionTimeout = dflts.Timeouts.Action
+	}
+
 	var err error
 	var extendParams parameters.Parameters
 	extendName := instanceConfig.Extends.Name
@@ -121,29 +128,31 @@ func (m *nativeInstanceMaker) Make(
 
 	runData := m.runtimeMaker.MakeData()
 	return &nativeInstance{
-		fnd:                m.fnd,
-		runtimeMaker:       m.runtimeMaker,
-		environmentMaker:   m.environmentMaker,
-		actionMaker:        m.actionMaker,
-		scriptsMaker:       m.scriptsMaker,
-		servicesMaker:      m.servicesMaker,
-		configActions:      instanceConfig.Actions,
-		configServices:     instanceConfig.Services,
-		configEnvs:         envsConfig,
-		configInstanceEnvs: instanceConfig.Environments,
-		configResources:    instanceConfig.Resources,
-		name:               name,
-		index:              instanceIdx,
-		specWorkspace:      specWorkspace,
-		abstract:           instanceConfig.Abstract,
-		extendName:         extendName,
-		extendParams:       extendParams,
-		params:             params,
-		timeout:            time.Duration(instanceTimeout) * time.Millisecond,
-		timeoutDefault:     instanceTimeoutDefault,
-		runData:            runData,
-		servers:            srvs,
-		defaults:           dflts,
+		fnd:                    m.fnd,
+		runtimeMaker:           m.runtimeMaker,
+		environmentMaker:       m.environmentMaker,
+		actionMaker:            m.actionMaker,
+		scriptsMaker:           m.scriptsMaker,
+		servicesMaker:          m.servicesMaker,
+		configActions:          instanceConfig.Actions,
+		configServices:         instanceConfig.Services,
+		configEnvs:             envsConfig,
+		configInstanceEnvs:     instanceConfig.Environments,
+		configResources:        instanceConfig.Resources,
+		name:                   name,
+		index:                  instanceIdx,
+		specWorkspace:          specWorkspace,
+		abstract:               instanceConfig.Abstract,
+		extendName:             extendName,
+		extendParams:           extendParams,
+		params:                 params,
+		instanceTimeout:        time.Duration(instanceTimeout) * time.Millisecond,
+		instanceTimeoutDefault: instanceTimeoutDefault,
+		actionTimeout:          actionTimeout,
+		actionTimeoutDefault:   actionTimeoutDefault,
+		runData:                runData,
+		servers:                srvs,
+		defaults:               dflts,
 	}, nil
 }
 
@@ -172,17 +181,23 @@ type nativeInstance struct {
 	defaults         *defaults.Defaults
 	servers          servers.Servers
 	// Init runtime fields
-	actions        []action.Action
-	services       services.Services
-	envs           environments.Environments
-	runData        runtime.Data
-	timeout        time.Duration
-	timeoutDefault bool
-	workspace      string
+	actions                []action.Action
+	services               services.Services
+	envs                   environments.Environments
+	runData                runtime.Data
+	instanceTimeout        time.Duration
+	instanceTimeoutDefault bool
+	actionTimeout          int
+	actionTimeoutDefault   bool
+	workspace              string
 }
 
-func (i *nativeInstance) Timeout() time.Duration {
-	return i.timeout
+func (i *nativeInstance) InstanceTimeout() time.Duration {
+	return i.instanceTimeout
+}
+
+func (i *nativeInstance) ActionTimeout() int {
+	return i.actionTimeout
 }
 
 func (i *nativeInstance) ConfigActions() []types.Action {
@@ -220,7 +235,7 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	}
 	// Skip if all defined
 	if len(i.configActions) == 0 && len(i.configInstanceEnvs) == 0 && len(i.configResources.Scripts) == 0 &&
-		len(i.configServices) == 0 && !i.timeoutDefault {
+		len(i.configServices) == 0 && !i.instanceTimeoutDefault && !i.actionTimeoutDefault {
 		return nil
 	}
 	// Make sure there is no circular extending
@@ -253,10 +268,15 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	if len(i.configResources.Scripts) == 0 {
 		i.configResources.Scripts = extendInst.ConfigResources().Scripts
 	}
-	// Extend timeout if it was not explicitly defined (default used)
-	if i.timeoutDefault {
-		i.timeout = extendInst.Timeout()
-		i.timeoutDefault = false
+	// Extend instance timeout if it was not explicitly defined (default used)
+	if i.instanceTimeoutDefault {
+		i.instanceTimeout = extendInst.InstanceTimeout()
+		i.instanceTimeoutDefault = false
+	}
+	// Extend action timeout if it was not explicitly defined (default used)
+	if i.actionTimeoutDefault {
+		i.actionTimeout = extendInst.ActionTimeout()
+		i.actionTimeoutDefault = false
 	}
 	// inherit parameters
 	i.params.Inherit(i.extendParams).Inherit(extendInst.Parameters())
@@ -287,7 +307,7 @@ func (i *nativeInstance) Init() error {
 	instanceActions := make([]action.Action, len(i.configActions))
 	var act action.Action
 	for idx, actionConfig := range i.configActions {
-		act, err = i.actionMaker.MakeAction(actionConfig, sl, int(i.timeout/time.Millisecond))
+		act, err = i.actionMaker.MakeAction(actionConfig, sl, i.actionTimeout)
 		if err != nil {
 			return err
 		}
@@ -333,11 +353,11 @@ func (i *nativeInstance) Run() error {
 		}
 	}
 
-	ictx, cancel := i.runtimeMaker.MakeContextWithTimeout(ctx, i.timeout)
+	ictx, cancel := i.runtimeMaker.MakeContextWithTimeout(ctx, i.instanceTimeout)
 	defer cancel()
 	var actionErr error = nil
 	for pos, act := range i.actions {
-		i.fnd.Logger().Debugf("Executing action number %d with timeout %s", pos, i.timeout)
+		i.fnd.Logger().Debugf("Executing action number %d with timeout %d", pos, i.instanceTimeout)
 		actionErr = i.executeAction(ictx, act, actionErr)
 	}
 

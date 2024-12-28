@@ -26,6 +26,51 @@ func (_m *MockInstance) EXPECT() *MockInstance_Expecter {
 	return &MockInstance_Expecter{mock: &_m.Mock}
 }
 
+// ActionTimeout provides a mock function with given fields:
+func (_m *MockInstance) ActionTimeout() int {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ActionTimeout")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func() int); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// MockInstance_ActionTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ActionTimeout'
+type MockInstance_ActionTimeout_Call struct {
+	*mock.Call
+}
+
+// ActionTimeout is a helper method to define mock.On call
+func (_e *MockInstance_Expecter) ActionTimeout() *MockInstance_ActionTimeout_Call {
+	return &MockInstance_ActionTimeout_Call{Call: _e.mock.On("ActionTimeout")}
+}
+
+func (_c *MockInstance_ActionTimeout_Call) Run(run func()) *MockInstance_ActionTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInstance_ActionTimeout_Call) Return(_a0 int) *MockInstance_ActionTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockInstance_ActionTimeout_Call) RunAndReturn(run func() int) *MockInstance_ActionTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ConfigActions provides a mock function with given fields:
 func (_m *MockInstance) ConfigActions() []types.Action {
 	ret := _m.Called()
@@ -303,6 +348,51 @@ func (_c *MockInstance_Init_Call) RunAndReturn(run func() error) *MockInstance_I
 	return _c
 }
 
+// InstanceTimeout provides a mock function with given fields:
+func (_m *MockInstance) InstanceTimeout() time.Duration {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for InstanceTimeout")
+	}
+
+	var r0 time.Duration
+	if rf, ok := ret.Get(0).(func() time.Duration); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	return r0
+}
+
+// MockInstance_InstanceTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InstanceTimeout'
+type MockInstance_InstanceTimeout_Call struct {
+	*mock.Call
+}
+
+// InstanceTimeout is a helper method to define mock.On call
+func (_e *MockInstance_Expecter) InstanceTimeout() *MockInstance_InstanceTimeout_Call {
+	return &MockInstance_InstanceTimeout_Call{Call: _e.mock.On("InstanceTimeout")}
+}
+
+func (_c *MockInstance_InstanceTimeout_Call) Run(run func()) *MockInstance_InstanceTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInstance_InstanceTimeout_Call) Return(_a0 time.Duration) *MockInstance_InstanceTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockInstance_InstanceTimeout_Call) RunAndReturn(run func() time.Duration) *MockInstance_InstanceTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsAbstract provides a mock function with given fields:
 func (_m *MockInstance) IsAbstract() bool {
 	ret := _m.Called()
@@ -526,51 +616,6 @@ func (_c *MockInstance_Run_Call) Return(_a0 error) *MockInstance_Run_Call {
 }
 
 func (_c *MockInstance_Run_Call) RunAndReturn(run func() error) *MockInstance_Run_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Timeout provides a mock function with given fields:
-func (_m *MockInstance) Timeout() time.Duration {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Timeout")
-	}
-
-	var r0 time.Duration
-	if rf, ok := ret.Get(0).(func() time.Duration); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(time.Duration)
-	}
-
-	return r0
-}
-
-// MockInstance_Timeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Timeout'
-type MockInstance_Timeout_Call struct {
-	*mock.Call
-}
-
-// Timeout is a helper method to define mock.On call
-func (_e *MockInstance_Expecter) Timeout() *MockInstance_Timeout_Call {
-	return &MockInstance_Timeout_Call{Call: _e.mock.On("Timeout")}
-}
-
-func (_c *MockInstance_Timeout_Call) Run(run func()) *MockInstance_Timeout_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockInstance_Timeout_Call) Return(_a0 time.Duration) *MockInstance_Timeout_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockInstance_Timeout_Call) RunAndReturn(run func() time.Duration) *MockInstance_Timeout_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -68,6 +68,504 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			Ports: types.EnvironmentPorts{Start: 8000},
 		},
 	}
+	testServices := map[string]types.Service{
+		"svc": {
+			Server: types.ServiceServer{
+				Name:    "test",
+				Sandbox: "local",
+			},
+		},
+	}
+	testServers := servers.Servers{
+		"t1": map[string]servers.Server{
+			"t2": serversMocks.NewMockServer(t),
+		},
+	}
+	testActions := []types.Action{
+		types.StartAction{
+			Service: "s1",
+		},
+		types.BenchAction{
+			Service: "btest",
+			Id:      "bt",
+		},
+		types.StopAction{
+			Service: "s1",
+		},
+	}
+	testData := runtimeMocks.NewMockData(t)
+	testDefaultsParams := parameters.Parameters{
+		"default_key": parameterMocks.NewMockParameter(t),
+	}
+	testParams := types.Parameters{
+		"test_key": "test_value",
+	}
+	testResultParams := parameters.Parameters{
+		"test_key": parameterMocks.NewMockParameter(t),
+	}
+	testExtendsParams := types.Parameters{
+		"etest_key": "test_value",
+	}
+	testExtendsResultParams := parameters.Parameters{
+		"etest_key": parameterMocks.NewMockParameter(t),
+	}
+	instanceIdx := 1
+	tests := []struct {
+		name       string
+		setupMocks func(
+			*testing.T,
+			*parametersMocks.MockMaker,
+			*runtimeMocks.MockMaker,
+			*defaults.Defaults,
+		)
+		instanceConfig                 types.Instance
+		defaults                       defaults.Defaults
+		expectError                    bool
+		expectedErrorMsg               string
+		expectedExtendedParams         parameters.Parameters
+		expectedInstanceTimeout        time.Duration
+		expectedInstanceTimeoutDefault bool
+		expectedActionTimeout          int
+		expectedActionTimeoutDefault   bool
+	}{
+		{
+			name: "successful creation with instance timeouts and no extends",
+			setupMocks: func(
+				t *testing.T,
+				paramsMaker *parametersMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) {
+				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
+				runtimeMaker.On("MakeData").Return(testData)
+			},
+			instanceConfig: types.Instance{
+				Name:    "test-instance",
+				Actions: testActions,
+				Timeouts: types.InstanceTimeouts{
+					Action:  5000,
+					Actions: 10000,
+				},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			expectedInstanceTimeout:        10000 * time.Millisecond,
+			expectedInstanceTimeoutDefault: false,
+			expectedActionTimeout:          5000,
+			expectedActionTimeoutDefault:   false,
+		},
+		{
+			name: "successful creation with default instance timeouts and extend",
+			setupMocks: func(
+				t *testing.T,
+				paramsMaker *parametersMocks.MockMaker,
+				runtimeMaker *runtimeMocks.MockMaker,
+				dflts *defaults.Defaults,
+			) {
+				paramsMaker.On("Make", testParams).Return(testResultParams, nil)
+				paramsMaker.On("Make", testExtendsParams).Return(testExtendsResultParams, nil)
+				runtimeMaker.On("MakeData").Return(testData)
+			},
+			instanceConfig: types.Instance{
+				Name:    "test-instance",
+				Actions: testActions,
+				Timeouts: types.InstanceTimeouts{
+					Action:  0,
+					Actions: 0,
+				},
+				Resources: types.Resources{
+					Scripts: testScripts,
+				},
+				Extends: types.InstanceExtends{
+					Name:       "test-extends",
+					Parameters: testExtendsParams,
+				},
+				Parameters:   testParams,
+				Environments: testInstanceEnvironments,
+				Services:     testServices,
+			},
+			defaults: defaults.Defaults{
+				Service: defaults.ServiceDefaults{
+					Sandbox: "local",
+					Server: defaults.ServiceServerDefaults{
+						Tag: "latest",
+					},
+				},
+				Timeouts: defaults.TimeoutsDefaults{
+					Actions: 15000,
+					Action:  8000,
+				},
+				Parameters: testDefaultsParams,
+			},
+			expectedExtendedParams:         testExtendsResultParams,
+			expectedInstanceTimeout:        15000 * time.Millisecond,
+			expectedInstanceTimeoutDefault: true,
+			expectedActionTimeout:          8000,
+			expectedActionTimeoutDefault:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			actionMaker := actionsMocks.NewMockActionMaker(t)
+			serviceMaker := servicesMocks.NewMockMaker(t)
+			scriptsMaker := scriptsMocks.NewMockMaker(t)
+			paramsMaker := parametersMocks.NewMockMaker(t)
+			envMaker := environmentsMocks.NewMockMaker(t)
+			runtimeMaker := runtimeMocks.NewMockMaker(t)
+
+			maker := &nativeInstanceMaker{
+				fnd:              fndMock,
+				actionMaker:      actionMaker,
+				servicesMaker:    serviceMaker,
+				scriptsMaker:     scriptsMaker,
+				parametersMaker:  paramsMaker,
+				environmentMaker: envMaker,
+				runtimeMaker:     runtimeMaker,
+			}
+
+			tt.setupMocks(t, paramsMaker, runtimeMaker, &tt.defaults)
+
+			specWorkspace := "/fake/workspace"
+			got, err := maker.Make(
+				tt.instanceConfig, instanceIdx, testSpecEnvironments, &tt.defaults, testServers, specWorkspace)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+			} else {
+				assert.NoError(t, err)
+				actualInstance, ok := got.(*nativeInstance)
+				assert.True(t, ok)
+				expectedInstance := &nativeInstance{
+					fnd:                    fndMock,
+					runtimeMaker:           runtimeMaker,
+					scriptsMaker:           scriptsMaker,
+					environmentMaker:       envMaker,
+					servicesMaker:          serviceMaker,
+					actionMaker:            actionMaker,
+					configActions:          tt.instanceConfig.Actions,
+					configServices:         tt.instanceConfig.Services,
+					configEnvs:             testSpecEnvironments,
+					configInstanceEnvs:     tt.instanceConfig.Environments,
+					configResources:        tt.instanceConfig.Resources,
+					name:                   tt.instanceConfig.Name,
+					index:                  instanceIdx,
+					specWorkspace:          specWorkspace,
+					initialized:            false,
+					abstract:               tt.instanceConfig.Abstract,
+					extendingStarted:       false,
+					extendName:             tt.instanceConfig.Extends.Name,
+					extendParams:           tt.expectedExtendedParams,
+					params:                 testResultParams,
+					defaults:               &tt.defaults,
+					servers:                testServers,
+					actions:                nil,
+					services:               nil,
+					envs:                   nil,
+					runData:                testData,
+					instanceTimeout:        tt.expectedInstanceTimeout,
+					instanceTimeoutDefault: tt.expectedInstanceTimeoutDefault,
+					actionTimeout:          tt.expectedActionTimeout,
+					actionTimeoutDefault:   tt.expectedActionTimeoutDefault,
+					workspace:              "",
+				}
+				assert.Equal(t, expectedInstance, actualInstance)
+			}
+
+			actionMaker.AssertExpectations(t)
+			serviceMaker.AssertExpectations(t)
+			scriptsMaker.AssertExpectations(t)
+			envMaker.AssertExpectations(t)
+		})
+	}
+}
+
+func Test_nativeInstance_InstanceTimeout(t *testing.T) {
+	instance := &nativeInstance{
+		name:            "testInstance",
+		instanceTimeout: 10 * time.Second,
+		workspace:       "/fake/workspace",
+	}
+	assert.Equal(t, 10*time.Second, instance.InstanceTimeout())
+}
+
+func Test_nativeInstance_ActionTimeout(t *testing.T) {
+	instance := &nativeInstance{
+		name:          "testInstance",
+		actionTimeout: 5000,
+		workspace:     "/fake/workspace",
+	}
+	assert.Equal(t, 5000, instance.ActionTimeout())
+}
+
+func Test_nativeInstance_ConfigActions(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		configActions: []types.Action{
+			types.StartAction{},
+			types.StopAction{},
+		},
+	}
+	assert.Equal(t, instance.configActions, instance.ConfigActions())
+}
+
+func Test_nativeInstance_ConfigServices(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		configServices: map[string]types.Service{
+			"svc": {
+				Server: types.ServiceServer{
+					Name: "svr",
+				},
+			},
+		},
+	}
+	assert.Equal(t, instance.configServices, instance.ConfigServices())
+}
+
+func Test_nativeInstance_ConfigInstanceEnvs(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		configInstanceEnvs: map[string]types.Environment{
+			"local": types.LocalEnvironment{Ports: types.EnvironmentPorts{
+				Start: 10000,
+			}},
+		},
+	}
+	assert.Equal(t, instance.configInstanceEnvs, instance.ConfigInstanceEnvs())
+}
+
+func Test_nativeInstance_ConfigResources(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		configResources: types.Resources{
+			Scripts: map[string]types.Script{
+				"s1": {
+					Content: "abc",
+				},
+			},
+		},
+	}
+	assert.Equal(t, instance.configResources, instance.ConfigResources())
+}
+
+func Test_nativeInstance_Parameters(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		params: parameters.Parameters{
+			"p": parameterMocks.NewMockParameter(t),
+		},
+	}
+	assert.Equal(t, instance.params, instance.Parameters())
+}
+
+func Test_nativeInstance_IsChild(t *testing.T) {
+	instance := &nativeInstance{
+		name:       "testInstance",
+		workspace:  "/fake/workspace",
+		extendName: "anotherInstance",
+	}
+	assert.True(t, instance.IsChild())
+	instance = &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+	}
+	assert.False(t, instance.IsChild())
+}
+
+func Test_nativeInstance_Abstract(t *testing.T) {
+	instance := &nativeInstance{
+		name:      "testInstance",
+		workspace: "/fake/workspace",
+		abstract:  true,
+	}
+	assert.True(t, instance.IsAbstract())
+	instance = &nativeInstance{
+		name: "testInstance",
+	}
+	assert.False(t, instance.IsAbstract())
+}
+
+func Test_nativeInstance_Extend(t *testing.T) {
+	action1 := actionMocks.NewMockAction(t)
+	action2 := actionMocks.NewMockAction(t)
+	paramParent := parameterMocks.NewMockParameter(t)
+	paramChild := parameterMocks.NewMockParameter(t)
+	paramExtended := parameterMocks.NewMockParameter(t)
+
+	tests := []struct {
+		name                  string
+		parent                *nativeInstance
+		child                 *nativeInstance
+		instsMap              map[string]Instance
+		expectedConfigActions []types.Action
+		expectedParams        parameters.Parameters
+		expectedTimeout       time.Duration
+		expectedError         string
+	}{
+		{
+			name: "successful extend with parameter merging",
+			parent: &nativeInstance{
+				name: "parentInstance",
+				actions: []action.Action{
+					action1,
+					action2,
+				},
+				params: parameters.Parameters{
+					"parent_key": paramParent,
+				},
+				instanceTimeout: 15 * time.Second,
+			},
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "parentInstance",
+				extendParams: parameters.Parameters{
+					"extended_key": paramExtended,
+				},
+				actions: make([]action.Action, 0),
+				params: parameters.Parameters{
+					"child_key": paramChild,
+				},
+				instanceTimeoutDefault: true,
+			},
+			expectedConfigActions: []types.Action{
+				action1,
+				action2,
+			},
+			expectedParams: parameters.Parameters{
+				"parent_key":   paramParent,
+				"child_key":    paramChild,
+				"extended_key": paramExtended,
+			},
+			expectedTimeout: 15 * time.Second,
+		},
+		{
+			name: "successful skip extend if child actions and timeout defined",
+			parent: &nativeInstance{
+				name: "parentInstance",
+				actions: []action.Action{
+					action1,
+					action2,
+				},
+				params: parameters.Parameters{
+					"parent_key": paramParent,
+				},
+				instanceTimeout: 15 * time.Second,
+			},
+			child: &nativeInstance{
+				name: "childInstance",
+				actions: []action.Action{
+					action1,
+				},
+				extendName: "parentInstance",
+				extendParams: parameters.Parameters{
+					"extended_key": paramExtended,
+				},
+				params: parameters.Parameters{
+					"child_key": paramChild,
+				},
+				instanceTimeoutDefault: false,
+				instanceTimeout:        5 * time.Second,
+			},
+			expectedConfigActions: []types.Action{
+				action1,
+			},
+			expectedParams: parameters.Parameters{
+				"child_key": paramChild,
+			},
+			expectedTimeout: 5 * time.Second,
+		},
+		{
+			name:   "missing parent instance",
+			parent: nil,
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "missingParentInstance",
+			},
+			expectedError: "instance missingParentInstance not found",
+		},
+		{
+			name: "circular inheritance",
+			parent: &nativeInstance{
+				name:       "parentInstance",
+				extendName: "childInstance",
+			},
+			child: &nativeInstance{
+				name:       "childInstance",
+				extendName: "parentInstance",
+			},
+			expectedError: "instance childInstance already extending",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instsMap := make(map[string]Instance)
+			if tt.parent != nil {
+				instsMap["parentInstance"] = tt.parent
+			}
+			if tt.child != nil {
+				instsMap["childInstance"] = tt.child
+			}
+
+			err := tt.child.Extend(instsMap)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedConfigActions, tt.child.ConfigActions())
+				assert.Equal(t, tt.expectedParams, tt.child.Parameters())
+				assert.Equal(t, tt.expectedTimeout, tt.child.InstanceTimeout())
+			}
+		})
+	}
+}
+
+func Test_nativeInstance_Init(t *testing.T) {
+	testScripts := map[string]types.Script{
+		"test-script": {
+			Content:    "test content",
+			Path:       "/path/to/script",
+			Mode:       "0644",
+			Parameters: nil,
+		},
+	}
+	testInstanceEnvironments := map[string]types.Environment{
+		"local": types.LocalEnvironment{
+			Ports: types.EnvironmentPorts{Start: 9000},
+		},
+	}
+	testSpecEnvironments := map[string]types.Environment{
+		"local": types.LocalEnvironment{
+			Ports: types.EnvironmentPorts{Start: 8000},
+		},
+	}
 	testEnvironments := environments.Environments{
 		providers.LocalType: environmentMocks.NewMockEnvironment(t),
 	}
@@ -224,17 +722,17 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				runtimeMaker *runtimeMocks.MockMaker,
 			) *nativeInstance {
 				return &nativeInstance{
-					fnd:          fndMock,
-					runtimeMaker: runtimeMaker,
-					name:         "test-instance",
-					index:        instanceIdx,
-					timeout:      10 * time.Second,
-					actions:      acts,
-					services:     testRunnableService,
-					envs:         testEnvironments,
-					params:       testResultParams,
-					runData:      testData,
-					workspace:    "/workspace/test-instance",
+					fnd:             fndMock,
+					runtimeMaker:    runtimeMaker,
+					name:            "test-instance",
+					index:           instanceIdx,
+					instanceTimeout: 10 * time.Second,
+					actions:         acts,
+					services:        testRunnableService,
+					envs:            testEnvironments,
+					params:          testResultParams,
+					runData:         testData,
+					workspace:       "/workspace/test-instance",
 				}
 			},
 		},
@@ -321,21 +819,21 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				runtimeMaker *runtimeMocks.MockMaker,
 			) *nativeInstance {
 				return &nativeInstance{
-					fnd:            fndMock,
-					runtimeMaker:   runtimeMaker,
-					name:           "test-instance",
-					index:          instanceIdx,
-					abstract:       true,
-					timeout:        15 * time.Second,
-					timeoutDefault: true,
-					actions:        acts,
-					services:       testRunnableService,
-					extendName:     "another-test-instance",
-					extendParams:   testExtendsResultParams,
-					params:         testResultParams,
-					envs:           testEnvironments,
-					runData:        testData,
-					workspace:      "/workspace/test-instance",
+					fnd:                    fndMock,
+					runtimeMaker:           runtimeMaker,
+					name:                   "test-instance",
+					index:                  instanceIdx,
+					abstract:               true,
+					instanceTimeout:        15 * time.Second,
+					instanceTimeoutDefault: true,
+					actions:                acts,
+					services:               testRunnableService,
+					extendName:             "another-test-instance",
+					extendParams:           testExtendsResultParams,
+					params:                 testResultParams,
+					envs:                   testEnvironments,
+					runData:                testData,
+					workspace:              "/workspace/test-instance",
 				}
 			},
 		},
@@ -781,272 +1279,20 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 	}
 }
 
-func Test_nativeInstance_Timeout(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-	}
-	assert.Equal(t, 10*time.Second, instance.Timeout())
-}
-
-func Test_nativeInstance_ConfigActions(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		configActions: []types.Action{
-			types.StartAction{},
-			types.StopAction{},
-		},
-	}
-	assert.Equal(t, instance.configActions, instance.ConfigActions())
-}
-
-func Test_nativeInstance_ConfigServices(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		configServices: map[string]types.Service{
-			"svc": {
-				Server: types.ServiceServer{
-					Name: "svr",
-				},
-			},
-		},
-	}
-	assert.Equal(t, instance.configServices, instance.ConfigServices())
-}
-
-func Test_nativeInstance_ConfigInstanceEnvs(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		configInstanceEnvs: map[string]types.Environment{
-			"local": types.LocalEnvironment{Ports: types.EnvironmentPorts{
-				Start: 10000,
-			}},
-		},
-	}
-	assert.Equal(t, instance.configInstanceEnvs, instance.ConfigInstanceEnvs())
-}
-
-func Test_nativeInstance_ConfigResources(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		configResources: types.Resources{
-			Scripts: map[string]types.Script{
-				"s1": {
-					Content: "abc",
-				},
-			},
-		},
-	}
-	assert.Equal(t, instance.configResources, instance.ConfigResources())
-}
-
-func Test_nativeInstance_Parameters(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		params: parameters.Parameters{
-			"p": parameterMocks.NewMockParameter(t),
-		},
-	}
-	assert.Equal(t, instance.params, instance.Parameters())
-}
-
-func Test_nativeInstance_IsChild(t *testing.T) {
-	instance := &nativeInstance{
-		name:       "testInstance",
-		timeout:    10 * time.Second,
-		workspace:  "/fake/workspace",
-		extendName: "anotherInstance",
-	}
-	assert.True(t, instance.IsChild())
-	instance = &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-	}
-	assert.False(t, instance.IsChild())
-}
-
-func Test_nativeInstance_Abstract(t *testing.T) {
-	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
-		abstract:  true,
-	}
-	assert.True(t, instance.IsAbstract())
-	instance = &nativeInstance{
-		name:    "testInstance",
-		timeout: 10 * time.Second,
-	}
-	assert.False(t, instance.IsAbstract())
-}
-
-func Test_nativeInstance_Extend(t *testing.T) {
-	action1 := actionMocks.NewMockAction(t)
-	action2 := actionMocks.NewMockAction(t)
-	paramParent := parameterMocks.NewMockParameter(t)
-	paramChild := parameterMocks.NewMockParameter(t)
-	paramExtended := parameterMocks.NewMockParameter(t)
-
-	tests := []struct {
-		name                  string
-		parent                *nativeInstance
-		child                 *nativeInstance
-		instsMap              map[string]Instance
-		expectedConfigActions []types.Action
-		expectedParams        parameters.Parameters
-		expectedTimeout       time.Duration
-		expectedError         string
-	}{
-		{
-			name: "successful extend with parameter merging",
-			parent: &nativeInstance{
-				name: "parentInstance",
-				actions: []action.Action{
-					action1,
-					action2,
-				},
-				params: parameters.Parameters{
-					"parent_key": paramParent,
-				},
-				timeout: 15 * time.Second,
-			},
-			child: &nativeInstance{
-				name:       "childInstance",
-				extendName: "parentInstance",
-				extendParams: parameters.Parameters{
-					"extended_key": paramExtended,
-				},
-				actions: make([]action.Action, 0),
-				params: parameters.Parameters{
-					"child_key": paramChild,
-				},
-				timeoutDefault: true,
-			},
-			expectedConfigActions: []types.Action{
-				action1,
-				action2,
-			},
-			expectedParams: parameters.Parameters{
-				"parent_key":   paramParent,
-				"child_key":    paramChild,
-				"extended_key": paramExtended,
-			},
-			expectedTimeout: 15 * time.Second,
-		},
-		{
-			name: "successful skip extend if child actions and timeout defined",
-			parent: &nativeInstance{
-				name: "parentInstance",
-				actions: []action.Action{
-					action1,
-					action2,
-				},
-				params: parameters.Parameters{
-					"parent_key": paramParent,
-				},
-				timeout: 15 * time.Second,
-			},
-			child: &nativeInstance{
-				name: "childInstance",
-				actions: []action.Action{
-					action1,
-				},
-				extendName: "parentInstance",
-				extendParams: parameters.Parameters{
-					"extended_key": paramExtended,
-				},
-				params: parameters.Parameters{
-					"child_key": paramChild,
-				},
-				timeoutDefault: false,
-				timeout:        5 * time.Second,
-			},
-			expectedConfigActions: []types.Action{
-				action1,
-			},
-			expectedParams: parameters.Parameters{
-				"child_key": paramChild,
-			},
-			expectedTimeout: 5 * time.Second,
-		},
-		{
-			name:   "missing parent instance",
-			parent: nil,
-			child: &nativeInstance{
-				name:       "childInstance",
-				extendName: "missingParentInstance",
-			},
-			expectedError: "instance missingParentInstance not found",
-		},
-		{
-			name: "circular inheritance",
-			parent: &nativeInstance{
-				name:       "parentInstance",
-				extendName: "childInstance",
-			},
-			child: &nativeInstance{
-				name:       "childInstance",
-				extendName: "parentInstance",
-			},
-			expectedError: "instance childInstance already extending",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			instsMap := make(map[string]Instance)
-			if tt.parent != nil {
-				instsMap["parentInstance"] = tt.parent
-			}
-			if tt.child != nil {
-				instsMap["childInstance"] = tt.child
-			}
-
-			err := tt.child.Extend(instsMap)
-
-			if tt.expectedError != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expectedConfigActions, tt.child.ConfigActions())
-				assert.Equal(t, tt.expectedParams, tt.child.Parameters())
-				assert.Equal(t, tt.expectedTimeout, tt.child.Timeout())
-			}
-		})
-	}
-}
-
-func Test_nativeInstance_Init(t *testing.T) {
-	// TODO: implement
-}
-
 func Test_nativeInstance_Workspace(t *testing.T) {
 	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
+		name:            "testInstance",
+		instanceTimeout: 10 * time.Second,
+		workspace:       "/fake/workspace",
 	}
 	assert.Equal(t, "/fake/workspace", instance.Workspace())
 }
 
 func Test_nativeInstance_Name(t *testing.T) {
 	instance := &nativeInstance{
-		name:      "testInstance",
-		timeout:   10 * time.Second,
-		workspace: "/fake/workspace",
+		name:            "testInstance",
+		instanceTimeout: 10 * time.Second,
+		workspace:       "/fake/workspace",
 	}
 	assert.Equal(t, "testInstance", instance.Name())
 }
@@ -1092,14 +1338,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 
@@ -1135,14 +1381,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(true, nil)
@@ -1150,7 +1396,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout = 2 * time.Second
 				acts[1].On("Timeout").Return(actTimeout)
 				acts[1].On("When").Return(action.OnSuccess)
-				actx, cancel = context.WithTimeout(ctx, inst.timeout)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[1].On("Execute", actx, inst.runData).Return(true, nil)
@@ -1185,14 +1431,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(true, nil)
@@ -1230,14 +1476,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("failed first"))
@@ -1277,14 +1523,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("failed first"))
@@ -1292,7 +1538,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout = 2 * time.Second
 				acts[1].On("Timeout").Return(actTimeout)
 				acts[1].On("When").Return(action.OnFailure)
-				actx, cancel = context.WithTimeout(ctx, inst.timeout)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[1].On("Execute", actx, inst.runData).Return(true, nil)
@@ -1329,14 +1575,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("failed first"))
@@ -1344,7 +1590,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout = 2 * time.Second
 				acts[1].On("Timeout").Return(actTimeout)
 				acts[1].On("When").Return(action.Always)
-				actx, cancel = context.WithTimeout(ctx, inst.timeout)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[1].On("Execute", actx, inst.runData).Return(true, nil)
@@ -1381,14 +1627,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("failed first"))
@@ -1396,7 +1642,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout = 2 * time.Second
 				acts[1].On("Timeout").Return(actTimeout)
 				acts[1].On("When").Return(action.Always)
-				actx, cancel = context.WithTimeout(ctx, inst.timeout)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 				acts[1].On("Execute", actx, inst.runData).Return(false, errors.New("failed second"))
@@ -1433,14 +1679,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 
@@ -1477,14 +1723,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 
@@ -1521,14 +1767,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 
@@ -1565,14 +1811,14 @@ func Test_nativeInstance_Run(t *testing.T) {
 				dockerEnv.On("IsUsed").Return(true)
 				dockerEnv.On("Init", ctx).Return(nil)
 
-				tctx, cancel := context.WithTimeout(ctx, inst.timeout)
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.timeout).Return(tctx, cancelFunc)
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
 
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.timeout)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
 
@@ -1675,9 +1921,9 @@ func Test_nativeInstance_Run(t *testing.T) {
 					providers.LocalType:  environmentMocks.NewMockEnvironment(t),
 					providers.DockerType: environmentMocks.NewMockEnvironment(t),
 				},
-				runData:   runtimeMocks.NewMockData(t),
-				timeout:   10 * time.Second,
-				workspace: "/fake/workspace",
+				runData:         runtimeMocks.NewMockData(t),
+				instanceTimeout: 10 * time.Second,
+				workspace:       "/fake/workspace",
 			}
 
 			tt.setupMocks(instance, fndMock, runtimeMakerMock, actMocks, cancelFunc)
