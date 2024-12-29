@@ -100,7 +100,7 @@ and ease of editing.
 
 The execution is designed with flexibility and scalability in mind, accommodating various execution contexts through
 a structured yet adaptable architecture. This architecture is built upon key entities: Actions, Environments, Instances,
-Sandboxes, Servers and Services. Each plays a crucial role in ensuring that our application can be deployed and managed
+Sandboxes, Servers and Services. Each plays a crucial role in ensuring that the application can be deployed and managed
 effectively across different platforms.
 
 #### Actions

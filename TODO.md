@@ -5,15 +5,33 @@ in the future.
 
 ## Code
 
-### Build, CI and Docs
+### Build and CI
 
-- Update README and extend README - align with the current logic
+- update Go to latest 1.23
+- update deps
+- update and re-run mockery
+- update Go to latest 1.24
+- update deps
+- update and re-run mockery
+- integration tests
+
+### Docs
+
+#### README
+
+- update Architecture to be aligned with the current logic
+- document parameters handling and inheritance
+- integrate some of the text from the blog
+
+#### Schema
+
 - document encode_path request action option
 - document parallel, not and reload actions in schema
 - review the schema if it matches the config
-- further extend README docs
-- update Go to latest 1.23
-- integration tests
+
+#### Website
+
+- look into setting up the website with better docs containing multiple examples
 
 ### App
 
@@ -23,9 +41,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- implement instance inheritance to reduce duplications for test that differs only in some parameters
-  - test extending related logic in instance and changes in spec
-  - integrate parameters rendering support for instance server, server config and possibly other parts
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
