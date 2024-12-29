@@ -334,6 +334,9 @@ func (i *nativeInstance) Run() error {
 	if i.abstract {
 		return errors.Errorf("instance %s is abstract and cannot be run", i.name)
 	}
+	if !i.initialized {
+		return errors.Errorf("instance %s is not initialized and cannot be run", i.name)
+	}
 
 	var err error
 	fs := i.fnd.Fs()
