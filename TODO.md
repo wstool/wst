@@ -41,6 +41,8 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
+- add option to customize part of UDS path and possible document root
+  - for testing some special UTF-8 characters in the path
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
