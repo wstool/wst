@@ -43,15 +43,25 @@ in the future.
 
 - add option to customize part of UDS path and possible document root
   - for testing some special UTF-8 characters in the path
+- extend metrics to allow requesting metrics in time
+  - effectively metrics should be stored in time series
+  - when requested without time, it should define some operation to use for getting the result
+    - should be per metric default - for example counter would be max, but elsewhere avg or other might make more sense
+  - it would make sense to also support ranges
+- bench action restructuring allowing different types of bench marking / load testing
+  - move current parameters under attack
+  - create a new type wave to do something similar like https://github.com/bjaspan/goofy
+    - use time series of metrics
+- extend metrics expectations to support checking metric in time
+- support metrics server expectation
+- look into doing some partial expectation
+  - some sort of contains mode rather than full match
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
   - might be worth to consider whether top action should be wrapped to reduce code needed
 - custom server actions for sequential action
   - useful to wrap multiple action - e.g. fpm start + expectations
-- support metrics server expectation
-- look into doing some partial expectation
-  - some sort of contains mode rather than full match
 - look into more consistent naming for public and private url vs local and private address
   - private has got different meaning in both
   - maybe address is not the best name
