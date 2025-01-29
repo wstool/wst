@@ -1252,12 +1252,19 @@ func Test_nativeService_LocalAddress(t *testing.T) {
 func Test_nativeService_UdsPath(t *testing.T) {
 	tests := []struct {
 		name         string
+		sockNameArg  string
 		expectedPath string
 		err          error
 	}{
 		{
-			name:         "successful result",
+			name:         "successful default result",
 			expectedPath: "/ws/run/dir/svc/svc.sock",
+			err:          nil,
+		},
+		{
+			name:         "successful custom result",
+			sockNameArg:  "custom",
+			expectedPath: "/ws/run/dir/svc/custom.sock",
 			err:          nil,
 		},
 		{
@@ -1273,9 +1280,15 @@ func Test_nativeService_UdsPath(t *testing.T) {
 			envMock := svc.environment.(*environmentMocks.MockEnvironment)
 			envMock.On("RootPath", "/tmp/ws/svc").Return("/ws")
 			envMock.On("Mkdir", "svc", "/ws/run/dir/svc", os.FileMode(0755)).Return(tt.err)
-			result, err := svc.UdsPath()
+			var result string
+			var err error
+			if tt.sockNameArg == "" {
+				result, err = svc.UdsPath()
+			} else {
+				result, err = svc.UdsPath(tt.sockNameArg)
+			}
 			assert.Equal(t, tt.expectedPath, result)
-			assert.Equal(t, err, tt.err)
+			assert.Equal(t, tt.err, err)
 		})
 	}
 }

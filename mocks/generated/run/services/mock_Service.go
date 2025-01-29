@@ -1448,9 +1448,15 @@ func (_c *MockService_Task_Call) RunAndReturn(run func() task.Task) *MockService
 	return _c
 }
 
-// UdsPath provides a mock function with given fields:
-func (_m *MockService) UdsPath() (string, error) {
-	ret := _m.Called()
+// UdsPath provides a mock function with given fields: _a0
+func (_m *MockService) UdsPath(_a0 ...string) (string, error) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UdsPath")
@@ -1458,17 +1464,17 @@ func (_m *MockService) UdsPath() (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(...string) (string, error)); ok {
+		return rf(_a0...)
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(...string) string); ok {
+		r0 = rf(_a0...)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(...string) error); ok {
+		r1 = rf(_a0...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1482,13 +1488,21 @@ type MockService_UdsPath_Call struct {
 }
 
 // UdsPath is a helper method to define mock.On call
-func (_e *MockService_Expecter) UdsPath() *MockService_UdsPath_Call {
-	return &MockService_UdsPath_Call{Call: _e.mock.On("UdsPath")}
+//   - _a0 ...string
+func (_e *MockService_Expecter) UdsPath(_a0 ...interface{}) *MockService_UdsPath_Call {
+	return &MockService_UdsPath_Call{Call: _e.mock.On("UdsPath",
+		append([]interface{}{}, _a0...)...)}
 }
 
-func (_c *MockService_UdsPath_Call) Run(run func()) *MockService_UdsPath_Call {
+func (_c *MockService_UdsPath_Call) Run(run func(_a0 ...string)) *MockService_UdsPath_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		variadicArgs := make([]string, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(variadicArgs...)
 	})
 	return _c
 }
@@ -1498,7 +1512,7 @@ func (_c *MockService_UdsPath_Call) Return(_a0 string, _a1 error) *MockService_U
 	return _c
 }
 
-func (_c *MockService_UdsPath_Call) RunAndReturn(run func() (string, error)) *MockService_UdsPath_Call {
+func (_c *MockService_UdsPath_Call) RunAndReturn(run func(...string) (string, error)) *MockService_UdsPath_Call {
 	_c.Call.Return(run)
 	return _c
 }
