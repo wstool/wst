@@ -41,8 +41,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- add option to customize part of UDS path and possible document root
-  - for testing some special UTF-8 characters in the path
 - extend metrics to allow requesting metrics in time
   - effectively metrics should be stored in time series
   - when requested without time, it should define some operation to use for getting the result
