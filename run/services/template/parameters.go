@@ -15,7 +15,7 @@
 package template
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/parameters/parameter"
 	"reflect"
@@ -32,11 +32,21 @@ func NewParameters(origParams parameters.Parameters, tmpl Template) Parameters {
 }
 
 // GetString retrieves a string value directly from the parameters.
-func (p Parameters) GetString(key string) (string, error) {
+func (p Parameters) GetString(args ...string) (string, error) {
+	if len(args) == 0 {
+		return "", errors.Errorf("key parameter is not specified")
+	}
+	if len(args) > 2 {
+		return "", errors.Errorf("too many parameters")
+	}
+	key := args[0]
 	if val, ok := p[key]; ok {
 		return val.ToString()
 	}
-	return "", fmt.Errorf("object string for key [%s] not found", key)
+	if len(args) == 2 {
+		return args[1], nil
+	}
+	return "", errors.Errorf("object string for key [%s] not found", key)
 }
 
 // GetObject retrieves a map as a dynamic object with `ToString` method for each value.
@@ -55,7 +65,7 @@ func (p Parameters) GetObjectString(firstKey, secondKey string) (string, error) 
 			return val.ToString()
 		}
 	}
-	return "", fmt.Errorf("object string for key [%s][%s] not found", firstKey, secondKey)
+	return "", errors.Errorf("object string for key [%s][%s] not found", firstKey, secondKey)
 }
 
 // Parameter is used to encapsulate values and provide a ToString method.
@@ -97,13 +107,13 @@ func (p *Parameter) ToNumber() float64 {
 
 func (p *Parameter) ToString() (string, error) {
 	if reflect.ValueOf(p.param).IsNil() {
-		return "", fmt.Errorf("trying to render not set parameter")
+		return "", errors.Errorf("trying to render not set parameter")
 	}
 	if p.isRendered {
 		return p.renderedValue, nil
 	}
 	if p.startedRendering {
-		return "", fmt.Errorf("recursive rendering of parameter %s detected", p.param.StringValue())
+		return "", errors.Errorf("recursive rendering of parameter %s detected", p.param.StringValue())
 	}
 	p.startedRendering = true
 	renderedValue, err := p.tmpl.RenderToString(p.param.StringValue(), p.params)

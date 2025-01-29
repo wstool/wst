@@ -27,11 +27,28 @@ func TestParameters_GetString(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "content", result)
 
+	// Test default value
+	result, err = params.GetString("key2", "default")
+	assert.NoError(t, err)
+	assert.Equal(t, "default", result)
+
 	// Test missing key
 	result, err = params.GetString("key2")
 	assert.Empty(t, result)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "object string for key [key2] not found")
+
+	// Test no key
+	result, err = params.GetString()
+	assert.Empty(t, result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "key parameter is not specified")
+
+	// Test too many parameters
+	result, err = params.GetString("key1", "default", "extra")
+	assert.Empty(t, result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "too many parameters")
 }
 
 func TestParameters_GetObject(t *testing.T) {
