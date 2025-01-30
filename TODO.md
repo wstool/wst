@@ -80,6 +80,8 @@ in the future.
 - consider moving server port to sandbox port
   - currently the server port is really just container specific and not used for local
   - consider more consistent naming differentiating that service port is public and server port is private
+- add support for ephemeral port allocation that should be the default if not ports specified
+  - it should be also possible to overwrite port to ephemeral selection even if specified
 - enhance parameters merging
   - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
 - come up with custom error wrapping and types
