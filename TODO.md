@@ -19,9 +19,17 @@ in the future.
 
 #### README
 
-- update Architecture to be aligned with the current logic
+- once sphinx docs available, clean up to only list the most important parts with links to docs
+
+#### Sphinx
+
+- create base structure for RST Sphinx docs
+- take architecture from README and align it with the current logic
 - document parameters handling and inheritance
 - integrate some of the text from the blog
+- create nicer config docs
+- document template handling and functions
+- come with some nice get started section
 
 #### Schema
 
@@ -31,7 +39,7 @@ in the future.
 
 #### Website
 
-- look into setting up the website with better docs containing multiple examples
+- look into setting up the website for Sphinx docs
 
 ### App
 
