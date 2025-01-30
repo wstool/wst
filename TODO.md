@@ -60,6 +60,9 @@ in the future.
   - might be worth to consider whether top action should be wrapped to reduce code needed
 - custom server actions for sequential action
   - useful to wrap multiple action - e.g. fpm start + expectations
+- save UDS socket to /tmp if longer than 108 which might happen if workspace path is too long
+  - ideally use format like this `/tmp/wst/{service_name}/{socket_name}.sock`
+  - it should still allow too long UDS if socket_name is too long so this case can be tested
 - look into more consistent naming for public and private url vs local and private address
   - private has got different meaning in both
   - maybe address is not the best name
