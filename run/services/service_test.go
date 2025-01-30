@@ -1257,8 +1257,15 @@ func Test_nativeService_UdsPath(t *testing.T) {
 		err          error
 	}{
 		{
-			name:         "successful default result",
+			name:         "successful default result for empty sockName",
 			expectedPath: "/ws/run/dir/svc/svc.sock",
+			sockNameArg:  "__empty__",
+			err:          nil,
+		},
+		{
+			name:         "successful default result if sockName is empty string",
+			expectedPath: "/ws/run/dir/svc/svc.sock",
+			sockNameArg:  "",
 			err:          nil,
 		},
 		{
@@ -1282,7 +1289,7 @@ func Test_nativeService_UdsPath(t *testing.T) {
 			envMock.On("Mkdir", "svc", "/ws/run/dir/svc", os.FileMode(0755)).Return(tt.err)
 			var result string
 			var err error
-			if tt.sockNameArg == "" {
+			if tt.sockNameArg == "__empty__" {
 				result, err = svc.UdsPath()
 			} else {
 				result, err = svc.UdsPath(tt.sockNameArg)

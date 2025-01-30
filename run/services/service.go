@@ -588,7 +588,7 @@ func (s *nativeService) UdsPath(args ...string) (string, error) {
 		return "", err
 	}
 	var sockName string
-	if len(args) > 0 {
+	if len(args) > 0 && args[0] != "" {
 		sockName = args[0]
 	} else {
 		sockName = s.name
