@@ -1730,6 +1730,11 @@ func Test_dockerEnvironment_ServiceLocalAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:80", env.ServiceLocalAddress("svc", 1234, 80))
 }
 
+func Test_dockerEnvironment_ServiceLocalPort(t *testing.T) {
+	env := &dockerEnvironment{}
+	assert.Equal(t, int32(80), env.ServiceLocalPort(1234, 80))
+}
+
 func Test_dockerEnvironment_ServicePrivateAddress(t *testing.T) {
 	env := &dockerEnvironment{}
 	assert.Equal(t, "svc", env.ServicePrivateAddress("svc", 1234, 80))

@@ -2525,6 +2525,11 @@ func Test_kubernetesEnvironment_ServiceLocalAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:80", env.ServiceLocalAddress("svc", 1234, 80))
 }
 
+func Test_kubernetesEnvironment_ServiceLocalPort(t *testing.T) {
+	env := &kubernetesEnvironment{}
+	assert.Equal(t, int32(80), env.ServiceLocalPort(1234, 80))
+}
+
 func Test_kubernetesEnvironment_ServicePrivateAddress(t *testing.T) {
 	env := &kubernetesEnvironment{}
 	assert.Equal(t, "svc", env.ServicePrivateAddress("svc", 1234, 80))

@@ -516,6 +516,51 @@ func (_c *MockService_LocalAddress_Call) RunAndReturn(run func() string) *MockSe
 	return _c
 }
 
+// LocalPort provides a mock function with given fields:
+func (_m *MockService) LocalPort() int32 {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LocalPort")
+	}
+
+	var r0 int32
+	if rf, ok := ret.Get(0).(func() int32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+
+	return r0
+}
+
+// MockService_LocalPort_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LocalPort'
+type MockService_LocalPort_Call struct {
+	*mock.Call
+}
+
+// LocalPort is a helper method to define mock.On call
+func (_e *MockService_Expecter) LocalPort() *MockService_LocalPort_Call {
+	return &MockService_LocalPort_Call{Call: _e.mock.On("LocalPort")}
+}
+
+func (_c *MockService_LocalPort_Call) Run(run func()) *MockService_LocalPort_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_LocalPort_Call) Return(_a0 int32) *MockService_LocalPort_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_LocalPort_Call) RunAndReturn(run func() int32) *MockService_LocalPort_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with given fields:
 func (_m *MockService) Name() string {
 	ret := _m.Called()

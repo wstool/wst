@@ -743,6 +743,53 @@ func (_c *MockEnvironment_ServiceLocalAddress_Call) RunAndReturn(run func(string
 	return _c
 }
 
+// ServiceLocalPort provides a mock function with given fields: servicePort, serverPort
+func (_m *MockEnvironment) ServiceLocalPort(servicePort int32, serverPort int32) int32 {
+	ret := _m.Called(servicePort, serverPort)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ServiceLocalPort")
+	}
+
+	var r0 int32
+	if rf, ok := ret.Get(0).(func(int32, int32) int32); ok {
+		r0 = rf(servicePort, serverPort)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+
+	return r0
+}
+
+// MockEnvironment_ServiceLocalPort_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceLocalPort'
+type MockEnvironment_ServiceLocalPort_Call struct {
+	*mock.Call
+}
+
+// ServiceLocalPort is a helper method to define mock.On call
+//   - servicePort int32
+//   - serverPort int32
+func (_e *MockEnvironment_Expecter) ServiceLocalPort(servicePort interface{}, serverPort interface{}) *MockEnvironment_ServiceLocalPort_Call {
+	return &MockEnvironment_ServiceLocalPort_Call{Call: _e.mock.On("ServiceLocalPort", servicePort, serverPort)}
+}
+
+func (_c *MockEnvironment_ServiceLocalPort_Call) Run(run func(servicePort int32, serverPort int32)) *MockEnvironment_ServiceLocalPort_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int32), args[1].(int32))
+	})
+	return _c
+}
+
+func (_c *MockEnvironment_ServiceLocalPort_Call) Return(_a0 int32) *MockEnvironment_ServiceLocalPort_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEnvironment_ServiceLocalPort_Call) RunAndReturn(run func(int32, int32) int32) *MockEnvironment_ServiceLocalPort_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ServicePrivateAddress provides a mock function with given fields: serviceName, servicePort, serverPort
 func (_m *MockEnvironment) ServicePrivateAddress(serviceName string, servicePort int32, serverPort int32) string {
 	ret := _m.Called(serviceName, servicePort, serverPort)

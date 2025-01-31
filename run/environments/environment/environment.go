@@ -67,6 +67,7 @@ type Environment interface {
 	RootPath(workspace string) string
 	Mkdir(serviceName string, path string, perm os.FileMode) error
 	ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string
+	ServiceLocalPort(servicePort, serverPort int32) int32
 	ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string
 	RunTask(ctx context.Context, ss *ServiceSettings, cmd *Command) (task.Task, error)
 	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command) error

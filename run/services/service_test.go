@@ -1249,6 +1249,17 @@ func Test_nativeService_LocalAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:80", svc.LocalAddress())
 }
 
+func Test_nativeService_LocalPort(t *testing.T) {
+	svc := testingNativeService(t)
+	svc.environment.(*environmentMocks.MockEnvironment).On(
+		"ServiceLocalPort",
+		int32(8500),
+		int32(80),
+	).Return(int32(80))
+	svc.server.(*serversMocks.MockServer).On("Port").Return(int32(80))
+	assert.Equal(t, int32(80), svc.LocalPort())
+}
+
 func Test_nativeService_UdsPath(t *testing.T) {
 	tests := []struct {
 		name         string

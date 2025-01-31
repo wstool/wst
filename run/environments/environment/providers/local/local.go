@@ -79,6 +79,10 @@ func (l *localEnvironment) ServiceLocalAddress(serviceName string, servicePort, 
 	return fmt.Sprintf("127.0.0.1:%d", servicePort)
 }
 
+func (l *localEnvironment) ServiceLocalPort(servicePort, serverPort int32) int32 {
+	return servicePort
+}
+
 func (l *localEnvironment) ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string {
 	return l.ServiceLocalAddress(serviceName, servicePort, serverPort)
 }
@@ -99,6 +103,7 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 	hasError := false
 	for _, t := range l.tasks {
 		if t.cmd.IsRunning() {
+			l.Fnd.Logger().Debugf("Killing local task %s - process %d", t.id, t.cmd.ProcessPid())
 			if err := t.cmd.ProcessSignal(os.Kill); err != nil {
 				l.Fnd.Logger().Errorf("Failed to kill process: %v", err)
 				hasError = true
@@ -110,6 +115,7 @@ func (l *localEnvironment) Destroy(ctx context.Context) error {
 
 	fs := l.Fnd.Fs()
 
+	l.Fnd.Logger().Debug("Removing workspace")
 	if err := fs.RemoveAll(l.workspace); err != nil {
 		return err
 	}

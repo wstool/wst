@@ -632,6 +632,10 @@ func (e *kubernetesEnvironment) ServiceLocalAddress(serviceName string, serviceP
 	return fmt.Sprintf("127.0.0.1:%d", serverPort)
 }
 
+func (e *kubernetesEnvironment) ServiceLocalPort(servicePort, serverPort int32) int32 {
+	return serverPort
+}
+
 func (e *kubernetesEnvironment) ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string {
 	return serviceName
 }

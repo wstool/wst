@@ -43,6 +43,7 @@ import (
 
 type Service interface {
 	LocalAddress() string
+	LocalPort() int32
 	PrivateAddress() string
 	PrivateUrl() (string, error)
 	PublicUrl(path string) (string, error)
@@ -553,6 +554,10 @@ func (s *nativeService) PrivateAddress() string {
 
 func (s *nativeService) LocalAddress() string {
 	return s.environment.ServiceLocalAddress(s.name, s.port, s.server.Port())
+}
+
+func (s *nativeService) LocalPort() int32 {
+	return s.environment.ServiceLocalPort(s.port, s.server.Port())
 }
 
 func (s *nativeService) Executable() (string, error) {

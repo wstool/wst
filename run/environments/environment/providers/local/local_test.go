@@ -169,6 +169,24 @@ func Test_localEnvironment_ServiceLocalAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:1234", l.ServiceLocalAddress("svc", 1234, 80))
 }
 
+func Test_localEnvironment_ServiceLocalPort(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	l := &localEnvironment{
+		CommonEnvironment: environment.CommonEnvironment{
+			Fnd:  fndMock,
+			Used: false,
+			Ports: environment.Ports{
+				Start: 8000,
+				Used:  8000,
+				End:   8500,
+			},
+		},
+		tasks:     make(map[string]*localTask),
+		workspace: "/tmp/ws/envs/local",
+	}
+	assert.Equal(t, int32(1234), l.ServiceLocalPort(1234, 80))
+}
+
 func Test_localEnvironment_ServicePrivateAddress(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	l := &localEnvironment{
