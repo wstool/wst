@@ -886,6 +886,12 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: always
+      await:
+        title: Whether to await stopping of service
+        description: |
+          Await stopping of service by periodically checking if the service task is alive.
+        type: boolean
+        default: true
 
   actionItem:
     title: Action item
