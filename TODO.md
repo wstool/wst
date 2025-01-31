@@ -49,6 +49,9 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
+- investigate expectation termination when running Apache prefork
+- setting `when: always` for expectations does not seem to work correctly
+  - this can be tested by removing Apache handler from the configuration
 - extend metrics to allow requesting metrics in time
   - effectively metrics should be stored in time series
   - when requested without time, it should define some operation to use for getting the result
