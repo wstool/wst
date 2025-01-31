@@ -87,9 +87,12 @@ in the future.
 - come up with custom error wrapping and types
   - eliminating differentiation based on error message for context deadline action check (e.g. in output action)
   - removal of deprecated (archived) github.com/pkg/errors
+- stop action awaiting by checking if the task still runs
+  - this might be useful for cases when it cannot be found from the logs
+  - schema description in brach action-stop-await
+- fuzzing action
 - replace environment.ServiceSettings struct with environment.Service interface
   - code clean up really with saving some calls - it just messy to pre-create this struct
-- fuzzing action
 
 #### Execution
 
