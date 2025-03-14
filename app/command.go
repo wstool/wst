@@ -34,6 +34,7 @@ type Command interface {
 	StderrPipe() (io.ReadCloser, error)
 	SetStdout(stdout io.Writer)
 	SetStderr(stdout io.Writer)
+	SetSysProcAttr(attr *syscall.SysProcAttr)
 	String() string
 	Wait() error
 }
@@ -95,6 +96,10 @@ func (c ExecCommand) SetStderr(stderr io.Writer) {
 	c.cmd.Stderr = stderr
 }
 
+func (c ExecCommand) SetSysProcAttr(attr *syscall.SysProcAttr) {
+	c.cmd.SysProcAttr = attr
+}
+
 func (c ExecCommand) Wait() error {
 	return c.cmd.Wait()
 }
@@ -132,16 +137,6 @@ func (c DryRunCommand) ProcessSignal(sig os.Signal) error {
 	return nil
 }
 
-type DummyReaderCloser struct{}
-
-func (drc *DummyReaderCloser) Read(p []byte) (n int, err error) {
-	return 0, io.EOF
-}
-
-func (drc *DummyReaderCloser) Close() error {
-	return nil
-}
-
 func (c DryRunCommand) StdoutPipe() (io.ReadCloser, error) {
 	return &DummyReaderCloser{}, nil
 }
@@ -154,6 +149,18 @@ func (c DryRunCommand) SetStdout(stdout io.Writer) {}
 
 func (c DryRunCommand) SetStderr(stdout io.Writer) {}
 
+func (c DryRunCommand) SetSysProcAttr(attr *syscall.SysProcAttr) {}
+
 func (c DryRunCommand) Wait() error {
+	return nil
+}
+
+type DummyReaderCloser struct{}
+
+func (drc *DummyReaderCloser) Read(p []byte) (n int, err error) {
+	return 0, io.EOF
+}
+
+func (drc *DummyReaderCloser) Close() error {
 	return nil
 }

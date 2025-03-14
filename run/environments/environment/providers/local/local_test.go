@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -274,6 +275,7 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 				mockOc *outputMocks.MockCollector,
 			) {
 				mockCmd.On("IsRunning").Return(true)
+				mockCmd.On("ProcessPid").Return(1234)
 				mockCmd.On("ProcessSignal", os.Kill).Return(nil)
 				mockOc.On("Close").Return(nil)
 				mockFs.On("RemoveAll", "/fake/path").Return(nil)
@@ -288,6 +290,7 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 				mockOc *outputMocks.MockCollector,
 			) {
 				mockCmd.On("IsRunning").Return(true)
+				mockCmd.On("ProcessPid").Return(1234)
 				mockCmd.On("ProcessSignal", os.Kill).Return(os.ErrPermission)
 				mockOc.On("Close").Return(nil)
 				mockFs.On("RemoveAll", "/fake/path").Return(nil)
@@ -353,6 +356,9 @@ func Test_localEnvironment_Destroy(t *testing.T) {
 }
 
 func Test_localEnvironment_RunTask(t *testing.T) {
+	procAttr := &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 	tests := []struct {
 		name        string
 		workspace   string
@@ -442,6 +448,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 
 				mockCommand.On("SetStdout", stdoutWriter)
 				mockCommand.On("SetStderr", stderrWriter)
+				mockCommand.On("SetSysProcAttr", procAttr)
 				fndMock.On("GenerateUuid").Return("uuid-123")
 
 				mockCommand.On("Start").Return(nil)
@@ -482,6 +489,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 
 				mockCommand := appMocks.NewMockCommand(t)
 				mockCommand.On("String").Return("test-command arg1")
+				mockCommand.On("SetSysProcAttr", procAttr)
 				fndMock.On("ExecCommand", envCtx, "test-command", []string{"arg1"}).Return(mockCommand)
 
 				stdoutWriter := &bytes.Buffer{}
@@ -552,6 +560,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 
 				mockCommand.On("SetStdout", stdoutWriter)
 				mockCommand.On("SetStderr", stderrWriter)
+				mockCommand.On("SetSysProcAttr", procAttr)
 				fndMock.On("GenerateUuid").Return("uuid-123")
 
 				mockCommand.On("Start").Return(nil)
@@ -604,6 +613,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				collectorMock.On("StderrWriter").Return(stderrWriter)
 				mockCommand.On("SetStdout", stdoutWriter)
 				mockCommand.On("SetStderr", stderrWriter)
+				mockCommand.On("SetSysProcAttr", procAttr)
 				fndMock.On("GenerateUuid").Return("uuid-123")
 				mockCommand.On("Start").Return(fmt.Errorf("command start error"))
 				fndMock.On("GenerateUuid").Return("uuid-123")

@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
+	"syscall"
 )
 
 type Maker interface {
@@ -217,6 +218,11 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 	command := l.Fnd.ExecCommand(l.ctx, cmd.Name, cmd.Args)
 
 	logger.Debugf("Creating command: %s", command)
+
+	// Use new process group for the process to not get killed
+	command.SetSysProcAttr(&syscall.SysProcAttr{
+		Setpgid: true,
+	})
 
 	tid := l.Fnd.GenerateUuid()
 	outputCollector := l.OutputMaker.MakeCollector(tid)
