@@ -51,6 +51,17 @@ in the future.
 
 - setting `when: always` for expectations does not seem to work correctly
   - this can be tested by removing Apache handler from the configuration
+- introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
+  - might be worth to consider whether top action should be wrapped to reduce code needed
+- custom server actions for sequential action
+  - useful to wrap multiple action - e.g. fpm start + expectations
+- introduce new command action and make it work with output
+- introduce action parameter `on_failure` to set what to do when action fails
+  - it should either fail (default) or skip the rest of sequence
+  - this is to allow skipping the tests that are for example not applicable on certain configuration
+- add typed parameters substitution for integers
+  - this is to be able to for example parameterize status code
+  - alternatively it might be easier to allow automatic string to int conversion
 - extend metrics to allow requesting metrics in time
   - effectively metrics should be stored in time series
   - when requested without time, it should define some operation to use for getting the result
@@ -66,10 +77,6 @@ in the future.
   - some sort of contains mode rather than full match
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
-- introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
-  - might be worth to consider whether top action should be wrapped to reduce code needed
-- custom server actions for sequential action
-  - useful to wrap multiple action - e.g. fpm start + expectations
 - save UDS socket to /tmp if longer than 108 which might happen if workspace path is too long
   - ideally use format like this `/tmp/wst/{service_name}/{socket_name}.sock`
   - it should still allow too long UDS if socket_name is too long so this case can be tested
