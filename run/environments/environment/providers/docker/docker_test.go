@@ -402,7 +402,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
 					Driver: "bridge",
-				}).Return(apitypes.NetworkCreateResponse{}, nil)
+				}).Return(network.CreateResponse{}, nil)
 				pullOut := &pullReaderCloser{}
 				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
 				var platform *v1.Platform = nil
@@ -1423,7 +1423,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				fnd.On("DryRun").Return(false)
 				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
 					Driver: "bridge",
-				}).Return(apitypes.NetworkCreateResponse{}, errors.New("net create err"))
+				}).Return(network.CreateResponse{}, errors.New("net create err"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create network wt - net create err",

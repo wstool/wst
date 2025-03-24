@@ -47,7 +47,7 @@ type Client interface {
 		condition container.WaitCondition,
 	) (<-chan container.WaitResponse, <-chan error)
 	ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error)
-	NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (types.NetworkCreateResponse, error)
+	NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error)
 	NetworkRemove(ctx context.Context, networkID string) error
 }
 
@@ -119,7 +119,7 @@ func (d dockerClient) ImagePull(ctx context.Context, refStr string, options imag
 }
 
 // NetworkCreate creates a new network with the specified options.
-func (d dockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (types.NetworkCreateResponse, error) {
+func (d dockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
 	return d.cli.NetworkCreate(ctx, name, options)
 }
 
