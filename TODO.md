@@ -7,8 +7,6 @@ in the future.
 
 ### Build and CI
 
-- update Go to latest 1.23
-- update deps
 - update and re-run mockery
 - update Go to latest 1.24
 - update deps

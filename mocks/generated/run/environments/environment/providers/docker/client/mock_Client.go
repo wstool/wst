@@ -15,8 +15,6 @@ import (
 
 	network "github.com/docker/docker/api/types/network"
 
-	types "github.com/docker/docker/api/types"
-
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -95,22 +93,22 @@ func (_c *MockClient_ContainerCreate_Call) RunAndReturn(run func(context.Context
 }
 
 // ContainerInspect provides a mock function with given fields: ctx, containerID
-func (_m *MockClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+func (_m *MockClient) ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error) {
 	ret := _m.Called(ctx, containerID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerInspect")
 	}
 
-	var r0 types.ContainerJSON
+	var r0 container.InspectResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (types.ContainerJSON, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (container.InspectResponse, error)); ok {
 		return rf(ctx, containerID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) types.ContainerJSON); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) container.InspectResponse); ok {
 		r0 = rf(ctx, containerID)
 	} else {
-		r0 = ret.Get(0).(types.ContainerJSON)
+		r0 = ret.Get(0).(container.InspectResponse)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -141,12 +139,12 @@ func (_c *MockClient_ContainerInspect_Call) Run(run func(ctx context.Context, co
 	return _c
 }
 
-func (_c *MockClient_ContainerInspect_Call) Return(_a0 types.ContainerJSON, _a1 error) *MockClient_ContainerInspect_Call {
+func (_c *MockClient_ContainerInspect_Call) Return(_a0 container.InspectResponse, _a1 error) *MockClient_ContainerInspect_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClient_ContainerInspect_Call) RunAndReturn(run func(context.Context, string) (types.ContainerJSON, error)) *MockClient_ContainerInspect_Call {
+func (_c *MockClient_ContainerInspect_Call) RunAndReturn(run func(context.Context, string) (container.InspectResponse, error)) *MockClient_ContainerInspect_Call {
 	_c.Call.Return(run)
 	return _c
 }
