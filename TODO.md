@@ -47,8 +47,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- introduce sequential action for more complex scenarios (e.g. seq task in parallel action)
-  - might be worth to consider whether top action should be wrapped to reduce code needed
 - custom server actions for sequential action
   - useful to wrap multiple action - e.g. fpm start + expectations
 - introduce new command action and make it work with output

@@ -590,6 +590,29 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Valid sequential action",
+			actions: []interface{}{
+				map[string]interface{}{
+					"sequential": map[string]interface{}{"actions": []map[string]interface{}{}},
+				},
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				path string
+				err  error
+			}{
+				{
+					data: map[string]interface{}{"actions": []map[string]interface{}{}},
+					path: staticPath,
+					err:  nil,
+				},
+			},
+			want: []types.Action{
+				&types.SequentialAction{},
+			},
+			wantErr: false,
+		},
+		{
 			name: "Valid start action",
 			actions: []interface{}{
 				map[string]interface{}{

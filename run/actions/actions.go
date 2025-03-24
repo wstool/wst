@@ -26,6 +26,7 @@ import (
 	"github.com/wstool/wst/run/actions/action/reload"
 	"github.com/wstool/wst/run/actions/action/request"
 	"github.com/wstool/wst/run/actions/action/restart"
+	"github.com/wstool/wst/run/actions/action/sequential"
 	"github.com/wstool/wst/run/actions/action/start"
 	"github.com/wstool/wst/run/actions/action/stop"
 	"github.com/wstool/wst/run/expectations"
@@ -39,17 +40,18 @@ type ActionMaker interface {
 }
 
 type nativeActionMaker struct {
-	fnd           app.Foundation
-	runtimeMaker  runtime.Maker
-	benchMaker    bench.Maker
-	expectMaker   expect.Maker
-	notMaker      not.Maker
-	parallelMaker parallel.Maker
-	requestMaker  request.Maker
-	reloadMaker   reload.Maker
-	restartMaker  restart.Maker
-	startMaker    start.Maker
-	stopMaker     stop.Maker
+	fnd             app.Foundation
+	runtimeMaker    runtime.Maker
+	benchMaker      bench.Maker
+	expectMaker     expect.Maker
+	notMaker        not.Maker
+	parallelMaker   parallel.Maker
+	requestMaker    request.Maker
+	reloadMaker     reload.Maker
+	restartMaker    restart.Maker
+	sequentialMaker sequential.Maker
+	startMaker      start.Maker
+	stopMaker       stop.Maker
 }
 
 func CreateActionMaker(
@@ -59,17 +61,18 @@ func CreateActionMaker(
 	runtimeMaker runtime.Maker,
 ) ActionMaker {
 	return &nativeActionMaker{
-		fnd:           fnd,
-		runtimeMaker:  runtimeMaker,
-		benchMaker:    bench.CreateActionMaker(fnd),
-		expectMaker:   expect.CreateExpectationActionMaker(fnd, expectationsMaker, parametersMaker),
-		notMaker:      not.CreateActionMaker(fnd, runtimeMaker),
-		parallelMaker: parallel.CreateActionMaker(fnd, runtimeMaker),
-		requestMaker:  request.CreateActionMaker(fnd),
-		reloadMaker:   reload.CreateActionMaker(fnd),
-		restartMaker:  restart.CreateActionMaker(fnd),
-		startMaker:    start.CreateActionMaker(fnd),
-		stopMaker:     stop.CreateActionMaker(fnd),
+		fnd:             fnd,
+		runtimeMaker:    runtimeMaker,
+		benchMaker:      bench.CreateActionMaker(fnd),
+		expectMaker:     expect.CreateExpectationActionMaker(fnd, expectationsMaker, parametersMaker),
+		notMaker:        not.CreateActionMaker(fnd, runtimeMaker),
+		parallelMaker:   parallel.CreateActionMaker(fnd, runtimeMaker),
+		requestMaker:    request.CreateActionMaker(fnd),
+		reloadMaker:     reload.CreateActionMaker(fnd),
+		restartMaker:    restart.CreateActionMaker(fnd),
+		sequentialMaker: sequential.CreateActionMaker(fnd, runtimeMaker),
+		startMaker:      start.CreateActionMaker(fnd),
+		stopMaker:       stop.CreateActionMaker(fnd),
 	}
 }
 
@@ -99,6 +102,8 @@ func (m *nativeActionMaker) MakeAction(
 		return m.reloadMaker.Make(action, sl, defaultTimeout)
 	case *types.RestartAction:
 		return m.restartMaker.Make(action, sl, defaultTimeout)
+	case *types.SequentialAction:
+		return m.sequentialMaker.Make(action, sl, defaultTimeout, m)
 	case *types.StartAction:
 		return m.startMaker.Make(action, sl, defaultTimeout)
 	case *types.StopAction:

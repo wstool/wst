@@ -13,6 +13,7 @@ import (
 	reloadMocks "github.com/wstool/wst/mocks/generated/run/actions/action/reload"
 	requestMocks "github.com/wstool/wst/mocks/generated/run/actions/action/request"
 	restartMocks "github.com/wstool/wst/mocks/generated/run/actions/action/restart"
+	sequentialMocks "github.com/wstool/wst/mocks/generated/run/actions/action/sequential"
 	startMocks "github.com/wstool/wst/mocks/generated/run/actions/action/start"
 	stopMocks "github.com/wstool/wst/mocks/generated/run/actions/action/stop"
 	expectationsMocks "github.com/wstool/wst/mocks/generated/run/expectations"
@@ -60,6 +61,7 @@ func TestCreateActionMaker(t *testing.T) {
 			assert.NotNil(t, m.requestMaker)
 			assert.NotNil(t, m.reloadMaker)
 			assert.NotNil(t, m.restartMaker)
+			assert.NotNil(t, m.sequentialMaker)
 			assert.NotNil(t, m.startMaker)
 			assert.NotNil(t, m.stopMaker)
 		})
@@ -83,6 +85,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			*requestMocks.MockMaker,
 			*reloadMocks.MockMaker,
 			*restartMocks.MockMaker,
+			*sequentialMocks.MockMaker,
 			*startMocks.MockMaker,
 			*stopMocks.MockMaker,
 		)
@@ -105,6 +108,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -127,6 +131,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -150,6 +155,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -173,6 +179,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -196,6 +203,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -219,6 +227,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -242,6 +251,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -265,6 +275,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -288,6 +299,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -311,11 +323,36 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
 				cfg := &types.RestartAction{Timeout: 2000}
 				restartMaker.On("Make", cfg, sl, 5000).Return(a, nil)
+			},
+		},
+		{
+			name:           "successful sequential action creation",
+			config:         &types.SequentialAction{Timeout: 2000},
+			defaultTimeout: 5000,
+			setupMocks: func(
+				t *testing.T,
+				m *nativeActionMaker,
+				a action.Action,
+				sl *servicesMocks.MockServiceLocator,
+				benchMaker *benchMocks.MockMaker,
+				expectMaker *expectMocks.MockMaker,
+				notMaker *notMocks.MockMaker,
+				parallelMaker *parallelMocks.MockMaker,
+				requestMaker *requestMocks.MockMaker,
+				reloadMaker *reloadMocks.MockMaker,
+				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
+				startMaker *startMocks.MockMaker,
+				stopMaker *stopMocks.MockMaker,
+			) {
+				cfg := &types.SequentialAction{Timeout: 2000}
+				sequentialMaker.On("Make", cfg, sl, 5000, m).Return(a, nil)
 			},
 		},
 		{
@@ -334,6 +371,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -357,6 +395,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -380,6 +419,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMaker *requestMocks.MockMaker,
 				reloadMaker *reloadMocks.MockMaker,
 				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
 				startMaker *startMocks.MockMaker,
 				stopMaker *stopMocks.MockMaker,
 			) {
@@ -400,21 +440,23 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			requestMakerMock := requestMocks.NewMockMaker(t)
 			reloadMakerMock := reloadMocks.NewMockMaker(t)
 			restartMakerMock := restartMocks.NewMockMaker(t)
+			sequentialMakerMock := sequentialMocks.NewMockMaker(t)
 			startMakerMock := startMocks.NewMockMaker(t)
 			stopMakerMock := stopMocks.NewMockMaker(t)
 			actionMock := actionMocks.NewMockAction(t)
 
 			m := &nativeActionMaker{
-				fnd:           fndMock,
-				benchMaker:    benchMakerMock,
-				expectMaker:   expectMakerMock,
-				notMaker:      notMakerMock,
-				parallelMaker: parallelMakerMock,
-				requestMaker:  requestMakerMock,
-				reloadMaker:   reloadMakerMock,
-				restartMaker:  restartMakerMock,
-				startMaker:    startMakerMock,
-				stopMaker:     stopMakerMock,
+				fnd:             fndMock,
+				benchMaker:      benchMakerMock,
+				expectMaker:     expectMakerMock,
+				notMaker:        notMakerMock,
+				parallelMaker:   parallelMakerMock,
+				requestMaker:    requestMakerMock,
+				reloadMaker:     reloadMakerMock,
+				restartMaker:    restartMakerMock,
+				sequentialMaker: sequentialMakerMock,
+				startMaker:      startMakerMock,
+				stopMaker:       stopMakerMock,
 			}
 
 			tt.setupMocks(
@@ -429,6 +471,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				requestMakerMock,
 				reloadMakerMock,
 				restartMakerMock,
+				sequentialMakerMock,
 				startMakerMock,
 				stopMakerMock,
 			)

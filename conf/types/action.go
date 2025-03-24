@@ -114,6 +114,12 @@ type ParallelAction struct {
 	When    string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
 }
 
+type SequentialAction struct {
+	Actions []Action `wst:"actions,factory=createActions"`
+	Timeout int      `wst:"timeout"`
+	When    string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+}
+
 type NotAction struct {
 	Action  Action `wst:"action,factory=createAction"`
 	Timeout int    `wst:"timeout"`

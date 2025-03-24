@@ -172,6 +172,11 @@ func (f *NativeActionsFactory) parseAction(
 		restartAction := &types.RestartAction{Service: meta.serviceName}
 		err = f.structParser(data, restartAction, path)
 		action = restartAction
+	case "sequential":
+		serviceNameAllowed = false
+		sequentialAction := &types.SequentialAction{}
+		err = f.structParser(data, sequentialAction, path)
+		action = sequentialAction
 	case "start":
 		startAction := &types.StartAction{Service: meta.serviceName}
 		err = f.structParser(data, startAction, path)

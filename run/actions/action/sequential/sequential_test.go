@@ -1,4 +1,4 @@
-package parallel
+package sequential
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+// TestCreateActionMaker remains the same
 func TestCreateActionMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	runtimeMock := runtimeMocks.NewMockMaker(t)
@@ -42,7 +43,7 @@ func TestCreateActionMaker(t *testing.T) {
 func TestActionMaker_Make(t *testing.T) {
 	tests := []struct {
 		name             string
-		config           *types.ParallelAction
+		config           *types.SequentialAction
 		defaultTimeout   int
 		passedTimeout    int
 		expectedTimeout  time.Duration
@@ -53,7 +54,7 @@ func TestActionMaker_Make(t *testing.T) {
 	}{
 		{
 			name: "successful action creation with config timeout",
-			config: &types.ParallelAction{
+			config: &types.SequentialAction{
 				Actions: []types.Action{
 					&types.RequestAction{
 						Service: "s1",
@@ -74,7 +75,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "successful action creation with default timeout",
-			config: &types.ParallelAction{
+			config: &types.SequentialAction{
 				Actions: []types.Action{
 					&types.RequestAction{
 						Service: "s1",
@@ -95,7 +96,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "failed action creation because of action maker failure",
-			config: &types.ParallelAction{
+			config: &types.SequentialAction{
 				Actions: []types.Action{
 					&types.RequestAction{
 						Service: "s1",
@@ -118,6 +119,8 @@ func TestActionMaker_Make(t *testing.T) {
 			expectedWhen:     action.OnSuccess,
 		},
 	}
+
+	// Test implementation remains the same as it tests the maker functionality
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
@@ -175,12 +178,13 @@ func TestAction_Execute(t *testing.T) {
 			*runtimeMocks.MockData,
 			context.Context,
 		)
-		want             bool
-		expectError      bool
-		expectedErrorMsg string
+		want        bool
+		expectError bool
+		errorMsg    string
+		execActions int
 	}{
 		{
-			name: "successful execution of true action result",
+			name: "successful execution of all actions",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -189,13 +193,18 @@ func TestAction_Execute(t *testing.T) {
 				ctx context.Context,
 			) {
 				actions[0].On("Execute", ctx, rd).Return(true, nil)
+				actions[0].On("When").Return(action.Always)
 				actions[1].On("Execute", ctx, rd).Return(true, nil)
+				actions[1].On("When").Return(action.Always)
 				actions[2].On("Execute", ctx, rd).Return(true, nil)
+				actions[2].On("When").Return(action.Always)
+				fnd.On("DryRun").Return(false)
 			},
-			want: true,
+			want:        true,
+			execActions: 3,
 		},
 		{
-			name: "successful execution of false action result of all actions",
+			name: "continue on failure in dry-run mode",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -204,46 +213,18 @@ func TestAction_Execute(t *testing.T) {
 				ctx context.Context,
 			) {
 				actions[0].On("Execute", ctx, rd).Return(false, nil)
+				actions[0].On("When").Return(action.Always)
 				actions[1].On("Execute", ctx, rd).Return(false, nil)
+				actions[1].On("When").Return(action.Always)
 				actions[2].On("Execute", ctx, rd).Return(false, nil)
-				fnd.On("DryRun").Return(false)
-			},
-			want: false,
-		},
-		{
-			name: "successful execution of false action result of a single action",
-			setupMocks: func(
-				t *testing.T,
-				fnd *appMocks.MockFoundation,
-				actions []*actionMocks.MockAction,
-				rd *runtimeMocks.MockData,
-				ctx context.Context,
-			) {
-				actions[0].On("Execute", ctx, rd).Return(true, nil)
-				actions[1].On("Execute", ctx, rd).Return(false, nil)
-				actions[2].On("Execute", ctx, rd).Return(true, nil)
-				fnd.On("DryRun").Return(false)
-			},
-			want: false,
-		},
-		{
-			name: "successful execution of true action result with dry run",
-			setupMocks: func(
-				t *testing.T,
-				fnd *appMocks.MockFoundation,
-				actions []*actionMocks.MockAction,
-				rd *runtimeMocks.MockData,
-				ctx context.Context,
-			) {
-				actions[0].On("Execute", ctx, rd).Return(false, nil)
-				actions[1].On("Execute", ctx, rd).Return(false, nil)
-				actions[2].On("Execute", ctx, rd).Return(false, nil)
+				actions[2].On("When").Return(action.Always)
 				fnd.On("DryRun").Return(true)
 			},
-			want: true,
+			want:        true,
+			execActions: 3,
 		},
 		{
-			name: "failed execution",
+			name: "execute on failure condition",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -251,14 +232,56 @@ func TestAction_Execute(t *testing.T) {
 				rd *runtimeMocks.MockData,
 				ctx context.Context,
 			) {
-
-				actions[0].On("Execute", ctx, rd).Return(false, errors.New("fail"))
-				actions[1].On("Execute", ctx, rd).Return(false, errors.New("fail"))
-				actions[2].On("Execute", ctx, rd).Return(false, errors.New("fail"))
+				actions[0].On("Execute", ctx, rd).Return(false, nil)
+				actions[0].On("When").Return(action.Always)
+				actions[1].On("Execute", ctx, rd).Return(true, nil)
+				actions[1].On("When").Return(action.OnFailure)
+				actions[2].On("When").Return(action.OnSuccess)
+				fnd.On("DryRun").Return(false)
 			},
-			want:             false,
-			expectError:      true,
-			expectedErrorMsg: "fail",
+			want:        false,
+			execActions: 2,
+		},
+		{
+			name: "execute on success condition",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				actions []*actionMocks.MockAction,
+				rd *runtimeMocks.MockData,
+				ctx context.Context,
+			) {
+				actions[0].On("Execute", ctx, rd).Return(true, nil)
+				actions[0].On("When").Return(action.Always)
+				actions[1].On("Execute", ctx, rd).Return(true, nil)
+				actions[1].On("When").Return(action.OnSuccess)
+				actions[2].On("When").Return(action.OnFailure)
+				fnd.On("DryRun").Return(false)
+			},
+			want:        true,
+			execActions: 2,
+		},
+		{
+			name: "error stops execution",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				actions []*actionMocks.MockAction,
+				rd *runtimeMocks.MockData,
+				ctx context.Context,
+			) {
+				actions[0].On("When").Return(action.Always).Once()
+				actions[0].On("Execute", ctx, rd).Return(false, errors.New("act fail")).Once()
+				actions[1].On("When").Return(action.OnFailure).Once()
+				actions[1].On("Execute", ctx, rd).Return(true, nil).Once()
+				actions[2].On("When").Return(action.OnSuccess).Once()
+				// DryRun will be called once
+				fnd.On("DryRun").Return(false).Once()
+			},
+			want:        false,
+			expectError: true,
+			errorMsg:    "Sequential action failed with error: act fail",
+			execActions: 2,
 		},
 	}
 
@@ -270,26 +293,30 @@ func TestAction_Execute(t *testing.T) {
 			defer actCancel()
 			defer baseCancel()
 			timeout := 3 * time.Second
-			cancelCalled := false
-			cancel := context.CancelFunc(func() { cancelCalled = true })
+
 			runDataMock := runtimeMocks.NewMockData(t)
 			runMakerMock := runtimeMocks.NewMockMaker(t)
-			runMakerMock.On("MakeContextWithTimeout", baseCtx, timeout).Return(actCtx, cancel)
-			actMocks := []*actionMocks.MockAction{
+
+			actionMocks := []*actionMocks.MockAction{
 				actionMocks.NewMockAction(t),
 				actionMocks.NewMockAction(t),
 				actionMocks.NewMockAction(t),
 			}
-			for _, act := range actMocks {
-				act.On("Timeout").Return(timeout)
+			cancelCalled := false
+
+			// Setup context and timeout for each action that should be executed
+			for i := 0; i < tt.execActions; i++ {
+				cancel := context.CancelFunc(func() { cancelCalled = true })
+				runMakerMock.On("MakeContextWithTimeout", baseCtx, timeout).Return(actCtx, cancel).Once()
+				actionMocks[i].On("Timeout").Return(timeout)
 			}
 
 			mockLogger := external.NewMockLogger()
 			fndMock.On("Logger").Return(mockLogger.SugaredLogger)
 
-			tt.setupMocks(t, fndMock, actMocks, runDataMock, actCtx)
+			tt.setupMocks(t, fndMock, actionMocks, runDataMock, actCtx)
 
-			actions := []action.Action{actMocks[0], actMocks[1], actMocks[2]}
+			actions := []action.Action{actionMocks[0], actionMocks[1], actionMocks[2]}
 
 			a := &Action{
 				fnd:          fndMock,
@@ -302,12 +329,19 @@ func TestAction_Execute(t *testing.T) {
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.False(t, got)
-				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
+				assert.Contains(t, err.Error(), tt.errorMsg)
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.want, got)
 				assert.True(t, cancelCalled)
 			}
+
+			// Verify that all mocks' expectations were met
+			for _, mock := range actionMocks {
+				mock.AssertExpectations(t)
+			}
+			runMakerMock.AssertExpectations(t)
+			fndMock.AssertExpectations(t)
 		})
 	}
 }

@@ -88,6 +88,11 @@ packages:
       dir: mocks/generated/run/actions/action/restart
     interfaces:
       Maker: {}
+  github.com/wstool/wst/run/actions/action/sequential:
+    config:
+      dir: mocks/generated/run/actions/action/sequential
+    interfaces:
+      Maker: {}
   github.com/wstool/wst/run/actions/action/start:
     config:
       dir: mocks/generated/run/actions/action/start
