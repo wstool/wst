@@ -32,7 +32,7 @@ in the future.
 #### Schema
 
 - document encode_path request action option
-- document parallel, not and reload actions in schema
+- document reload action in schema
 - review the schema if it matches the config
 
 #### Website

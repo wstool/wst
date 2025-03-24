@@ -725,6 +725,65 @@ $defs:
         description: The length of benchmark in milliseconds.
         type: integer
 
+  actionNot:
+    title: Not action
+    description: |
+      The not action inverts the success/failure status of the contained action. If the contained action succeeds,
+      the not action returns failure, and if the contained action fails, the not action returns success.
+    type: object
+    properties:
+      action:
+        title: Action to invert
+        description: The action whose result will be inverted.
+        $ref: '#/$defs/action'
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
+
+  actionParallel:
+    title: Parallel action
+    description: |
+      The parallel action executes multiple actions concurrently. The parallel action succeeds only if all
+      contained actions succeed. If any action fails, the parallel action fails but continues executing
+      other actions.
+    type: object
+    properties:
+      actions:
+        title: Actions to execute
+        description: List of actions to execute in parallel.
+        type: array
+        items:
+          $ref: '#/$defs/action'
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
+
   actionRequest:
     title: Request action
     description: |
@@ -813,6 +872,37 @@ $defs:
         type: boolean
         default: false
 
+  actionSequential:
+    title: Sequential action
+    description: |
+      The sequential action executes multiple actions in sequence. The execution continues until either all actions
+      complete successfully or an action fails. If any action fails, the sequential action stops execution and returns
+      failure.
+    type: object
+    properties:
+      actions:
+        title: Actions to execute
+        description: List of actions to execute in sequence.
+        type: array
+        items:
+          $ref: '#/$defs/action'
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
+
   actionStart:
     title: Start action
     description: |
@@ -893,22 +983,26 @@ $defs:
       Each item can either represent a predefined action (as a string) or a custom action (as an object). When using
       predefined actions like expectations and requests, the action names are given as strings with its constituent
       parts separated by slashes.
-      
+
       When these items are executed, if any failure occurs, the execution is halted and the error is reported. In some
       cases, an action may generate a result value that can be utilized by subsequent action items.
-      
-      Among these actions, there are two special types. The 'not' action performs a logical negation on the result of
+
+      Among these actions, there are three special types. The 'not' action performs a logical negation on the result of
       the action item it is associated with. This means if the associated action fails, it is treated as a success and
-      the execution of further items continues without reporting an error.
-      The 'parallel' action takes an array of actions and executes them simultaneously. The 'parallel' action only
-      completes when the last of its parallel actions ends. If any action within 'parallel' fails, that particular
-      action is stopped, but others continue their execution.
+      the execution of further items continues without reporting an error. The 'parallel' action takes an array of
+      actions and executes them simultaneously. The 'parallel' action only completes when all of its parallel actions
+      end. If any action within 'parallel' fails, that particular action is stopped, but others continue their
+      execution. The 'sequential' action takes an array of actions and executes them in order, stopping at the first
+      failure and skipping any remaining actions.
+
     type: [ object, string ]
     properties:
       not:
-        $ref: '#/$defs/actionItem'
+        $ref: '#/$defs/actionNot'
       parallel:
-        $ref: '#/$defs/actions'
+        $ref: '#/$defs/actionParallel'
+      sequential:
+        $ref: '#/$defs/actionSequential'
     patternProperties:
       "^bench/.*":
         $ref: '#/$defs/actionBench'
