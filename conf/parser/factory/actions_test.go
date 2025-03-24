@@ -126,6 +126,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 					"expect": map[string]interface{}{
 						"service": "serviceName",
 						"timeout": 1000,
+						"when":    "always",
 						"name":    "cname",
 						"custom": map[string]interface{}{
 							"id": "data",
@@ -143,6 +144,7 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 						"service": "serviceName",
 						"timeout": 1000,
 						"name":    "cname",
+						"when":    "always",
 						"custom": map[string]interface{}{
 							"id": "data",
 						},

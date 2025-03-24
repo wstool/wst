@@ -99,6 +99,8 @@ func (f *NativeActionsFactory) parseExpectationAction(
 			continue
 		case "timeout":
 			continue
+		case "when":
+			continue
 		case "custom":
 			structure = &types.CustomExpectationAction{Service: meta.serviceName}
 		case "metrics":
