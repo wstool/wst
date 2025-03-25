@@ -1,4 +1,4 @@
-// Copyright 2024 Jakub Zelenka and The WST Authors
+// Copyright 2024-2025 Jakub Zelenka and The WST Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,10 +81,6 @@ type MetricsExpectationAction struct {
 	Metrics MetricsExpectation `wst:"metrics"`
 }
 
-type ExpectationAction interface {
-	Action
-}
-
 type RequestAction struct {
 	Service    string  `wst:"service"`
 	Timeout    int     `wst:"timeout"`
@@ -116,7 +112,9 @@ type ParallelAction struct {
 
 type SequentialAction struct {
 	Actions []Action `wst:"actions,factory=createActions"`
+	Service string   `wst:"service"`
 	Timeout int      `wst:"timeout"`
+	Name    string   `wst:"name"`
 	When    string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
 }
 
@@ -128,28 +126,28 @@ type NotAction struct {
 
 type StartAction struct {
 	Service  string   `wst:"service"`
-	Services []string `wst:"service"`
+	Services []string `wst:"services"`
 	Timeout  int      `wst:"timeout"`
 	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
 }
 
 type ReloadAction struct {
 	Service  string   `wst:"service"`
-	Services []string `wst:"service"`
+	Services []string `wst:"services"`
 	Timeout  int      `wst:"timeout"`
 	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
 }
 
 type RestartAction struct {
 	Service  string   `wst:"service"`
-	Services []string `wst:"service"`
+	Services []string `wst:"services"`
 	Timeout  int      `wst:"timeout"`
 	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
 }
 
 type StopAction struct {
 	Service  string   `wst:"service"`
-	Services []string `wst:"service"`
+	Services []string `wst:"services"`
 	Timeout  int      `wst:"timeout"`
 	When     string   `wst:"when,enum=always|on_success|on_fail,default=always"`
 }

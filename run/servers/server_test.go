@@ -144,6 +144,17 @@ func testExpectActions(t *testing.T, len int) []*actionsMocks.MockExpectAction {
 	return params
 }
 
+func testSequentialActions(t *testing.T, len int) []*actionsMocks.MockSequentialAction {
+	seqActions := make([]*actionsMocks.MockSequentialAction, len)
+	for i := 0; i < len; i++ {
+		seqAction := actionsMocks.NewMockSequentialAction(t)
+		// Differentiate
+		seqAction.TestData().Set("sa_id", i)
+		seqActions[i] = seqAction
+	}
+	return seqActions
+}
+
 func testConfigs(t *testing.T, len int) []*configsMocks.MockConfig {
 	params := make([]*configsMocks.MockConfig, len)
 	for i := 0; i < len; i++ {
@@ -2736,6 +2747,25 @@ func Test_nativeServer_ExpectAction(t *testing.T) {
 	ea, found := s.ExpectAction("e2")
 	assert.True(t, found)
 	assert.Equal(t, eas[1], ea)
+}
+
+func Test_nativeServer_SequentialAction(t *testing.T) {
+	// Create mock sequential actions
+	sas := testSequentialActions(t, 2)
+
+	// Create a test native server and set its sequential actions
+	s := testNativeServer(t)
+	s.actions = &actions.Actions{
+		Sequential: map[string]actions.SequentialAction{
+			"s1": sas[0],
+			"s2": sas[1],
+		},
+	}
+
+	// Test querying a specific sequential action
+	sa, found := s.SequentialAction("s2")
+	assert.True(t, found)
+	assert.Equal(t, sas[1], sa)
 }
 
 func Test_nativeServer_Config(t *testing.T) {

@@ -33,6 +33,7 @@ import (
 
 type Server interface {
 	ExpectAction(name string) (actions.ExpectAction, bool)
+	SequentialAction(name string) (actions.SequentialAction, bool)
 	Config(name string) (configs.Config, bool)
 	Configs() configs.Configs
 	Sandbox(name providers.Type) (sandbox.Sandbox, bool)
@@ -291,6 +292,11 @@ func (s *nativeServer) Parameters() parameters.Parameters {
 
 func (s *nativeServer) ExpectAction(name string) (actions.ExpectAction, bool) {
 	act, ok := s.actions.Expect[name]
+	return act, ok
+}
+
+func (s *nativeServer) SequentialAction(name string) (actions.SequentialAction, bool) {
+	act, ok := s.actions.Sequential[name]
 	return act, ok
 }
 

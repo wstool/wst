@@ -886,6 +886,16 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/action'
+      name:
+        title: Custom name
+        description: |
+          The custom name is used for server look up when using server action.
+        type: string
+      service:
+        title: Service name
+        description: |
+          The service name is used only to identify the server that defines the custom sequential action.
+        type: string
       timeout:
         title: Action timeout
         description: |
@@ -1001,8 +1011,6 @@ $defs:
         $ref: '#/$defs/actionNot'
       parallel:
         $ref: '#/$defs/actionParallel'
-      sequential:
-        $ref: '#/$defs/actionSequential'
     patternProperties:
       "^bench/.*":
         $ref: '#/$defs/actionBench'
@@ -1012,6 +1020,8 @@ $defs:
         $ref: '#/$defs/actionRequest'
       "^restart/?.*":
         $ref: '#/$defs/actionRestart'
+      "^sequential/.*":
+        $ref: '#/$defs/actionSequential'
       "^start/?.*":
         $ref: '#/$defs/actionStart'
       "^stop/?.*":

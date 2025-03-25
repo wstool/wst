@@ -388,6 +388,64 @@ func (_c *MockServer_Sandbox_Call) RunAndReturn(run func(providers.Type) (sandbo
 	return _c
 }
 
+// SequentialAction provides a mock function with given fields: name
+func (_m *MockServer) SequentialAction(name string) (actions.SequentialAction, bool) {
+	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SequentialAction")
+	}
+
+	var r0 actions.SequentialAction
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(string) (actions.SequentialAction, bool)); ok {
+		return rf(name)
+	}
+	if rf, ok := ret.Get(0).(func(string) actions.SequentialAction); ok {
+		r0 = rf(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(actions.SequentialAction)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
+		r1 = rf(name)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
+}
+
+// MockServer_SequentialAction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SequentialAction'
+type MockServer_SequentialAction_Call struct {
+	*mock.Call
+}
+
+// SequentialAction is a helper method to define mock.On call
+//   - name string
+func (_e *MockServer_Expecter) SequentialAction(name interface{}) *MockServer_SequentialAction_Call {
+	return &MockServer_SequentialAction_Call{Call: _e.mock.On("SequentialAction", name)}
+}
+
+func (_c *MockServer_SequentialAction_Call) Run(run func(name string)) *MockServer_SequentialAction_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockServer_SequentialAction_Call) Return(_a0 actions.SequentialAction, _a1 bool) *MockServer_SequentialAction_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockServer_SequentialAction_Call) RunAndReturn(run func(string) (actions.SequentialAction, bool)) *MockServer_SequentialAction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Template provides a mock function with given fields: name
 func (_m *MockServer) Template(name string) (templates.Template, bool) {
 	ret := _m.Called(name)

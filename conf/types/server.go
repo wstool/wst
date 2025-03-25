@@ -1,4 +1,4 @@
-// Copyright 2024 Jakub Zelenka and The WST Authors
+// Copyright 2024-2025 Jakub Zelenka and The WST Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,8 +37,13 @@ type ServerResponseExpectation struct {
 type ServerExpectationAction interface {
 }
 
+type ServerSequentialAction struct {
+	Actions []Action `wst:"actions,factory=createActions"`
+}
+
 type ServerActions struct {
-	Expect map[string]ServerExpectationAction `wst:"expect,factory=createServerExpectations"`
+	Expect     map[string]ServerExpectationAction `wst:"expect,factory=createServerExpectations"`
+	Sequential map[string]ServerSequentialAction  `wst:"sequential"`
 }
 
 type ServerTemplate struct {

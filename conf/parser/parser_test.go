@@ -1736,6 +1736,18 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										},
 									},
 								},
+								"sequential": map[string]interface{}{
+									"start": map[string]interface{}{
+										"actions": []interface{}{
+											map[string]interface{}{
+												"start": map[string]interface{}{
+													"service": "svc",
+												},
+											},
+											"expect/svc/status",
+										},
+									},
+								},
 							},
 						},
 					},
@@ -1774,7 +1786,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 							"actions": []interface{}{
-								"start/web_service",
+								"sequential/web_service/start",
 								map[string]interface{}{
 									"request": map[string]interface{}{
 										"service": "web_service",
@@ -1904,11 +1916,11 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 							Actions: []types.Action{
-								&types.StartAction{
-									Service:  "web_service",
-									Services: nil,
-									Timeout:  0,
-									When:     "on_success",
+								&types.SequentialAction{
+									Service: "web_service",
+									Timeout: 0,
+									When:    "on_success",
+									Name:    "start",
 								},
 								&types.RequestAction{
 									Service:    "web_service",
@@ -2046,6 +2058,27 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 												Content:        "{{ .Parameters.GetString \"body\" }}",
 												Match:          "exact",
 												RenderTemplate: true,
+											},
+										},
+									},
+								},
+								Sequential: map[string]types.ServerSequentialAction{
+									"start": {
+										Actions: []types.Action{
+											&types.StartAction{
+												Service:  "svc",
+												Services: nil,
+												Timeout:  0,
+												When:     "on_success",
+											},
+											&types.CustomExpectationAction{
+												Service: "svc",
+												Timeout: 0,
+												When:    "on_success",
+												Custom: types.CustomExpectation{
+													Name:       "status",
+													Parameters: types.Parameters{},
+												},
 											},
 										},
 									},

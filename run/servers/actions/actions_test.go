@@ -42,12 +42,26 @@ func TestActions_Inherit(t *testing.T) {
 						outputExpectation: &expectations.OutputExpectation{Messages: []string{"output1"}},
 					},
 				},
+				Sequential: map[string]SequentialAction{
+					"existing-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service1"},
+						},
+					},
+				},
 			},
 			parentActions: &Actions{
 				Expect: map[string]ExpectAction{
 					"new": &expectResponseAction{
 						parameters:          parameters.Parameters{"param2": params[1]},
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp"},
+					},
+				},
+				Sequential: map[string]SequentialAction{
+					"new-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service2"},
+						},
 					},
 				},
 			},
@@ -62,15 +76,34 @@ func TestActions_Inherit(t *testing.T) {
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp"},
 					},
 				},
+				Sequential: map[string]SequentialAction{
+					"existing-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service1"},
+						},
+					},
+					"new-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service2"},
+						},
+					},
+				},
 			},
 		},
 		{
-			name: "do not override existing expectations",
+			name: "do not override existing expectations and sequential actions",
 			childActions: &Actions{
 				Expect: map[string]ExpectAction{
 					"common": &expectResponseAction{
 						parameters:          parameters.Parameters{"param1": params[0]},
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp"},
+					},
+				},
+				Sequential: map[string]SequentialAction{
+					"common-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service1"},
+						},
 					},
 				},
 			},
@@ -81,12 +114,26 @@ func TestActions_Inherit(t *testing.T) {
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp2"},
 					},
 				},
+				Sequential: map[string]SequentialAction{
+					"common-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service2"},
+						},
+					},
+				},
 			},
 			expectedActions: &Actions{
 				Expect: map[string]ExpectAction{
 					"common": &expectResponseAction{
 						parameters:          parameters.Parameters{"param1": params[0]},
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp"},
+					},
+				},
+				Sequential: map[string]SequentialAction{
+					"common-seq": &nativeSequentialAction{
+						actions: []types.Action{
+							&types.RequestAction{Service: "service1"},
+						},
 					},
 				},
 			},
@@ -128,6 +175,15 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 				},
+				Sequential: map[string]types.ServerSequentialAction{
+					"start": {
+						Actions: []types.Action{
+							types.StartAction{
+								Service: "svc",
+							},
+						},
+					},
+				},
 			},
 			setupMocks: func(t *testing.T, em *expectationsMocks.MockMaker, pm *parametersMocks.MockMaker) {
 				pm.On("Make", types.Parameters{
@@ -152,6 +208,15 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"response": &expectResponseAction{
 						parameters:          parameters.Parameters{"key2": params[1]},
 						responseExpectation: &expectations.ResponseExpectation{BodyContent: "resp"},
+					},
+				},
+				Sequential: map[string]SequentialAction{
+					"start": &nativeSequentialAction{
+						actions: []types.Action{
+							types.StartAction{
+								Service: "svc",
+							},
+						},
 					},
 				},
 			},

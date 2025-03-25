@@ -41,15 +41,17 @@ in the future.
 
 ### App
 
+- move Kubernetes and Docker client to application part
+  - it is so 100% test coverage can be required for run/
 - organise Foundation - split to smaller pieces (especially the OS stuff)
 
 ### Run
 
 #### Structure - Instances, Actions, Servers, Services
 
-- custom server actions for sequential action
-  - useful to wrap multiple action - e.g. fpm start + expectations
 - introduce new command action and make it work with output
+- look into doing some partial expectation
+  - some sort of contains mode rather than full match
 - introduce action parameter `on_failure` to set what to do when action fails
   - it should either fail (default) or skip the rest of sequence
   - this is to allow skipping the tests that are for example not applicable on certain configuration
@@ -67,8 +69,12 @@ in the future.
     - use time series of metrics
 - extend metrics expectations to support checking metric in time
 - support metrics server expectation
-- look into doing some partial expectation
-  - some sort of contains mode rather than full match
+- custom server actions for parallel and not action
+  - this is mainly for completeness with sequential and might be also useful in some cases
+- look into default action service integration
+  - it should be basically service defined in parent (e.g. sequential service) and used if no service is defined for the action
+  - it could be then used in the string form like `expect//name`
+  - this would be mainly useful for server actions where naming service currently creates dependency on name from action (that should not be required) 
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - save UDS socket to /tmp if longer than 108 which might happen if workspace path is too long

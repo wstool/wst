@@ -52,12 +52,27 @@ func (m *ActionMaker) Make(
 	defaultTimeout int,
 	actionMaker action.Maker,
 ) (action.Action, error) {
+	var actions []types.Action
+	if config.Name == "" {
+		actions = config.Actions
+	} else {
+		srv, err := sl.Find(config.Service)
+		if err != nil {
+			return nil, errors.Errorf("sequential action service not found: %v", err)
+		}
+		seqAct, ok := srv.Server().SequentialAction(config.Name)
+		if !ok {
+			return nil, errors.Errorf("sequential action %s not found", config.Name)
+		}
+		actions = seqAct.Actions()
+	}
+
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
 	}
 
 	var sequentialActions []action.Action
-	for _, configAction := range config.Actions {
+	for _, configAction := range actions {
 		newAction, err := actionMaker.MakeAction(configAction, sl, config.Timeout)
 		if err != nil {
 			return nil, err

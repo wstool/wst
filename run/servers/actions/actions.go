@@ -1,4 +1,4 @@
-// Copyright 2024 Jakub Zelenka and The WST Authors
+// Copyright 2024-2025 Jakub Zelenka and The WST Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ import (
 )
 
 type Actions struct {
-	Expect map[string]ExpectAction
+	Expect     map[string]ExpectAction
+	Sequential map[string]SequentialAction
 }
 
 func (a *Actions) Inherit(parentActions *Actions) {
@@ -30,6 +31,12 @@ func (a *Actions) Inherit(parentActions *Actions) {
 		_, ok := a.Expect[expectationName]
 		if !ok {
 			a.Expect[expectationName] = expectation
+		}
+	}
+	for sequentialName, sequential := range parentActions.Sequential {
+		_, ok := a.Sequential[sequentialName]
+		if !ok {
+			a.Sequential[sequentialName] = sequential
 		}
 	}
 }
@@ -63,6 +70,7 @@ func (m *nativeMaker) Make(configActions *types.ServerActions) (*Actions, error)
 	}
 
 	return &Actions{
-		Expect: expectActions,
+		Expect:     expectActions,
+		Sequential: m.makeSequentialActions(configActions.Sequential),
 	}, nil
 }

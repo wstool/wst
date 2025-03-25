@@ -247,6 +247,7 @@ packages:
       dir: mocks/generated/run/servers/actions
     interfaces:
       ExpectAction: {}
+      SequentialAction: {}
       Maker: {}
   github.com/wstool/wst/run/servers/configs:
     config:
