@@ -171,8 +171,13 @@ $defs:
         default: fixed
       match:
         title: Match type for each message
+        description: |
+          Defines how each message should be matched against the actual output. exact - the message must match
+          completely, regexp - the message is treated as a regular expression pattern, prefix - the actual output
+          must start with the expected message, suffix - the actual output must end with the expected message, infix -
+          the expected message must appear somewhere in the actual output.
         type: string
-        enum: [ exact, regexp ]
+        enum: [ exact, regexp, prefix, suffix, infix ]
         default: exact
       type:
         title: Output type
@@ -185,8 +190,8 @@ $defs:
         items:
           title: Message item
           description: |
-            Each message item should be either an exact string or a regular expression that matches the actual
-            string.
+            Each message item should be either an exact string, a regular expression pattern, or a partial match
+            depending on the match type setting.
           type: string
       render_template:
         title: Template rendering switch
@@ -224,9 +229,13 @@ $defs:
               be a string but number is also allowed for easier configuration if only number is returned.
             type: [ string, number ]
           match:
-            title: Match type for content
+            title: Match type for the content
+            description: |
+              Defines how content should be matched against the actual response body. exact matches the body completely,
+              regexp treats content as regular expression pattern, prefix matches if body starts with content, suffix
+              matches if body ends with content, infix matches if content appears anywhere in the body.
             type: string
-            enum: [ exact, regexp ]
+            enum: [ exact, regexp, prefix, suffix, infix ]
             default: exact
           render_template:
             title: Template rendering switch

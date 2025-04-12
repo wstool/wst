@@ -170,13 +170,25 @@ func (a *outputAction) matchMessages(line string, messages []string) ([]string, 
 }
 
 func (a *outputAction) matchMessage(line, message string) (bool, error) {
-	if a.MatchType == expectations.MatchTypeExact {
-		a.fnd.Logger().Debugf("Matching message '%s' against line: %s", message, line)
+	a.fnd.Logger().Debugf("Matching '%s' against line: %s (type: %s)", message, line, a.MatchType)
+
+	switch a.MatchType {
+	case expectations.MatchTypeExact:
 		return line == message, nil
-	} else if a.MatchType == expectations.MatchTypeRegexp {
-		a.fnd.Logger().Debugf("Matching pattern '%s' against line: %s", message, line)
+
+	case expectations.MatchTypeRegexp:
 		return regexp.MatchString(message, line)
-	} else {
+
+	case expectations.MatchTypePrefix:
+		return strings.HasPrefix(line, message), nil
+
+	case expectations.MatchTypeSuffix:
+		return strings.HasSuffix(line, message), nil
+
+	case expectations.MatchTypeInfix:
+		return strings.Contains(line, message), nil
+
+	default:
 		return false, fmt.Errorf("unknown match type %s", string(a.MatchType))
 	}
 }

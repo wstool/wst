@@ -276,6 +276,84 @@ func Test_outputAction_Execute(t *testing.T) {
 			want:       true,
 		},
 		{
+			name: "successful output fixed prefix match without template rendering",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				r := strings.NewReader("test message")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypePrefix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       true,
+		},
+		{
+			name: "successful output fixed suffix match without template rendering",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				r := strings.NewReader("some test")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeSuffix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       true,
+		},
+		{
+			name: "successful output fixed infix match without template rendering",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				r := strings.NewReader("some test message")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeInfix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       true,
+		},
+		{
 			name: "successful output random regexp match without template rendering",
 			setupMocks: func(
 				t *testing.T,
@@ -491,6 +569,87 @@ func Test_outputAction_Execute(t *testing.T) {
 			outputType:       output.Stdout,
 			expectErr:        true,
 			expectedErrorMsg: "unknown match type x",
+		},
+		{
+			name: "failed output fixed prefix match",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				fnd.On("DryRun").Return(false)
+				r := strings.NewReader("different start message")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypePrefix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       false,
+		},
+		{
+			name: "failed output fixed suffix match",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				fnd.On("DryRun").Return(false)
+				r := strings.NewReader("message with wrong ending")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeSuffix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       false,
+		},
+		{
+			name: "failed output fixed infix match",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				fnd.On("DryRun").Return(false)
+				r := strings.NewReader("message without expected content inside")
+				scanner := bufio.NewScanner(r)
+				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+			},
+			expectation: &expectations.OutputExpectation{
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeInfix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       false,
 		},
 		{
 			name: "failed due to invalid random match",

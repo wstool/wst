@@ -28,7 +28,11 @@ func (m *nativeMaker) MakeOutputExpectation(
 	}
 
 	matchType := MatchType(config.Match)
-	if matchType != MatchTypeExact && matchType != MatchTypeRegexp {
+	if matchType != MatchTypeExact &&
+		matchType != MatchTypeRegexp &&
+		matchType != MatchTypePrefix &&
+		matchType != MatchTypeSuffix &&
+		matchType != MatchTypeInfix {
 		return nil, fmt.Errorf("invalid match type: %v", config.Match)
 	}
 

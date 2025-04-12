@@ -20,6 +20,9 @@ const (
 	MatchTypeNone   MatchType = ""
 	MatchTypeExact  MatchType = "exact"
 	MatchTypeRegexp MatchType = "regexp"
+	MatchTypeSuffix MatchType = "suffix"
+	MatchTypePrefix MatchType = "prefix"
+	MatchTypeInfix  MatchType = "infix"
 )
 
 type OrderType string

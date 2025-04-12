@@ -33,6 +33,57 @@ func Test_nativeMaker_MakeOutputExpectation(t *testing.T) {
 			},
 		},
 		{
+			name: "valid configuration with prefix match",
+			config: &types.OutputExpectation{
+				Order:    "fixed",
+				Match:    "prefix",
+				Type:     "stdout",
+				Messages: []string{"Hello"},
+			},
+			expectError: false,
+			expected: &OutputExpectation{
+				OrderType:      OrderTypeFixed,
+				MatchType:      MatchTypePrefix,
+				OutputType:     OutputTypeStdout,
+				Messages:       []string{"Hello"},
+				RenderTemplate: false,
+			},
+		},
+		{
+			name: "valid configuration with suffix match",
+			config: &types.OutputExpectation{
+				Order:    "fixed",
+				Match:    "suffix",
+				Type:     "stdout",
+				Messages: []string{"world!"},
+			},
+			expectError: false,
+			expected: &OutputExpectation{
+				OrderType:      OrderTypeFixed,
+				MatchType:      MatchTypeSuffix,
+				OutputType:     OutputTypeStdout,
+				Messages:       []string{"world!"},
+				RenderTemplate: false,
+			},
+		},
+		{
+			name: "valid configuration with infix match",
+			config: &types.OutputExpectation{
+				Order:    "fixed",
+				Match:    "infix",
+				Type:     "stdout",
+				Messages: []string{"llo, wor"},
+			},
+			expectError: false,
+			expected: &OutputExpectation{
+				OrderType:      OrderTypeFixed,
+				MatchType:      MatchTypeInfix,
+				OutputType:     OutputTypeStdout,
+				Messages:       []string{"llo, wor"},
+				RenderTemplate: false,
+			},
+		},
+		{
 			name: "invalid order type",
 			config: &types.OutputExpectation{
 				Order: "unknown",

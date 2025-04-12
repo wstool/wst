@@ -28,7 +28,7 @@ type CustomExpectationAction struct {
 
 type OutputExpectation struct {
 	Order          string   `wst:"order,enum=fixed|random,default=fixed"`
-	Match          string   `wst:"match,enum=exact|regexp,default=exact"`
+	Match          string   `wst:"match,enum=exact|regexp|prefix|suffix|infix,default=exact"`
 	Type           string   `wst:"type,enum=stdout|stderr|any,default=any"`
 	RenderTemplate bool     `wst:"render_template,default=true"`
 	Messages       []string `wst:"messages"`
@@ -45,7 +45,7 @@ type Headers map[string]string
 
 type ResponseBody struct {
 	Content        string `wst:"content"`
-	Match          string `wst:"match,enum=exact|regexp,default=exact"`
+	Match          string `wst:"match,enum=exact|regexp|prefix|suffix|infix,default=exact"`
 	RenderTemplate bool   `wst:"render_template,default=true"`
 }
 

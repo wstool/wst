@@ -58,6 +58,72 @@ func Test_nativeMaker_MakeResponseExpectation(t *testing.T) {
 			},
 		},
 		{
+			name: "valid prefix match",
+			config: &types.ResponseExpectation{
+				Request: "/api/data",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body: types.ResponseBody{
+					Match:          "prefix",
+					Content:        "Expected",
+					RenderTemplate: false,
+				},
+				Status: 200,
+			},
+			expectError: false,
+			expected: &ResponseExpectation{
+				Request:            "/api/data",
+				Headers:            map[string]string{"Content-Type": "application/json"},
+				BodyContent:        "Expected",
+				BodyMatch:          MatchTypePrefix,
+				BodyRenderTemplate: false,
+				StatusCode:         200,
+			},
+		},
+		{
+			name: "valid suffix match",
+			config: &types.ResponseExpectation{
+				Request: "/api/data",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body: types.ResponseBody{
+					Match:          "suffix",
+					Content:        "content",
+					RenderTemplate: false,
+				},
+				Status: 200,
+			},
+			expectError: false,
+			expected: &ResponseExpectation{
+				Request:            "/api/data",
+				Headers:            map[string]string{"Content-Type": "application/json"},
+				BodyContent:        "content",
+				BodyMatch:          MatchTypeSuffix,
+				BodyRenderTemplate: false,
+				StatusCode:         200,
+			},
+		},
+		{
+			name: "valid infix match",
+			config: &types.ResponseExpectation{
+				Request: "/api/data",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body: types.ResponseBody{
+					Match:          "infix",
+					Content:        "pected cont",
+					RenderTemplate: false,
+				},
+				Status: 200,
+			},
+			expectError: false,
+			expected: &ResponseExpectation{
+				Request:            "/api/data",
+				Headers:            map[string]string{"Content-Type": "application/json"},
+				BodyContent:        "pected cont",
+				BodyMatch:          MatchTypeInfix,
+				BodyRenderTemplate: false,
+				StatusCode:         200,
+			},
+		},
+		{
 			name: "valid none match",
 			config: &types.ResponseExpectation{
 				Request: "/api/data",
@@ -87,7 +153,7 @@ func Test_nativeMaker_MakeResponseExpectation(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorMsg:    "invalid MatchType: invalid",
+			errorMsg:    "invalid match type: invalid",
 		},
 	}
 

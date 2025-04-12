@@ -26,6 +26,7 @@ import (
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -125,6 +126,24 @@ func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool,
 		}
 		if !matched {
 			a.fnd.Logger().Infof("Body did not match the pattern")
+			return noMatchResult, nil
+		}
+	case expectations.MatchTypePrefix:
+		a.fnd.Logger().Debugf("Matching body %s with expected prefix %s", responseData.Body, content)
+		if !strings.HasPrefix(responseData.Body, content) {
+			a.fnd.Logger().Infof("Body did not match the prefix")
+			return noMatchResult, nil
+		}
+	case expectations.MatchTypeSuffix:
+		a.fnd.Logger().Debugf("Matching body %s with expected suffix %s", responseData.Body, content)
+		if !strings.HasSuffix(responseData.Body, content) {
+			a.fnd.Logger().Infof("Body did not match the suffix")
+			return noMatchResult, nil
+		}
+	case expectations.MatchTypeInfix:
+		a.fnd.Logger().Debugf("Matching body %s with expected infix %s", responseData.Body, content)
+		if !strings.Contains(responseData.Body, content) {
+			a.fnd.Logger().Infof("Body did not contain the expected content")
 			return noMatchResult, nil
 		}
 	}

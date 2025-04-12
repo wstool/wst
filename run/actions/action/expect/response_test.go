@@ -233,6 +233,96 @@ func Test_responseAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "successful response with prefix body match and default status",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "test tmp message",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "test",
+				BodyMatch:          expectations.MatchTypePrefix,
+				BodyRenderTemplate: true,
+			},
+			want: true,
+		},
+		{
+			name: "successful response with suffix body match and default status",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "message test tmp",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "tmp", params).Return("tmp", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "tmp",
+				BodyMatch:          expectations.MatchTypeSuffix,
+				BodyRenderTemplate: true,
+			},
+			want: true,
+		},
+		{
+			name: "successful response with infix body match and default status",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "start test tmp end",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "test",
+				BodyMatch:          expectations.MatchTypeInfix,
+				BodyRenderTemplate: true,
+			},
+			want: true,
+		},
+		{
 			name: "successful response with exact body match specific status",
 			setupMocks: func(
 				t *testing.T,
@@ -471,6 +561,96 @@ func Test_responseAction_Execute(t *testing.T) {
 			want:             false,
 			expectErr:        true,
 			expectedErrorMsg: "failed render",
+		},
+		{
+			name: "failed response with prefix body mismatch",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "different start message",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "start", params).Return("test", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "start",
+				BodyMatch:          expectations.MatchTypePrefix,
+				BodyRenderTemplate: true,
+			},
+			want: false,
+		},
+		{
+			name: "failed response with suffix body mismatch",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "message ending differently",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "ending", params).Return("test", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "ending",
+				BodyMatch:          expectations.MatchTypeSuffix,
+				BodyRenderTemplate: true,
+			},
+			want: false,
+		},
+		{
+			name: "failed response with infix body mismatch",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("DryRun").Return(false)
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				response := request.ResponseData{
+					Body:       "message without expected content",
+					Headers:    http.Header{"content-type": []string{"application/json"}},
+					StatusCode: 200,
+				}
+				rd.On("Load", "response/last").Return(response, true)
+				svc.On("RenderTemplate", "test", params).Return("test", nil)
+			},
+			expectation: &expectations.ResponseExpectation{
+				Request:            "last",
+				Headers:            types.Headers{"content-type": "application/json"},
+				BodyContent:        "test",
+				BodyMatch:          expectations.MatchTypeInfix,
+				BodyRenderTemplate: true,
+			},
+			want: false,
 		},
 		{
 			name: "successful response with no headers match",
