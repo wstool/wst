@@ -49,7 +49,7 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- introduce new command action and make it work with output
+- add command expectation for checking its output
 - look into doing some partial expectation
   - some sort of contains mode rather than full match
 - introduce action parameter `on_failure` to set what to do when action fails
@@ -71,6 +71,8 @@ in the future.
 - support metrics server expectation
 - custom server actions for parallel and not action
   - this is mainly for completeness with sequential and might be also useful in some cases
+- add command action custom environment variables support
+  - should be an action map parameter
 - look into default action service integration
   - it should be basically service defined in parent (e.g. sequential service) and used if no service is defined for the action
   - it could be then used in the string form like `expect//name`

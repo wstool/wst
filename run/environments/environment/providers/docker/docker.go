@@ -309,7 +309,13 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	}
 }
 
-func (e *dockerEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
+func (e *dockerEnvironment) ExecTaskCommand(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	target task.Task,
+	cmd *environment.Command,
+	oc output.Collector,
+) error {
 	return errors.Errorf("executing command is not currently supported in Docker environment")
 }
 

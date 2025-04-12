@@ -70,7 +70,7 @@ type Environment interface {
 	ServiceLocalPort(servicePort, serverPort int32) int32
 	ServicePrivateAddress(serviceName string, servicePort, serverPort int32) string
 	RunTask(ctx context.Context, ss *ServiceSettings, cmd *Command) (task.Task, error)
-	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command) error
+	ExecTaskCommand(ctx context.Context, ss *ServiceSettings, target task.Task, cmd *Command, oc output.Collector) error
 	ExecTaskSignal(ctx context.Context, ss *ServiceSettings, target task.Task, signal os.Signal) error
 	Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error)
 	PortsStart() int32

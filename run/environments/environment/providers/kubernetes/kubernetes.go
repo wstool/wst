@@ -572,7 +572,13 @@ func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.Ser
 	return kubeTask, nil
 }
 
-func (e *kubernetesEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
+func (e *kubernetesEnvironment) ExecTaskCommand(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	target task.Task,
+	cmd *environment.Command,
+	oc output.Collector,
+) error {
 	return errors.Errorf("executing command is not currently supported in Kubernetes environment")
 }
 

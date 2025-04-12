@@ -70,6 +70,7 @@ type Service interface {
 	Sandbox() sandbox.Sandbox
 	Server() servers.Server
 	ServerParameters() parameters.Parameters
+	ExecCommand(ctx context.Context, cmd *environment.Command, oc output.Collector) error
 	Reload(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Start(ctx context.Context) error
@@ -473,6 +474,14 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 		WorkspaceConfigPaths:   s.workspaceConfigPaths,
 		WorkspaceScriptPaths:   s.workspaceScriptPaths,
 	}
+}
+
+func (s *nativeService) ExecCommand(ctx context.Context, cmd *environment.Command, oc output.Collector) error {
+	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
+		return errors.Errorf("service has not started yet")
+	}
+
+	return s.environment.ExecTaskCommand(ctx, s.makeEnvServiceSettings(), s.task, cmd, oc)
 }
 
 func (s *nativeService) Reload(ctx context.Context) error {

@@ -125,17 +125,17 @@ func (_c *MockEnvironment_Destroy_Call) RunAndReturn(run func(context.Context) e
 	return _c
 }
 
-// ExecTaskCommand provides a mock function with given fields: ctx, ss, target, cmd
-func (_m *MockEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
-	ret := _m.Called(ctx, ss, target, cmd)
+// ExecTaskCommand provides a mock function with given fields: ctx, ss, target, cmd, oc
+func (_m *MockEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command, oc output.Collector) error {
+	ret := _m.Called(ctx, ss, target, cmd, oc)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExecTaskCommand")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *environment.ServiceSettings, task.Task, *environment.Command) error); ok {
-		r0 = rf(ctx, ss, target, cmd)
+	if rf, ok := ret.Get(0).(func(context.Context, *environment.ServiceSettings, task.Task, *environment.Command, output.Collector) error); ok {
+		r0 = rf(ctx, ss, target, cmd, oc)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -153,13 +153,14 @@ type MockEnvironment_ExecTaskCommand_Call struct {
 //   - ss *environment.ServiceSettings
 //   - target task.Task
 //   - cmd *environment.Command
-func (_e *MockEnvironment_Expecter) ExecTaskCommand(ctx interface{}, ss interface{}, target interface{}, cmd interface{}) *MockEnvironment_ExecTaskCommand_Call {
-	return &MockEnvironment_ExecTaskCommand_Call{Call: _e.mock.On("ExecTaskCommand", ctx, ss, target, cmd)}
+//   - oc output.Collector
+func (_e *MockEnvironment_Expecter) ExecTaskCommand(ctx interface{}, ss interface{}, target interface{}, cmd interface{}, oc interface{}) *MockEnvironment_ExecTaskCommand_Call {
+	return &MockEnvironment_ExecTaskCommand_Call{Call: _e.mock.On("ExecTaskCommand", ctx, ss, target, cmd, oc)}
 }
 
-func (_c *MockEnvironment_ExecTaskCommand_Call) Run(run func(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command)) *MockEnvironment_ExecTaskCommand_Call {
+func (_c *MockEnvironment_ExecTaskCommand_Call) Run(run func(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command, oc output.Collector)) *MockEnvironment_ExecTaskCommand_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*environment.ServiceSettings), args[2].(task.Task), args[3].(*environment.Command))
+		run(args[0].(context.Context), args[1].(*environment.ServiceSettings), args[2].(task.Task), args[3].(*environment.Command), args[4].(output.Collector))
 	})
 	return _c
 }
@@ -169,7 +170,7 @@ func (_c *MockEnvironment_ExecTaskCommand_Call) Return(_a0 error) *MockEnvironme
 	return _c
 }
 
-func (_c *MockEnvironment_ExecTaskCommand_Call) RunAndReturn(run func(context.Context, *environment.ServiceSettings, task.Task, *environment.Command) error) *MockEnvironment_ExecTaskCommand_Call {
+func (_c *MockEnvironment_ExecTaskCommand_Call) RunAndReturn(run func(context.Context, *environment.ServiceSettings, task.Task, *environment.Command, output.Collector) error) *MockEnvironment_ExecTaskCommand_Call {
 	_c.Call.Return(run)
 	return _c
 }

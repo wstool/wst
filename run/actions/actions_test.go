@@ -7,6 +7,7 @@ import (
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	actionMocks "github.com/wstool/wst/mocks/generated/run/actions/action"
 	benchMocks "github.com/wstool/wst/mocks/generated/run/actions/action/bench"
+	commandMocks "github.com/wstool/wst/mocks/generated/run/actions/action/command"
 	expectMocks "github.com/wstool/wst/mocks/generated/run/actions/action/expect"
 	notMocks "github.com/wstool/wst/mocks/generated/run/actions/action/not"
 	parallelMocks "github.com/wstool/wst/mocks/generated/run/actions/action/parallel"
@@ -55,6 +56,7 @@ func TestCreateActionMaker(t *testing.T) {
 			assert.Equal(t, tt.fnd, m.fnd)
 			assert.Equal(t, tt.runtimeMaker, m.runtimeMaker)
 			assert.NotNil(t, m.benchMaker)
+			assert.NotNil(t, m.commandMaker)
 			assert.NotNil(t, m.expectMaker)
 			assert.NotNil(t, m.notMaker)
 			assert.NotNil(t, m.parallelMaker)
@@ -79,6 +81,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			action.Action,
 			*servicesMocks.MockServiceLocator,
 			*benchMocks.MockMaker,
+			*commandMocks.MockMaker,
 			*expectMocks.MockMaker,
 			*notMocks.MockMaker,
 			*parallelMocks.MockMaker,
@@ -102,6 +105,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -116,6 +120,30 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			},
 		},
 		{
+			name:           "successful command action creation",
+			config:         &types.CommandAction{Service: "svc"},
+			defaultTimeout: 5000,
+			setupMocks: func(
+				t *testing.T,
+				m *nativeActionMaker,
+				a action.Action,
+				sl *servicesMocks.MockServiceLocator,
+				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
+				expectMaker *expectMocks.MockMaker,
+				notMaker *notMocks.MockMaker,
+				parallelMaker *parallelMocks.MockMaker,
+				requestMaker *requestMocks.MockMaker,
+				reloadMaker *reloadMocks.MockMaker,
+				restartMaker *restartMocks.MockMaker,
+				sequentialMaker *sequentialMocks.MockMaker,
+				startMaker *startMocks.MockMaker,
+				stopMaker *stopMocks.MockMaker,
+			) {
+				commandMaker.On("Make", &types.CommandAction{Service: "svc"}, sl, 5000).Return(a, nil)
+			},
+		},
+		{
 			name:           "successful custom expectation action creation",
 			config:         &types.CustomExpectationAction{Service: "svc"},
 			defaultTimeout: 5000,
@@ -125,6 +153,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -149,6 +178,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -173,6 +203,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -197,6 +228,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -221,6 +253,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -245,6 +278,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -269,6 +303,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -293,6 +328,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -317,6 +353,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -341,6 +378,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -365,6 +403,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -389,6 +428,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -413,6 +453,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				a action.Action,
 				sl *servicesMocks.MockServiceLocator,
 				benchMaker *benchMocks.MockMaker,
+				commandMaker *commandMocks.MockMaker,
 				expectMaker *expectMocks.MockMaker,
 				notMaker *notMocks.MockMaker,
 				parallelMaker *parallelMocks.MockMaker,
@@ -434,6 +475,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			slMock := servicesMocks.NewMockServiceLocator(t)
 			benchMakerMock := benchMocks.NewMockMaker(t)
+			commandMakerMock := commandMocks.NewMockMaker(t)
 			expectMakerMock := expectMocks.NewMockMaker(t)
 			notMakerMock := notMocks.NewMockMaker(t)
 			parallelMakerMock := parallelMocks.NewMockMaker(t)
@@ -448,6 +490,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 			m := &nativeActionMaker{
 				fnd:             fndMock,
 				benchMaker:      benchMakerMock,
+				commandMaker:    commandMakerMock,
 				expectMaker:     expectMakerMock,
 				notMaker:        notMakerMock,
 				parallelMaker:   parallelMakerMock,
@@ -465,6 +508,7 @@ func Test_nativeActionMaker_MakeAction(t *testing.T) {
 				actionMock,
 				slMock,
 				benchMakerMock,
+				commandMakerMock,
 				expectMakerMock,
 				notMakerMock,
 				parallelMakerMock,

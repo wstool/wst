@@ -81,6 +81,26 @@ type MetricsExpectationAction struct {
 	Metrics MetricsExpectation `wst:"metrics"`
 }
 
+type ShellCommand struct {
+	Command string
+}
+
+type ArgsCommand struct {
+	Args []string
+}
+
+type Command interface{}
+
+type CommandAction struct {
+	Service string            `wst:"service"`
+	Timeout int               `wst:"timeout"`
+	When    string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Id      string            `wst:"id,default=last"`
+	Command Command           `wst:"command,factory=createCommand"`
+	Shell   string            `wst:"shell,default=/bin/sh"`
+	Env     map[string]string `wst:"env"`
+}
+
 type RequestAction struct {
 	Service    string  `wst:"service"`
 	Timeout    int     `wst:"timeout"`

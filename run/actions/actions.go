@@ -20,6 +20,7 @@ import (
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/run/actions/action"
 	"github.com/wstool/wst/run/actions/action/bench"
+	"github.com/wstool/wst/run/actions/action/command"
 	"github.com/wstool/wst/run/actions/action/expect"
 	"github.com/wstool/wst/run/actions/action/not"
 	"github.com/wstool/wst/run/actions/action/parallel"
@@ -43,6 +44,7 @@ type nativeActionMaker struct {
 	fnd             app.Foundation
 	runtimeMaker    runtime.Maker
 	benchMaker      bench.Maker
+	commandMaker    command.Maker
 	expectMaker     expect.Maker
 	notMaker        not.Maker
 	parallelMaker   parallel.Maker
@@ -64,6 +66,7 @@ func CreateActionMaker(
 		fnd:             fnd,
 		runtimeMaker:    runtimeMaker,
 		benchMaker:      bench.CreateActionMaker(fnd),
+		commandMaker:    command.CreateActionMaker(fnd),
 		expectMaker:     expect.CreateExpectationActionMaker(fnd, expectationsMaker, parametersMaker),
 		notMaker:        not.CreateActionMaker(fnd, runtimeMaker),
 		parallelMaker:   parallel.CreateActionMaker(fnd, runtimeMaker),
@@ -84,6 +87,8 @@ func (m *nativeActionMaker) MakeAction(
 	switch action := config.(type) {
 	case *types.BenchAction:
 		return m.benchMaker.Make(action, sl, defaultTimeout)
+	case *types.CommandAction:
+		return m.commandMaker.Make(action, sl, defaultTimeout)
 	case *types.CustomExpectationAction:
 		return m.expectMaker.MakeCustomAction(action, sl, defaultTimeout)
 	case *types.MetricsExpectationAction:

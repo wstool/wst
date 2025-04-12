@@ -725,6 +725,56 @@ $defs:
         description: The length of benchmark in milliseconds.
         type: integer
 
+  actionCommand:
+    title: Command action
+    description: |
+      The command action defines the details of a command to be executed by the service.
+    type: object
+    properties:
+      service:
+        title: Service name
+        description: The name of the service where the command will be executed.
+        type: string
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
+      id:
+        title: Command ID
+        description: |
+          A unique identifier for the command that is used for storing output data. This identifier can be referenced
+          in command expectations.
+        type: string
+        default: last
+      command:
+        title: Command to execute
+        description: |
+          Specifies the command to be executed. When a string is used, the command will be executed through the
+          specified shell, allowing shell features like pipes and redirections (example: "echo 'Hello' > file.txt").
+          When an array is used, the command is executed directly without shell interpretation where the first element
+          is the command and subsequent elements are arguments (example: ["echo", "Hello"]). The array format is
+          preferred for direct command execution with precise argument passing.
+        type: [string, array]
+        items:
+          type: string
+      shell:
+        title: Shell to use
+        description: Specifies which shell to use when executing a string command.
+        type: string
+        default: /bin/sh
+
   actionNot:
     title: Not action
     description: |
@@ -1014,6 +1064,8 @@ $defs:
     patternProperties:
       "^bench/.*":
         $ref: '#/$defs/actionBench'
+      "^command/.*":
+        $ref: '#/$defs/actionCommand'
       "^expect/.*":
         $ref: '#/$defs/actionExpectation'
       "^request/.*":

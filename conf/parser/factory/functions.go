@@ -57,6 +57,8 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 		return f.createAction, nil
 	case "createActions":
 		return f.createActions, nil
+	case "createCommand":
+		return f.createCommand, nil
 	case "createContainerImage":
 		return f.createContainerImage, nil
 	case "createEnvironments":
@@ -100,6 +102,26 @@ func (f *FuncProvider) createActions(data interface{}, fieldValue reflect.Value,
 	}
 
 	fieldValue.Set(reflect.ValueOf(actions))
+
+	return nil
+}
+
+func (f *FuncProvider) createCommand(data interface{}, fieldValue reflect.Value, path string) error {
+	var command types.Command
+	switch v := data.(type) {
+	case string:
+		command = types.ShellCommand{
+			Command: v,
+		}
+	case []string:
+		command = types.ArgsCommand{
+			Args: v,
+		}
+	default:
+		return errors.Errorf("unsupported type for command data at %s", f.loc.String())
+	}
+
+	fieldValue.Set(reflect.ValueOf(command))
 
 	return nil
 }

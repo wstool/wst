@@ -268,13 +268,26 @@ func convertTask(target task.Task) (*localTask, error) {
 	return t, nil
 }
 
-func (l *localEnvironment) ExecTaskCommand(ctx context.Context, ss *environment.ServiceSettings, target task.Task, cmd *environment.Command) error {
+func (l *localEnvironment) ExecTaskCommand(
+	ctx context.Context,
+	ss *environment.ServiceSettings,
+	target task.Task,
+	cmd *environment.Command,
+	oc output.Collector,
+) error {
 	_, err := convertTask(target)
 	if err != nil {
 		return err
 	}
 
-	return l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args).Run()
+	command := l.Fnd.ExecCommand(ctx, cmd.Name, cmd.Args)
+
+	if oc != nil && !reflect.ValueOf(oc).IsNil() {
+		command.SetStdout(oc.StdoutWriter())
+		command.SetStderr(oc.StderrWriter())
+	}
+
+	return command.Run()
 }
 
 func (l *localEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {

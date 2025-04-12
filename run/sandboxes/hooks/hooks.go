@@ -244,7 +244,7 @@ func (h *HookArgsCommand) Execute(
 		if err != nil {
 			return nil, err
 		}
-		err = env.ExecTaskCommand(ctx, ss, st, command)
+		err = env.ExecTaskCommand(ctx, ss, st, command, nil)
 	}
 
 	if err != nil {

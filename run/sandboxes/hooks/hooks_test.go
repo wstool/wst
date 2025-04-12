@@ -391,7 +391,7 @@ func TestHookArgsCommand_Execute(t *testing.T) {
 				tmplMock.On("RenderToString", "executable-path", ss.ServerParameters).Return("executed-path", nil)
 				tmplMock.On("RenderToString", "arg1", ss.ServerParameters).Return("argument1", nil)
 				cmd := &environment.Command{Name: "executed-path", Args: []string{"argument1"}}
-				envMock.On("ExecTaskCommand", mock.Anything, ss, mock.AnythingOfType("*task.MockTask"), cmd).Return(nil)
+				envMock.On("ExecTaskCommand", mock.Anything, ss, mock.AnythingOfType("*task.MockTask"), cmd, nil).Return(nil)
 			},
 		},
 	}
@@ -558,7 +558,7 @@ func TestHookShellCommand_Execute(t *testing.T) {
 				tmplMock.On("RenderToString", "-c", ss.ServerParameters).Return("-c", nil)
 				tmplMock.On("RenderToString", "cat file", ss.ServerParameters).Return("cat file", nil)
 				cmd := &environment.Command{Name: "/bin/sh", Args: []string{"-c", "cat file"}}
-				envMock.On("ExecTaskCommand", mock.Anything, ss, mock.AnythingOfType("*task.MockTask"), cmd).Return(nil)
+				envMock.On("ExecTaskCommand", mock.Anything, ss, mock.AnythingOfType("*task.MockTask"), cmd, nil).Return(nil)
 			},
 		},
 	}

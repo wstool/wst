@@ -12,6 +12,7 @@ import (
 	"github.com/wstool/wst/conf/types"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	environmentMocks "github.com/wstool/wst/mocks/generated/run/environments/environment"
+	outputMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/output"
 	taskMocks "github.com/wstool/wst/mocks/generated/run/environments/task"
 	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
@@ -1498,6 +1499,112 @@ func Test_nativeService_OutputScanner(t *testing.T) {
 				assert.NoError(t, err)
 				assert.IsType(t, &bufio.Scanner{}, scanner)
 			}
+		})
+	}
+}
+
+func Test_nativeService_ExecCommand(t *testing.T) {
+	ctx := context.Background()
+	cmd := &environment.Command{
+		Name: "test",
+		Args: []string{"arg1", "arg2"},
+	}
+
+	expectedServerPort := int32(8080)
+	expectedContainerConfig := &containers.ContainerConfig{
+		ImageName: "test-image",
+	}
+
+	tests := []struct {
+		name           string
+		setupMocks     func(*environmentMocks.MockEnvironment, *serversMocks.MockServer, *sandboxMocks.MockSandbox, task.Task, output.Collector)
+		taskNotSet     bool
+		withCollector  bool
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "successful command execution with collector",
+			setupMocks: func(env *environmentMocks.MockEnvironment, srv *serversMocks.MockServer, sb *sandboxMocks.MockSandbox, tsk task.Task, oc output.Collector) {
+				srv.On("Port").Return(expectedServerPort)
+				sb.On("ContainerConfig").Return(expectedContainerConfig)
+				env.On("ExecTaskCommand", ctx, mock.MatchedBy(func(s *environment.ServiceSettings) bool {
+					return s.ServerPort == expectedServerPort && s.ContainerConfig == expectedContainerConfig
+				}), tsk, cmd, oc).Return(nil)
+
+			},
+			withCollector: true,
+			expectError:   false,
+		},
+		{
+			name: "successful command execution without collector",
+			setupMocks: func(env *environmentMocks.MockEnvironment, srv *serversMocks.MockServer, sb *sandboxMocks.MockSandbox, tsk task.Task, oc output.Collector) {
+				srv.On("Port").Return(expectedServerPort)
+				sb.On("ContainerConfig").Return(expectedContainerConfig)
+				env.On("ExecTaskCommand", ctx, mock.MatchedBy(func(s *environment.ServiceSettings) bool {
+					return s.ServerPort == expectedServerPort && s.ContainerConfig == expectedContainerConfig
+				}), tsk, cmd, nil).Return(nil)
+
+			},
+			withCollector: false,
+			expectError:   false,
+		},
+		{
+			name: "error during command execution",
+			setupMocks: func(env *environmentMocks.MockEnvironment, srv *serversMocks.MockServer, sb *sandboxMocks.MockSandbox, tsk task.Task, oc output.Collector) {
+				srv.On("Port").Return(expectedServerPort)
+				sb.On("ContainerConfig").Return(expectedContainerConfig)
+				env.On("ExecTaskCommand", ctx, mock.Anything, tsk, cmd, oc).Return(errors.New("execution error"))
+			},
+			withCollector:  true,
+			expectError:    true,
+			expectedErrMsg: "execution error",
+		},
+		{
+			name:           "error when task not set",
+			taskNotSet:     true,
+			expectError:    true,
+			expectedErrMsg: "service has not started yet",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testingNativeService(t)
+
+			// Create server and sandbox mocks
+			serverMock := serversMocks.NewMockServer(t)
+			sandboxMock := sandboxMocks.NewMockSandbox(t)
+
+			// Set mocks on service
+			svc.server = serverMock
+			svc.sandbox = sandboxMock
+
+			if tt.taskNotSet {
+				svc.task = nil
+			}
+
+			var oc output.Collector
+			if tt.withCollector {
+				oc = outputMocks.NewMockCollector(t)
+			}
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(svc.environment.(*environmentMocks.MockEnvironment), serverMock, sandboxMock, svc.task, oc)
+			}
+
+			err := svc.ExecCommand(ctx, cmd, oc)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// Verify all mock expectations
+			serverMock.AssertExpectations(t)
+			sandboxMock.AssertExpectations(t)
 		})
 	}
 }

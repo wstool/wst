@@ -2271,7 +2271,8 @@ func Test_kubernetesEnvironment_ExecTaskCommand(t *testing.T) {
 	}
 	cmd := &environment.Command{Name: "test"}
 	tsk := &kubernetesTask{}
-	err := env.ExecTaskCommand(ctx, ss, tsk, cmd)
+	oc := &output.BufferedCollector{}
+	err := env.ExecTaskCommand(ctx, ss, tsk, cmd, oc)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "executing command is not currently supported in Kubernetes environment")
 }

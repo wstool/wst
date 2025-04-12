@@ -281,6 +281,54 @@ func (_c *MockService_EnvironmentScriptPaths_Call) RunAndReturn(run func() map[s
 	return _c
 }
 
+// ExecCommand provides a mock function with given fields: ctx, cmd, oc
+func (_m *MockService) ExecCommand(ctx context.Context, cmd *environment.Command, oc output.Collector) error {
+	ret := _m.Called(ctx, cmd, oc)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecCommand")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *environment.Command, output.Collector) error); ok {
+		r0 = rf(ctx, cmd, oc)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_ExecCommand_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecCommand'
+type MockService_ExecCommand_Call struct {
+	*mock.Call
+}
+
+// ExecCommand is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cmd *environment.Command
+//   - oc output.Collector
+func (_e *MockService_Expecter) ExecCommand(ctx interface{}, cmd interface{}, oc interface{}) *MockService_ExecCommand_Call {
+	return &MockService_ExecCommand_Call{Call: _e.mock.On("ExecCommand", ctx, cmd, oc)}
+}
+
+func (_c *MockService_ExecCommand_Call) Run(run func(ctx context.Context, cmd *environment.Command, oc output.Collector)) *MockService_ExecCommand_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*environment.Command), args[2].(output.Collector))
+	})
+	return _c
+}
+
+func (_c *MockService_ExecCommand_Call) Return(_a0 error) *MockService_ExecCommand_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ExecCommand_Call) RunAndReturn(run func(context.Context, *environment.Command, output.Collector) error) *MockService_ExecCommand_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Executable provides a mock function with given fields:
 func (_m *MockService) Executable() (string, error) {
 	ret := _m.Called()

@@ -939,20 +939,29 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 		})
 	}
 }
-
 func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 	tests := []struct {
 		name             string
-		setupMocks       func(*testing.T, *appMocks.MockFoundation, *appMocks.MockCommand)
-		target           func() task.Task // Using a function allows setup of the task per test case
+		setupMocks       func(*testing.T, *appMocks.MockFoundation, *appMocks.MockCommand, *outputMocks.MockCollector)
+		target           func() task.Task
 		command          *environment.Command
+		withCollector    bool
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name: "successful command execution",
-			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand) {
-				cmd.On("Run").Return(nil) // Simulating a successful command run
+			name: "successful command execution with collector",
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand, oc *outputMocks.MockCollector) {
+				stdoutWriter := &bytes.Buffer{}
+				stderrWriter := &bytes.Buffer{}
+
+				oc.On("StdoutWriter").Return(stdoutWriter)
+				oc.On("StderrWriter").Return(stderrWriter)
+
+				cmd.On("SetStdout", stdoutWriter).Return()
+				cmd.On("SetStderr", stderrWriter).Return()
+				cmd.On("Run").Return(nil)
+
 				fnd.On("ExecCommand", mock.Anything, "echo", []string{"hello"}).Return(cmd)
 			},
 			target: func() task.Task {
@@ -961,28 +970,48 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 					cmd:         &app.ExecCommand{},
 				}
 				lt.serviceRunning.Store(true)
-				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
 				return lt
 			},
 			command: &environment.Command{
 				Name: "echo",
 				Args: []string{"hello"},
 			},
-			expectError: false,
+			withCollector: true,
+			expectError:   false,
+		},
+		{
+			name: "successful command execution without collector",
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand, _ *outputMocks.MockCollector) {
+				cmd.On("Run").Return(nil)
+				fnd.On("ExecCommand", mock.Anything, "echo", []string{"hello"}).Return(cmd)
+			},
+			target: func() task.Task {
+				lt := &localTask{
+					serviceName: "local-service",
+					cmd:         &app.ExecCommand{},
+				}
+				lt.serviceRunning.Store(true)
+				return lt
+			},
+			command: &environment.Command{
+				Name: "echo",
+				Args: []string{"hello"},
+			},
+			withCollector: false,
+			expectError:   false,
 		},
 		{
 			name: "error during command execution",
-			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand) {
-				cmd.On("Run").Return(fmt.Errorf("execution failed")) // Simulating a command failure
+			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, cmd *appMocks.MockCommand, _ *outputMocks.MockCollector) {
+				cmd.On("Run").Return(fmt.Errorf("execution failed"))
 				fnd.On("ExecCommand", mock.Anything, "echo", []string{"error"}).Return(cmd)
 			},
 			target: func() task.Task {
 				lt := &localTask{
 					serviceName: "local-service",
-					cmd:         &app.ExecCommand{}, // Using a valid local task type
+					cmd:         &app.ExecCommand{},
 				}
 				lt.serviceRunning.Store(true)
-				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
 				return lt
 			},
 			command: &environment.Command{
@@ -998,10 +1027,9 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 				lt := &localTask{
 					id:          "tid",
 					serviceName: "local-service",
-					cmd:         &app.ExecCommand{}, // Using a valid local task type
+					cmd:         &app.ExecCommand{},
 				}
 				lt.serviceRunning.Store(false)
-				lt.cmd = &app.ExecCommand{} // Stubbing the command to be returned
 				return lt
 			},
 			command: &environment.Command{
@@ -1015,7 +1043,7 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 			name: "error wrong task type",
 			target: func() task.Task {
 				wrongTypeTask := &taskMocks.MockTask{}
-				wrongTypeTask.On("Type").Return(providers.DockerType) // Incorrect task type
+				wrongTypeTask.On("Type").Return(providers.DockerType)
 				return wrongTypeTask
 			},
 			command: &environment.Command{
@@ -1029,7 +1057,7 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 			name: "error invalid task casting",
 			target: func() task.Task {
 				wrongTypeTask := &taskMocks.MockTask{}
-				wrongTypeTask.On("Type").Return(providers.LocalType) // Incorrect task type
+				wrongTypeTask.On("Type").Return(providers.LocalType)
 				return wrongTypeTask
 			},
 			command: &environment.Command{
@@ -1057,9 +1085,16 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			cmdMock := appMocks.NewMockCommand(t)
-			if tt.setupMocks != nil {
-				tt.setupMocks(t, fndMock, cmdMock)
+			var ocMock *outputMocks.MockCollector
+
+			if tt.withCollector {
+				ocMock = outputMocks.NewMockCollector(t)
 			}
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(t, fndMock, cmdMock, ocMock)
+			}
+
 			ctx := context.Background()
 			targetTask := tt.target()
 
@@ -1067,7 +1102,7 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 				CommonEnvironment: environment.CommonEnvironment{Fnd: fndMock},
 			}
 
-			err := env.ExecTaskCommand(ctx, &environment.ServiceSettings{}, targetTask, tt.command)
+			err := env.ExecTaskCommand(ctx, &environment.ServiceSettings{}, targetTask, tt.command, ocMock)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1078,6 +1113,9 @@ func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 
 			fndMock.AssertExpectations(t)
 			cmdMock.AssertExpectations(t)
+			if ocMock != nil {
+				ocMock.AssertExpectations(t)
+			}
 		})
 	}
 }

@@ -1531,7 +1531,8 @@ func Test_dockerEnvironment_ExecTaskCommand(t *testing.T) {
 	}
 	cmd := &environment.Command{Name: "test"}
 	tsk := &dockerTask{}
-	err := env.ExecTaskCommand(ctx, ss, tsk, cmd)
+	oc := &output.BufferedCollector{}
+	err := env.ExecTaskCommand(ctx, ss, tsk, cmd, oc)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "executing command is not currently supported in Docker environment")
 }
