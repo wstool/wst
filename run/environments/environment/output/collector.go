@@ -31,6 +31,7 @@ type Collector interface {
 	AnyReader(ctx context.Context) io.Reader
 	StderrReader(ctx context.Context) io.Reader
 	StdoutReader(ctx context.Context) io.Reader
+	Reader(ctx context.Context, outputType Type) (io.Reader, error)
 	Start(stdoutPipe, stderrPipe io.ReadCloser) error
 	StdoutWriter() io.Writer
 	StderrWriter() io.Writer
@@ -164,6 +165,20 @@ func (bc *BufferedCollector) collectOutput(pipe io.ReadCloser, buffer *blockingB
 // Wait blocks until all logs are collected.
 func (bc *BufferedCollector) Wait() {
 	bc.wg.Wait()
+}
+
+// Reader returns an io.Reader for the collected logs of the specified type.
+func (bc *BufferedCollector) Reader(ctx context.Context, outputType Type) (io.Reader, error) {
+	switch outputType {
+	case Stdout:
+		return bc.StdoutReader(ctx), nil
+	case Stderr:
+		return bc.StderrReader(ctx), nil
+	case Any:
+		return bc.AnyReader(ctx), nil
+	default:
+		return nil, errors.Errorf("unsupported output type")
+	}
 }
 
 // StdoutReader returns an io.Reader for the collected stdout logs.

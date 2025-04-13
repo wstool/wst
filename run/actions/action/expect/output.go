@@ -15,8 +15,10 @@
 package expect
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/run/actions/action"
 	"github.com/wstool/wst/run/environments/environment/output"
@@ -24,6 +26,7 @@ import (
 	"github.com/wstool/wst/run/instances/runtime"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
+	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -65,22 +68,44 @@ func (a *outputAction) Timeout() time.Duration {
 	return a.timeout
 }
 
+func (a *outputAction) getReader(ctx context.Context, runData runtime.Data) (io.Reader, error) {
+	outputType, err := a.getServiceOutputType(a.OutputType)
+	if err != nil {
+		return nil, err
+	}
+	if a.Command == "" {
+		// Command is empty so use service output
+		a.fnd.Logger().Debugf("Checking service output")
+		return a.service.OutputReader(ctx, outputType)
+	}
+	// Otherwise get the command data
+	data, ok := runData.Load(fmt.Sprintf("command/%s", a.Command))
+	if !ok {
+		return nil, errors.New("command data not found")
+	}
+	// Cast it to Collector
+	oc, ok := data.(output.Collector)
+	if !ok {
+		return nil, errors.New("invalid response data type")
+	}
+	a.fnd.Logger().Debugf("Checking command %s data", a.Command)
+	// Get collector reader
+	return oc.Reader(ctx, outputType)
+}
+
 func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	logger := a.fnd.Logger()
 	logger.Infof("Executing expectation output action")
-	outputType, err := a.getServiceOutputType(a.OutputType)
-	if err != nil {
-		return false, err
-	}
 	messages, err := a.renderMessages(a.Messages)
 	if err != nil {
 		return false, err
 	}
-	scanner, err := a.service.OutputScanner(ctx, outputType)
+	reader, err := a.getReader(ctx, runData)
 	if err != nil {
 		return false, err
 	}
-	lines := []string{}
+	var lines []string
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
 		lines = append(lines, line)
@@ -92,18 +117,18 @@ func (a *outputAction) Execute(ctx context.Context, runData runtime.Data) (bool,
 			return true, nil
 		}
 	}
-	if scanner.Err() != nil {
+	scannerErr := scanner.Err()
+	if scannerErr != nil {
 		for _, msg := range messages {
 			logger.Debugf("Expected message not found: %s", msg)
 		}
 		for _, line := range lines {
 			logger.Debugf("Unexpected line found: %s", line)
 		}
-		err = scanner.Err()
-		if strings.Contains(err.Error(), "context deadline exceeded") {
+		if strings.Contains(scannerErr.Error(), "context deadline exceeded") {
 			return false, nil
 		}
-		return false, scanner.Err()
+		return false, scannerErr
 	}
 
 	if a.fnd.DryRun() {

@@ -161,6 +161,13 @@ $defs:
       for the verification of the expected service behavior.
     type: object
     properties:
+      command:
+        title: Command name for command usage
+        description: |
+          Command identifier to specify which command output to check. Empty value means checking the service output.
+          When set, verifies output from the command with specified id.
+        type: string
+        default: ""
       order:
         title: Expected order of messages
         description: |

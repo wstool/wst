@@ -3,12 +3,12 @@
 package services
 
 import (
-	bufio "bufio"
 	context "context"
 
+	environment "github.com/wstool/wst/run/environments/environment"
 	dir "github.com/wstool/wst/run/sandboxes/dir"
 
-	environment "github.com/wstool/wst/run/environments/environment"
+	io "io"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -654,24 +654,24 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// OutputScanner provides a mock function with given fields: ctx, outputType
-func (_m *MockService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
+// OutputReader provides a mock function with given fields: ctx, outputType
+func (_m *MockService) OutputReader(ctx context.Context, outputType output.Type) (io.Reader, error) {
 	ret := _m.Called(ctx, outputType)
 
 	if len(ret) == 0 {
-		panic("no return value specified for OutputScanner")
+		panic("no return value specified for OutputReader")
 	}
 
-	var r0 *bufio.Scanner
+	var r0 io.Reader
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, output.Type) (*bufio.Scanner, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, output.Type) (io.Reader, error)); ok {
 		return rf(ctx, outputType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, output.Type) *bufio.Scanner); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, output.Type) io.Reader); ok {
 		r0 = rf(ctx, outputType)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*bufio.Scanner)
+			r0 = ret.Get(0).(io.Reader)
 		}
 	}
 
@@ -684,31 +684,31 @@ func (_m *MockService) OutputScanner(ctx context.Context, outputType output.Type
 	return r0, r1
 }
 
-// MockService_OutputScanner_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OutputScanner'
-type MockService_OutputScanner_Call struct {
+// MockService_OutputReader_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OutputReader'
+type MockService_OutputReader_Call struct {
 	*mock.Call
 }
 
-// OutputScanner is a helper method to define mock.On call
+// OutputReader is a helper method to define mock.On call
 //   - ctx context.Context
 //   - outputType output.Type
-func (_e *MockService_Expecter) OutputScanner(ctx interface{}, outputType interface{}) *MockService_OutputScanner_Call {
-	return &MockService_OutputScanner_Call{Call: _e.mock.On("OutputScanner", ctx, outputType)}
+func (_e *MockService_Expecter) OutputReader(ctx interface{}, outputType interface{}) *MockService_OutputReader_Call {
+	return &MockService_OutputReader_Call{Call: _e.mock.On("OutputReader", ctx, outputType)}
 }
 
-func (_c *MockService_OutputScanner_Call) Run(run func(ctx context.Context, outputType output.Type)) *MockService_OutputScanner_Call {
+func (_c *MockService_OutputReader_Call) Run(run func(ctx context.Context, outputType output.Type)) *MockService_OutputReader_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(output.Type))
 	})
 	return _c
 }
 
-func (_c *MockService_OutputScanner_Call) Return(_a0 *bufio.Scanner, _a1 error) *MockService_OutputScanner_Call {
+func (_c *MockService_OutputReader_Call) Return(_a0 io.Reader, _a1 error) *MockService_OutputReader_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_OutputScanner_Call) RunAndReturn(run func(context.Context, output.Type) (*bufio.Scanner, error)) *MockService_OutputScanner_Call {
+func (_c *MockService_OutputReader_Call) RunAndReturn(run func(context.Context, output.Type) (io.Reader, error)) *MockService_OutputReader_Call {
 	_c.Call.Return(run)
 	return _c
 }

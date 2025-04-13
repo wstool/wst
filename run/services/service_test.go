@@ -1,7 +1,6 @@
 package services
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"github.com/pkg/errors"
@@ -37,6 +36,7 @@ import (
 	"github.com/wstool/wst/run/servers/templates"
 	"github.com/wstool/wst/run/services/template"
 	"github.com/wstool/wst/run/spec/defaults"
+	"io"
 	"os"
 	"testing"
 )
@@ -1444,29 +1444,31 @@ func Test_nativeService_Workspace(t *testing.T) {
 	assert.Equal(t, "/tmp/ws/svc", svc.Workspace())
 }
 
-func Test_nativeService_OutputScanner(t *testing.T) {
+func Test_nativeService_OutputReader(t *testing.T) {
 	ctx := context.Background()
 	outputType := output.Stdout
 
 	tests := []struct {
 		name           string
-		setupMocks     func(*environmentMocks.MockEnvironment, task.Task)
+		setupMocks     func(*environmentMocks.MockEnvironment, task.Task) io.Reader
 		taskNotSet     bool
 		expectError    bool
 		expectedErrMsg string
 	}{
 		{
 			name: "successful output scanner creation",
-			setupMocks: func(env *environmentMocks.MockEnvironment, tsk task.Task) {
+			setupMocks: func(env *environmentMocks.MockEnvironment, tsk task.Task) io.Reader {
 				reader := bytes.NewReader([]byte("test output"))
 				env.On("Output", ctx, tsk, outputType).Return(reader, nil)
+				return reader
 			},
 			expectError: false,
 		},
 		{
 			name: "error during output fetching",
-			setupMocks: func(env *environmentMocks.MockEnvironment, tsk task.Task) {
+			setupMocks: func(env *environmentMocks.MockEnvironment, tsk task.Task) io.Reader {
 				env.On("Output", ctx, tsk, outputType).Return(nil, errors.New("out err"))
+				return nil
 			},
 			expectError:    true,
 			expectedErrMsg: "out err",
@@ -1482,22 +1484,22 @@ func Test_nativeService_OutputScanner(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := testingNativeService(t)
+			var expectedReader io.Reader
 			if tt.taskNotSet {
 				svc.task = nil
 			} else {
-				tt.setupMocks(svc.environment.(*environmentMocks.MockEnvironment), svc.task)
+				expectedReader = tt.setupMocks(svc.environment.(*environmentMocks.MockEnvironment), svc.task)
 			}
 
-			scanner, err := svc.OutputScanner(ctx, outputType)
+			reader, err := svc.OutputReader(ctx, outputType)
 
 			if tt.expectError {
-				assert.Nil(t, scanner)
+				assert.Nil(t, reader)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErrMsg)
 			} else {
-				assert.NotNil(t, scanner)
+				assert.Equal(t, expectedReader, reader)
 				assert.NoError(t, err)
-				assert.IsType(t, &bufio.Scanner{}, scanner)
 			}
 		})
 	}

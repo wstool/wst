@@ -33,8 +33,9 @@ func Test_nativeMaker_MakeOutputExpectation(t *testing.T) {
 			},
 		},
 		{
-			name: "valid configuration with prefix match",
+			name: "valid configuration with prefix match and command",
 			config: &types.OutputExpectation{
+				Command:  "last",
 				Order:    "fixed",
 				Match:    "prefix",
 				Type:     "stdout",
@@ -42,6 +43,7 @@ func Test_nativeMaker_MakeOutputExpectation(t *testing.T) {
 			},
 			expectError: false,
 			expected: &OutputExpectation{
+				Command:        "last",
 				OrderType:      OrderTypeFixed,
 				MatchType:      MatchTypePrefix,
 				OutputType:     OutputTypeStdout,

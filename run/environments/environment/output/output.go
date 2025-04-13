@@ -22,8 +22,8 @@ type Type int
 
 const (
 	Stdout Type = 1
-	Stderr      = 2
-	Any         = 3
+	Stderr Type = 2
+	Any    Type = 3
 )
 
 type Maker interface {

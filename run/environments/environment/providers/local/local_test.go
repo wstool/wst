@@ -1250,7 +1250,7 @@ func Test_localEnvironment_Output(t *testing.T) {
 			outputType: output.Stdout,
 			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
 				stdout := io.NopCloser(strings.NewReader("Hello, stdout!"))
-				om.On("StdoutReader", ctx).Return(stdout)
+				om.On("Reader", ctx, output.Stdout).Return(stdout, nil)
 			},
 			expectedOutput: "Hello, stdout!",
 		},
@@ -1259,24 +1259,18 @@ func Test_localEnvironment_Output(t *testing.T) {
 			outputType: output.Stderr,
 			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
 				stderr := io.NopCloser(strings.NewReader("Hello, stderr!"))
-				om.On("StderrReader", ctx).Return(stderr)
+				om.On("Reader", ctx, output.Stderr).Return(stderr, nil)
 			},
 			expectedOutput: "Hello, stderr!",
 		},
 		{
-			name:       "successful any output collection",
+			name:       "failed read any output collection",
 			outputType: output.Any,
 			setupMocks: func(t *testing.T, ctx context.Context, om *outputMocks.MockCollector) {
-				anyout := io.NopCloser(strings.NewReader("outout"))
-				om.On("AnyReader", ctx).Return(anyout)
+				om.On("Reader", ctx, output.Any).Return(nil, errors.New("failed to read any output"))
 			},
-			expectedOutput: "outout",
-		},
-		{
-			name:             "unsupported output type",
-			outputType:       output.Type(999), // Invalid output type
 			expectError:      true,
-			expectedErrorMsg: "unsupported output type",
+			expectedErrorMsg: "ailed to read any output",
 		},
 		{
 			name:             "nil task",

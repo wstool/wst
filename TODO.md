@@ -49,9 +49,7 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- add command expectation for checking its output
-- look into doing some partial expectation
-  - some sort of contains mode rather than full match
+- test properly command action / expectation usage and possibly add some tweaks and fixes
 - introduce action parameter `on_failure` to set what to do when action fails
   - it should either fail (default) or skip the rest of sequence
   - this is to allow skipping the tests that are for example not applicable on certain configuration

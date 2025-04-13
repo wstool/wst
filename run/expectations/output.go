@@ -42,6 +42,7 @@ func (m *nativeMaker) MakeOutputExpectation(
 	}
 
 	return &OutputExpectation{
+		Command:        config.Command,
 		OrderType:      orderType,
 		MatchType:      matchType,
 		OutputType:     outputType,
@@ -51,6 +52,7 @@ func (m *nativeMaker) MakeOutputExpectation(
 }
 
 type OutputExpectation struct {
+	Command        string
 	OrderType      OrderType
 	MatchType      MatchType
 	OutputType     OutputType

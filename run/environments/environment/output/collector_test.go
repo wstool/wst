@@ -237,6 +237,86 @@ func TestBufferedCollector_StderrReader_cancelled(t *testing.T) {
 	collector.Wait()
 }
 
+func TestBufferedCollector_Reader_dispatch(t *testing.T) {
+	stdoutEvents := []event{
+		{delay: 50 * time.Millisecond, message: "stdout line 1\n"},
+	}
+	stderrEvents := []event{
+		{delay: 50 * time.Millisecond, message: "stderr line 1\n"},
+	}
+
+	stdoutMock := newMockReadCloser(stdoutEvents)
+	stderrMock := newMockReadCloser(stderrEvents)
+
+	fndMock := appMocks.NewMockFoundation(t)
+	collector := NewBufferedCollector(fndMock, "tid")
+	err := collector.Start(stdoutMock, stderrMock)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		outputType  Type
+		expectErr   bool
+		expectTexts []string // allow multiple valid results
+	}{
+		{
+			name:        "Reader with Stdout",
+			outputType:  Stdout,
+			expectTexts: []string{"stdout line 1\n"},
+		},
+		{
+			name:        "Reader with Stderr",
+			outputType:  Stderr,
+			expectTexts: []string{"stderr line 1\n"},
+		},
+		{
+			name:       "Reader with Any",
+			outputType: Any,
+			expectTexts: []string{
+				"stdout line 1\nstderr line 1\n",
+				"stderr line 1\nstdout line 1\n",
+			},
+		},
+		{
+			name:       "Reader with unknown type",
+			outputType: Type(8),
+			expectErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var wg sync.WaitGroup
+			wg.Add(1)
+
+			if tt.expectErr {
+				reader, err := collector.Reader(context.Background(), tt.outputType)
+				assert.Error(t, err)
+				assert.Nil(t, reader)
+				wg.Done()
+			} else {
+				go func() {
+					defer wg.Done()
+					r, err := collector.Reader(context.Background(), tt.outputType)
+					assert.NoError(t, err)
+					buf, err := io.ReadAll(r)
+					assert.NoError(t, err)
+
+					output := string(buf)
+					assert.Contains(t, tt.expectTexts, output,
+						"actual output %q not in expected list %v", output, tt.expectTexts)
+				}()
+			}
+
+			time.Sleep(100 * time.Millisecond)
+			collector.Close()
+			wg.Wait()
+		})
+	}
+
+	collector.Wait()
+}
+
 func TestBufferedCollector_stderrBuffer_Read(t *testing.T) {
 	// Define the events with delays
 	stderrEvents := []event{

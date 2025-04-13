@@ -1,13 +1,13 @@
 package expect
 
 import (
-	"bufio"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/mocks/authored/external"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
+	outputMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/output"
 	expectationsMocks "github.com/wstool/wst/mocks/generated/run/expectations"
 	runtimeMocks "github.com/wstool/wst/mocks/generated/run/instances/runtime"
 	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
@@ -215,6 +215,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			svc *servicesMocks.MockService,
 			params parameters.Parameters,
 			outputType output.Type,
+			runData *runtimeMocks.MockData,
 		)
 		expectation      *expectations.OutputExpectation
 		outputType       output.Type
@@ -222,6 +223,89 @@ func Test_outputAction_Execute(t *testing.T) {
 		expectErr        bool
 		expectedErrorMsg string
 	}{
+		{
+			name: "command output used when command is set",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+				runData *runtimeMocks.MockData,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+
+				collector := outputMocks.NewMockCollector(t)
+				collector.On("Reader", ctx, outputType).Return(strings.NewReader("test message"), nil)
+				runData.On("Load", "command/mycmd").Return(collector, true)
+			},
+			expectation: &expectations.OutputExpectation{
+				Command:        "mycmd",
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypePrefix,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType: output.Stdout,
+			want:       true,
+		},
+		{
+			name: "error when command data not found",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+				runData *runtimeMocks.MockData,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				runData.On("Load", "command/unknown").Return(nil, false)
+			},
+			expectation: &expectations.OutputExpectation{
+				Command:        "unknown",
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeExact,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType:       output.Stdout,
+			expectErr:        true,
+			expectedErrorMsg: "command data not found",
+		},
+		{
+			name: "error when command data is not output.Collector",
+			setupMocks: func(
+				t *testing.T,
+				fnd *appMocks.MockFoundation,
+				ctx context.Context,
+				svc *servicesMocks.MockService,
+				params parameters.Parameters,
+				outputType output.Type,
+				runData *runtimeMocks.MockData,
+			) {
+				mockLogger := external.NewMockLogger()
+				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				runData.On("Load", "command/badcmd").Return("not a collector", true)
+			},
+			expectation: &expectations.OutputExpectation{
+				Command:        "badcmd",
+				OrderType:      expectations.OrderTypeFixed,
+				MatchType:      expectations.MatchTypeExact,
+				OutputType:     expectations.OutputTypeStdout,
+				RenderTemplate: false,
+				Messages:       []string{"test"},
+			},
+			outputType:       output.Stdout,
+			expectErr:        true,
+			expectedErrorMsg: "invalid response data type",
+		},
 		{
 			name: "successful output fixed exact match with template rendering",
 			setupMocks: func(
@@ -231,13 +315,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
 				r := strings.NewReader("test tmp")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -258,12 +342,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -284,12 +368,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test message")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -310,12 +394,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("some test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -336,12 +420,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("some test message")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -362,12 +446,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -388,12 +472,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("[01-Sep-2024 19:13:14] NOTICE: fpm is running, pid 174924")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -416,12 +500,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("2024/09/01 18:33:51 [notice] 164024#164024: start worker process 16402")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -444,13 +528,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				fnd.On("DryRun").Return(false)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -471,13 +555,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				fnd.On("DryRun").Return(true)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -490,7 +574,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			want:       true,
 		},
 		{
-			name: "successful false due scanner context deadline error",
+			name: "successful false due reader context deadline error",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -498,12 +582,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				errReader := &errorReader{msg: "context deadline exceeded"}
-				scanner := bufio.NewScanner(errReader)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(errReader, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -525,12 +609,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				errReader := &errorReader{msg: "scanner internal error", first_read: true}
-				scanner := bufio.NewScanner(errReader)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(errReader, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -552,12 +636,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -579,13 +663,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				fnd.On("DryRun").Return(false)
 				r := strings.NewReader("different start message")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -606,13 +690,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				fnd.On("DryRun").Return(false)
 				r := strings.NewReader("message with wrong ending")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -633,13 +717,13 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				fnd.On("DryRun").Return(false)
 				r := strings.NewReader("message without expected content inside")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -660,12 +744,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeRandom,
@@ -687,12 +771,12 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				r := strings.NewReader("test")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderType("y"),
@@ -706,7 +790,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			expectedErrorMsg: "unknown order type y",
 		},
 		{
-			name: "failed due to invalid scanner",
+			name: "failed due to invalid reader",
 			setupMocks: func(
 				t *testing.T,
 				fnd *appMocks.MockFoundation,
@@ -714,10 +798,11 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
-				svc.On("OutputScanner", ctx, outputType).Return(nil, errors.New("invalid scanner"))
+				svc.On("OutputReader", ctx, outputType).Return(nil, errors.New("invalid reader"))
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -728,7 +813,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			},
 			outputType:       output.Stdout,
 			expectErr:        true,
-			expectedErrorMsg: "invalid scanner",
+			expectedErrorMsg: "invalid reader",
 		},
 		{
 			name: "failed due to invalid message rendering",
@@ -739,6 +824,7 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
@@ -764,9 +850,11 @@ func Test_outputAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 				params parameters.Parameters,
 				outputType output.Type,
+				runData *runtimeMocks.MockData,
 			) {
 				mockLogger := external.NewMockLogger()
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
+				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
 			},
 			expectation: &expectations.OutputExpectation{
 				OrderType:      expectations.OrderTypeFixed,
@@ -790,7 +878,7 @@ func Test_outputAction_Execute(t *testing.T) {
 			svcMock := servicesMocks.NewMockService(t)
 			ctx := context.Background()
 
-			tt.setupMocks(t, fndMock, ctx, svcMock, params, tt.outputType)
+			tt.setupMocks(t, fndMock, ctx, svcMock, params, tt.outputType, dataMock)
 
 			a := &outputAction{
 				CommonExpectation: &CommonExpectation{

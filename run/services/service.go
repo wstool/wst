@@ -15,7 +15,6 @@
 package services
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
@@ -66,7 +65,7 @@ type Service interface {
 	Environment() environment.Environment
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
-	OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error)
+	OutputReader(ctx context.Context, outputType output.Type) (io.Reader, error)
 	Sandbox() sandbox.Sandbox
 	Server() servers.Server
 	ServerParameters() parameters.Parameters
@@ -356,7 +355,7 @@ func (s *nativeService) Workspace() string {
 	return s.workspace
 }
 
-func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Type) (*bufio.Scanner, error) {
+func (s *nativeService) OutputReader(ctx context.Context, outputType output.Type) (io.Reader, error) {
 	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return nil, errors.Errorf("service has not started yet")
 	}
@@ -365,7 +364,7 @@ func (s *nativeService) OutputScanner(ctx context.Context, outputType output.Typ
 	if err != nil {
 		return nil, err
 	}
-	return bufio.NewScanner(reader), nil
+	return reader, nil
 }
 
 func (s *nativeService) renderingPaths(path string, dirType dir.DirType) (string, string, error) {

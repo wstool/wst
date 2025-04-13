@@ -1,7 +1,6 @@
 package expect
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -223,8 +222,7 @@ func Test_customAction_Execute(t *testing.T) {
 				fnd.On("Logger").Return(mockLogger.SugaredLogger)
 				svc.On("RenderTemplate", "test", params).Return("test tmp", nil)
 				r := strings.NewReader("test tmp")
-				scanner := bufio.NewScanner(r)
-				svc.On("OutputScanner", ctx, outputType).Return(scanner, nil)
+				svc.On("OutputReader", ctx, outputType).Return(r, nil)
 			},
 			expectedOutputType: output.Any,
 			want:               true,

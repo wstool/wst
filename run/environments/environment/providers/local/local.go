@@ -310,16 +310,7 @@ func (l *localEnvironment) Output(ctx context.Context, target task.Task, outputT
 		return nil, err
 	}
 
-	switch outputType {
-	case output.Stdout:
-		return t.outputCollector.StdoutReader(ctx), nil
-	case output.Stderr:
-		return t.outputCollector.StderrReader(ctx), nil
-	case output.Any:
-		return t.outputCollector.AnyReader(ctx), nil
-	default:
-		return nil, errors.Errorf("unsupported output type")
-	}
+	return t.outputCollector.Reader(ctx, outputType)
 }
 
 type localTask struct {
