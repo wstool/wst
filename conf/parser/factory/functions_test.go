@@ -158,6 +158,58 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "data must be an array, got int",
 		},
+		// Command
+		{
+			name:     "createCommand with string shell command",
+			funcName: "createCommand",
+			data:     "echo hello world",
+			expectedValue: &types.ShellCommand{
+				Command: "echo hello world",
+			},
+			wantErr: false,
+		},
+		{
+			name:     "createCommand with args array",
+			funcName: "createCommand",
+			data:     []interface{}{"ls", "-la", "/tmp"},
+			expectedValue: &types.ArgsCommand{
+				Args: []string{"ls", "-la", "/tmp"},
+			},
+			wantErr: false,
+		},
+		{
+			name:          "createCommand with args array containing non-string element",
+			funcName:      "createCommand",
+			data:          []interface{}{"ls", 123, "/tmp"},
+			expectedValue: &types.ShellCommand{}, // Use a concrete type that implements Command
+			wantErr:       true,
+			errMsg:        "invalid command data",
+		},
+		{
+			name:          "createCommand with invalid data type",
+			funcName:      "createCommand",
+			data:          123,                  // Invalid type for command data
+			expectedValue: &types.ArgsCommand{}, // Use a concrete type that implements Command
+			wantErr:       true,
+			errMsg:        "unsupported type for command data",
+		},
+		{
+			name:     "createCommand with empty args array",
+			funcName: "createCommand",
+			data:     []interface{}{},
+			expectedValue: &types.ArgsCommand{
+				Args: []string{},
+			},
+			wantErr: false,
+		},
+		{
+			name:          "createCommand with map data",
+			funcName:      "createCommand",
+			data:          map[string]interface{}{"command": "echo hello"},
+			expectedValue: &types.ShellCommand{}, // Use a concrete type that implements Command
+			wantErr:       true,
+			errMsg:        "unsupported type for command data",
+		},
 		// Container image
 		{
 			name:     "createContainerImage with name and tag",

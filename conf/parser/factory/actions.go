@@ -147,6 +147,10 @@ func (f *NativeActionsFactory) parseAction(
 		benchAction := &types.BenchAction{Service: meta.serviceName}
 		err = f.structParser(data, benchAction, path)
 		action = benchAction
+	case "execute":
+		executeAction := &types.ExecuteAction{Service: meta.serviceName}
+		err = f.structParser(data, executeAction, path)
+		action = executeAction
 	case "expect":
 		customNameAllowed = true
 		action, err = f.parseExpectationAction(meta, data, path)

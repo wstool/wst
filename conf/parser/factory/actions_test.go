@@ -92,6 +92,27 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Valid execute action",
+			actions: []interface{}{
+				"execute/serviceName",
+			},
+			mockParseCalls: []struct {
+				data map[string]interface{}
+				path string
+				err  error
+			}{
+				{
+					data: map[string]interface{}{},
+					path: staticPath,
+					err:  nil,
+				},
+			},
+			want: []types.Action{
+				&types.ExecuteAction{Service: "serviceName"},
+			},
+			wantErr: false,
+		},
+		{
 			name: "Invalid action format - too many elements",
 			actions: []interface{}{
 				"action/service/custom/extra",

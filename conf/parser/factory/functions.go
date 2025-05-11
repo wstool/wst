@@ -110,12 +110,20 @@ func (f *FuncProvider) createCommand(data interface{}, fieldValue reflect.Value,
 	var command types.Command
 	switch v := data.(type) {
 	case string:
-		command = types.ShellCommand{
+		command = &types.ShellCommand{
 			Command: v,
 		}
-	case []string:
-		command = types.ArgsCommand{
-			Args: v,
+	case []interface{}:
+		args := make([]string, 0, len(v))
+		for _, item := range v {
+			if str, ok := item.(string); ok {
+				args = append(args, str)
+			} else {
+				return errors.Errorf("invalid command data at %s", f.loc.String())
+			}
+		}
+		command = &types.ArgsCommand{
+			Args: args,
 		}
 	default:
 		return errors.Errorf("unsupported type for command data at %s", f.loc.String())
