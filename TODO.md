@@ -49,8 +49,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- test properly command action / expectation usage and possibly add some tweaks and fixes
-- look into some helper for comparing versions in match
 - introduce action parameter `on_failure` to set what to do when action fails
   - it should either fail (default) or skip the rest of sequence
   - this is to allow skipping the tests that are for example not applicable on certain configuration
@@ -70,14 +68,19 @@ in the future.
 - support metrics server expectation
 - custom server actions for parallel and not action
   - this is mainly for completeness with sequential and might be also useful in some cases
-- add command action custom environment variables support
+- integrate better instance action identification
+  - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
+- add execute action custom environment variables support
   - should be an action map parameter
+- look into output command matching for messages that are not found and waiting for timeout
+  - basically if the message is not found, it waits for context timeout and not finding out that the output collector is done
+  - it might need some way to unblock the scanner when there is nothing more to scan
+- implement extended output extraction and validation
+  - https://gist.github.com/bukka/6891c6d2b59ddb8a89fd991ce658695f - API details
 - look into default action service integration
   - it should be basically service defined in parent (e.g. sequential service) and used if no service is defined for the action
   - it could be then used in the string form like `expect//name`
   - this would be mainly useful for server actions where naming service currently creates dependency on name from action (that should not be required) 
-- integrate better instance action identification
-  - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - save UDS socket to /tmp if longer than 108 which might happen if workspace path is too long
   - ideally use format like this `/tmp/wst/{service_name}/{socket_name}.sock`
   - it should still allow too long UDS if socket_name is too long so this case can be tested
@@ -129,6 +132,7 @@ in the future.
   - there should be also log for successful debug log
   - log 'Task x started for service ...' rather than command
 - test non debug logs - whether it is useful info and how errors are reported
+- implement events to allow run event collection and possibly visualization of runs
 
 #### Local environment
 
