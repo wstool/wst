@@ -92,7 +92,7 @@ type ArgsCommand struct {
 
 type Command interface{}
 
-type CommandAction struct {
+type ExecuteAction struct {
 	Service        string            `wst:"service"`
 	Timeout        int               `wst:"timeout"`
 	When           string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`

@@ -58,9 +58,9 @@ packages:
       dir: mocks/generated/run/actions/action/bench
     interfaces:
       Maker: {}
-  github.com/wstool/wst/run/actions/action/command:
+  github.com/wstool/wst/run/actions/action/execute:
     config:
-      dir: mocks/generated/run/actions/action/command
+      dir: mocks/generated/run/actions/action/execute
     interfaces:
       Maker: {}
   github.com/wstool/wst/run/actions/action/expect:

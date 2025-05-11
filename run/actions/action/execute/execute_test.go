@@ -1,4 +1,4 @@
-package command
+package execute
 
 import (
 	"context"
@@ -43,7 +43,7 @@ func TestCreateActionMaker(t *testing.T) {
 func TestActionMaker_Make(t *testing.T) {
 	tests := []struct {
 		name              string
-		config            *types.CommandAction
+		config            *types.ExecuteAction
 		defaultTimeout    int
 		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator) services.Service
 		getExpectedAction func(*appMocks.MockFoundation, services.Service, output.Maker) *Action
@@ -52,7 +52,7 @@ func TestActionMaker_Make(t *testing.T) {
 	}{
 		{
 			name: "successful shell command creation with default timeout",
-			config: &types.CommandAction{
+			config: &types.ExecuteAction{
 				Service: "validService",
 				Shell:   "/bin/bash",
 				Command: &types.ShellCommand{
@@ -86,7 +86,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "successful args command creation with config timeout",
-			config: &types.CommandAction{
+			config: &types.ExecuteAction{
 				Service: "validService",
 				Command: &types.ArgsCommand{
 					Args: []string{"ls", "-la"},
@@ -119,7 +119,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "failure - service not found",
-			config: &types.CommandAction{
+			config: &types.ExecuteAction{
 				Service: "invalidService",
 				Command: &types.ArgsCommand{
 					Args: []string{"ls"},
@@ -135,7 +135,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "failure - empty args command",
-			config: &types.CommandAction{
+			config: &types.ExecuteAction{
 				Service: "validService",
 				Command: &types.ArgsCommand{
 					Args: []string{},
@@ -152,7 +152,7 @@ func TestActionMaker_Make(t *testing.T) {
 		},
 		{
 			name: "failure - unsupported command type",
-			config: &types.CommandAction{
+			config: &types.ExecuteAction{
 				Service: "validService",
 				Command: &struct{}{}, // some arbitrary struct that doesn't implement known command types
 			},

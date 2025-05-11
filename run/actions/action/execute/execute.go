@@ -1,4 +1,4 @@
-package command
+package execute
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 type Maker interface {
 	Make(
-		config *types.CommandAction,
+		config *types.ExecuteAction,
 		sl services.ServiceLocator,
 		defaultTimeout int,
 	) (action.Action, error)
@@ -35,7 +35,7 @@ func CreateActionMaker(fnd app.Foundation) *ActionMaker {
 }
 
 func (m *ActionMaker) Make(
-	config *types.CommandAction,
+	config *types.ExecuteAction,
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
@@ -126,7 +126,7 @@ func (a *Action) renderCommand() (*environment.Command, error) {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing command action")
+	a.fnd.Logger().Infof("Executing execute action")
 
 	// Send the request.
 	oc := a.outputMaker.MakeCollector(fmt.Sprintf("action %s", a.id))
