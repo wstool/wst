@@ -785,6 +785,12 @@ $defs:
         type: [string, array]
         items:
           type: string
+      render_template:
+        title: Template rendering switch
+        description: |
+          This switch selects whether template rendering is used for command and shell.
+        type: boolean
+        default: true
       shell:
         title: Shell to use
         description: Specifies which shell to use when executing a string command.

@@ -9,6 +9,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/instances/runtime"
+	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
 	"time"
 )
@@ -70,24 +71,28 @@ func (m *ActionMaker) Make(
 	}
 
 	return &Action{
-		fnd:         m.fnd,
-		service:     svc,
-		timeout:     time.Duration(config.Timeout * 1e6),
-		when:        action.When(config.When),
-		id:          config.Id,
-		command:     cmd,
-		outputMaker: m.outputMaker,
+		fnd:            m.fnd,
+		service:        svc,
+		parameters:     parameters.Parameters{},
+		timeout:        time.Duration(config.Timeout * 1e6),
+		when:           action.When(config.When),
+		id:             config.Id,
+		command:        cmd,
+		renderTemplate: config.RenderTemplate,
+		outputMaker:    m.outputMaker,
 	}, nil
 }
 
 type Action struct {
-	fnd         app.Foundation
-	service     services.Service
-	timeout     time.Duration
-	when        action.When
-	id          string
-	command     *environment.Command
-	outputMaker output.Maker
+	fnd            app.Foundation
+	service        services.Service
+	parameters     parameters.Parameters
+	timeout        time.Duration
+	when           action.When
+	id             string
+	command        *environment.Command
+	renderTemplate bool
+	outputMaker    output.Maker
 }
 
 func (a *Action) When() action.When {
@@ -98,12 +103,38 @@ func (a *Action) Timeout() time.Duration {
 	return a.timeout
 }
 
+func (a *Action) renderCommand() (*environment.Command, error) {
+	if !a.renderTemplate {
+		return a.command, nil
+	}
+	name, err := a.service.RenderTemplate(a.command.Name, a.parameters)
+	if err != nil {
+		return nil, err
+	}
+	args := make([]string, len(a.command.Args))
+	for i, arg := range a.command.Args {
+		renderedArg, err := a.service.RenderTemplate(arg, a.parameters)
+		if err != nil {
+			return nil, err
+		}
+		args[i] = renderedArg
+	}
+	return &environment.Command{
+		Name: name,
+		Args: args,
+	}, nil
+}
+
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing command action")
 
 	// Send the request.
 	oc := a.outputMaker.MakeCollector(fmt.Sprintf("action %s", a.id))
-	if err := a.service.ExecCommand(ctx, a.command, oc); err != nil {
+	command, err := a.renderCommand()
+	if err != nil {
+		return false, err
+	}
+	if err := a.service.ExecCommand(ctx, command, oc); err != nil {
 		return false, err
 	}
 

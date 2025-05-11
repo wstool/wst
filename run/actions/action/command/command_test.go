@@ -10,10 +10,12 @@ import (
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	outputMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/output"
 	runtimeMocks "github.com/wstool/wst/mocks/generated/run/instances/runtime"
+	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
 	servicesMocks "github.com/wstool/wst/mocks/generated/run/services"
 	"github.com/wstool/wst/run/actions/action"
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
+	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
 	"testing"
 	"time"
@@ -68,11 +70,12 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, outMaker output.Maker) *Action {
 				return &Action{
-					fnd:     fndMock,
-					service: svc,
-					timeout: 5000 * time.Millisecond,
-					when:    action.OnSuccess,
-					id:      "shell-cmd",
+					fnd:        fndMock,
+					service:    svc,
+					parameters: parameters.Parameters{},
+					timeout:    5000 * time.Millisecond,
+					when:       action.OnSuccess,
+					id:         "shell-cmd",
 					command: &environment.Command{
 						Name: "/bin/bash",
 						Args: []string{"-c", "echo hello"},
@@ -100,11 +103,12 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, outMaker output.Maker) *Action {
 				return &Action{
-					fnd:     fndMock,
-					service: svc,
-					timeout: 3000 * time.Millisecond,
-					when:    action.OnSuccess,
-					id:      "args-cmd",
+					fnd:        fndMock,
+					service:    svc,
+					parameters: parameters.Parameters{},
+					timeout:    3000 * time.Millisecond,
+					when:       action.OnSuccess,
+					id:         "args-cmd",
 					command: &environment.Command{
 						Name: "ls",
 						Args: []string{"-la"},
@@ -195,10 +199,16 @@ func TestActionMaker_Make(t *testing.T) {
 }
 
 func TestAction_Execute(t *testing.T) {
+	params := parameters.Parameters{
+		"key": parameterMocks.NewMockParameter(t),
+	}
+
 	tests := []struct {
 		name           string
 		actionID       string
 		command        *environment.Command
+		parameters     parameters.Parameters
+		renderTemplate bool
 		setupMocks     func(t *testing.T, ctx context.Context, rd *runtimeMocks.MockData, fnd *appMocks.MockFoundation, svc *servicesMocks.MockService, outMaker *outputMocks.MockMaker, collector *outputMocks.MockCollector)
 		contextSetup   func() context.Context
 		want           bool
@@ -206,12 +216,45 @@ func TestAction_Execute(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name:     "successful execution",
-			actionID: "test-action",
+			name:           "successful execution without template rendering",
+			actionID:       "test-action-no-template",
+			renderTemplate: false,
 			command: &environment.Command{
 				Name: "test",
 				Args: []string{"-a", "-b"},
 			},
+			parameters: params,
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+				outMaker *outputMocks.MockMaker,
+				collector *outputMocks.MockCollector,
+			) {
+				outMaker.On("MakeCollector", "action test-action-no-template").Return(collector).Once()
+
+				// No template rendering calls expected since renderTemplate is false
+
+				expectedCmd := &environment.Command{
+					Name: "test",
+					Args: []string{"-a", "-b"},
+				}
+				svc.On("ExecCommand", ctx, expectedCmd, collector).Return(nil).Once()
+				rd.On("Store", "command/test-action-no-template", collector).Return(nil).Once()
+			},
+			want: true,
+		},
+		{
+			name:           "successful execution with template rendering",
+			actionID:       "test-action",
+			renderTemplate: true,
+			command: &environment.Command{
+				Name: "test",
+				Args: []string{"-a", "-b"},
+			},
+			parameters: params,
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -223,6 +266,11 @@ func TestAction_Execute(t *testing.T) {
 			) {
 				outMaker.On("MakeCollector", "action test-action").Return(collector).Once()
 
+				// Mock template rendering
+				svc.On("RenderTemplate", "test", params).Return("test", nil).Once()
+				svc.On("RenderTemplate", "-a", params).Return("-a", nil).Once()
+				svc.On("RenderTemplate", "-b", params).Return("-b", nil).Once()
+
 				expectedCmd := &environment.Command{
 					Name: "test",
 					Args: []string{"-a", "-b"},
@@ -233,12 +281,66 @@ func TestAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name:     "execution error",
-			actionID: "failed-action",
+			name:           "template rendering error in command name",
+			actionID:       "template-error",
+			renderTemplate: true,
+			command: &environment.Command{
+				Name: "test-{{.invalid}}",
+				Args: []string{"-a"},
+			},
+			parameters: params,
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+				outMaker *outputMocks.MockMaker,
+				collector *outputMocks.MockCollector,
+			) {
+				outMaker.On("MakeCollector", "action template-error").Return(collector).Once()
+				svc.On("RenderTemplate", "test-{{.invalid}}", params).Return("", errors.New("template rendering error")).Once()
+			},
+			want:           false,
+			expectError:    true,
+			expectedErrMsg: "template rendering error",
+		},
+		{
+			name:           "template rendering error in arguments",
+			actionID:       "arg-template-error",
+			renderTemplate: true,
+			command: &environment.Command{
+				Name: "test",
+				Args: []string{"-a", "{{.invalid}}"},
+			},
+			parameters: params,
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+				outMaker *outputMocks.MockMaker,
+				collector *outputMocks.MockCollector,
+			) {
+				outMaker.On("MakeCollector", "action arg-template-error").Return(collector).Once()
+				svc.On("RenderTemplate", "test", params).Return("test", nil).Once()
+				svc.On("RenderTemplate", "-a", params).Return("-a", nil).Once()
+				svc.On("RenderTemplate", "{{.invalid}}", params).Return("", errors.New("arg template error")).Once()
+			},
+			want:           false,
+			expectError:    true,
+			expectedErrMsg: "arg template error",
+		},
+		{
+			name:           "execution error with template rendering disabled",
+			actionID:       "failed-action",
+			renderTemplate: false,
 			command: &environment.Command{
 				Name: "test",
 				Args: []string{"-a"},
 			},
+			parameters: params,
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -249,6 +351,8 @@ func TestAction_Execute(t *testing.T) {
 				collector *outputMocks.MockCollector,
 			) {
 				outMaker.On("MakeCollector", "action failed-action").Return(collector).Once()
+
+				// No template rendering since it's disabled
 
 				expectedCmd := &environment.Command{
 					Name: "test",
@@ -261,12 +365,14 @@ func TestAction_Execute(t *testing.T) {
 			expectedErrMsg: "execution failed",
 		},
 		{
-			name:     "store error",
-			actionID: "store-failed",
+			name:           "store error with template rendering",
+			actionID:       "store-failed",
+			renderTemplate: true,
 			command: &environment.Command{
 				Name: "test",
 				Args: []string{"-a"},
 			},
+			parameters: params,
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -277,6 +383,9 @@ func TestAction_Execute(t *testing.T) {
 				collector *outputMocks.MockCollector,
 			) {
 				outMaker.On("MakeCollector", "action store-failed").Return(collector).Once()
+
+				svc.On("RenderTemplate", "test", params).Return("test", nil).Once()
+				svc.On("RenderTemplate", "-a", params).Return("-a", nil).Once()
 
 				expectedCmd := &environment.Command{
 					Name: "test",
@@ -312,11 +421,13 @@ func TestAction_Execute(t *testing.T) {
 			tt.setupMocks(t, ctx, runDataMock, fndMock, svcMock, outMakerMock, collectorMock)
 
 			action := &Action{
-				fnd:         fndMock,
-				service:     svcMock,
-				id:          tt.actionID,
-				command:     tt.command,
-				outputMaker: outMakerMock,
+				fnd:            fndMock,
+				service:        svcMock,
+				id:             tt.actionID,
+				command:        tt.command,
+				parameters:     tt.parameters,
+				renderTemplate: tt.renderTemplate,
+				outputMaker:    outMakerMock,
 			}
 
 			got, err := action.Execute(ctx, runDataMock)

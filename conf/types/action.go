@@ -93,13 +93,14 @@ type ArgsCommand struct {
 type Command interface{}
 
 type CommandAction struct {
-	Service string            `wst:"service"`
-	Timeout int               `wst:"timeout"`
-	When    string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Id      string            `wst:"id,default=last"`
-	Command Command           `wst:"command,factory=createCommand"`
-	Shell   string            `wst:"shell,default=/bin/sh"`
-	Env     map[string]string `wst:"env"`
+	Service        string            `wst:"service"`
+	Timeout        int               `wst:"timeout"`
+	When           string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Id             string            `wst:"id,default=last"`
+	Command        Command           `wst:"command,factory=createCommand"`
+	RenderTemplate bool              `wst:"render_template,default=true"`
+	Shell          string            `wst:"shell,default=/bin/sh"`
+	Env            map[string]string `wst:"env"`
 }
 
 type RequestAction struct {
