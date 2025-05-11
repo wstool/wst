@@ -741,10 +741,10 @@ $defs:
         description: The length of benchmark in milliseconds.
         type: integer
 
-  actionCommand:
-    title: Command action
+  actionExecute:
+    title: Execute action
     description: |
-      The command action defines the details of a command to be executed by the service.
+      The execute action defines the details of a command to be executed by the service.
     type: object
     properties:
       service:
@@ -1086,8 +1086,8 @@ $defs:
     patternProperties:
       "^bench/.*":
         $ref: '#/$defs/actionBench'
-      "^command/.*":
-        $ref: '#/$defs/actionCommand'
+      "^execute/.*":
+        $ref: '#/$defs/actionExecute'
       "^expect/.*":
         $ref: '#/$defs/actionExpectation'
       "^request/.*":
