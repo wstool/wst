@@ -45,8 +45,8 @@ func TestActionMaker_Make(t *testing.T) {
 		name              string
 		config            *types.ExecuteAction
 		defaultTimeout    int
-		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator) services.Service
-		getExpectedAction func(*appMocks.MockFoundation, services.Service, output.Maker) *Action
+		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters)
+		getExpectedAction func(*appMocks.MockFoundation, services.Service, parameters.Parameters, output.Maker) *Action
 		expectError       bool
 		expectedErrorMsg  string
 	}{
@@ -58,21 +58,28 @@ func TestActionMaker_Make(t *testing.T) {
 				Command: &types.ShellCommand{
 					Command: "echo hello",
 				},
-				Timeout: 0,
-				When:    "on_success",
-				Id:      "shell-cmd",
+				Timeout:        0,
+				When:           "on_success",
+				Id:             "shell-cmd",
+				RenderTemplate: true,
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters) {
 				svc := servicesMocks.NewMockService(t)
+				// Create server parameters
+				serverParams := parameters.Parameters{
+					"shell_param1": parameterMocks.NewMockParameter(t),
+					"shell_param2": parameterMocks.NewMockParameter(t),
+				}
 				sl.On("Find", "validService").Return(svc, nil)
-				return svc
+				svc.On("ServerParameters").Return(serverParams)
+				return svc, serverParams
 			},
-			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, outMaker output.Maker) *Action {
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, params parameters.Parameters, outMaker output.Maker) *Action {
 				return &Action{
 					fnd:        fndMock,
 					service:    svc,
-					parameters: parameters.Parameters{},
+					parameters: params,
 					timeout:    5000 * time.Millisecond,
 					when:       action.OnSuccess,
 					id:         "shell-cmd",
@@ -80,7 +87,8 @@ func TestActionMaker_Make(t *testing.T) {
 						Name: "/bin/bash",
 						Args: []string{"-c", "echo hello"},
 					},
-					outputMaker: outMaker,
+					renderTemplate: true,
+					outputMaker:    outMaker,
 				}
 			},
 		},
@@ -91,21 +99,28 @@ func TestActionMaker_Make(t *testing.T) {
 				Command: &types.ArgsCommand{
 					Args: []string{"ls", "-la"},
 				},
-				Timeout: 3000,
-				When:    "on_success",
-				Id:      "args-cmd",
+				Timeout:        3000,
+				When:           "on_success",
+				Id:             "args-cmd",
+				RenderTemplate: false,
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters) {
 				svc := servicesMocks.NewMockService(t)
+				// Create different server parameters for this test
+				serverParams := parameters.Parameters{
+					"args_param1": parameterMocks.NewMockParameter(t),
+					"args_param2": parameterMocks.NewMockParameter(t),
+				}
 				sl.On("Find", "validService").Return(svc, nil)
-				return svc
+				svc.On("ServerParameters").Return(serverParams)
+				return svc, serverParams
 			},
-			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, outMaker output.Maker) *Action {
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service, params parameters.Parameters, outMaker output.Maker) *Action {
 				return &Action{
 					fnd:        fndMock,
 					service:    svc,
-					parameters: parameters.Parameters{},
+					parameters: params,
 					timeout:    3000 * time.Millisecond,
 					when:       action.OnSuccess,
 					id:         "args-cmd",
@@ -113,7 +128,8 @@ func TestActionMaker_Make(t *testing.T) {
 						Name: "ls",
 						Args: []string{"-la"},
 					},
-					outputMaker: outMaker,
+					renderTemplate: false,
+					outputMaker:    outMaker,
 				}
 			},
 		},
@@ -126,9 +142,9 @@ func TestActionMaker_Make(t *testing.T) {
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters) {
 				sl.On("Find", "invalidService").Return(nil, errors.New("service not found"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "service not found",
@@ -142,10 +158,10 @@ func TestActionMaker_Make(t *testing.T) {
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters) {
 				svc := servicesMocks.NewMockService(t)
 				sl.On("Find", "validService").Return(svc, nil)
-				return svc
+				return svc, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "ArgsCommand requires at least one argument",
@@ -157,10 +173,10 @@ func TestActionMaker_Make(t *testing.T) {
 				Command: &struct{}{}, // some arbitrary struct that doesn't implement known command types
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) (services.Service, parameters.Parameters) {
 				svc := servicesMocks.NewMockService(t)
 				sl.On("Find", "validService").Return(svc, nil)
-				return svc
+				return svc, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "unsupported command type: *struct {}",
@@ -178,7 +194,7 @@ func TestActionMaker_Make(t *testing.T) {
 				outputMaker: outMakerMock,
 			}
 
-			svc := tt.setupMocks(t, slMock)
+			svc, serverParams := tt.setupMocks(t, slMock)
 
 			got, err := m.Make(tt.config, slMock, tt.defaultTimeout)
 
@@ -191,8 +207,21 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.NotNil(t, got)
 				actualAction, ok := got.(*Action)
 				assert.True(t, ok)
-				expectedAction := tt.getExpectedAction(fndMock, svc, outMakerMock)
-				assert.Equal(t, expectedAction, actualAction)
+				expectedAction := tt.getExpectedAction(fndMock, svc, serverParams, outMakerMock)
+
+				// Check each field individually to make debugging easier if there's a mismatch
+				assert.Equal(t, expectedAction.fnd, actualAction.fnd, "Foundation mismatch")
+				assert.Equal(t, expectedAction.service, actualAction.service, "Service mismatch")
+				assert.Equal(t, expectedAction.parameters, actualAction.parameters, "Parameters mismatch")
+				assert.Equal(t, expectedAction.timeout, actualAction.timeout, "Timeout mismatch")
+				assert.Equal(t, expectedAction.when, actualAction.when, "When mismatch")
+				assert.Equal(t, expectedAction.id, actualAction.id, "ID mismatch")
+				assert.Equal(t, expectedAction.command, actualAction.command, "Command mismatch")
+				assert.Equal(t, expectedAction.renderTemplate, actualAction.renderTemplate, "RenderTemplate mismatch")
+				assert.Equal(t, expectedAction.outputMaker, actualAction.outputMaker, "OutputMaker mismatch")
+
+				// Also do a full comparison
+				assert.Equal(t, expectedAction, actualAction, "Complete Action struct mismatch")
 			}
 		})
 	}

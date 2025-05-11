@@ -45,35 +45,65 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 		name              string
 		config            *types.CustomExpectationAction
 		defaultTimeout    int
-		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator, *servicesMocks.MockService, *parametersMocks.MockMaker, parameters.Parameters)
-		getExpectedAction func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService, params parameters.Parameters) *customAction
+		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator, *servicesMocks.MockService, *parametersMocks.MockMaker) parameters.Parameters
+		getExpectedAction func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService, finalParams parameters.Parameters) *customAction
 		expectError       bool
 		expectedErrorMsg  string
 	}{
 		{
-			name: "successful custom action creation",
+			name: "successful custom action creation with parameter inheritance",
 			config: &types.CustomExpectationAction{
 				Service: "validService",
 				When:    "on_success",
 				Custom: types.CustomExpectation{
 					Name:       "validAction",
-					Parameters: types.Parameters{"key": "value"},
+					Parameters: types.Parameters{"config_param": "config_value", "shared_key": "config_override"},
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker) parameters.Parameters {
+				// Create different parameter sets to test inheritance chain
+				configParams := parameters.Parameters{
+					"config_param": parameterMocks.NewMockParameter(t),
+					"shared_key":   parameterMocks.NewMockParameter(t),
+				}
+
+				expectParams := parameters.Parameters{
+					"expect_param": parameterMocks.NewMockParameter(t),
+					"shared_key":   parameterMocks.NewMockParameter(t), // Should be overridden by configParams
+				}
+
+				serverParams := parameters.Parameters{
+					"server_param": parameterMocks.NewMockParameter(t),
+					"shared_key":   parameterMocks.NewMockParameter(t), // Should be overridden by configParams or expectParams
+					"expect_param": parameterMocks.NewMockParameter(t), // Should be overridden by expectParams
+				}
+
+				// Expected final parameters after inheritance chain (config -> expect -> server)
+				finalParams := parameters.Parameters{
+					"config_param": configParams["config_param"],
+					"expect_param": expectParams["expect_param"],
+					"server_param": serverParams["server_param"],
+					"shared_key":   configParams["shared_key"], // Should come from config (highest priority)
+				}
+
 				sl.On("Find", "validService").Return(svc, nil)
 				server := serversMocks.NewMockServer(t)
 				svc.On("Server").Return(server)
 				expectation := actionsMocks.NewMockExpectAction(t)
-				paramsMaker.On("Make", types.Parameters{"key": "value"}).Return(params, nil)
+
+				paramsMaker.On("Make", types.Parameters{"config_param": "config_value", "shared_key": "config_override"}).Return(configParams, nil)
+
 				server.On("ExpectAction", "validAction").Return(expectation, true)
-				server.On("Parameters").Return(params)
 				expectation.On("OutputExpectation").Return(outputExpectation)
 				expectation.On("ResponseExpectation").Return(responseExpectation)
-				expectation.On("Parameters").Return(params)
+				expectation.On("Parameters").Return(expectParams)
+
+				svc.On("ServerParameters").Return(serverParams)
+
+				return finalParams
 			},
-			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService, params parameters.Parameters) *customAction {
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService, finalParams parameters.Parameters) *customAction {
 				return &customAction{
 					CommonExpectation: &CommonExpectation{
 						fnd:     fndMock,
@@ -83,7 +113,7 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 					},
 					OutputExpectation:   outputExpectation,
 					ResponseExpectation: responseExpectation,
-					parameters:          params,
+					parameters:          finalParams,
 				}
 			},
 		},
@@ -98,13 +128,15 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker) parameters.Parameters {
 				sl.On("Find", "validService").Return(svc, nil)
 				server := serversMocks.NewMockServer(t)
 				svc.On("Server").Return(server)
 				expectation := actionsMocks.NewMockExpectAction(t)
 				server.On("ExpectAction", "invalidAction").Return(expectation, true)
 				paramsMaker.On("Make", types.Parameters{"key": "value"}).Return(nil, errors.New("no params"))
+
+				return nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "no params",
@@ -119,11 +151,13 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker) parameters.Parameters {
 				sl.On("Find", "validService").Return(svc, nil)
 				server := serversMocks.NewMockServer(t)
 				svc.On("Server").Return(server)
 				server.On("ExpectAction", "invalidAction").Return(nil, false)
+
+				return nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "expectation action invalidAction not found",
@@ -138,8 +172,10 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 				},
 			},
 			defaultTimeout: 5000,
-			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker, params parameters.Parameters) {
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, svc *servicesMocks.MockService, paramsMaker *parametersMocks.MockMaker) parameters.Parameters {
 				sl.On("Find", "invalidService").Return(nil, fmt.Errorf("service not found"))
+
+				return nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "service not found",
@@ -148,9 +184,6 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params := parameters.Parameters{
-				"test": parameterMocks.NewMockParameter(t),
-			}
 			fndMock := appMocks.NewMockFoundation(t)
 			slMock := servicesMocks.NewMockServiceLocator(t)
 			svcMock := servicesMocks.NewMockService(t)
@@ -160,7 +193,7 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 				parametersMaker: parametersMakerMock,
 			}
 
-			tt.setupMocks(t, slMock, svcMock, parametersMakerMock, params)
+			expectedFinalParams := tt.setupMocks(t, slMock, svcMock, parametersMakerMock)
 
 			got, err := m.MakeCustomAction(tt.config, slMock, tt.defaultTimeout)
 
@@ -173,8 +206,12 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 				assert.NotNil(t, got)
 				actualAction, ok := got.(*customAction)
 				assert.True(t, ok)
-				expectedAction := tt.getExpectedAction(fndMock, svcMock, params)
-				assert.Equal(t, expectedAction, actualAction)
+
+				// Create the expected action using the final parameters
+				expectedAction := tt.getExpectedAction(fndMock, svcMock, expectedFinalParams)
+
+				// Compare the actual action with expected action
+				assert.Equal(t, expectedAction, actualAction, "The customAction did not match expected structure")
 			}
 		})
 	}

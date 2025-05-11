@@ -33,11 +33,12 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 			*servicesMocks.MockService,
 			*expectationsMocks.MockMaker,
 			*types.OutputExpectationAction,
-		) *expectations.OutputExpectation
+		) (*expectations.OutputExpectation, parameters.Parameters)
 		getExpectedAction func(
 			*appMocks.MockFoundation,
 			*servicesMocks.MockService,
 			*expectations.OutputExpectation,
+			parameters.Parameters,
 		) *outputAction
 		expectError      bool
 		expectedErrorMsg string
@@ -62,7 +63,13 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.OutputExpectationAction,
-			) *expectations.OutputExpectation {
+			) (*expectations.OutputExpectation, parameters.Parameters) {
+				// Create server parameters to be used in the action
+				serverParams := parameters.Parameters{
+					"output_param1": parameterMocks.NewMockParameter(t),
+					"output_param2": parameterMocks.NewMockParameter(t),
+				}
+
 				sl.On("Find", "validService").Return(svc, nil)
 				outputExpectation := &expectations.OutputExpectation{
 					OrderType:      expectations.OrderTypeFixed,
@@ -72,12 +79,17 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 					Messages:       []string{"test"},
 				}
 				expectationMaker.On("MakeOutputExpectation", &config.Output).Return(outputExpectation, nil)
-				return outputExpectation
+
+				// Mock the ServerParameters method to return our test parameters
+				svc.On("ServerParameters").Return(serverParams)
+
+				return outputExpectation, serverParams
 			},
 			getExpectedAction: func(
 				fndMock *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 				expectation *expectations.OutputExpectation,
+				serverParams parameters.Parameters,
 			) *outputAction {
 				return &outputAction{
 					CommonExpectation: &CommonExpectation{
@@ -87,7 +99,7 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 						when:    action.OnSuccess,
 					},
 					OutputExpectation: expectation,
-					parameters:        parameters.Parameters{},
+					parameters:        serverParams,
 				}
 			},
 		},
@@ -111,9 +123,9 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.OutputExpectationAction,
-			) *expectations.OutputExpectation {
+			) (*expectations.OutputExpectation, parameters.Parameters) {
 				sl.On("Find", "invalidService").Return(nil, errors.New("svc not found"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "svc not found",
@@ -138,10 +150,10 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.OutputExpectationAction,
-			) *expectations.OutputExpectation {
+			) (*expectations.OutputExpectation, parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
 				expectationMaker.On("MakeOutputExpectation", &config.Output).Return(nil, errors.New("output failed"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "output failed",
@@ -161,7 +173,7 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 				expectationsMaker: expectationsMakerMock,
 			}
 
-			outputExpectation := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
+			outputExpectation, serverParams := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
 
 			got, err := m.MakeOutputAction(tt.config, slMock, tt.defaultTimeout)
 
@@ -174,7 +186,7 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 				assert.NotNil(t, got)
 				actualAction, ok := got.(*outputAction)
 				assert.True(t, ok)
-				expectedAction := tt.getExpectedAction(fndMock, svcMock, outputExpectation)
+				expectedAction := tt.getExpectedAction(fndMock, svcMock, outputExpectation, serverParams)
 				assert.Equal(t, expectedAction, actualAction)
 			}
 		})

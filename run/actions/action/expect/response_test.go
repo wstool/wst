@@ -32,17 +32,18 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 			*servicesMocks.MockService,
 			*expectationsMocks.MockMaker,
 			*types.ResponseExpectationAction,
-		) *expectations.ResponseExpectation
+		) (*expectations.ResponseExpectation, parameters.Parameters)
 		getExpectedAction func(
 			*appMocks.MockFoundation,
 			*servicesMocks.MockService,
 			*expectations.ResponseExpectation,
+			parameters.Parameters,
 		) *responseAction
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name: "successful output action creation",
+			name: "successful response action creation",
 			config: &types.ResponseExpectationAction{
 				Service: "validService",
 				When:    "on_success",
@@ -63,7 +64,13 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.ResponseExpectationAction,
-			) *expectations.ResponseExpectation {
+			) (*expectations.ResponseExpectation, parameters.Parameters) {
+				// Create server parameters to be used in the action
+				serverParams := parameters.Parameters{
+					"response_param1": parameterMocks.NewMockParameter(t),
+					"response_param2": parameterMocks.NewMockParameter(t),
+				}
+
 				sl.On("Find", "validService").Return(svc, nil)
 				responseExpectation := &expectations.ResponseExpectation{
 					Request:            "last",
@@ -73,12 +80,17 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 					BodyRenderTemplate: true,
 				}
 				expectationMaker.On("MakeResponseExpectation", &config.Response).Return(responseExpectation, nil)
-				return responseExpectation
+
+				// Mock the ServerParameters method to return our test parameters
+				svc.On("ServerParameters").Return(serverParams)
+
+				return responseExpectation, serverParams
 			},
 			getExpectedAction: func(
 				fndMock *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 				expectation *expectations.ResponseExpectation,
+				serverParams parameters.Parameters,
 			) *responseAction {
 				return &responseAction{
 					CommonExpectation: &CommonExpectation{
@@ -88,12 +100,12 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 						when:    action.OnSuccess,
 					},
 					ResponseExpectation: expectation,
-					parameters:          parameters.Parameters{},
+					parameters:          serverParams,
 				}
 			},
 		},
 		{
-			name: "failed output action creation because no service found",
+			name: "failed response action creation because no service found",
 			config: &types.ResponseExpectationAction{
 				Service: "invalidService",
 				When:    "on_success",
@@ -114,15 +126,15 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.ResponseExpectationAction,
-			) *expectations.ResponseExpectation {
+			) (*expectations.ResponseExpectation, parameters.Parameters) {
 				sl.On("Find", "invalidService").Return(nil, errors.New("svc not found"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "svc not found",
 		},
 		{
-			name: "failed output action creation because output expectation creation failed",
+			name: "failed response action creation because response expectation creation failed",
 			config: &types.ResponseExpectationAction{
 				Service: "validService",
 				When:    "on_success",
@@ -143,10 +155,10 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.ResponseExpectationAction,
-			) *expectations.ResponseExpectation {
+			) (*expectations.ResponseExpectation, parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
 				expectationMaker.On("MakeResponseExpectation", &config.Response).Return(nil, errors.New("response failed"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "response failed",
@@ -166,7 +178,7 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 				expectationsMaker: expectationsMakerMock,
 			}
 
-			outputExpectation := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
+			responseExpectation, serverParams := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
 
 			got, err := m.MakeResponseAction(tt.config, slMock, tt.defaultTimeout)
 
@@ -179,7 +191,7 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 				assert.NotNil(t, got)
 				actualAction, ok := got.(*responseAction)
 				assert.True(t, ok)
-				expectedAction := tt.getExpectedAction(fndMock, svcMock, outputExpectation)
+				expectedAction := tt.getExpectedAction(fndMock, svcMock, responseExpectation, serverParams)
 				assert.Equal(t, expectedAction, actualAction)
 			}
 		})

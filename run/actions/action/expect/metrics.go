@@ -46,7 +46,7 @@ func (m *ExpectationActionMaker) MakeMetricsAction(
 	return &metricsAction{
 		CommonExpectation:  commonExpectation,
 		MetricsExpectation: metricsExpectation,
-		parameters:         parameters.Parameters{},
+		parameters:         commonExpectation.service.ServerParameters(),
 	}, nil
 }
 

@@ -32,11 +32,12 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 			*servicesMocks.MockService,
 			*expectationsMocks.MockMaker,
 			*types.MetricsExpectationAction,
-		) *expectations.MetricsExpectation
+		) (*expectations.MetricsExpectation, parameters.Parameters)
 		getExpectedAction func(
 			*appMocks.MockFoundation,
 			*servicesMocks.MockService,
 			*expectations.MetricsExpectation,
+			parameters.Parameters,
 		) *metricsAction
 		expectError      bool
 		expectedErrorMsg string
@@ -64,7 +65,13 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.MetricsExpectationAction,
-			) *expectations.MetricsExpectation {
+			) (*expectations.MetricsExpectation, parameters.Parameters) {
+				// Create server parameters that should be used in the action
+				serverParams := parameters.Parameters{
+					"server_param1": parameterMocks.NewMockParameter(t),
+					"server_param2": parameterMocks.NewMockParameter(t),
+				}
+
 				sl.On("Find", "validService").Return(svc, nil)
 				metricExpectation := &expectations.MetricsExpectation{
 					Id: "test",
@@ -77,12 +84,17 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 					},
 				}
 				expectationMaker.On("MakeMetricsExpectation", &config.Metrics).Return(metricExpectation, nil)
-				return metricExpectation
+
+				// Mock the ServerParameters method to return our test parameters
+				svc.On("ServerParameters").Return(serverParams)
+
+				return metricExpectation, serverParams
 			},
 			getExpectedAction: func(
 				fndMock *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 				expectation *expectations.MetricsExpectation,
+				serverParams parameters.Parameters,
 			) *metricsAction {
 				return &metricsAction{
 					CommonExpectation: &CommonExpectation{
@@ -92,7 +104,7 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 						when:    action.OnSuccess,
 					},
 					MetricsExpectation: expectation,
-					parameters:         parameters.Parameters{},
+					parameters:         serverParams,
 				}
 			},
 		},
@@ -119,9 +131,9 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.MetricsExpectationAction,
-			) *expectations.MetricsExpectation {
+			) (*expectations.MetricsExpectation, parameters.Parameters) {
 				sl.On("Find", "invalidService").Return(nil, errors.New("svc not found"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "svc not found",
@@ -149,10 +161,10 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 				svc *servicesMocks.MockService,
 				expectationMaker *expectationsMocks.MockMaker,
 				config *types.MetricsExpectationAction,
-			) *expectations.MetricsExpectation {
+			) (*expectations.MetricsExpectation, parameters.Parameters) {
 				sl.On("Find", "validService").Return(svc, nil)
 				expectationMaker.On("MakeMetricsExpectation", &config.Metrics).Return(nil, errors.New("metrics failed"))
-				return nil
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "metrics failed",
@@ -172,7 +184,7 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 				expectationsMaker: expectationsMakerMock,
 			}
 
-			metricsExpectation := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
+			metricsExpectation, serverParams := tt.setupMocks(t, slMock, svcMock, expectationsMakerMock, tt.config)
 
 			got, err := m.MakeMetricsAction(tt.config, slMock, tt.defaultTimeout)
 
@@ -185,7 +197,7 @@ func TestExpectationActionMaker_MakeMetricsAction(t *testing.T) {
 				assert.NotNil(t, got)
 				actualAction, ok := got.(*metricsAction)
 				assert.True(t, ok)
-				expectedAction := tt.getExpectedAction(fndMock, svcMock, metricsExpectation)
+				expectedAction := tt.getExpectedAction(fndMock, svcMock, metricsExpectation, serverParams)
 				assert.Equal(t, expectedAction, actualAction)
 			}
 		})

@@ -52,7 +52,7 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 		CommonExpectation:   commonExpectation,
 		OutputExpectation:   expectation.OutputExpectation(),
 		ResponseExpectation: expectation.ResponseExpectation(),
-		parameters:          configParameters.Inherit(expectation.Parameters()).Inherit(server.Parameters()),
+		parameters:          configParameters.Inherit(expectation.Parameters()).Inherit(commonExpectation.service.ServerParameters()),
 	}, nil
 }
 

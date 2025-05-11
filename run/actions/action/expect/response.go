@@ -48,7 +48,7 @@ func (m *ExpectationActionMaker) MakeResponseAction(
 	return &responseAction{
 		CommonExpectation:   commonExpectation,
 		ResponseExpectation: responseExpectation,
-		parameters:          parameters.Parameters{},
+		parameters:          commonExpectation.service.ServerParameters(),
 	}, nil
 }
 

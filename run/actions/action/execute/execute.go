@@ -73,7 +73,7 @@ func (m *ActionMaker) Make(
 	return &Action{
 		fnd:            m.fnd,
 		service:        svc,
-		parameters:     parameters.Parameters{},
+		parameters:     svc.ServerParameters(),
 		timeout:        time.Duration(config.Timeout * 1e6),
 		when:           action.When(config.When),
 		id:             config.Id,

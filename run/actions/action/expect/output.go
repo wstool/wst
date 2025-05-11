@@ -50,7 +50,7 @@ func (m *ExpectationActionMaker) MakeOutputAction(
 	return &outputAction{
 		CommonExpectation: commonExpectation,
 		OutputExpectation: outputExpectation,
-		parameters:        parameters.Parameters{},
+		parameters:        commonExpectation.service.ServerParameters(),
 	}, nil
 }
 
