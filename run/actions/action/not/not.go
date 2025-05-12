@@ -66,6 +66,7 @@ func (m *ActionMaker) Make(
 		action:       newAction,
 		timeout:      time.Duration(config.Timeout * 1e6),
 		when:         action.When(config.When),
+		onFailure:    action.OnFailureType(config.OnFailure),
 	}, nil
 }
 
@@ -75,10 +76,15 @@ type Action struct {
 	action       action.Action
 	timeout      time.Duration
 	when         action.When
+	onFailure    action.OnFailureType
 }
 
 func (a *Action) When() action.When {
 	return a.when
+}
+
+func (a *Action) OnFailure() action.OnFailureType {
+	return a.onFailure
 }
 
 func (a *Action) Timeout() time.Duration {

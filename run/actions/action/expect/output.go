@@ -29,7 +29,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-	"time"
 )
 
 func (m *ExpectationActionMaker) MakeOutputAction(
@@ -37,7 +36,8 @@ func (m *ExpectationActionMaker) MakeOutputAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
+	commonExpectation, err := m.MakeCommonExpectation(
+		sl, config.Service, config.Timeout, defaultTimeout, config.When, config.OnFailure)
 	if err != nil {
 		return nil, err
 	}
@@ -58,14 +58,6 @@ type outputAction struct {
 	*CommonExpectation
 	*expectations.OutputExpectation
 	parameters parameters.Parameters
-}
-
-func (a *outputAction) When() action.When {
-	return a.when
-}
-
-func (a *outputAction) Timeout() time.Duration {
-	return a.timeout
 }
 
 func (a *outputAction) getReader(ctx context.Context, runData runtime.Data) (io.Reader, error) {

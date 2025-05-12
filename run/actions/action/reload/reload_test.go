@@ -48,9 +48,10 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "successful reload action creation with default timeout",
 			config: &types.ReloadAction{
-				Service:  "validService3",
-				Services: []string{"validService1", "validService2"},
-				When:     "on_failure",
+				Service:   "validService3",
+				Services:  []string{"validService1", "validService2"},
+				When:      "on_failure",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
@@ -71,19 +72,21 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svcs services.Services) *Action {
 				return &Action{
-					fnd:      fndMock,
-					services: svcs,
-					timeout:  5000 * time.Millisecond,
-					when:     action.OnFailure,
+					fnd:       fndMock,
+					services:  svcs,
+					timeout:   5000 * time.Millisecond,
+					when:      action.OnFailure,
+					onFailure: action.Skip,
 				}
 			},
 		},
 		{
 			name: "successful reload action creation with set timeout",
 			config: &types.ReloadAction{
-				Service: "validService",
-				Timeout: 3000,
-				When:    "on_failure",
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_failure",
+				OnFailure: "ignore",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
@@ -96,17 +99,19 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svcs services.Services) *Action {
 				return &Action{
-					fnd:      fndMock,
-					services: svcs,
-					timeout:  3000 * time.Millisecond,
-					when:     action.OnFailure,
+					fnd:       fndMock,
+					services:  svcs,
+					timeout:   3000 * time.Millisecond,
+					when:      action.OnFailure,
+					onFailure: action.Ignore,
 				}
 			},
 		},
 		{
 			name: "successful reload action creation without any service",
 			config: &types.ReloadAction{
-				When: "on_success",
+				When:      "always",
+				OnFailure: "fail",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Services {
@@ -119,10 +124,11 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svcs services.Services) *Action {
 				return &Action{
-					fnd:      fndMock,
-					services: svcs,
-					timeout:  5000 * time.Millisecond,
-					when:     action.OnSuccess,
+					fnd:       fndMock,
+					services:  svcs,
+					timeout:   5000 * time.Millisecond,
+					when:      action.Always,
+					onFailure: action.Fail,
 				}
 			},
 		},
@@ -268,4 +274,14 @@ func TestAction_When(t *testing.T) {
 		when: action.OnSuccess,
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
 }

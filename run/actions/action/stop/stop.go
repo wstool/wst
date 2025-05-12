@@ -71,22 +71,28 @@ func (m *ActionMaker) Make(
 	}
 
 	return &Action{
-		fnd:      m.fnd,
-		services: stopServices,
-		timeout:  time.Duration(config.Timeout * 1e6),
-		when:     action.When(config.When),
+		fnd:       m.fnd,
+		services:  stopServices,
+		timeout:   time.Duration(config.Timeout * 1e6),
+		when:      action.When(config.When),
+		onFailure: action.OnFailureType(config.OnFailure),
 	}, nil
 }
 
 type Action struct {
-	fnd      app.Foundation
-	services services.Services
-	timeout  time.Duration
-	when     action.When
+	fnd       app.Foundation
+	services  services.Services
+	timeout   time.Duration
+	when      action.When
+	onFailure action.OnFailureType
 }
 
 func (a *Action) When() action.When {
 	return a.when
+}
+
+func (a *Action) OnFailure() action.OnFailureType {
+	return a.onFailure
 }
 
 func (a *Action) Timeout() time.Duration {

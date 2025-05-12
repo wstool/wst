@@ -45,8 +45,9 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 		{
 			name: "successful response action creation",
 			config: &types.ResponseExpectationAction{
-				Service: "validService",
-				When:    "on_success",
+				Service:   "validService",
+				When:      "on_success",
+				OnFailure: "ignore",
 				Response: types.ResponseExpectation{
 					Request: "last",
 					Headers: types.Headers{"h1": "test"},
@@ -94,10 +95,11 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 			) *responseAction {
 				return &responseAction{
 					CommonExpectation: &CommonExpectation{
-						fnd:     fndMock,
-						service: svc,
-						timeout: 5000 * 1e6,
-						when:    action.OnSuccess,
+						fnd:       fndMock,
+						service:   svc,
+						timeout:   5000 * 1e6,
+						when:      action.OnSuccess,
+						onFailure: action.Ignore,
 					},
 					ResponseExpectation: expectation,
 					parameters:          serverParams,
@@ -107,8 +109,9 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 		{
 			name: "failed response action creation because no service found",
 			config: &types.ResponseExpectationAction{
-				Service: "invalidService",
-				When:    "on_success",
+				Service:   "invalidService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Response: types.ResponseExpectation{
 					Request: "last",
 					Headers: types.Headers{"h1": "test"},
@@ -136,8 +139,9 @@ func TestExpectationActionMaker_MakeResponseAction(t *testing.T) {
 		{
 			name: "failed response action creation because response expectation creation failed",
 			config: &types.ResponseExpectationAction{
-				Service: "validService",
-				When:    "on_success",
+				Service:   "validService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Response: types.ResponseExpectation{
 					Request: "last",
 					Headers: types.Headers{"h1": "test"},
@@ -892,10 +896,24 @@ func Test_responseAction_When(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	a := &responseAction{
 		CommonExpectation: &CommonExpectation{
-			fnd:     fndMock,
-			service: nil,
-			when:    action.OnSuccess,
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Skip,
 		},
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func Test_responseAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &responseAction{
+		CommonExpectation: &CommonExpectation{
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Skip,
+		},
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
 }

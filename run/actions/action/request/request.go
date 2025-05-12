@@ -65,6 +65,7 @@ func (m *ActionMaker) Make(
 		service:    svc,
 		timeout:    time.Duration(config.Timeout * 1e6),
 		when:       action.When(config.When),
+		onFailure:  action.OnFailureType(config.OnFailure),
 		id:         config.Id,
 		path:       config.Path,
 		encodePath: config.EncodePath,
@@ -103,6 +104,7 @@ type Action struct {
 	service    services.Service
 	timeout    time.Duration
 	when       action.When
+	onFailure  action.OnFailureType
 	id         string
 	path       string
 	encodePath bool
@@ -112,6 +114,10 @@ type Action struct {
 
 func (a *Action) When() action.When {
 	return a.when
+}
+
+func (a *Action) OnFailure() action.OnFailureType {
+	return a.onFailure
 }
 
 func (a *Action) Timeout() time.Duration {

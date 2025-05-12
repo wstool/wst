@@ -130,8 +130,9 @@ func TestNativeActionsFactory_ParseActions(t *testing.T) {
 			mockParseCalls: nil,
 			want: []types.Action{
 				&types.CustomExpectationAction{
-					Service: "serviceName",
-					When:    "on_success",
+					Service:   "serviceName",
+					When:      "on_success",
+					OnFailure: "fail",
 					Custom: types.CustomExpectation{
 						Name:       "customName",
 						Parameters: map[string]interface{}{"response": "expectedResponse"},

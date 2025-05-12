@@ -1917,24 +1917,27 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							},
 							Actions: []types.Action{
 								&types.SequentialAction{
-									Service: "web_service",
-									Timeout: 0,
-									When:    "on_success",
-									Name:    "start",
+									Service:   "web_service",
+									Timeout:   0,
+									When:      "on_success",
+									OnFailure: "fail",
+									Name:      "start",
 								},
 								&types.RequestAction{
 									Service:    "web_service",
 									Timeout:    0,
 									When:       "on_success",
+									OnFailure:  "fail",
 									Id:         "last",
 									Path:       "/api/status",
 									EncodePath: true,
 									Method:     "GET",
 								},
 								&types.CustomExpectationAction{
-									Service: "web_service",
-									Timeout: 0,
-									When:    "on_success",
+									Service:   "web_service",
+									Timeout:   0,
+									When:      "on_success",
+									OnFailure: "fail",
 									Custom: types.CustomExpectation{
 										Name: "status",
 										Parameters: types.Parameters{
@@ -1944,9 +1947,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									},
 								},
 								&types.CustomExpectationAction{
-									Service: "web_service",
-									Timeout: 0,
-									When:    "on_success",
+									Service:   "web_service",
+									Timeout:   0,
+									When:      "on_success",
+									OnFailure: "fail",
 									Custom: types.CustomExpectation{
 										Name: "status",
 										Parameters: types.Parameters{
@@ -1955,9 +1959,10 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									},
 								},
 								&types.ResponseExpectationAction{
-									Service: "web_service",
-									Timeout: 0,
-									When:    "on_success",
+									Service:   "web_service",
+									Timeout:   0,
+									When:      "on_success",
+									OnFailure: "fail",
 									Response: types.ResponseExpectation{
 										Request: "last",
 										Body: types.ResponseBody{
@@ -2066,15 +2071,17 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									"start": {
 										Actions: []types.Action{
 											&types.StartAction{
-												Service:  "svc",
-												Services: nil,
-												Timeout:  0,
-												When:     "on_success",
+												Service:   "svc",
+												Services:  nil,
+												Timeout:   0,
+												When:      "on_success",
+												OnFailure: "fail",
 											},
 											&types.CustomExpectationAction{
-												Service: "svc",
-												Timeout: 0,
-												When:    "on_success",
+												Service:   "svc",
+												Timeout:   0,
+												When:      "on_success",
+												OnFailure: "fail",
 												Custom: types.CustomExpectation{
 													Name:       "status",
 													Parameters: types.Parameters{},

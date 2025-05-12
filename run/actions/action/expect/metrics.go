@@ -25,7 +25,6 @@ import (
 	"github.com/wstool/wst/run/metrics"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
-	"time"
 )
 
 func (m *ExpectationActionMaker) MakeMetricsAction(
@@ -33,7 +32,8 @@ func (m *ExpectationActionMaker) MakeMetricsAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
+	commonExpectation, err := m.MakeCommonExpectation(
+		sl, config.Service, config.Timeout, defaultTimeout, config.When, config.OnFailure)
 	if err != nil {
 		return nil, err
 	}
@@ -54,14 +54,6 @@ type metricsAction struct {
 	*CommonExpectation
 	*expectations.MetricsExpectation
 	parameters parameters.Parameters
-}
-
-func (a *metricsAction) When() action.When {
-	return a.when
-}
-
-func (a *metricsAction) Timeout() time.Duration {
-	return a.timeout
 }
 
 func (a *metricsAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {

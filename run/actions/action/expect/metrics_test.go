@@ -467,10 +467,24 @@ func Test_metricsAction_When(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	a := &metricsAction{
 		CommonExpectation: &CommonExpectation{
-			fnd:     fndMock,
-			service: nil,
-			when:    action.OnSuccess,
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Fail,
 		},
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func Test_metricsAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &metricsAction{
+		CommonExpectation: &CommonExpectation{
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Fail,
+		},
+	}
+	assert.Equal(t, action.Fail, a.OnFailure())
 }

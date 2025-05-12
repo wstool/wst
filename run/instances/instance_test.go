@@ -1317,6 +1317,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1365,6 +1366,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1418,6 +1420,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1471,6 +1474,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1479,6 +1483,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout = 2 * time.Second
 				acts[1].On("Timeout").Return(actTimeout)
 				acts[1].On("When").Return(action.Always)
+				acts[1].On("OnFailure").Return(action.Fail)
 				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1569,6 +1574,53 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
+
+				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("action err"))
+
+				localEnv.On("Destroy", ctx).Return(errors.New("local destroy err"))
+				dockerEnv.On("Destroy", ctx).Return(nil)
+			},
+			expectError:      true,
+			expectedErrorMsg: "action err",
+		},
+		{
+			name:        "fail on action error return",
+			count:       1,
+			initialized: true,
+			setupMocks: func(
+				inst *nativeInstance,
+				fnd *appMocks.MockFoundation,
+				rm *runtimeMocks.MockMaker,
+				acts []*actionMocks.MockAction,
+				cancelFunc context.CancelFunc,
+			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
+				ctx := context.Background()
+				rm.On("MakeBackgroundContext").Return(ctx)
+
+				localEnv := inst.envs[providers.LocalType].(*environmentMocks.MockEnvironment)
+				localEnv.On("IsUsed").Return(true)
+				localEnv.On("Init", ctx).Return(nil)
+
+				dockerEnv := inst.envs[providers.DockerType].(*environmentMocks.MockEnvironment)
+				dockerEnv.On("IsUsed").Return(true)
+				dockerEnv.On("Init", ctx).Return(nil)
+
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
+
+				actTimeout := 1 * time.Second
+				acts[0].On("Timeout").Return(actTimeout)
+				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1614,51 +1666,7 @@ func Test_nativeInstance_Run(t *testing.T) {
 				actTimeout := 1 * time.Second
 				acts[0].On("Timeout").Return(actTimeout)
 				acts[0].On("When").Return(action.OnSuccess)
-				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
-				defer cancel()
-				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
-
-				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("action err"))
-
-				localEnv.On("Destroy", ctx).Return(errors.New("local destroy err"))
-				dockerEnv.On("Destroy", ctx).Return(nil)
-			},
-			expectError:      true,
-			expectedErrorMsg: "action err",
-		},
-		{
-			name:        "fail on action false return",
-			count:       1,
-			initialized: true,
-			setupMocks: func(
-				inst *nativeInstance,
-				fnd *appMocks.MockFoundation,
-				rm *runtimeMocks.MockMaker,
-				acts []*actionMocks.MockAction,
-				cancelFunc context.CancelFunc,
-			) {
-				fsMock := appMocks.NewMockFs(t)
-				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
-				fnd.On("Fs").Return(fsMock)
-
-				ctx := context.Background()
-				rm.On("MakeBackgroundContext").Return(ctx)
-
-				localEnv := inst.envs[providers.LocalType].(*environmentMocks.MockEnvironment)
-				localEnv.On("IsUsed").Return(true)
-				localEnv.On("Init", ctx).Return(nil)
-
-				dockerEnv := inst.envs[providers.DockerType].(*environmentMocks.MockEnvironment)
-				dockerEnv.On("IsUsed").Return(true)
-				dockerEnv.On("Init", ctx).Return(nil)
-
-				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
-				defer cancel()
-				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
-
-				actTimeout := 1 * time.Second
-				acts[0].On("Timeout").Return(actTimeout)
-				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Fail)
 				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
 				defer cancel()
 				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
@@ -1670,6 +1678,119 @@ func Test_nativeInstance_Run(t *testing.T) {
 			},
 			expectError:      true,
 			expectedErrorMsg: "action execution failed",
+		},
+		{
+			name:        "ignore action failure",
+			count:       2,
+			initialized: true,
+			setupMocks: func(
+				inst *nativeInstance,
+				fnd *appMocks.MockFoundation,
+				rm *runtimeMocks.MockMaker,
+				acts []*actionMocks.MockAction,
+				cancelFunc context.CancelFunc,
+			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
+				ctx := context.Background()
+				rm.On("MakeBackgroundContext").Return(ctx)
+
+				localEnv := inst.envs[providers.LocalType].(*environmentMocks.MockEnvironment)
+				localEnv.On("IsUsed").Return(true)
+				localEnv.On("Init", ctx).Return(nil)
+
+				dockerEnv := inst.envs[providers.DockerType].(*environmentMocks.MockEnvironment)
+				dockerEnv.On("IsUsed").Return(true)
+				dockerEnv.On("Init", ctx).Return(nil)
+
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
+
+				// First action fails but has OnFailure=Ignore
+				actTimeout := 1 * time.Second
+				acts[0].On("Timeout").Return(actTimeout)
+				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Ignore)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
+				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("first action failed"))
+
+				// Second action succeeds
+				actTimeout = 2 * time.Second
+				acts[1].On("Timeout").Return(actTimeout)
+				acts[1].On("When").Return(action.OnSuccess)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
+				acts[1].On("Execute", actx, inst.runData).Return(true, nil)
+
+				localEnv.On("Destroy", ctx).Return(nil)
+				dockerEnv.On("Destroy", ctx).Return(nil)
+			},
+			expectedCancellations: 3,
+			expectError:           false, // Should succeed despite first action failing
+		},
+		{
+			name:        "skip with always action still executes",
+			count:       3,
+			initialized: true,
+			setupMocks: func(
+				inst *nativeInstance,
+				fnd *appMocks.MockFoundation,
+				rm *runtimeMocks.MockMaker,
+				acts []*actionMocks.MockAction,
+				cancelFunc context.CancelFunc,
+			) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("RemoveAll", "/fake/workspace").Return(nil)
+				fnd.On("Fs").Return(fsMock)
+
+				ctx := context.Background()
+				rm.On("MakeBackgroundContext").Return(ctx)
+
+				localEnv := inst.envs[providers.LocalType].(*environmentMocks.MockEnvironment)
+				localEnv.On("IsUsed").Return(true)
+				localEnv.On("Init", ctx).Return(nil)
+
+				dockerEnv := inst.envs[providers.DockerType].(*environmentMocks.MockEnvironment)
+				dockerEnv.On("IsUsed").Return(true)
+				dockerEnv.On("Init", ctx).Return(nil)
+
+				tctx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", ctx, inst.instanceTimeout).Return(tctx, cancelFunc)
+
+				// First action fails with OnFailure=Skip
+				actTimeout := 1 * time.Second
+				acts[0].On("Timeout").Return(actTimeout)
+				acts[0].On("When").Return(action.OnSuccess)
+				acts[0].On("OnFailure").Return(action.Skip)
+				actx, cancel := context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
+				acts[0].On("Execute", actx, inst.runData).Return(false, errors.New("first action failed"))
+
+				// Second action with When=OnSuccess will be skipped due to skipError
+				acts[1].On("When").Return(action.OnSuccess)
+
+				// Third action with When=Always should execute despite skipError
+				actTimeout = 3 * time.Second
+				acts[2].On("Timeout").Return(actTimeout)
+				acts[2].On("When").Return(action.Always)
+				actx, cancel = context.WithTimeout(ctx, inst.instanceTimeout)
+				defer cancel()
+				rm.On("MakeContextWithTimeout", tctx, actTimeout).Return(actx, cancelFunc)
+				acts[2].On("Execute", actx, inst.runData).Return(true, nil)
+
+				localEnv.On("Destroy", ctx).Return(nil)
+				dockerEnv.On("Destroy", ctx).Return(nil)
+			},
+			expectedCancellations: 3,
+			expectError:           false,
 		},
 		{
 			name:        "fail on env init fail",

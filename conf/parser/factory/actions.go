@@ -81,8 +81,9 @@ func (f *NativeActionsFactory) parseExpectationAction(
 ) (types.Action, error) {
 	if meta.customName != "" {
 		return &types.CustomExpectationAction{
-			Service: meta.serviceName,
-			When:    "on_success",
+			Service:   meta.serviceName,
+			When:      "on_success",
+			OnFailure: "fail",
 			Custom: types.CustomExpectation{
 				Name:       meta.customName,
 				Parameters: data,
@@ -100,6 +101,8 @@ func (f *NativeActionsFactory) parseExpectationAction(
 		case "timeout":
 			continue
 		case "when":
+			continue
+		case "on_failure":
 			continue
 		case "custom":
 			structure = &types.CustomExpectationAction{Service: meta.serviceName}

@@ -71,6 +71,7 @@ func (m *ExpectationActionMaker) MakeCommonExpectation(
 	timeout,
 	defaultTimeout int,
 	when string,
+	onFailure string,
 ) (*CommonExpectation, error) {
 	svc, err := sl.Find(serviceName)
 	if err != nil {
@@ -82,16 +83,30 @@ func (m *ExpectationActionMaker) MakeCommonExpectation(
 	}
 
 	return &CommonExpectation{
-		fnd:     m.fnd,
-		service: svc,
-		timeout: time.Duration(timeout * 1e6),
-		when:    action.When(when),
+		fnd:       m.fnd,
+		service:   svc,
+		timeout:   time.Duration(timeout * 1e6),
+		when:      action.When(when),
+		onFailure: action.OnFailureType(onFailure),
 	}, nil
 }
 
 type CommonExpectation struct {
-	fnd     app.Foundation
-	service services.Service
-	timeout time.Duration
-	when    action.When
+	fnd       app.Foundation
+	service   services.Service
+	timeout   time.Duration
+	when      action.When
+	onFailure action.OnFailureType
+}
+
+func (a *CommonExpectation) When() action.When {
+	return a.when
+}
+
+func (a *CommonExpectation) OnFailure() action.OnFailureType {
+	return a.onFailure
+}
+
+func (a *CommonExpectation) Timeout() time.Duration {
+	return a.timeout
 }

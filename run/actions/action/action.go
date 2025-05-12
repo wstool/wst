@@ -26,6 +26,7 @@ type Action interface {
 	Execute(ctx context.Context, runData runtime.Data) (bool, error)
 	Timeout() time.Duration
 	When() When
+	OnFailure() OnFailureType
 }
 
 type Maker interface {
@@ -38,4 +39,12 @@ const (
 	Always    When = "always"
 	OnSuccess When = "on_success"
 	OnFailure When = "on_failure"
+)
+
+type OnFailureType string
+
+const (
+	Fail   OnFailureType = "fail"
+	Ignore OnFailureType = "ignore"
+	Skip   OnFailureType = "skip"
 )

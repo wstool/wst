@@ -45,14 +45,15 @@ func TestCreateActionMaker(t *testing.T) {
 
 func TestActionMaker_Make(t *testing.T) {
 	tests := []struct {
-		name             string
-		config           *types.SequentialAction
-		defaultTimeout   int
-		setupMocks       func(*testing.T, *servicesMocks.MockServiceLocator, *actionMocks.MockMaker) []action.Action
-		expectedTimeout  time.Duration
-		expectedWhen     action.When
-		expectError      bool
-		expectedErrorMsg string
+		name              string
+		config            *types.SequentialAction
+		defaultTimeout    int
+		setupMocks        func(*testing.T, *servicesMocks.MockServiceLocator, *actionMocks.MockMaker) []action.Action
+		expectedTimeout   time.Duration
+		expectedWhen      action.When
+		expectedOnFailure action.OnFailureType
+		expectError       bool
+		expectedErrorMsg  string
 	}{
 		{
 			name: "successful action creation with config timeout",
@@ -61,8 +62,9 @@ func TestActionMaker_Make(t *testing.T) {
 					&types.RequestAction{Service: "s1", Timeout: 4000},
 					&types.RequestAction{Service: "s2", Timeout: 4000},
 				},
-				Timeout: 3000,
-				When:    "on_success",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -72,8 +74,9 @@ func TestActionMaker_Make(t *testing.T) {
 				am.On("MakeAction", mock.Anything, sl, 3000).Return(action2Mock, nil).Once()
 				return []action.Action{action1Mock, action2Mock}
 			},
-			expectedTimeout: time.Duration(3000 * 1e6),
-			expectedWhen:    action.OnSuccess,
+			expectedTimeout:   time.Duration(3000 * 1e6),
+			expectedWhen:      action.OnSuccess,
+			expectedOnFailure: action.Skip,
 		},
 		{
 			name: "successful action creation with default timeout",
@@ -82,7 +85,8 @@ func TestActionMaker_Make(t *testing.T) {
 					&types.RequestAction{Service: "s1", Timeout: 4000},
 					&types.RequestAction{Service: "s2", Timeout: 4000},
 				},
-				When: "on_success",
+				When:      "on_success",
+				OnFailure: "fail",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -92,8 +96,9 @@ func TestActionMaker_Make(t *testing.T) {
 				am.On("MakeAction", mock.Anything, sl, 5000).Return(action2Mock, nil).Once()
 				return []action.Action{action1Mock, action2Mock}
 			},
-			expectedTimeout: time.Duration(5000 * 1e6),
-			expectedWhen:    action.OnSuccess,
+			expectedTimeout:   time.Duration(5000 * 1e6),
+			expectedWhen:      action.OnSuccess,
+			expectedOnFailure: action.Fail,
 		},
 		{
 			name: "failed action creation with action maker error",
@@ -102,7 +107,8 @@ func TestActionMaker_Make(t *testing.T) {
 					&types.RequestAction{Service: "s1", Timeout: 4000},
 					&types.RequestAction{Service: "s2", Timeout: 4000},
 				},
-				When: "on_success",
+				When:      "on_success",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -115,10 +121,11 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "service not found error",
 			config: &types.SequentialAction{
-				Name:    "test-action",
-				Service: "missing-service",
-				Timeout: 3000,
-				When:    "on_success",
+				Name:      "test-action",
+				Service:   "missing-service",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -131,10 +138,11 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "sequential action not found in service",
 			config: &types.SequentialAction{
-				Name:    "missing-action",
-				Service: "test-service",
-				Timeout: 3000,
-				When:    "on_success",
+				Name:      "missing-action",
+				Service:   "test-service",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -151,10 +159,11 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "successful service sequential action",
 			config: &types.SequentialAction{
-				Name:    "test-action",
-				Service: "test-service",
-				Timeout: 3000,
-				When:    "on_success",
+				Name:      "test-action",
+				Service:   "test-service",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "skip",
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, am *actionMocks.MockMaker) []action.Action {
@@ -395,4 +404,32 @@ func TestAction_Execute(t *testing.T) {
 			fndMock.AssertExpectations(t)
 		})
 	}
+}
+
+func TestAction_Timeout(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:     fndMock,
+		timeout: 2000 * time.Millisecond,
+	}
+	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
+}
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
+}
+
+func TestAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:  fndMock,
+		when: action.OnSuccess,
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
 }

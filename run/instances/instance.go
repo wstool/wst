@@ -16,6 +16,7 @@ package instances
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
@@ -371,6 +372,10 @@ func (i *nativeInstance) Run() error {
 		return destroyErr
 	}
 
+	var skipErr *skipError
+	if errors.As(actionErr, &skipErr) {
+		return nil
+	}
 	return actionErr
 }
 
@@ -393,18 +398,47 @@ func (i *nativeInstance) executeAction(actionsCtx context.Context, act action.Ac
 	if actErr == nil && act.When() == action.OnFailure {
 		return nil
 	}
+
 	ctx, cancel := i.runtimeMaker.MakeContextWithTimeout(actionsCtx, act.Timeout())
 	defer cancel()
 	success, err := act.Execute(ctx, i.runData)
-	if err != nil {
-		i.fnd.Logger().Errorf("Failed to to run action: %v", err)
-		if actErr != nil {
+
+	if err != nil || !success {
+		switch act.OnFailure() {
+		case action.Ignore:
+			// Treat as success - return the existing error
+			i.fnd.Logger().Infof("Action failed but ignoring error due to OnFailure=Ignore")
 			return actErr
+		case action.Skip:
+			// Skip remaining actions by returning a skip error
+			i.fnd.Logger().Infof("Action failed, skipping remaining actions due to OnFailure=Skip")
+			return &skipError{originalErr: err}
+		case action.Fail:
+			// Report failure and return the error
+			i.fnd.Logger().Errorf("Failed to run action: %v", err)
+			if actErr != nil {
+				return actErr
+			}
+			if err != nil {
+				return err
+			}
+			return errors.Errorf("action execution failed")
 		}
-		return err
-	}
-	if !success {
-		return errors.Errorf("action execution failed")
 	}
 	return actErr
+}
+
+type skipError struct {
+	originalErr error
+}
+
+func (e *skipError) Error() string {
+	if e.originalErr != nil {
+		return fmt.Sprintf("action failed, skipping remaining: %v", e.originalErr)
+	}
+	return "action execution failed, skipping remaining"
+}
+
+func (e *skipError) Unwrap() error {
+	return e.originalErr
 }

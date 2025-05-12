@@ -27,7 +27,6 @@ import (
 	"github.com/wstool/wst/run/services"
 	"regexp"
 	"strings"
-	"time"
 )
 
 func (m *ExpectationActionMaker) MakeResponseAction(
@@ -35,7 +34,8 @@ func (m *ExpectationActionMaker) MakeResponseAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
+	commonExpectation, err := m.MakeCommonExpectation(
+		sl, config.Service, config.Timeout, defaultTimeout, config.When, config.OnFailure)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +56,6 @@ type responseAction struct {
 	*CommonExpectation
 	*expectations.ResponseExpectation
 	parameters parameters.Parameters
-}
-
-func (a *responseAction) When() action.When {
-	return a.when
-}
-
-func (a *responseAction) Timeout() time.Duration {
-	return a.timeout
 }
 
 func (a *responseAction) Execute(_ context.Context, runData runtime.Data) (bool, error) {

@@ -53,8 +53,9 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 		{
 			name: "successful custom action creation with parameter inheritance",
 			config: &types.CustomExpectationAction{
-				Service: "validService",
-				When:    "on_success",
+				Service:   "validService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Custom: types.CustomExpectation{
 					Name:       "validAction",
 					Parameters: types.Parameters{"config_param": "config_value", "shared_key": "config_override"},
@@ -106,10 +107,11 @@ func TestExpectationActionMaker_MakeCustomAction(t *testing.T) {
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc *servicesMocks.MockService, finalParams parameters.Parameters) *customAction {
 				return &customAction{
 					CommonExpectation: &CommonExpectation{
-						fnd:     fndMock,
-						service: svc,
-						timeout: 5000 * 1e6,
-						when:    action.OnSuccess,
+						fnd:       fndMock,
+						service:   svc,
+						timeout:   5000 * 1e6,
+						when:      action.OnSuccess,
+						onFailure: action.Fail,
 					},
 					OutputExpectation:   outputExpectation,
 					ResponseExpectation: responseExpectation,

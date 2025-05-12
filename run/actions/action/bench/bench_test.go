@@ -378,3 +378,13 @@ func TestAction_When(t *testing.T) {
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
 }
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
+}

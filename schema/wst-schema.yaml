@@ -667,6 +667,15 @@ $defs:
             type: string
             enum: [ always, on_success, on_failure ]
             default: on_success
+          on_failure:
+            title: What to do on failure
+            description: |
+              This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+              when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+              as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+            type: string
+            enum: [ fail, ignore, skip ]
+            default: fail
       - oneOf:
           - properties:
               custom:
@@ -707,6 +716,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
       id:
         title: Benchmark ID
         description: |
@@ -767,6 +785,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
       id:
         title: Command ID
         description: |
@@ -824,7 +851,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
-
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
   actionParallel:
     title: Parallel action
     description: |
@@ -855,7 +890,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
-
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
   actionRequest:
     title: Request action
     description: |
@@ -882,6 +925,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
       id:
         title: Request ID
         description: Identifies request which can be then used in response expectation.
@@ -936,6 +988,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
       reload:
         title: Reload services
         description: |
@@ -984,6 +1045,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
 
   actionStart:
     title: Start action
@@ -1021,6 +1091,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
 
   actionStop:
     title: Stop action
@@ -1058,6 +1137,15 @@ $defs:
         type: string
         enum: [ always, on_success, on_failure ]
         default: always
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
 
   actionItem:
     title: Action item

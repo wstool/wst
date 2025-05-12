@@ -71,34 +71,40 @@ func (m *ActionMaker) Make(
 	}
 
 	return &Action{
-		fnd:      m.fnd,
-		service:  svc,
-		timeout:  time.Duration(config.Timeout) * time.Millisecond,
-		duration: time.Duration(config.Duration) * time.Millisecond,
-		when:     action.When(config.When),
-		freq:     config.Frequency,
-		id:       config.Id,
-		path:     config.Path,
-		method:   config.Method,
-		headers:  config.Headers,
+		fnd:       m.fnd,
+		service:   svc,
+		timeout:   time.Duration(config.Timeout) * time.Millisecond,
+		duration:  time.Duration(config.Duration) * time.Millisecond,
+		when:      action.When(config.When),
+		onFailure: action.OnFailureType(config.OnFailure),
+		freq:      config.Frequency,
+		id:        config.Id,
+		path:      config.Path,
+		method:    config.Method,
+		headers:   config.Headers,
 	}, nil
 }
 
 type Action struct {
-	fnd      app.Foundation
-	service  services.Service
-	when     action.When
-	timeout  time.Duration
-	duration time.Duration
-	freq     int
-	id       string
-	path     string
-	method   string
-	headers  types.Headers
+	fnd       app.Foundation
+	service   services.Service
+	when      action.When
+	onFailure action.OnFailureType
+	timeout   time.Duration
+	duration  time.Duration
+	freq      int
+	id        string
+	path      string
+	method    string
+	headers   types.Headers
 }
 
 func (a *Action) When() action.When {
 	return a.when
+}
+
+func (a *Action) OnFailure() action.OnFailureType {
+	return a.onFailure
 }
 
 func (a *Action) Timeout() time.Duration {

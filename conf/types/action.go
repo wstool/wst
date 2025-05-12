@@ -20,10 +20,11 @@ type CustomExpectation struct {
 }
 
 type CustomExpectationAction struct {
-	Service string            `wst:"service"`
-	Timeout int               `wst:"timeout"`
-	When    string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Custom  CustomExpectation `wst:"custom"`
+	Service   string            `wst:"service"`
+	Timeout   int               `wst:"timeout"`
+	When      string            `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string            `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
+	Custom    CustomExpectation `wst:"custom"`
 }
 
 type OutputExpectation struct {
@@ -36,10 +37,11 @@ type OutputExpectation struct {
 }
 
 type OutputExpectationAction struct {
-	Service string            `wst:"service"`
-	Timeout int               `wst:"timeout"`
-	When    string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Output  OutputExpectation `wst:"output"`
+	Service   string            `wst:"service"`
+	Timeout   int               `wst:"timeout"`
+	When      string            `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string            `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
+	Output    OutputExpectation `wst:"output"`
 }
 
 type Headers map[string]string
@@ -58,10 +60,11 @@ type ResponseExpectation struct {
 }
 
 type ResponseExpectationAction struct {
-	Service  string              `wst:"service"`
-	Timeout  int                 `wst:"timeout"`
-	When     string              `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Response ResponseExpectation `wst:"response"`
+	Service   string              `wst:"service"`
+	Timeout   int                 `wst:"timeout"`
+	When      string              `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string              `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
+	Response  ResponseExpectation `wst:"response"`
 }
 
 type MetricRule struct {
@@ -76,10 +79,11 @@ type MetricsExpectation struct {
 }
 
 type MetricsExpectationAction struct {
-	Service string             `wst:"service"`
-	Timeout int                `wst:"timeout"`
-	When    string             `wst:"when,enum=always|on_success|on_fail,default=on_success"`
-	Metrics MetricsExpectation `wst:"metrics"`
+	Service   string             `wst:"service"`
+	Timeout   int                `wst:"timeout"`
+	When      string             `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string             `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
+	Metrics   MetricsExpectation `wst:"metrics"`
 }
 
 type ShellCommand struct {
@@ -95,7 +99,8 @@ type Command interface{}
 type ExecuteAction struct {
 	Service        string            `wst:"service"`
 	Timeout        int               `wst:"timeout"`
-	When           string            `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	When           string            `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure      string            `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id             string            `wst:"id,default=last"`
 	Command        Command           `wst:"command,factory=createCommand"`
 	RenderTemplate bool              `wst:"render_template,default=true"`
@@ -106,7 +111,8 @@ type ExecuteAction struct {
 type RequestAction struct {
 	Service    string  `wst:"service"`
 	Timeout    int     `wst:"timeout"`
-	When       string  `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	When       string  `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure  string  `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id         string  `wst:"id,default=last"`
 	Path       string  `wst:"path"`
 	EncodePath bool    `wst:"encode_path,default=true"`
@@ -117,7 +123,8 @@ type RequestAction struct {
 type BenchAction struct {
 	Service   string  `wst:"service"`
 	Timeout   int     `wst:"timeout"`
-	When      string  `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	When      string  `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string  `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id        string  `wst:"id,default=last"`
 	Path      string  `wst:"path"`
 	Method    string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
@@ -127,51 +134,58 @@ type BenchAction struct {
 }
 
 type ParallelAction struct {
-	Actions []Action `wst:"actions,factory=createActions"`
-	Timeout int      `wst:"timeout"`
-	When    string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Actions   []Action `wst:"actions,factory=createActions"`
+	Timeout   int      `wst:"timeout"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type SequentialAction struct {
-	Actions []Action `wst:"actions,factory=createActions"`
-	Service string   `wst:"service"`
-	Timeout int      `wst:"timeout"`
-	Name    string   `wst:"name"`
-	When    string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Actions   []Action `wst:"actions,factory=createActions"`
+	Service   string   `wst:"service"`
+	Timeout   int      `wst:"timeout"`
+	Name      string   `wst:"name"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type NotAction struct {
-	Action  Action `wst:"action,factory=createAction"`
-	Timeout int    `wst:"timeout"`
-	When    string `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Action    Action `wst:"action,factory=createAction"`
+	Timeout   int    `wst:"timeout"`
+	When      string `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type StartAction struct {
-	Service  string   `wst:"service"`
-	Services []string `wst:"services"`
-	Timeout  int      `wst:"timeout"`
-	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Service   string   `wst:"service"`
+	Services  []string `wst:"services"`
+	Timeout   int      `wst:"timeout"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type ReloadAction struct {
-	Service  string   `wst:"service"`
-	Services []string `wst:"services"`
-	Timeout  int      `wst:"timeout"`
-	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Service   string   `wst:"service"`
+	Services  []string `wst:"services"`
+	Timeout   int      `wst:"timeout"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type RestartAction struct {
-	Service  string   `wst:"service"`
-	Services []string `wst:"services"`
-	Timeout  int      `wst:"timeout"`
-	When     string   `wst:"when,enum=always|on_success|on_fail,default=on_success"`
+	Service   string   `wst:"service"`
+	Services  []string `wst:"services"`
+	Timeout   int      `wst:"timeout"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type StopAction struct {
-	Service  string   `wst:"service"`
-	Services []string `wst:"services"`
-	Timeout  int      `wst:"timeout"`
-	When     string   `wst:"when,enum=always|on_success|on_fail,default=always"`
+	Service   string   `wst:"service"`
+	Services  []string `wst:"services"`
+	Timeout   int      `wst:"timeout"`
+	When      string   `wst:"when,enum=always|on_success|on_failure,default=always"`
+	OnFailure string   `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 }
 
 type Action interface {

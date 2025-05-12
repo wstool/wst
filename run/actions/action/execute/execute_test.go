@@ -59,7 +59,8 @@ func TestActionMaker_Make(t *testing.T) {
 					Command: "echo hello",
 				},
 				Timeout:        0,
-				When:           "on_success",
+				When:           "always",
+				OnFailure:      "fail",
 				Id:             "shell-cmd",
 				RenderTemplate: true,
 			},
@@ -81,7 +82,8 @@ func TestActionMaker_Make(t *testing.T) {
 					service:    svc,
 					parameters: params,
 					timeout:    5000 * time.Millisecond,
-					when:       action.OnSuccess,
+					when:       action.Always,
+					onFailure:  action.Fail,
 					id:         "shell-cmd",
 					command: &environment.Command{
 						Name: "/bin/bash",
@@ -100,7 +102,8 @@ func TestActionMaker_Make(t *testing.T) {
 					Args: []string{"ls", "-la"},
 				},
 				Timeout:        3000,
-				When:           "on_success",
+				When:           "on_failure",
+				OnFailure:      "skip",
 				Id:             "args-cmd",
 				RenderTemplate: false,
 			},
@@ -122,7 +125,8 @@ func TestActionMaker_Make(t *testing.T) {
 					service:    svc,
 					parameters: params,
 					timeout:    3000 * time.Millisecond,
-					when:       action.OnSuccess,
+					when:       action.OnFailure,
+					onFailure:  action.Skip,
 					id:         "args-cmd",
 					command: &environment.Command{
 						Name: "ls",
@@ -489,4 +493,14 @@ func TestAction_When(t *testing.T) {
 		when: action.OnSuccess,
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
 }

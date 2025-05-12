@@ -41,58 +41,66 @@ func TestCreateActionMaker(t *testing.T) {
 
 func TestActionMaker_Make(t *testing.T) {
 	tests := []struct {
-		name             string
-		config           *types.NotAction
-		defaultTimeout   int
-		passedTimeout    int
-		expectedTimeout  time.Duration
-		actionMakerErr   error
-		expectError      bool
-		expectedErrorMsg string
-		expectedWhen     action.When
+		name              string
+		config            *types.NotAction
+		defaultTimeout    int
+		passedTimeout     int
+		expectedTimeout   time.Duration
+		actionMakerErr    error
+		expectError       bool
+		expectedErrorMsg  string
+		expectedWhen      action.When
+		expectedOnFailure action.OnFailureType
 	}{
 		{
 			name: "successful action creation with config timeout",
 			config: &types.NotAction{
 				Action: &types.StartAction{
-					Service:  "name",
-					Services: nil,
-					Timeout:  4000,
-					When:     "on_success",
+					Service:   "name",
+					Services:  nil,
+					Timeout:   4000,
+					When:      "on_success",
+					OnFailure: "fail",
 				},
-				Timeout: 3000,
-				When:    "on_success",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
 			},
-			defaultTimeout:  5000,
-			passedTimeout:   3000,
-			expectedTimeout: time.Duration(3000 * 1e6),
-			expectedWhen:    action.OnSuccess,
+			defaultTimeout:    5000,
+			passedTimeout:     3000,
+			expectedTimeout:   time.Duration(3000 * 1e6),
+			expectedWhen:      action.OnSuccess,
+			expectedOnFailure: action.Fail,
 		},
 		{
 			name: "successful action creation with default timeout",
 			config: &types.NotAction{
 				Action: &types.StartAction{
-					Service:  "name",
-					Services: nil,
-					Timeout:  4000,
-					When:     "on_success",
+					Service:   "name",
+					Services:  nil,
+					Timeout:   4000,
+					When:      "on_success",
+					OnFailure: "fail",
 				},
-				Timeout: 0,
-				When:    "on_success",
+				Timeout:   0,
+				When:      "on_success",
+				OnFailure: "fail",
 			},
-			defaultTimeout:  5000,
-			passedTimeout:   5000,
-			expectedTimeout: time.Duration(5000 * 1e6),
-			expectedWhen:    action.OnSuccess,
+			defaultTimeout:    5000,
+			passedTimeout:     5000,
+			expectedTimeout:   time.Duration(5000 * 1e6),
+			expectedWhen:      action.OnSuccess,
+			expectedOnFailure: action.Fail,
 		},
 		{
 			name: "failed action creation because of action maker failure",
 			config: &types.NotAction{
 				Action: &types.StartAction{
-					Service:  "name",
-					Services: nil,
-					Timeout:  4000,
-					When:     "on_success",
+					Service:   "name",
+					Services:  nil,
+					Timeout:   4000,
+					When:      "on_success",
+					OnFailure: "fail",
 				},
 				Timeout: 0,
 			},
@@ -141,6 +149,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.Equal(actionMock, act.action)
 				assert.Equal(tt.expectedTimeout, act.Timeout())
 				assert.Equal(tt.expectedWhen, act.When())
+				assert.Equal(tt.expectedOnFailure, act.OnFailure())
 			}
 		})
 	}
@@ -259,4 +268,32 @@ func TestAction_Execute(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAction_Timeout(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:     fndMock,
+		timeout: 2000 * time.Millisecond,
+	}
+	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
+}
+
+func TestAction_When(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:  fndMock,
+		when: action.OnSuccess,
+	}
+	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
 }

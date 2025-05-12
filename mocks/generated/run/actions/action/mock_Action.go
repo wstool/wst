@@ -84,6 +84,51 @@ func (_c *MockAction_Execute_Call) RunAndReturn(run func(context.Context, runtim
 	return _c
 }
 
+// OnFailure provides a mock function with given fields:
+func (_m *MockAction) OnFailure() action.OnFailureType {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for OnFailure")
+	}
+
+	var r0 action.OnFailureType
+	if rf, ok := ret.Get(0).(func() action.OnFailureType); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(action.OnFailureType)
+	}
+
+	return r0
+}
+
+// MockAction_OnFailure_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnFailure'
+type MockAction_OnFailure_Call struct {
+	*mock.Call
+}
+
+// OnFailure is a helper method to define mock.On call
+func (_e *MockAction_Expecter) OnFailure() *MockAction_OnFailure_Call {
+	return &MockAction_OnFailure_Call{Call: _e.mock.On("OnFailure")}
+}
+
+func (_c *MockAction_OnFailure_Call) Run(run func()) *MockAction_OnFailure_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAction_OnFailure_Call) Return(_a0 action.OnFailureType) *MockAction_OnFailure_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAction_OnFailure_Call) RunAndReturn(run func() action.OnFailureType) *MockAction_OnFailure_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Timeout provides a mock function with given fields:
 func (_m *MockAction) Timeout() time.Duration {
 	ret := _m.Called()

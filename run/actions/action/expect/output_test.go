@@ -46,8 +46,9 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 		{
 			name: "successful output action creation",
 			config: &types.OutputExpectationAction{
-				Service: "validService",
-				When:    "on_success",
+				Service:   "validService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Output: types.OutputExpectation{
 					Order:          "fixed",
 					Match:          "exact",
@@ -93,10 +94,11 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 			) *outputAction {
 				return &outputAction{
 					CommonExpectation: &CommonExpectation{
-						fnd:     fndMock,
-						service: svc,
-						timeout: 5000 * 1e6,
-						when:    action.OnSuccess,
+						fnd:       fndMock,
+						service:   svc,
+						timeout:   5000 * 1e6,
+						when:      action.OnSuccess,
+						onFailure: action.Fail,
 					},
 					OutputExpectation: expectation,
 					parameters:        serverParams,
@@ -106,8 +108,9 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 		{
 			name: "failed output action creation because no service found",
 			config: &types.OutputExpectationAction{
-				Service: "invalidService",
-				When:    "on_success",
+				Service:   "invalidService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Output: types.OutputExpectation{
 					Order:          "fixed",
 					Match:          "exact",
@@ -133,8 +136,9 @@ func TestExpectationActionMaker_MakeOutputAction(t *testing.T) {
 		{
 			name: "failed output action creation because output expectation creation failed",
 			config: &types.OutputExpectationAction{
-				Service: "validService",
-				When:    "on_success",
+				Service:   "validService",
+				When:      "on_success",
+				OnFailure: "fail",
 				Output: types.OutputExpectation{
 					Order:          "fixed",
 					Match:          "exact",
@@ -939,10 +943,24 @@ func Test_outputAction_When(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
 	a := &outputAction{
 		CommonExpectation: &CommonExpectation{
-			fnd:     fndMock,
-			service: nil,
-			when:    action.OnSuccess,
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Fail,
 		},
 	}
 	assert.Equal(t, action.OnSuccess, a.When())
+}
+
+func Test_outputAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &outputAction{
+		CommonExpectation: &CommonExpectation{
+			fnd:       fndMock,
+			service:   nil,
+			when:      action.OnSuccess,
+			onFailure: action.Ignore,
+		},
+	}
+	assert.Equal(t, action.Ignore, a.OnFailure())
 }

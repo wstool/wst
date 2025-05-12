@@ -54,6 +54,7 @@ func TestActionMaker_Make(t *testing.T) {
 				Service:    "validService",
 				Timeout:    0,
 				When:       "on_success",
+				OnFailure:  "fail",
 				Id:         "last",
 				Path:       "/test",
 				EncodePath: true,
@@ -74,6 +75,7 @@ func TestActionMaker_Make(t *testing.T) {
 					service:    svc,
 					timeout:    5000 * time.Millisecond,
 					when:       action.OnSuccess,
+					onFailure:  action.Fail,
 					id:         "last",
 					path:       "/test",
 					encodePath: true,
@@ -87,12 +89,13 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "successful request action creation with config timeout",
 			config: &types.RequestAction{
-				Service: "validService",
-				Timeout: 3000,
-				When:    "on_success",
-				Id:      "new",
-				Path:    "/t1",
-				Method:  "POST",
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Path:      "/t1",
+				Method:    "POST",
 				Headers: types.Headers{
 					"content-type": "application/json",
 				},
@@ -105,13 +108,14 @@ func TestActionMaker_Make(t *testing.T) {
 			},
 			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
 				return &Action{
-					fnd:     fndMock,
-					service: svc,
-					timeout: 3000 * time.Millisecond,
-					when:    action.OnSuccess,
-					id:      "new",
-					path:    "/t1",
-					method:  "POST",
+					fnd:       fndMock,
+					service:   svc,
+					timeout:   3000 * time.Millisecond,
+					when:      action.OnSuccess,
+					onFailure: action.Fail,
+					id:        "new",
+					path:      "/t1",
+					method:    "POST",
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
@@ -121,12 +125,13 @@ func TestActionMaker_Make(t *testing.T) {
 		{
 			name: "failure request action creation because service not found",
 			config: &types.RequestAction{
-				Service: "validService",
-				Timeout: 3000,
-				When:    "on_success",
-				Id:      "new",
-				Path:    "/t1",
-				Method:  "POST",
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Path:      "/t1",
+				Method:    "POST",
 				Headers: types.Headers{
 					"content-type": "application/json",
 				},
@@ -551,6 +556,16 @@ func TestAction_Timeout(t *testing.T) {
 		timeout: 2000 * time.Millisecond,
 	}
 	assert.Equal(t, 2000*time.Millisecond, a.Timeout())
+}
+
+func TestAction_OnFailure(t *testing.T) {
+	fndMock := appMocks.NewMockFoundation(t)
+	a := &Action{
+		fnd:       fndMock,
+		when:      action.OnSuccess,
+		onFailure: action.Skip,
+	}
+	assert.Equal(t, action.Skip, a.OnFailure())
 }
 
 func TestAction_When(t *testing.T) {

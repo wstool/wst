@@ -23,7 +23,6 @@ import (
 	"github.com/wstool/wst/run/instances/runtime"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/services"
-	"time"
 )
 
 func (m *ExpectationActionMaker) MakeCustomAction(
@@ -31,7 +30,8 @@ func (m *ExpectationActionMaker) MakeCustomAction(
 	sl services.ServiceLocator,
 	defaultTimeout int,
 ) (action.Action, error) {
-	commonExpectation, err := m.MakeCommonExpectation(sl, config.Service, config.Timeout, defaultTimeout, config.When)
+	commonExpectation, err := m.MakeCommonExpectation(
+		sl, config.Service, config.Timeout, defaultTimeout, config.When, config.OnFailure)
 	if err != nil {
 		return nil, err
 	}
@@ -61,14 +61,6 @@ type customAction struct {
 	*expectations.OutputExpectation
 	*expectations.ResponseExpectation
 	parameters parameters.Parameters
-}
-
-func (a *customAction) When() action.When {
-	return a.when
-}
-
-func (a *customAction) Timeout() time.Duration {
-	return a.timeout
 }
 
 func (a *customAction) Execute(ctx context.Context, runData runtime.Data) (bool, error) {

@@ -49,9 +49,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- introduce action parameter `on_failure` to set what to do when action fails
-  - it should either fail (default) or skip the rest of sequence
-  - this is to allow skipping the tests that are for example not applicable on certain configuration
 - add typed parameters substitution for integers
   - this is to be able to for example parameterize status code
   - alternatively it might be easier to allow automatic string to int conversion
