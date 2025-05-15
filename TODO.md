@@ -49,9 +49,16 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
+- extend request action to support TLS and http/2 requests
+  - look into how to best support certs / keys handling (simplest way might be just to use static certs and resources)
+- extend request action to support file upload
+  - it should chunked update and set option to set delay between chunks to be able to create server timeouts
+  - it should also allow doing partial unfinished uploads
+  - it is to support all requirements for testing https://github.com/php/php-src/pull/2180
 - add typed parameters substitution for integers
   - this is to be able to for example parameterize status code
   - alternatively it might be easier to allow automatic string to int conversion
+  - this is support testing ProxyMatch in the basic base test
 - extend metrics to allow requesting metrics in time
   - effectively metrics should be stored in time series
   - when requested without time, it should define some operation to use for getting the result
