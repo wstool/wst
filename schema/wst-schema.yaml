@@ -46,6 +46,45 @@ $defs:
           end:
             title: Ports range end
             type: integer
+      certificates:
+        title: Environment certificates
+        description: |
+          Certificates configuration for SSL/TLS support. These certificates are rendered to the workspace
+          and can be referenced in service configuration templates using their paths.
+        type: object
+        additionalProperties:
+          title: Certificate definition
+          description: |
+            Each certificate is identified by its key name and contains the certificate data and private key.
+            The certificate files will be created in the workspace under a certificates directory and can be
+            referenced in service configs using template variables.
+          type: object
+          properties:
+            type:
+              title: Certificate type
+              description: |
+                Specifies how the certificate is provided. 'static' means certificate and key are provided
+                directly in the configuration. 'file' means certificate and key are loaded from external files.
+                Additional types can be added in the future for automatic certificate generation
+                (e.g., 'self-signed', 'vault').
+              type: string
+              enum: [ static, file ]
+              default: static
+            certificate:
+              title: Certificate content or path
+              description: |
+                For 'static' type: The PEM-encoded certificate content. Should contain the full certificate chain.
+                For 'file' type: Path to a file containing the certificate content.
+                For future types: Could be a key/identifier (e.g., vault path).
+              type: string
+            private_key:
+              title: Private key content or path
+              description: |
+                For 'static' type: The PEM-encoded private key content corresponding to the certificate.
+                For 'file' type: Path to a file containing the private key content.
+                For future types: Could be a key/identifier (e.g., vault path, key name).
+              type: string
+          required: [ type, certificate, private_key ]
 
   containerEnvironment:
     title: Container environment
@@ -939,6 +978,13 @@ $defs:
         description: Identifies request which can be then used in response expectation.
         type: string
         default: last
+      protocol:
+        title: Request protocol
+        description: |
+          Specifies the protocol to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
+          The protocol selection affects how the request is made to the service.
+        type: string
+        enum: [ http, https ]
       path:
         title: Request path
         description: Request URL path which can also contain query parameters.
