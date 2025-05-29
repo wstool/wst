@@ -49,18 +49,27 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- extend request action to support TLS and http/2 requests
-  - look into how to best support certs / keys handling (simplest way might be just to use static certs and resources)
+- extend environment and request action to support TLS certificate
+  - common environment certificates field with map of certificates where each has type (static, file), certificate and private key
+  - some certificate abstraction that would be used for common operation that will be the same for all environments
+  - extend service to provide selector for certificate by its name so it can be used in templates
+  - extend templating to represent certificate and make it accessible
+  - environment publicUrl should support https - currently it is hard coded to return http so it should allow extra param to select it
+  - extend request action with a protocol option to select between http and https
+- http/2 requests
+  - add http_version field to the request action
+  - update the client to allow using http/2
 - extend request action to support file upload
   - it should chunked update and set option to set delay between chunks to be able to create server timeouts
   - it should also allow doing partial unfinished uploads
   - it is to support all requirements for testing https://github.com/php/php-src/pull/2180
+  - test exceeding LimitRequestBody
 - add typed parameters substitution for integers
-  - this is to be able to for example parameterize status code
-  - alternatively it might be easier to allow automatic string to int conversion
+  - this is to be able to, for example, parameterize status code
+  - alternatively, it might be easier to allow automatic string to int conversion
   - this is support testing ProxyMatch in the basic base test
 - extend metrics to allow requesting metrics in time
-  - effectively metrics should be stored in time series
+  - effectively, metrics should be stored in time series
   - when requested without time, it should define some operation to use for getting the result
     - should be per metric default - for example counter would be max, but elsewhere avg or other might make more sense
   - it would make sense to also support ranges
@@ -92,13 +101,19 @@ in the future.
   - private has got different meaning in both
   - maybe address is not the best name
   - check what naming is used elsewhere and consider matching that
-- look to removing Service Requires or rethink how it should work
+- look into removing Service Requires or rethink how it should work
   - if kept, it should define semantic what started really is (e.g. after checking start logs)
+- look into supporting multiple endpoints for service
+  - for example, when multiple nginx servers are defined (one for http and one for https running on different ports)
+  - this should be also somehow selected from request and other actions
 - consider moving server port to sandbox port
   - currently the server port is really just container specific and not used for local
   - consider more consistent naming differentiating that service port is public and server port is private
 - add support for ephemeral port allocation that should be the default if not ports specified
   - it should be also possible to overwrite port to ephemeral selection even if specified
+- add support for more self-signed certificate type
+  - to allow automatic creation of certificate
+  - possibly also look to what other certificate types could be useful
 - enhance parameters merging
   - currently it's only one level (key on the first level overwrites everything) - consider recursive deep merging
 - come up with custom error wrapping and types
@@ -140,6 +155,8 @@ in the future.
 
 #### Local environment
 
+- implement storing and handling certificates
+- implement https publicUrl support
 - consider reporting closing output streams in Destroy
 - find some smarter way for ports ranges so it does not need to be in each instance
   - maybe some global ports pool
@@ -148,6 +165,9 @@ in the future.
 #### Kubernetes environment
 
 - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
+- support exec
+- implement storing and handling certificates
+- implement https publicUrl support
 - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
 - support and test native hook start where command is nil (set better executable - ideally configurable)
 - add health probes setup
@@ -157,6 +177,9 @@ in the future.
 - container create fails if container already exist - remove the container like cli `docker container create --rm`
 - container wait does not finish even if the container is running - wait condition does not work
 - pulling of image is not awaited - waiting to fully download the image does not work
+- support exec
+- implement storing and handling certificates
+- implement https publicUrl support
 - health check - waiting for container to be able to serve the traffic
 - custom docker
 
