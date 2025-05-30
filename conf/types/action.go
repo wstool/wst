@@ -69,7 +69,7 @@ type ResponseExpectationAction struct {
 
 type MetricRule struct {
 	Metric   string  `wst:"metric"`
-	Operator string  `wst:"operator,enum=eq,ne,gt,lt,ge,le"`
+	Operator string  `wst:"operator,enum=eq|ne|gt|lt|ge|le"`
 	Value    float64 `wst:"value"`
 }
 
