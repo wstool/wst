@@ -21,6 +21,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/resources"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
 	"os"
@@ -76,6 +77,7 @@ type Environment interface {
 	PortsStart() int32
 	PortsEnd() int32
 	ReservePort() int32
+	Resources() *resources.Resources
 	ContainerRegistry() *ContainerRegistry
 	MarkUsed()
 	IsUsed() bool
@@ -87,25 +89,32 @@ type Maker interface {
 }
 
 type CommonMaker struct {
-	Fnd         app.Foundation
-	OutputMaker output.Maker
+	Fnd           app.Foundation
+	ResourceMaker resources.Maker
+	OutputMaker   output.Maker
 }
 
-func CreateCommonMaker(fnd app.Foundation) *CommonMaker {
+func CreateCommonMaker(fnd app.Foundation, resourceMaker resources.Maker) *CommonMaker {
 	return &CommonMaker{
-		Fnd:         fnd,
-		OutputMaker: output.CreateMaker(fnd),
+		Fnd:           fnd,
+		ResourceMaker: resourceMaker,
+		OutputMaker:   output.CreateMaker(fnd),
 	}
 }
 
 type CommonEnvironment struct {
-	Fnd         app.Foundation
-	OutputMaker output.Maker
-	Used        bool
-	Ports       Ports
+	Fnd          app.Foundation
+	OutputMaker  output.Maker
+	Used         bool
+	Ports        Ports
+	EnvResources *resources.Resources
 }
 
-func (m *CommonMaker) MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment {
+func (m *CommonMaker) MakeCommonEnvironment(config *types.CommonEnvironment) (*CommonEnvironment, error) {
+	rscs, err := m.ResourceMaker.Make(config.Resources)
+	if err != nil {
+		return nil, err
+	}
 	return &CommonEnvironment{
 		Fnd:         m.Fnd,
 		OutputMaker: m.OutputMaker,
@@ -115,7 +124,8 @@ func (m *CommonMaker) MakeCommonEnvironment(config *types.CommonEnvironment) *Co
 			Used:  config.Ports.Start,
 			End:   config.Ports.End,
 		},
-	}
+		EnvResources: rscs,
+	}, nil
 }
 
 func (e *CommonEnvironment) MarkUsed() {
@@ -140,6 +150,10 @@ func (e *CommonEnvironment) ReservePort() int32 {
 	return used
 }
 
+func (e *CommonEnvironment) Resources() *resources.Resources {
+	return e.EnvResources
+}
+
 func (e *CommonEnvironment) ContainerRegistry() *ContainerRegistry {
 	return nil
 }
@@ -149,18 +163,22 @@ type ContainerEnvironment struct {
 	Registry ContainerRegistry
 }
 
-func (m *CommonMaker) MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment {
+func (m *CommonMaker) MakeContainerEnvironment(config *types.ContainerEnvironment) (*ContainerEnvironment, error) {
+	commonEnv, err := m.MakeCommonEnvironment(&types.CommonEnvironment{
+		Ports: config.Ports,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &ContainerEnvironment{
-		CommonEnvironment: *m.MakeCommonEnvironment(&types.CommonEnvironment{
-			Ports: config.Ports,
-		}),
+		CommonEnvironment: *commonEnv,
 		Registry: ContainerRegistry{
 			Auth: ContainerRegistryAuth{
 				Username: config.Registry.Auth.Username,
 				Password: config.Registry.Auth.Password,
 			},
 		},
-	}
+	}, nil
 }
 
 func (e *ContainerEnvironment) ContainerRegistry() *ContainerRegistry {

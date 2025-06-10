@@ -845,48 +845,48 @@ func TestFuncProvider_GetFactoryFunc(t *testing.T) {
 			wantErr:       true,
 			errMsg:        "invalid server expectation key unsupportedKey",
 		},
-		// Service scripts
+		// Service resource
 		{
-			name:     "createServiceScripts with all scripts included (bool)",
-			funcName: "createServiceScripts",
+			name:     "createServiceResource with all resource included (bool)",
+			funcName: "createServiceResource",
 			data:     true,
-			expectedValue: types.ServiceScripts{
+			expectedValue: types.ServiceResource{
 				IncludeAll: true,
 			},
 			wantErr: false,
 		},
 		{
-			name:     "createServiceScripts with selected scripts included (string array)",
-			funcName: "createServiceScripts",
+			name:     "createServiceResource with selected resource included (string array)",
+			funcName: "createServiceResource",
 			data:     []interface{}{"script1.sh", "script2.sh"},
-			expectedValue: types.ServiceScripts{
+			expectedValue: types.ServiceResource{
 				IncludeList: []string{"script1.sh", "script2.sh"},
 			},
 			wantErr: false,
 		},
 		{
-			name:          "createServiceScripts with non string item type",
-			funcName:      "createServiceScripts",
+			name:          "createServiceResource with non string item type",
+			funcName:      "createServiceResource",
 			data:          []interface{}{"script1.sh", 1},
-			expectedValue: types.ServiceScripts{},
+			expectedValue: types.ServiceResource{},
 			wantErr:       true,
-			errMsg:        "invalid services scripts item type at index 1, expected string but got int",
+			errMsg:        "invalid services resource item type at index 1, expected string but got int",
 		},
 		{
-			name:          "createServiceScripts with invalid data type (int)",
-			funcName:      "createServiceScripts",
-			data:          123,                    // Invalid type, expecting bool or []string
-			expectedValue: types.ServiceScripts{}, // No scripts should be included due to error
+			name:          "createServiceResource with invalid data type (int)",
+			funcName:      "createServiceResource",
+			data:          123,                     // Invalid type, expecting bool or []string
+			expectedValue: types.ServiceResource{}, // No resource should be included due to error
 			wantErr:       true,
-			errMsg:        "invalid services scripts type, expected bool or string array but got int",
+			errMsg:        "invalid services resource type, expected bool or string array but got int",
 		},
 		{
-			name:          "createServiceScripts with invalid data type (map)",
-			funcName:      "createServiceScripts",
+			name:          "createServiceResource with invalid data type (map)",
+			funcName:      "createServiceResource",
 			data:          map[string]interface{}{"script1": "script1.sh"}, // Invalid type, expecting bool or []string
-			expectedValue: types.ServiceScripts{},
+			expectedValue: types.ServiceResource{},
 			wantErr:       true,
-			errMsg:        "invalid services scripts type, expected bool or string array but got map[string]interface {}",
+			errMsg:        "invalid services resource type, expected bool or string array but got map[string]interface {}",
 		},
 		// Unknown
 		{

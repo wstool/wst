@@ -14,6 +14,8 @@
 
 package service
 
+import "github.com/wstool/wst/run/resources/certificates"
+
 // TemplateService defines template specific service subset
 type TemplateService interface {
 	LocalAddress() string
@@ -29,4 +31,5 @@ type TemplateService interface {
 	Group() string
 	User() string
 	EnvironmentConfigPaths() map[string]string
+	FindCertificate(name string) (*certificates.RenderedCertificate, error)
 }

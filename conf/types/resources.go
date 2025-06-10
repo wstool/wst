@@ -1,4 +1,4 @@
-// Copyright 2024 Jakub Zelenka and The WST Authors
+// Copyright 2025 Jakub Zelenka and The WST Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dir
+package types
 
-type DirType string
+type Certificate struct {
+	Certificate string `wst:"certificate,path=cert"`
+	PrivateKey  string `wst:"private_key,path=cert"`
+}
 
-const (
-	ConfDirType   DirType = "conf"
-	RunDirType    DirType = "run"
-	ScriptDirType DirType = "script"
-	CertDirType   DirType = "cert"
-)
+type Script struct {
+	Content    string     `wst:"content"`
+	Path       string     `wst:"path"`
+	Mode       string     `wst:"mode,default=0644"`
+	Parameters Parameters `wst:"parameters,factory=createParameters"`
+}
+
+type Resources struct {
+	Certificates map[string]Certificate `wst:"certificates"`
+	Scripts      map[string]Script      `wst:"scripts,string=Content"`
+}

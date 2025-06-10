@@ -194,6 +194,12 @@ packages:
     interfaces:
       Maker: {}
       Parameter: {}
+  github.com/wstool/wst/run/resources/certificates:
+    config:
+      dir: mocks/generated/run/resources/certificates
+    interfaces:
+      Maker: {}
+      Certificate: {}
   github.com/wstool/wst/run/resources/scripts:
     config:
       dir: mocks/generated/run/resources/scripts

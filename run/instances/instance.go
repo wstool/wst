@@ -27,6 +27,7 @@ import (
 	"github.com/wstool/wst/run/expectations"
 	"github.com/wstool/wst/run/instances/runtime"
 	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/resources"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/servers"
 	"github.com/wstool/wst/run/services"
@@ -68,7 +69,7 @@ type nativeInstanceMaker struct {
 	actionMaker      actions.ActionMaker
 	parametersMaker  parameters.Maker
 	servicesMaker    services.Maker
-	scriptsMaker     scripts.Maker
+	resourceMaker    resources.Maker
 	environmentMaker environments.Maker
 	runtimeMaker     runtime.Maker
 }
@@ -79,13 +80,14 @@ func CreateInstanceMaker(
 	parametersMaker parameters.Maker,
 ) InstanceMaker {
 	runtimeMaker := runtime.CreateMaker(fnd)
+	resourceMaker := resources.CreateMaker(fnd, parametersMaker)
 	return &nativeInstanceMaker{
 		fnd:              fnd,
 		parametersMaker:  parametersMaker,
 		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker, runtimeMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
-		scriptsMaker:     scripts.CreateMaker(fnd, parametersMaker),
-		environmentMaker: environments.CreateMaker(fnd),
+		resourceMaker:    resourceMaker,
+		environmentMaker: environments.CreateMaker(fnd, resourceMaker),
 		runtimeMaker:     runtimeMaker,
 	}
 }

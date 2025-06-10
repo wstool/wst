@@ -71,8 +71,8 @@ func (f *FuncProvider) GetFactoryFunc(funcName string) (Func, error) {
 		return f.createSandboxes, nil
 	case "createServerExpectations":
 		return f.createServerExpectations, nil
-	case "createServiceScripts":
-		return f.createServiceScripts, nil
+	case "createServiceResource":
+		return f.createServiceResource, nil
 	default:
 		return nil, errors.Errorf("unknown function %s at %s", funcName, f.loc.String())
 	}
@@ -447,26 +447,26 @@ func (f *FuncProvider) createServerExpectations(data interface{}, fieldValue ref
 	return nil
 }
 
-func (f *FuncProvider) createServiceScripts(data interface{}, fieldValue reflect.Value, path string) error {
-	serviceScripts := types.ServiceScripts{}
+func (f *FuncProvider) createServiceResource(data interface{}, fieldValue reflect.Value, path string) error {
+	serviceResource := types.ServiceResource{}
 	boolVal, ok := data.(bool)
 	if ok {
-		serviceScripts.IncludeAll = boolVal
+		serviceResource.IncludeAll = boolVal
 	} else {
 		arrVal, ok := data.([]interface{})
 		if !ok {
-			return errors.Errorf("invalid services scripts type, expected bool or string array but got %T", data)
+			return errors.Errorf("invalid services resource type, expected bool or string array but got %T", data)
 		}
 		for idx, item := range arrVal {
 			strVal, ok := item.(string)
 			if !ok {
-				return errors.Errorf("invalid services scripts item type at index %d, expected string but got %T", idx, item)
+				return errors.Errorf("invalid services resource item type at index %d, expected string but got %T", idx, item)
 			}
-			serviceScripts.IncludeList = append(serviceScripts.IncludeList, strVal)
+			serviceResource.IncludeList = append(serviceResource.IncludeList, strVal)
 		}
 	}
 
-	fieldValue.Set(reflect.ValueOf(serviceScripts))
+	fieldValue.Set(reflect.ValueOf(serviceResource))
 
 	return nil
 }

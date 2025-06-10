@@ -59,13 +59,13 @@ type SandboxHook interface {
 
 type CommonSandbox struct {
 	Available bool                   `wst:"available,default=true"`
-	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Dirs      map[string]string      `wst:"dirs,keys=cert|conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
 type LocalSandbox struct {
 	Available bool                   `wst:"available,default=true"`
-	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Dirs      map[string]string      `wst:"dirs,keys=cert|conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 }
 
@@ -85,7 +85,7 @@ type ContainerRegistry struct {
 
 type ContainerSandbox struct {
 	Available bool                   `wst:"available,default=true"`
-	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Dirs      map[string]string      `wst:"dirs,keys=cert|conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
 	Registry  ContainerRegistry      `wst:"registry"`
@@ -93,7 +93,7 @@ type ContainerSandbox struct {
 
 type DockerSandbox struct {
 	Available bool                   `wst:"available,default=true"`
-	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Dirs      map[string]string      `wst:"dirs,keys=cert|conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
 	Registry  ContainerRegistry      `wst:"registry"`
@@ -101,7 +101,7 @@ type DockerSandbox struct {
 
 type KubernetesSandbox struct {
 	Available bool                   `wst:"available,default=true"`
-	Dirs      map[string]string      `wst:"dirs,keys=conf|run|script"`
+	Dirs      map[string]string      `wst:"dirs,keys=cert|conf|run|script"`
 	Hooks     map[string]SandboxHook `wst:"hooks,factory=createHooks"`
 	Image     ContainerImage         `wst:"image,factory=createContainerImage"`
 	Registry  ContainerRegistry      `wst:"registry"`

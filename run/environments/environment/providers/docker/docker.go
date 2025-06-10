@@ -29,6 +29,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/environment/providers/docker/client"
 	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/resources"
 	"io"
 	"os"
 	"strconv"
@@ -45,9 +46,9 @@ type dockerMaker struct {
 	clientMaker client.Maker
 }
 
-func CreateMaker(fnd app.Foundation) Maker {
+func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
 	return &dockerMaker{
-		CommonMaker: environment.CreateCommonMaker(fnd),
+		CommonMaker: environment.CreateCommonMaker(fnd, resourceMaker),
 		clientMaker: client.CreateMaker(fnd),
 	}
 }
@@ -58,15 +59,20 @@ func (m *dockerMaker) Make(config *types.DockerEnvironment) (environment.Environ
 		return nil, errors.Errorf("failed to create docker client: %v", err)
 	}
 
+	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:    config.Ports,
+		Registry: config.Registry,
+	})
+	if err != nil {
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
+	}
+
 	return &dockerEnvironment{
-		ContainerEnvironment: *m.MakeContainerEnvironment(&types.ContainerEnvironment{
-			Ports:    config.Ports,
-			Registry: config.Registry,
-		}),
-		cli:              cli,
-		namePrefix:       config.NamePrefix,
-		tasks:            make(map[string]*dockerTask),
-		waitTickDuration: 1 * time.Second,
+		ContainerEnvironment: *containerEnv,
+		cli:                  cli,
+		namePrefix:           config.NamePrefix,
+		tasks:                make(map[string]*dockerTask),
+		waitTickDuration:     1 * time.Second,
 	}, nil
 }
 

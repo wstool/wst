@@ -23,6 +23,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers/docker"
 	"github.com/wstool/wst/run/environments/environment/providers/kubernetes"
 	"github.com/wstool/wst/run/environments/environment/providers/local"
+	"github.com/wstool/wst/run/resources"
 )
 
 type Environments map[providers.Type]environment.Environment
@@ -42,12 +43,12 @@ type nativeMaker struct {
 	kubernetesMaker kubernetes.Maker
 }
 
-func CreateMaker(fnd app.Foundation) Maker {
+func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
 	return &nativeMaker{
 		fnd:             fnd,
-		localMaker:      local.CreateMaker(fnd),
-		dockerMaker:     docker.CreateMaker(fnd),
-		kubernetesMaker: kubernetes.CreateMaker(fnd),
+		localMaker:      local.CreateMaker(fnd, resourceMaker),
+		dockerMaker:     docker.CreateMaker(fnd, resourceMaker),
+		kubernetesMaker: kubernetes.CreateMaker(fnd, resourceMaker),
 	}
 }
 

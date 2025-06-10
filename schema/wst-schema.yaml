@@ -60,31 +60,23 @@ $defs:
             referenced in service configs using template variables.
           type: object
           properties:
-            type:
-              title: Certificate type
-              description: |
-                Specifies how the certificate is provided. 'static' means certificate and key are provided
-                directly in the configuration. 'file' means certificate and key are loaded from external files.
-                Additional types can be added in the future for automatic certificate generation
-                (e.g., 'self-signed', 'vault').
-              type: string
-              enum: [ static, file ]
-              default: static
             certificate:
               title: Certificate content or path
               description: |
-                For 'static' type: The PEM-encoded certificate content. Should contain the full certificate chain.
-                For 'file' type: Path to a file containing the certificate content.
-                For future types: Could be a key/identifier (e.g., vault path).
+                Certificate content or file path. The value is automatically parsed. If the value starts with 
+                "-----BEGIN", it's treated as PEM-encoded certificate content. Otherwise, it's treated as a path 
+                to a file containing the certificate. Use "file:/path/to/cert" to force file path interpretation, 
+                useful when the path starts with "--".
               type: string
             private_key:
               title: Private key content or path
               description: |
-                For 'static' type: The PEM-encoded private key content corresponding to the certificate.
-                For 'file' type: Path to a file containing the private key content.
-                For future types: Could be a key/identifier (e.g., vault path, key name).
+                Private key content or file path. The value is automatically parsed. If the value starts with 
+                "-----BEGIN", it's treated as PEM-encoded private key content. Otherwise, it's treated as a path 
+                to a file containing the private key. Use "file:/path/to/key" to force file path interpretation, 
+                useful when the path starts with "--".
               type: string
-          required: [ type, certificate, private_key ]
+          required: [ certificate, private_key ]
 
   containerEnvironment:
     title: Container environment

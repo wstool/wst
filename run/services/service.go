@@ -26,6 +26,8 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/dir"
 	"github.com/wstool/wst/run/sandboxes/hooks"
@@ -36,6 +38,7 @@ import (
 	"github.com/wstool/wst/run/spec/defaults"
 	"io"
 	"net/url"
+	"os"
 	"path/filepath"
 	"reflect"
 )
@@ -63,6 +66,7 @@ type Service interface {
 	EnvironmentScriptPaths() map[string]string
 	WorkspaceScriptPaths() map[string]string
 	Environment() environment.Environment
+	FindCertificate(name string) (*certificates.RenderedCertificate, error)
 	Task() task.Task
 	RenderTemplate(text string, params parameters.Parameters) (string, error)
 	OutputReader(ctx context.Context, outputType output.Type) (io.Reader, error)
@@ -120,7 +124,7 @@ type Maker interface {
 	Make(
 		config map[string]types.Service,
 		dflts *defaults.Defaults,
-		scriptResources scripts.Scripts,
+		rscrs resources.Resources,
 		srvs servers.Servers,
 		environments environments.Environments,
 		instanceName string,
@@ -147,7 +151,7 @@ func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
 func (m *nativeMaker) Make(
 	config map[string]types.Service,
 	dflts *defaults.Defaults,
-	scrpts scripts.Scripts,
+	rscrs resources.Resources,
 	srvs servers.Servers,
 	environments environments.Environments,
 	instanceName string,
@@ -158,21 +162,6 @@ func (m *nativeMaker) Make(
 	svcs := make(Services)
 	tmplSvcs := make(template.Services)
 	for serviceName, serviceConfig := range config {
-		var includedScripts scripts.Scripts
-
-		if serviceConfig.Resources.Scripts.IncludeAll {
-			includedScripts = scrpts
-		} else {
-			includedScripts = make(scripts.Scripts)
-			for _, scriptName := range serviceConfig.Resources.Scripts.IncludeList {
-				script, ok := scrpts[scriptName]
-				if !ok {
-					return nil, errors.Errorf("script %s not found for service %s", scriptName, serviceName)
-				}
-				includedScripts[scriptName] = script
-			}
-		}
-
 		tag := serviceConfig.Server.Tag
 		if tag == "" {
 			tag = dflts.Service.Server.Tag
@@ -207,6 +196,37 @@ func (m *nativeMaker) Make(
 			return nil, errors.Errorf("environment %s not found for service %s", sandboxName, serviceName)
 		}
 		env.MarkUsed()
+		envResources := env.Resources()
+
+		var includedCertificates certificates.Certificates
+		allCerts := make(certificates.Certificates).Inherit(rscrs.Certificates).Inherit(envResources.Certificates)
+		if serviceConfig.Resources.Certificates.IncludeAll {
+			includedCertificates = allCerts
+		} else {
+			includedCertificates = make(certificates.Certificates)
+			for _, certName := range serviceConfig.Resources.Certificates.IncludeList {
+				cert, ok := allCerts[certName]
+				if !ok {
+					return nil, errors.Errorf("certificates %s not found for service %s", certName, serviceName)
+				}
+				includedCertificates[certName] = cert
+			}
+		}
+
+		var includedScripts scripts.Scripts
+		allScripts := make(scripts.Scripts).Inherit(rscrs.Scripts).Inherit(envResources.Scripts)
+		if serviceConfig.Resources.Scripts.IncludeAll {
+			includedScripts = allScripts
+		} else {
+			includedScripts = make(scripts.Scripts)
+			for _, scriptName := range serviceConfig.Resources.Scripts.IncludeList {
+				script, ok := allScripts[scriptName]
+				if !ok {
+					return nil, errors.Errorf("script %s not found for service %s", scriptName, serviceName)
+				}
+				includedScripts[scriptName] = script
+			}
+		}
 
 		nativeConfigs := make(map[string]nativeServiceConfig)
 
@@ -237,6 +257,7 @@ func (m *nativeMaker) Make(
 			public:           serviceConfig.Public,
 			port:             env.ReservePort(),
 			environment:      env,
+			certificates:     includedCertificates,
 			scripts:          includedScripts,
 			server:           server,
 			serverParameters: serverParameters,
@@ -268,6 +289,7 @@ type nativeService struct {
 	uniqueName             string
 	public                 bool
 	port                   int32
+	certificates           certificates.Certificates
 	scripts                scripts.Scripts
 	server                 servers.Server
 	serverParameters       parameters.Parameters
@@ -275,6 +297,7 @@ type nativeService struct {
 	task                   task.Task
 	environment            environment.Environment
 	configs                map[string]nativeServiceConfig
+	renderedCertificates   map[string]*certificates.RenderedCertificate
 	environmentConfigPaths map[string]string
 	workspaceConfigPaths   map[string]string
 	environmentScriptPaths map[string]string
@@ -420,6 +443,41 @@ func (s *nativeService) renderConfigs() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *nativeService) renderCertificatePart(name string, data string, mode os.FileMode) (string, error) {
+	workspaceScriptPath, environmentScriptPath, err := s.renderingPaths(name, dir.CertDirType)
+	if err != nil {
+		return "", err
+	}
+
+	err = s.template.RenderToFile(data, parameters.Parameters{}, workspaceScriptPath, mode)
+	if err != nil {
+		return "", err
+	}
+
+	return environmentScriptPath, nil
+}
+
+func (s *nativeService) renderCertificates() error {
+	renderedCerts := make(map[string]*certificates.RenderedCertificate, len(s.certificates))
+	for name, cert := range s.certificates {
+		envCertPath, err := s.renderCertificatePart(cert.CertificateName(), cert.CertificateData(), 0644)
+		if err != nil {
+			return err
+		}
+		envPrivKeyPath, err := s.renderCertificatePart(cert.PrivateKeyName(), cert.PrivateKeyData(), 0600)
+		if err != nil {
+			return err
+		}
+		renderedCerts[name] = &certificates.RenderedCertificate{
+			Certificate:         cert,
+			CertificateFilePath: envCertPath,
+			PrivateKeyFilePath:  envPrivKeyPath,
+		}
+	}
+	s.renderedCertificates = renderedCerts
 	return nil
 }
 
@@ -631,4 +689,12 @@ func (s *nativeService) Environment() environment.Environment {
 
 func (s *nativeService) Task() task.Task {
 	return s.task
+}
+
+func (s *nativeService) FindCertificate(name string) (*certificates.RenderedCertificate, error) {
+	cert, ok := s.renderedCertificates[name]
+	if !ok {
+		return nil, errors.Errorf("certificate %s not found", name)
+	}
+	return cert, nil
 }

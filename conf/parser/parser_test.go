@@ -565,12 +565,88 @@ func TestProcessPathParam(t *testing.T) {
 			wantErr:     true,
 			expectedErr: "field unknown is not of type string",
 		},
+		{
+			name:           "Certificate with PEM content",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJAKoK\n-----END CERTIFICATE-----",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        false,
+			expectedValue:  "-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJAKoK\n-----END CERTIFICATE-----",
+		},
+		{
+			name:           "Certificate with file path",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "certs/server.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        false,
+			expectedValue:  "/opt/config/certs/server.crt",
+		},
+		{
+			name:           "Certificate with absolute file path",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "/etc/ssl/server.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        false,
+			expectedValue:  "/etc/ssl/server.crt",
+		},
+		{
+			name:           "Certificate with file: prefix for path starting with -----BEGIN",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "file:-----BEGIN-FILENAME.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        false,
+			expectedValue:  "/opt/config/-----BEGIN-FILENAME.crt",
+		},
+		{
+			name:           "Certificate with file: prefix absolute path starting with -----BEGIN",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "file:/etc/ssl/-----BEGIN-CERT.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        false,
+			expectedValue:  "/etc/ssl/-----BEGIN-CERT.crt",
+		},
+		{
+			name:           "Certificate file path does not exist",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "certs/nonexistent.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        true,
+			expectedErr:    "file path /opt/config/certs/nonexistent.crt for field unknown does not exist",
+		},
+		{
+			name:           "Certificate with file: prefix nonexistent -----BEGIN filename",
+			fieldValue:     reflect.Indirect(reflect.ValueOf(new(string))),
+			data:           "file:-----BEGIN-MISSING.crt",
+			configPath:     "/opt/config/wst.yaml",
+			configPathType: "cert",
+			wantErr:        true,
+			expectedErr:    "file path /opt/config/-----BEGIN-MISSING.crt for field unknown does not exist",
+		},
 	}
 
 	// Create test files
 	err := afero.WriteFile(mockFs, "/opt/config/test/path", []byte(`{"key": "value"}`), 0644)
 	assert.NoError(t, err)
 	err = afero.WriteFile(mockFs, "/test/path", []byte(`{"key": "value2"}`), 0644)
+	assert.NoError(t, err)
+	// Create certificate test files
+	err = mockFs.MkdirAll("/opt/config/certs", 0755)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/opt/config/certs/server.crt", []byte("certificate content"), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/opt/config/-----BEGIN-FILENAME.crt", []byte("begin filename cert"), 0644)
+	assert.NoError(t, err)
+	err = mockFs.MkdirAll("/etc/ssl", 0755)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/etc/ssl/server.crt", []byte("ssl cert"), 0644)
+	assert.NoError(t, err)
+	err = afero.WriteFile(mockFs, "/etc/ssl/-----BEGIN-CERT.crt", []byte("begin cert"), 0644)
 	assert.NoError(t, err)
 
 	for _, tt := range tests {

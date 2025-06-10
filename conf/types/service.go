@@ -14,29 +14,19 @@
 
 package types
 
-type Script struct {
-	Content    string     `wst:"content"`
-	Path       string     `wst:"path"`
-	Mode       string     `wst:"mode,default=0644"`
-	Parameters Parameters `wst:"parameters,factory=createParameters"`
-}
-
-type Resources struct {
-	Scripts map[string]Script `wst:"scripts,string=Content"`
-}
-
 type ServiceConfig struct {
 	Parameters Parameters `wst:"parameters,factory=createParameters"`
 	Include    bool       `wst:"include,default=true"`
 }
 
-type ServiceScripts struct {
+type ServiceResource struct {
 	IncludeAll  bool
 	IncludeList []string
 }
 
 type ServiceResources struct {
-	Scripts ServiceScripts `wst:"scripts,factory=createServiceScripts"`
+	Certificates ServiceResource `wst:"certificates,factory=createServiceResource"`
+	Scripts      ServiceResource `wst:"scripts,factory=createServiceResource"`
 }
 
 type ServiceServer struct {

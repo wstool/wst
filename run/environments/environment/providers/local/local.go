@@ -24,6 +24,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/resources"
 	"io"
 	"os"
 	"path/filepath"
@@ -40,9 +41,9 @@ type localMaker struct {
 	*environment.CommonMaker
 }
 
-func CreateMaker(fnd app.Foundation) Maker {
+func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
 	return &localMaker{
-		CommonMaker: environment.CreateCommonMaker(fnd),
+		CommonMaker: environment.CreateCommonMaker(fnd, resourceMaker),
 	}
 }
 
@@ -50,13 +51,17 @@ func (m *localMaker) Make(
 	config *types.LocalEnvironment,
 	instanceWorkspace string,
 ) (environment.Environment, error) {
+	commonEnv, err := m.MakeCommonEnvironment(&types.CommonEnvironment{
+		Ports: config.Ports,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &localEnvironment{
-		CommonEnvironment: *m.MakeCommonEnvironment(&types.CommonEnvironment{
-			Ports: config.Ports,
-		}),
-		workspace:   filepath.Join(instanceWorkspace, "envs", "local"),
-		initialized: false,
-		tasks:       make(map[string]*localTask),
+		CommonEnvironment: *commonEnv,
+		workspace:         filepath.Join(instanceWorkspace, "envs", "local"),
+		initialized:       false,
+		tasks:             make(map[string]*localTask),
 	}, nil
 }
 

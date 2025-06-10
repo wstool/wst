@@ -33,7 +33,8 @@ type EnvironmentPorts struct {
 }
 
 type CommonEnvironment struct {
-	Ports EnvironmentPorts `wst:"ports"`
+	Ports     EnvironmentPorts `wst:"ports"`
+	Resources Resources        `wst:"resources"`
 }
 
 type LocalEnvironment struct {

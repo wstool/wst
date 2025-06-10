@@ -26,6 +26,7 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
 	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/resources"
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,9 +48,9 @@ type kubernetesMaker struct {
 	clientsMaker clients.Maker
 }
 
-func CreateMaker(fnd app.Foundation) Maker {
+func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
 	return &kubernetesMaker{
-		CommonMaker:  environment.CreateCommonMaker(fnd),
+		CommonMaker:  environment.CreateCommonMaker(fnd, resourceMaker),
 		clientsMaker: clients.CreateMaker(fnd),
 	}
 }
@@ -71,20 +72,24 @@ func (m *kubernetesMaker) Make(config *types.KubernetesEnvironment) (environment
 	if err != nil {
 		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
+	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:    config.Ports,
+		Registry: config.Registry,
+	})
+	if err != nil {
+		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
+	}
 
 	return &kubernetesEnvironment{
-		ContainerEnvironment: *m.MakeContainerEnvironment(&types.ContainerEnvironment{
-			Ports:    config.Ports,
-			Registry: config.Registry,
-		}),
-		kubeconfigPath:   config.Kubeconfig,
-		namespace:        config.Namespace,
-		useUniqueName:    true,
-		configMapClient:  configMapClient,
-		deploymentClient: deploymentClient,
-		podClient:        podClient,
-		serviceClient:    serviceClient,
-		tasks:            make(map[string]*kubernetesTask),
+		ContainerEnvironment: *containerEnv,
+		kubeconfigPath:       config.Kubeconfig,
+		namespace:            config.Namespace,
+		useUniqueName:        true,
+		configMapClient:      configMapClient,
+		deploymentClient:     deploymentClient,
+		podClient:            podClient,
+		serviceClient:        serviceClient,
+		tasks:                make(map[string]*kubernetesTask),
 	}, nil
 }
 

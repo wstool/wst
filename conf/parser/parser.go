@@ -45,6 +45,7 @@ const (
 
 const pathKey = "wst/path"
 const pathVirtual = "virtual"
+const pathCert = "cert"
 
 type Parser interface {
 	ParseConfig(data map[string]interface{}, config *types.Config, configPath string) error
@@ -205,6 +206,29 @@ func (p *ConfigParser) processPathParam(
 		return errors.Errorf("unexpected type %T for data in field %s, expected string", data, p.Pos())
 	}
 
+	// Check that fieldValue is settable and is string type
+	if !fieldValue.CanSet() {
+		return errors.Errorf("field %s is not settable", p.Pos())
+	}
+	if fieldValue.Kind() != reflect.String {
+		return errors.Errorf("field %s is not of type string", p.Pos())
+	}
+
+	// Handle certificate type with automatic parsing
+	if configPathType == pathCert {
+		if strings.HasPrefix(path, "file:") {
+			path = strings.TrimPrefix(path, "file:")
+		} else {
+			trimmedPath := strings.TrimSpace(path)
+			if strings.HasPrefix(trimmedPath, "-----BEGIN") {
+				// PEM content - use as-is
+				fieldValue.SetString(trimmedPath)
+				return nil
+			}
+		}
+		// Continue with file path processing below
+	}
+
 	fs := p.fnd.Fs()
 
 	// If it's not an absolute path, prepend the path variable to it
@@ -222,23 +246,11 @@ func (p *ConfigParser) processPathParam(
 		}
 	}
 
-	// Check that fieldValue is settable (it is addressable and was not obtained by
-	// the use of unexported struct fields)
-	if !fieldValue.CanSet() {
-		return errors.Errorf("field %s is not settable", p.Pos())
-	}
-
-	// Check if fieldValue is of type string
-	if fieldValue.Kind() != reflect.String {
-		return errors.Errorf("field %s is not of type string", p.Pos())
-	}
-
 	// If no errors so far, set the fieldValue to the resolved file path
 	fieldValue.SetString(path)
 
 	return nil
 }
-
 func (p *ConfigParser) processLoadableParam(data interface{}, fieldValue reflect.Value, path string) (interface{}, error) {
 	loadableData, isString := data.(string)
 	if isString {

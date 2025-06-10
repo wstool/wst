@@ -32,6 +32,15 @@ type Script interface {
 
 type Scripts map[string]Script
 
+func (s Scripts) Inherit(ps Scripts) Scripts {
+	for key, value := range ps {
+		if _, ok := s[key]; !ok {
+			s[key] = value
+		}
+	}
+	return s
+}
+
 type Maker interface {
 	Make(config map[string]types.Script) (Scripts, error)
 }
