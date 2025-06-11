@@ -38,22 +38,26 @@ type CommonEnvironment struct {
 }
 
 type LocalEnvironment struct {
-	Ports EnvironmentPorts `wst:"ports"`
+	Ports     EnvironmentPorts `wst:"ports"`
+	Resources Resources        `wst:"resources"`
 }
 
 type ContainerEnvironment struct {
-	Ports    EnvironmentPorts  `wst:"ports"`
-	Registry ContainerRegistry `wst:"registry"`
+	Ports     EnvironmentPorts  `wst:"ports"`
+	Resources Resources         `wst:"resources"`
+	Registry  ContainerRegistry `wst:"registry"`
 }
 
 type DockerEnvironment struct {
 	Ports      EnvironmentPorts  `wst:"ports"`
+	Resources  Resources         `wst:"resources"`
 	Registry   ContainerRegistry `wst:"registry"`
 	NamePrefix string            `wst:"name_prefix"`
 }
 
 type KubernetesEnvironment struct {
 	Ports      EnvironmentPorts  `wst:"ports"`
+	Resources  Resources         `wst:"resources"`
 	Registry   ContainerRegistry `wst:"registry"`
 	Namespace  string            `wst:"namespace"`
 	Kubeconfig string            `wst:"kubeconfig,path=virtual"`

@@ -15,12 +15,19 @@ import (
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	outputMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/output"
 	taskMocks "github.com/wstool/wst/mocks/generated/run/environments/task"
+	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
+	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
+	scriptsMocks "github.com/wstool/wst/mocks/generated/run/resources/scripts"
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
+	"github.com/wstool/wst/run/resources/scripts"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -29,21 +36,25 @@ import (
 
 func TestCreateMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
+	resourcesMaker := resourcesMocks.NewMockMaker(t)
 	tests := []struct {
-		name string
-		fnd  app.Foundation
+		name           string
+		fnd            app.Foundation
+		resourcesMaker resources.Maker
 	}{
 		{
-			name: "create maker",
-			fnd:  fndMock,
+			name:           "create maker",
+			fnd:            fndMock,
+			resourcesMaker: resourcesMaker,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateMaker(tt.fnd)
+			got := CreateMaker(tt.fnd, resourcesMaker)
 			maker, ok := got.(*localMaker)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, maker.Fnd)
+			assert.Equal(t, tt.resourcesMaker, maker.ResourcesMaker)
 		})
 	}
 }
@@ -53,21 +64,66 @@ func Test_nativeMaker_Make(t *testing.T) {
 		name              string
 		config            *types.LocalEnvironment
 		instanceWorkspace string
-		getExpectedEnv    func(fndMock *appMocks.MockFoundation) *localEnvironment
+		setupMocks        func(*testing.T, *resourcesMocks.MockMaker) *resources.Resources
+		getExpectedEnv    func(fndMock *appMocks.MockFoundation, rscs *resources.Resources) *localEnvironment
 		expectError       bool
 		expectedErrorMsg  string
 	}{
 		{
-			name: "successful kubernetes environment maker creation",
+			name: "successful local environment maker creation with resources",
 			config: &types.LocalEnvironment{
 				Ports: types.EnvironmentPorts{
 					Start: 8000,
 					End:   8500,
 				},
+				Resources: types.Resources{
+					Certificates: map[string]types.Certificate{
+						"local_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\nlocal cert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nlocal key\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"local_script": {
+							Content: "#!/bin/bash\necho 'Local init'",
+							Path:    "/local/init.sh",
+							Mode:    "0755",
+						},
+					},
+				},
 			},
 			instanceWorkspace: "/tmp/ws",
+			setupMocks: func(t *testing.T, r *resourcesMocks.MockMaker) *resources.Resources {
+				expectedResources := &resources.Resources{
+					Certificates: map[string]certificates.Certificate{
+						"local_ssl": certificatesMocks.NewMockCertificate(t),
+					},
+					Scripts: map[string]scripts.Script{
+						"local_script": scriptsMocks.NewMockScript(t),
+					},
+				}
+
+				r.On("Make", types.Resources{
+					Certificates: map[string]types.Certificate{
+						"local_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\nlocal cert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nlocal key\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"local_script": {
+							Content: "#!/bin/bash\necho 'Local init'",
+							Path:    "/local/init.sh",
+							Mode:    "0755",
+						},
+					},
+				}).Return(expectedResources, nil)
+
+				return expectedResources
+			},
 			getExpectedEnv: func(
 				fndMock *appMocks.MockFoundation,
+				rscs *resources.Resources,
 			) *localEnvironment {
 				return &localEnvironment{
 					CommonEnvironment: environment.CommonEnvironment{
@@ -78,9 +134,115 @@ func Test_nativeMaker_Make(t *testing.T) {
 							Used:  8000,
 							End:   8500,
 						},
+						EnvResources: rscs,
 					},
-					tasks:     make(map[string]*localTask),
-					workspace: "/tmp/ws/envs/local",
+					tasks:       make(map[string]*localTask),
+					workspace:   "/tmp/ws/envs/local",
+					initialized: false,
+				}
+			},
+		},
+		{
+			name: "successful local environment maker creation with empty resources",
+			config: &types.LocalEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Resources: types.Resources{},
+			},
+			instanceWorkspace: "/tmp/ws",
+			setupMocks: func(t *testing.T, r *resourcesMocks.MockMaker) *resources.Resources {
+				expectedResources := &resources.Resources{}
+				r.On("Make", types.Resources{}).Return(expectedResources, nil)
+				return expectedResources
+			},
+			getExpectedEnv: func(
+				fndMock *appMocks.MockFoundation,
+				rscs *resources.Resources,
+			) *localEnvironment {
+				return &localEnvironment{
+					CommonEnvironment: environment.CommonEnvironment{
+						Fnd:  fndMock,
+						Used: false,
+						Ports: environment.Ports{
+							Start: 8000,
+							Used:  8000,
+							End:   8500,
+						},
+						EnvResources: rscs,
+					},
+					tasks:       make(map[string]*localTask),
+					workspace:   "/tmp/ws/envs/local",
+					initialized: false,
+				}
+			},
+		},
+		{
+			name: "failed local environment maker creation due to resource failure",
+			config: &types.LocalEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Resources: types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Mode:    "invalid_mode",
+						},
+					},
+				},
+			},
+			instanceWorkspace: "/tmp/ws",
+			setupMocks: func(t *testing.T, r *resourcesMocks.MockMaker) *resources.Resources {
+				r.On("Make", types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Path:    "",
+							Mode:    "invalid_mode",
+						},
+					},
+				}).Return(nil, errors.New("resource creation failed"))
+				return nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "resource creation failed",
+		},
+		{
+			name: "successful local environment maker creation with different workspace",
+			config: &types.LocalEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 9000,
+					End:   9500,
+				},
+				Resources: types.Resources{},
+			},
+			instanceWorkspace: "/custom/workspace",
+			setupMocks: func(t *testing.T, r *resourcesMocks.MockMaker) *resources.Resources {
+				expectedResources := &resources.Resources{}
+				r.On("Make", types.Resources{}).Return(expectedResources, nil)
+				return expectedResources
+			},
+			getExpectedEnv: func(
+				fndMock *appMocks.MockFoundation,
+				rscs *resources.Resources,
+			) *localEnvironment {
+				return &localEnvironment{
+					CommonEnvironment: environment.CommonEnvironment{
+						Fnd:  fndMock,
+						Used: false,
+						Ports: environment.Ports{
+							Start: 9000,
+							Used:  9000,
+							End:   9500,
+						},
+						EnvResources: rscs,
+					},
+					tasks:       make(map[string]*localTask),
+					workspace:   "/custom/workspace/envs/local",
+					initialized: false,
 				}
 			},
 		},
@@ -89,11 +251,15 @@ func Test_nativeMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			m := &localMaker{
 				CommonMaker: &environment.CommonMaker{
-					Fnd: fndMock,
+					Fnd:            fndMock,
+					ResourcesMaker: resourcesMaker,
 				},
 			}
+
+			expectedResources := tt.setupMocks(t, resourcesMaker)
 
 			got, err := m.Make(tt.config, tt.instanceWorkspace)
 
@@ -106,9 +272,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 				assert.NotNil(t, got)
 				actualEnv, ok := got.(*localEnvironment)
 				assert.True(t, ok)
-				expectedEnv := tt.getExpectedEnv(fndMock)
+				expectedEnv := tt.getExpectedEnv(fndMock, expectedResources)
 				assert.Equal(t, expectedEnv, actualEnv)
+
+				// Assert that resources are properly set
+				assert.Equal(t, expectedResources, actualEnv.Resources())
+
+				// Verify workspace path construction
+				expectedWorkspace := filepath.Join(tt.instanceWorkspace, "envs", "local")
+				assert.Equal(t, expectedWorkspace, actualEnv.workspace)
 			}
+
+			resourcesMaker.AssertExpectations(t)
 		})
 	}
 }
@@ -378,6 +553,171 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 		uuid                 string // UUID for each task
 	}{
 		{
+			name:      "successfully runs task with configs, scripts and certificates",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.WorkspaceConfigPaths = map[string]string{
+					"cfg": "/ws/path/c/cfg.json",
+				}
+				ss.EnvironmentConfigPaths = map[string]string{
+					"cfg": "/env/path/c/cfg.json",
+				}
+				ss.WorkspaceScriptPaths = map[string]string{
+					"script": "/ws/path/s/script.sh",
+				}
+				ss.EnvironmentScriptPaths = map[string]string{
+					"script": "/env/path/s/script.sh",
+				}
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"server_cert": {
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/ws/path/certs/server.crt",
+						CertificateFilePath:       "/env/path/certs/server.crt",
+						PrivateKeySourceFilePath:  "/ws/path/certs/server.key",
+						PrivateKeyFilePath:        "/env/path/certs/server.key",
+					},
+					"ca_cert": {
+						// Test certificate with only certificate file (no private key)
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/ws/path/certs/ca.crt",
+						CertificateFilePath:       "/env/path/certs/ca.crt",
+						PrivateKeySourceFilePath:  "", // Empty to test the conditional
+						PrivateKeyFilePath:        "",
+					},
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+
+				// Directory creation expectations
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/s", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/certs", os.FileMode(0755)).Return(nil).Times(3) // 3 times: server.crt, server.key, ca.crt
+				fsMock.On("MkdirAll", ".", os.FileMode(0755)).Return(nil).Times(2)
+
+				// Config file mocks
+				srcConfigFile := appMocks.NewMockFile(t)
+				srcConfigFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcConfigFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcConfigFile.On("Close").Return(nil).Once()
+
+				dstConfigFile := appMocks.NewMockFile(t)
+				dstConfigFile.On("Write", mock.Anything).Return(len("content of the file"), nil).Once()
+				dstConfigFile.On("Close").Return(nil).Once()
+
+				// Script file mocks
+				srcScriptFile := appMocks.NewMockFile(t)
+				srcScriptFile.On("Read", mock.Anything).Return(len("content of the file"), nil).Once()
+				srcScriptFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcScriptFile.On("Close").Return(nil).Once()
+
+				dstScriptFile := appMocks.NewMockFile(t)
+				dstScriptFile.On("Write", mock.Anything).Return(len("content of the file"), nil).Once()
+				dstScriptFile.On("Close").Return(nil).Once()
+
+				// Certificate file mocks (server.crt)
+				srcCertFile := appMocks.NewMockFile(t)
+				srcCertFile.On("Read", mock.Anything).Return(len("cert content"), nil).Once()
+				srcCertFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcCertFile.On("Close").Return(nil).Once()
+
+				dstCertFile := appMocks.NewMockFile(t)
+				dstCertFile.On("Write", mock.Anything).Return(len("cert content"), nil).Once()
+				dstCertFile.On("Close").Return(nil).Once()
+
+				// Private key file mocks (server.key)
+				srcKeyFile := appMocks.NewMockFile(t)
+				srcKeyFile.On("Read", mock.Anything).Return(len("key content"), nil).Once()
+				srcKeyFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcKeyFile.On("Close").Return(nil).Once()
+
+				dstKeyFile := appMocks.NewMockFile(t)
+				dstKeyFile.On("Write", mock.Anything).Return(len("key content"), nil).Once()
+				dstKeyFile.On("Close").Return(nil).Once()
+
+				// CA certificate file mocks (ca.crt only, no private key)
+				srcCaCertFile := appMocks.NewMockFile(t)
+				srcCaCertFile.On("Read", mock.Anything).Return(len("ca cert content"), nil).Once()
+				srcCaCertFile.On("Read", mock.Anything).Return(0, io.EOF)
+				srcCaCertFile.On("Close").Return(nil).Once()
+
+				dstCaCertFile := appMocks.NewMockFile(t)
+				dstCaCertFile.On("Write", mock.Anything).Return(len("ca cert content"), nil).Once()
+				dstCaCertFile.On("Close").Return(nil).Once()
+
+				// File system expectations
+				fsMock.On("Open", "/ws/path/c/cfg.json").Return(srcConfigFile, nil)
+				fsMock.On("Create", "/env/path/c/cfg.json").Return(dstConfigFile, nil)
+				fsMock.On("Open", "/ws/path/s/script.sh").Return(srcScriptFile, nil)
+				fsMock.On("Create", "/env/path/s/script.sh").Return(dstScriptFile, nil)
+				fsMock.On("Open", "/ws/path/certs/server.crt").Return(srcCertFile, nil)
+				fsMock.On("Create", "/env/path/certs/server.crt").Return(dstCertFile, nil)
+				fsMock.On("Open", "/ws/path/certs/server.key").Return(srcKeyFile, nil)
+				fsMock.On("Create", "/env/path/certs/server.key").Return(dstKeyFile, nil)
+				fsMock.On("Open", "/ws/path/certs/ca.crt").Return(srcCaCertFile, nil)
+				fsMock.On("Create", "/env/path/certs/ca.crt").Return(dstCaCertFile, nil)
+
+				// For ca_cert certificate - empty private key paths
+				emptyFile := appMocks.NewMockFile(t)
+				emptyFile.On("Read", mock.Anything).Return(0, io.EOF)
+				emptyFile.On("Close").Return(nil)
+				emptyDstFile := appMocks.NewMockFile(t)
+				emptyDstFile.On("Close").Return(nil)
+				fsMock.On("Open", "").Return(emptyFile, nil)
+				fsMock.On("Create", "").Return(emptyDstFile, nil)
+
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", actionCtx, "test-command", []string{"arg1"}).Return(mockCommand)
+
+				stdoutWriter := &bytes.Buffer{}
+				stderrWriter := &bytes.Buffer{}
+				stdoutWriter.Write([]byte("Stdout!"))
+				stderrWriter.Write([]byte("Stderr!"))
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
+				collectorMock.On("StdoutWriter").Return(stdoutWriter)
+				collectorMock.On("StderrWriter").Return(stderrWriter)
+
+				// Channel to signal the completion of awaitTask
+				taskFinishedChan := make(chan struct{})
+
+				mockCommand.On("SetStdout", stdoutWriter)
+				mockCommand.On("SetStderr", stderrWriter)
+				mockCommand.On("SetSysProcAttr", procAttr)
+				fndMock.On("GenerateUuid").Return("uuid-123")
+
+				mockCommand.On("Start").Return(nil)
+				mockCommand.On("Wait").Return(nil).Run(func(args mock.Arguments) {
+					// Simulate command execution time
+					time.Sleep(50 * time.Millisecond)
+				})
+
+				// Mock collector close and signal completion
+				collectorMock.On("Close").Return(nil).Run(func(args mock.Arguments) {
+					close(taskFinishedChan) // Signal task completion
+				}).Once()
+
+				return mockCommand, taskFinishedChan
+			},
+			expectTask: true,
+			expectedLogs: []string{
+				"Initializing local environment before running task",
+				"Creating command: test-command arg1",
+				"Task uuid-123 started for command: test-command",
+				"Task uuid-123 command finished",
+			},
+			uuid: "uuid-123",
+		},
+		{
 			name:      "successfully runs task with configs and scripts",
 			workspace: "/fake/path",
 			updateServiceSetting: func(ss *environment.ServiceSettings) {
@@ -472,6 +812,121 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				"Task uuid-123 command finished",
 			},
 			uuid: "uuid-123",
+		},
+		{
+			name:      "successfully runs task with empty certificates",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"empty_cert": {
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "", // Empty paths should be skipped
+						CertificateFilePath:       "",
+						PrivateKeySourceFilePath:  "",
+						PrivateKeyFilePath:        "",
+					},
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+
+				// Empty certificate still calls MkdirAll for empty paths
+				fsMock.On("MkdirAll", ".", os.FileMode(0755)).Return(nil).Times(2) // Called twice for cert and key
+
+				// Mock for empty file operations
+				emptyFile := appMocks.NewMockFile(t)
+				emptyFile.On("Read", mock.Anything).Return(0, io.EOF)
+				emptyFile.On("Close").Return(nil)
+				emptyDstFile := appMocks.NewMockFile(t)
+				emptyDstFile.On("Close").Return(nil)
+				fsMock.On("Open", "").Return(emptyFile, nil).Times(2)
+				fsMock.On("Create", "").Return(emptyDstFile, nil).Times(2)
+
+				fndMock.On("Fs").Return(fsMock)
+				mockCommand := appMocks.NewMockCommand(t)
+				mockCommand.On("String").Return("test-command arg1")
+				fndMock.On("ExecCommand", actionCtx, "test-command", []string{"arg1"}).Return(mockCommand)
+
+				stdoutWriter := &bytes.Buffer{}
+				stderrWriter := &bytes.Buffer{}
+				stdoutWriter.Write([]byte("Stdout!"))
+				stderrWriter.Write([]byte("Stderr!"))
+				collectorMock := outputMocks.NewMockCollector(t)
+				outMakerMock.On("MakeCollector", "uuid-123").Return(collectorMock)
+				collectorMock.On("StdoutWriter").Return(stdoutWriter)
+				collectorMock.On("StderrWriter").Return(stderrWriter)
+
+				// Channel to signal the completion of awaitTask
+				taskFinishedChan := make(chan struct{})
+
+				mockCommand.On("SetStdout", stdoutWriter)
+				mockCommand.On("SetStderr", stderrWriter)
+				mockCommand.On("SetSysProcAttr", procAttr)
+				fndMock.On("GenerateUuid").Return("uuid-123")
+
+				mockCommand.On("Start").Return(nil)
+				mockCommand.On("Wait").Return(nil).Run(func(args mock.Arguments) {
+					// Simulate command execution time
+					time.Sleep(50 * time.Millisecond)
+				})
+
+				// Mock collector close and signal completion
+				collectorMock.On("Close").Return(nil).Run(func(args mock.Arguments) {
+					close(taskFinishedChan) // Signal task completion
+				}).Once()
+
+				return mockCommand, taskFinishedChan
+			},
+			expectTask: true,
+			expectedLogs: []string{
+				"Initializing local environment before running task",
+				"Creating command: test-command arg1",
+				"Task uuid-123 started for command: test-command",
+				"Task uuid-123 command finished",
+			},
+			uuid: "uuid-123",
+		},
+		{
+			name:      "certificate copy error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"server_cert": {
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/ws/path/certs/server.crt",
+						CertificateFilePath:       "/env/path/certs/server.crt",
+						PrivateKeySourceFilePath:  "/ws/path/certs/server.key",
+						PrivateKeyFilePath:        "/env/path/certs/server.key",
+					},
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/certs", os.FileMode(0755)).Return(nil)
+
+				// Certificate file fails to open
+				fsMock.On("Open", "/ws/path/certs/server.crt").Return(nil, errors.New("cert file error"))
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "cert file error",
 		},
 		{
 			name:        "successfully runs initialized task",
@@ -616,7 +1071,6 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				mockCommand.On("SetSysProcAttr", procAttr)
 				fndMock.On("GenerateUuid").Return("uuid-123")
 				mockCommand.On("Start").Return(fmt.Errorf("command start error"))
-				fndMock.On("GenerateUuid").Return("uuid-123")
 
 				// No need for taskFinishedChan in this error scenario
 				return mockCommand, nil
@@ -692,12 +1146,6 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				}
 				ss.EnvironmentConfigPaths = map[string]string{
 					"cfg": "/env/path/c/cfg.json",
-				}
-				ss.WorkspaceScriptPaths = map[string]string{
-					"script": "/ws/path/s/script.sh",
-				}
-				ss.EnvironmentScriptPaths = map[string]string{
-					"script": "/env/path/s/script.sh",
 				}
 			},
 			setupMocks: func(
@@ -924,12 +1372,13 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				assert.Equal(t, tt.uuid, locTask.id)
 
 				// Wait for the task to finish
-				<-taskFinishedChan
-				time.Sleep(50 * time.Millisecond)
+				if taskFinishedChan != nil {
+					<-taskFinishedChan
+					time.Sleep(50 * time.Millisecond)
+				}
 				if tt.expectedLogs != nil {
 					assert.Equal(t, tt.expectedLogs, logger.Messages())
 				}
-
 			}
 
 			fndMock.AssertExpectations(t)
@@ -939,6 +1388,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 		})
 	}
 }
+
 func Test_localEnvironment_ExecTaskCommand(t *testing.T) {
 	tests := []struct {
 		name             string

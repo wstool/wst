@@ -46,9 +46,9 @@ type dockerMaker struct {
 	clientMaker client.Maker
 }
 
-func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
+func CreateMaker(fnd app.Foundation, resourcesMaker resources.Maker) Maker {
 	return &dockerMaker{
-		CommonMaker: environment.CreateCommonMaker(fnd, resourceMaker),
+		CommonMaker: environment.CreateCommonMaker(fnd, resourcesMaker),
 		clientMaker: client.CreateMaker(fnd),
 	}
 }
@@ -60,8 +60,9 @@ func (m *dockerMaker) Make(config *types.DockerEnvironment) (environment.Environ
 	}
 
 	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
-		Ports:    config.Ports,
-		Registry: config.Registry,
+		Ports:     config.Ports,
+		Resources: config.Resources,
+		Registry:  config.Registry,
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
@@ -222,6 +223,14 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 			return nil, errors.Errorf("failed to bind script %s for service %s", scriptName, ss.Name)
 		}
 		binds = append(binds, fmt.Sprintf("%s:%s", wsScriptPath, envScriptPath))
+	}
+	for _, cert := range ss.Certificates {
+		if cert.CertificateSourceFilePath != "" {
+			binds = append(binds, fmt.Sprintf("%s:%s", cert.CertificateSourceFilePath, cert.CertificateFilePath))
+		}
+		if cert.PrivateKeySourceFilePath != "" {
+			binds = append(binds, fmt.Sprintf("%s:%s", cert.PrivateKeySourceFilePath, cert.PrivateKeyFilePath))
+		}
 	}
 	hostConfig.Binds = binds
 

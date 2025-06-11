@@ -124,7 +124,7 @@ type Maker interface {
 	Make(
 		config map[string]types.Service,
 		dflts *defaults.Defaults,
-		rscrs resources.Resources,
+		rscrs *resources.Resources,
 		srvs servers.Servers,
 		environments environments.Environments,
 		instanceName string,
@@ -151,7 +151,7 @@ func CreateMaker(fnd app.Foundation, parametersMaker parameters.Maker) Maker {
 func (m *nativeMaker) Make(
 	config map[string]types.Service,
 	dflts *defaults.Defaults,
-	rscrs resources.Resources,
+	rscrs *resources.Resources,
 	srvs servers.Servers,
 	environments environments.Environments,
 	instanceName string,
@@ -446,35 +446,37 @@ func (s *nativeService) renderConfigs() error {
 	return nil
 }
 
-func (s *nativeService) renderCertificatePart(name string, data string, mode os.FileMode) (string, error) {
+func (s *nativeService) renderCertificatePart(name string, data string, mode os.FileMode) (string, string, error) {
 	workspaceScriptPath, environmentScriptPath, err := s.renderingPaths(name, dir.CertDirType)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	err = s.template.RenderToFile(data, parameters.Parameters{}, workspaceScriptPath, mode)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return environmentScriptPath, nil
+	return workspaceScriptPath, environmentScriptPath, nil
 }
 
 func (s *nativeService) renderCertificates() error {
 	renderedCerts := make(map[string]*certificates.RenderedCertificate, len(s.certificates))
 	for name, cert := range s.certificates {
-		envCertPath, err := s.renderCertificatePart(cert.CertificateName(), cert.CertificateData(), 0644)
+		wsCertPath, envCertPath, err := s.renderCertificatePart(cert.CertificateName(), cert.CertificateData(), 0644)
 		if err != nil {
 			return err
 		}
-		envPrivKeyPath, err := s.renderCertificatePart(cert.PrivateKeyName(), cert.PrivateKeyData(), 0600)
+		wsPrivKeyPath, envPrivKeyPath, err := s.renderCertificatePart(cert.PrivateKeyName(), cert.PrivateKeyData(), 0600)
 		if err != nil {
 			return err
 		}
 		renderedCerts[name] = &certificates.RenderedCertificate{
-			Certificate:         cert,
-			CertificateFilePath: envCertPath,
-			PrivateKeyFilePath:  envPrivKeyPath,
+			Certificate:               cert,
+			CertificateFilePath:       envCertPath,
+			CertificateSourceFilePath: wsCertPath,
+			PrivateKeyFilePath:        envPrivKeyPath,
+			PrivateKeySourceFilePath:  wsPrivKeyPath,
 		}
 	}
 	s.renderedCertificates = renderedCerts
@@ -530,6 +532,7 @@ func (s *nativeService) makeEnvServiceSettings() *environment.ServiceSettings {
 		EnvironmentScriptPaths: s.environmentScriptPaths,
 		WorkspaceConfigPaths:   s.workspaceConfigPaths,
 		WorkspaceScriptPaths:   s.workspaceScriptPaths,
+		Certificates:           s.renderedCertificates,
 	}
 }
 

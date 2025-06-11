@@ -16,9 +16,15 @@ import (
 	"github.com/wstool/wst/mocks/authored/external"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	dockerClientMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/docker/client"
+	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
+	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
+	scriptsMocks "github.com/wstool/wst/mocks/generated/run/resources/scripts"
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
+	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
 	"os"
@@ -28,21 +34,25 @@ import (
 
 func TestCreateMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
+	resourcesMaker := resourcesMocks.NewMockMaker(t)
 	tests := []struct {
-		name string
-		fnd  app.Foundation
+		name           string
+		fnd            app.Foundation
+		resourcesMaker resources.Maker
 	}{
 		{
-			name: "create maker",
-			fnd:  fndMock,
+			name:           "create maker",
+			fnd:            fndMock,
+			resourcesMaker: resourcesMaker,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateMaker(tt.fnd)
+			got := CreateMaker(tt.fnd, resourcesMaker)
 			maker, ok := got.(*dockerMaker)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, maker.Fnd)
+			assert.Equal(t, tt.resourcesMaker, maker.ResourcesMaker)
 		})
 	}
 }
@@ -51,13 +61,13 @@ func Test_nativeMaker_Make(t *testing.T) {
 	tests := []struct {
 		name             string
 		config           *types.DockerEnvironment
-		setupMocks       func(*testing.T, *dockerClientMocks.MockMaker) *dockerClientMocks.MockClient
-		getExpectedEnv   func(fndMock *appMocks.MockFoundation, cli *dockerClientMocks.MockClient) *dockerEnvironment
+		setupMocks       func(*testing.T, *dockerClientMocks.MockMaker, *resourcesMocks.MockMaker) (*dockerClientMocks.MockClient, *resources.Resources)
+		getExpectedEnv   func(fndMock *appMocks.MockFoundation, cli *dockerClientMocks.MockClient, rscs *resources.Resources) *dockerEnvironment
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name: "successful docker environment maker creation",
+			name: "successful docker environment maker creation with resources",
 			config: &types.DockerEnvironment{
 				Ports: types.EnvironmentPorts{
 					Start: 8000,
@@ -70,15 +80,58 @@ func Test_nativeMaker_Make(t *testing.T) {
 					},
 				},
 				NamePrefix: "test",
+				Resources: types.Resources{
+					Certificates: map[string]types.Certificate{
+						"web_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"init_script": {
+							Content: "#!/bin/bash\necho 'Docker init'",
+							Path:    "/docker/init.sh",
+							Mode:    "0755",
+						},
+					},
+				},
 			},
-			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker) *dockerClientMocks.MockClient {
+			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker, r *resourcesMocks.MockMaker) (*dockerClientMocks.MockClient, *resources.Resources) {
 				c := dockerClientMocks.NewMockClient(t)
 				m.On("Make").Return(c, nil)
-				return c
+
+				expectedResources := &resources.Resources{
+					Certificates: map[string]certificates.Certificate{
+						"web_ssl": certificatesMocks.NewMockCertificate(t),
+					},
+					Scripts: map[string]scripts.Script{
+						"init_script": scriptsMocks.NewMockScript(t),
+					},
+				}
+
+				// With fixed Docker maker implementation, it should pass the actual resources
+				r.On("Make", types.Resources{
+					Certificates: map[string]types.Certificate{
+						"web_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"init_script": {
+							Content: "#!/bin/bash\necho 'Docker init'",
+							Path:    "/docker/init.sh",
+							Mode:    "0755",
+						},
+					},
+				}).Return(expectedResources, nil)
+
+				return c, expectedResources
 			},
 			getExpectedEnv: func(
 				fndMock *appMocks.MockFoundation,
 				cli *dockerClientMocks.MockClient,
+				rscs *resources.Resources,
 			) *dockerEnvironment {
 				return &dockerEnvironment{
 					ContainerEnvironment: environment.ContainerEnvironment{
@@ -90,6 +143,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 								Used:  8000,
 								End:   8500,
 							},
+							EnvResources: rscs,
 						},
 						Registry: environment.ContainerRegistry{
 							Auth: environment.ContainerRegistryAuth{
@@ -107,6 +161,107 @@ func Test_nativeMaker_Make(t *testing.T) {
 			},
 		},
 		{
+			name: "successful docker environment maker creation with empty resources",
+			config: &types.DockerEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Registry: types.ContainerRegistry{
+					Auth: types.ContainerRegistryAuth{
+						Username: "u1",
+						Password: "p1",
+					},
+				},
+				NamePrefix: "test",
+				Resources:  types.Resources{},
+			},
+			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker, r *resourcesMocks.MockMaker) (*dockerClientMocks.MockClient, *resources.Resources) {
+				c := dockerClientMocks.NewMockClient(t)
+				m.On("Make").Return(c, nil)
+
+				expectedResources := &resources.Resources{}
+				r.On("Make", types.Resources{}).Return(expectedResources, nil)
+
+				return c, expectedResources
+			},
+			getExpectedEnv: func(
+				fndMock *appMocks.MockFoundation,
+				cli *dockerClientMocks.MockClient,
+				rscs *resources.Resources,
+			) *dockerEnvironment {
+				return &dockerEnvironment{
+					ContainerEnvironment: environment.ContainerEnvironment{
+						CommonEnvironment: environment.CommonEnvironment{
+							Fnd:  fndMock,
+							Used: false,
+							Ports: environment.Ports{
+								Start: 8000,
+								Used:  8000,
+								End:   8500,
+							},
+							EnvResources: rscs,
+						},
+						Registry: environment.ContainerRegistry{
+							Auth: environment.ContainerRegistryAuth{
+								Username: "u1",
+								Password: "p1",
+							},
+						},
+					},
+					cli:              cli,
+					namePrefix:       "test",
+					networkName:      "",
+					tasks:            make(map[string]*dockerTask),
+					waitTickDuration: 1 * time.Second,
+				}
+			},
+		},
+		{
+			name: "failed docker environment maker creation due to resource failure",
+			config: &types.DockerEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Registry: types.ContainerRegistry{
+					Auth: types.ContainerRegistryAuth{
+						Username: "u1",
+						Password: "p1",
+					},
+				},
+				NamePrefix: "test",
+				Resources: types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Mode:    "invalid_mode",
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker, r *resourcesMocks.MockMaker) (*dockerClientMocks.MockClient, *resources.Resources) {
+				c := dockerClientMocks.NewMockClient(t)
+				m.On("Make").Return(c, nil)
+
+				// Fix: The Make method will be called with the actual resources from the config
+				// This matches what's actually passed to MakeContainerEnvironment
+				r.On("Make", types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Path:    "",
+							Mode:    "invalid_mode",
+						},
+					},
+				}).Return(nil, errors.New("resource creation failed"))
+
+				return c, nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "resource creation failed",
+		},
+		{
 			name: "failed docker environment maker creation due to client failure",
 			config: &types.DockerEnvironment{
 				Ports: types.EnvironmentPorts{
@@ -120,10 +275,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					},
 				},
 				NamePrefix: "test",
+				Resources:  types.Resources{},
 			},
-			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker) *dockerClientMocks.MockClient {
+			setupMocks: func(t *testing.T, m *dockerClientMocks.MockMaker, r *resourcesMocks.MockMaker) (*dockerClientMocks.MockClient, *resources.Resources) {
+				// Client creation fails first, so resources are never created
 				m.On("Make").Return(nil, errors.New("docker error"))
-				return nil
+				// No resource mock needed since client creation fails first
+
+				return nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create docker client: docker error",
@@ -133,15 +292,17 @@ func Test_nativeMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			clientMakerMock := dockerClientMocks.NewMockMaker(t)
 			m := &dockerMaker{
 				CommonMaker: &environment.CommonMaker{
-					Fnd: fndMock,
+					Fnd:            fndMock,
+					ResourcesMaker: resourcesMaker,
 				},
 				clientMaker: clientMakerMock,
 			}
 
-			cli := tt.setupMocks(t, clientMakerMock)
+			cli, expectedResources := tt.setupMocks(t, clientMakerMock, resourcesMaker)
 
 			got, err := m.Make(tt.config)
 
@@ -154,9 +315,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 				assert.NotNil(t, got)
 				actualEnv, ok := got.(*dockerEnvironment)
 				assert.True(t, ok)
-				expectedEnv := tt.getExpectedEnv(fndMock, cli)
+				expectedEnv := tt.getExpectedEnv(fndMock, cli, expectedResources)
 				assert.Equal(t, expectedEnv, actualEnv)
+
+				// Assert that resources are properly set
+				assert.Equal(t, expectedResources, actualEnv.Resources())
 			}
+
+			// Only assert expectations that were actually set up
+			if !tt.expectError || tt.expectedErrorMsg != "failed to create docker client: docker error" {
+				resourcesMaker.AssertExpectations(t)
+			}
+			clientMakerMock.AssertExpectations(t)
 		})
 	}
 }
@@ -359,7 +529,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 		expectedErrorMsg string
 	}{
 		{
-			name:          "successful docker public run without network",
+			name:          "successful docker public run without network and certs",
 			envNamePrefix: "wt",
 			envStartPort:  8080,
 			networkName:   "",
@@ -454,6 +624,247 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "http://localhost:8080",
+				containerPrivateUrl: "http://wt-svc:1234",
+			},
+		},
+		{
+			name:          "successful docker run with certificates",
+			envNamePrefix: "wt",
+			envStartPort:  8080,
+			networkName:   "wt",
+			ss: &environment.ServiceSettings{
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
+				ContainerConfig: &containers.ContainerConfig{
+					ImageName:        "wst",
+					ImageTag:         "test",
+					RegistryUsername: "u1",
+					RegistryPassword: "p1",
+				},
+				EnvironmentConfigPaths: map[string]string{
+					"main_conf": "/etc/main.conf",
+				},
+				EnvironmentScriptPaths: map[string]string{
+					"test_php": "/www/test.php",
+				},
+				WorkspaceConfigPaths: map[string]string{
+					"main_conf": "/tmp/wst/main.conf",
+				},
+				WorkspaceScriptPaths: map[string]string{
+					"test_php": "/tmp/wst/test.php",
+				},
+				Certificates: map[string]*certificates.RenderedCertificate{
+					"server_cert": {
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/tmp/wst/ssl/server.crt",
+						CertificateFilePath:       "/etc/ssl/server.crt",
+						PrivateKeySourceFilePath:  "/tmp/wst/ssl/server.key",
+						PrivateKeyFilePath:        "/etc/ssl/server.key",
+					},
+					"ca_cert": {
+						// Test certificate with only certificate file (no private key)
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/tmp/wst/ssl/ca.crt",
+						CertificateFilePath:       "/etc/ssl/ca.crt",
+						PrivateKeySourceFilePath:  "", // Empty to test the conditional
+						PrivateKeyFilePath:        "",
+					},
+					"client_key": {
+						// Test certificate with only private key file (no certificate)
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "",
+						CertificateFilePath:       "",
+						PrivateKeySourceFilePath:  "/tmp/wst/ssl/client.key",
+						PrivateKeyFilePath:        "/etc/ssl/client.key",
+					},
+				},
+			},
+			cmd: &environment.Command{
+				Name: "php",
+				Args: []string{"test.php", "run"},
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				cancel context.CancelFunc,
+				fnd *appMocks.MockFoundation,
+				cli *dockerClientMocks.MockClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				pullOut := &pullReaderCloser{}
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
+				var platform *v1.Platform = nil
+				cli.On(
+					"ContainerCreate",
+					ctx,
+					&container.Config{
+						Image: "wst:test",
+						Cmd:   []string{"php", "test.php", "run"},
+					},
+					mock.MatchedBy(func(hostConfig *container.HostConfig) bool {
+						expectedBinds := []string{
+							"/tmp/wst/main.conf:/etc/main.conf",
+							"/tmp/wst/test.php:/www/test.php",
+							"/tmp/wst/ssl/server.crt:/etc/ssl/server.crt",
+							"/tmp/wst/ssl/server.key:/etc/ssl/server.key",
+							"/tmp/wst/ssl/ca.crt:/etc/ssl/ca.crt",
+							"/tmp/wst/ssl/client.key:/etc/ssl/client.key",
+						}
+
+						// Check if all expected binds are present
+						if len(hostConfig.Binds) != len(expectedBinds) {
+							return false
+						}
+
+						// Convert to maps for easy comparison
+						actualBindsMap := make(map[string]bool)
+						for _, bind := range hostConfig.Binds {
+							actualBindsMap[bind] = true
+						}
+
+						for _, expectedBind := range expectedBinds {
+							if !actualBindsMap[expectedBind] {
+								return false
+							}
+						}
+
+						return true
+					}),
+					&network.NetworkingConfig{
+						EndpointsConfig: map[string]*network.EndpointSettings{
+							"wt": {},
+						},
+					},
+					platform,
+					"wt-svc",
+				).Return(container.CreateResponse{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				waitResp := container.WaitResponse{}
+				statusCh := make(chan container.WaitResponse)
+				errCh := make(chan error)
+				go func() {
+					defer close(statusCh)
+					defer close(errCh)
+					statusCh <- waitResp
+				}()
+				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
+					(<-chan container.WaitResponse)(statusCh),
+					(<-chan error)(errCh),
+				)
+				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
+					ContainerJSONBase: &apitypes.ContainerJSONBase{
+						State: &apitypes.ContainerState{
+							Running: true,
+						},
+					},
+				}, nil)
+			},
+			expectedTask: &dockerTask{
+				containerName:       "wt-svc",
+				containerId:         "dcid",
+				containerExecutable: "php",
+				containerReady:      true,
+				containerPublicUrl:  "",
+				containerPrivateUrl: "http://wt-svc:1234",
+			},
+		},
+
+		// Also add a test case with certificates that have empty paths to ensure full coverage
+		{
+			name:          "successful docker run with empty certificate paths",
+			envNamePrefix: "wt",
+			envStartPort:  8080,
+			networkName:   "wt",
+			ss: &environment.ServiceSettings{
+				Name:       "svc",
+				FullName:   "mysvc",
+				Port:       8080,
+				ServerPort: 1234,
+				Public:     false,
+				ContainerConfig: &containers.ContainerConfig{
+					ImageName:        "wst",
+					ImageTag:         "test",
+					RegistryUsername: "u1",
+					RegistryPassword: "p1",
+				},
+				EnvironmentConfigPaths: map[string]string{},
+				EnvironmentScriptPaths: map[string]string{},
+				WorkspaceConfigPaths:   map[string]string{},
+				WorkspaceScriptPaths:   map[string]string{},
+				Certificates: map[string]*certificates.RenderedCertificate{
+					"empty_cert": {
+						Certificate: certificatesMocks.NewMockCertificate(t),
+						// Test certificate with empty paths - should not add any binds
+						CertificateSourceFilePath: "",
+						CertificateFilePath:       "",
+						PrivateKeySourceFilePath:  "",
+						PrivateKeyFilePath:        "",
+					},
+				},
+			},
+			cmd: &environment.Command{
+				Name: "php",
+				Args: []string{"test.php", "run"},
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				cancel context.CancelFunc,
+				fnd *appMocks.MockFoundation,
+				cli *dockerClientMocks.MockClient,
+			) {
+				fnd.On("DryRun").Return(false)
+				pullOut := &pullReaderCloser{}
+				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
+				var platform *v1.Platform = nil
+				cli.On(
+					"ContainerCreate",
+					ctx,
+					&container.Config{
+						Image: "wst:test",
+						Cmd:   []string{"php", "test.php", "run"},
+					},
+					&container.HostConfig{
+						Binds: []string{}, // Empty binds since all certificate paths are empty
+					},
+					&network.NetworkingConfig{
+						EndpointsConfig: map[string]*network.EndpointSettings{
+							"wt": {},
+						},
+					},
+					platform,
+					"wt-svc",
+				).Return(container.CreateResponse{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				waitResp := container.WaitResponse{}
+				statusCh := make(chan container.WaitResponse)
+				errCh := make(chan error)
+				go func() {
+					defer close(statusCh)
+					defer close(errCh)
+					statusCh <- waitResp
+				}()
+				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
+					(<-chan container.WaitResponse)(statusCh),
+					(<-chan error)(errCh),
+				)
+				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
+					ContainerJSONBase: &apitypes.ContainerJSONBase{
+						State: &apitypes.ContainerState{
+							Running: true,
+						},
+					},
+				}, nil)
+			},
+			expectedTask: &dockerTask{
+				containerName:       "wt-svc",
+				containerId:         "dcid",
+				containerExecutable: "php",
+				containerReady:      true,
+				containerPublicUrl:  "",
 				containerPrivateUrl: "http://wt-svc:1234",
 			},
 		},

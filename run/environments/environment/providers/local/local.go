@@ -41,9 +41,9 @@ type localMaker struct {
 	*environment.CommonMaker
 }
 
-func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
+func CreateMaker(fnd app.Foundation, resourcesMaker resources.Maker) Maker {
 	return &localMaker{
-		CommonMaker: environment.CreateCommonMaker(fnd, resourceMaker),
+		CommonMaker: environment.CreateCommonMaker(fnd, resourcesMaker),
 	}
 }
 
@@ -52,7 +52,8 @@ func (m *localMaker) Make(
 	instanceWorkspace string,
 ) (environment.Environment, error) {
 	commonEnv, err := m.MakeCommonEnvironment(&types.CommonEnvironment{
-		Ports: config.Ports,
+		Ports:     config.Ports,
+		Resources: config.Resources,
 	})
 	if err != nil {
 		return nil, err
@@ -173,28 +174,35 @@ func copyFile(fs app.Fs, src, dst string) error {
 	return nil
 }
 
+func (l *localEnvironment) copyWorkspacePath(fs app.Fs, configType, wsPath, envPath string) error {
+	envDir := filepath.Dir(envPath)
+	err := fs.MkdirAll(envDir, 0755)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create %s environment directory for %s", configType, envDir)
+	}
+
+	err = copyFile(fs, wsPath, envPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to copy %s file from workspace path %s to environment path %s",
+			configType, wsPath, envPath)
+	}
+
+	return nil
+}
+
 func (l *localEnvironment) copyWorkspacePaths(
+	fs app.Fs,
 	configType string,
 	workspacePaths,
 	envPaths map[string]string,
 ) error {
-	fs := l.Fnd.Fs()
 	for name, wsPath := range workspacePaths {
 		envPath, found := envPaths[name]
 		if !found {
 			return errors.Errorf("%s environment path not found for %s", configType, name)
 		}
 
-		envDir := filepath.Dir(envPath)
-		err := fs.MkdirAll(envDir, 0755)
-		if err != nil {
-			return errors.Wrapf(err, "failed to create %s environment directory for %s", configType, envDir)
-		}
-
-		err = copyFile(fs, wsPath, envPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to copy %s file from workspace path %s to environment path %s",
-				configType, wsPath, envPath)
+		if err := l.copyWorkspacePath(fs, configType, wsPath, envPath); err != nil {
 		}
 	}
 	return nil
@@ -211,13 +219,24 @@ func (l *localEnvironment) RunTask(ctx context.Context, ss *environment.ServiceS
 		}
 	}
 
-	err := l.copyWorkspacePaths("configs", ss.WorkspaceConfigPaths, ss.EnvironmentConfigPaths)
+	fs := l.Fnd.Fs()
+	err := l.copyWorkspacePaths(fs, "configs", ss.WorkspaceConfigPaths, ss.EnvironmentConfigPaths)
 	if err != nil {
 		return nil, err
 	}
-	err = l.copyWorkspacePaths("scripts", ss.WorkspaceScriptPaths, ss.EnvironmentScriptPaths)
+	err = l.copyWorkspacePaths(fs, "scripts", ss.WorkspaceScriptPaths, ss.EnvironmentScriptPaths)
 	if err != nil {
 		return nil, err
+	}
+	for _, cert := range ss.Certificates {
+		err = l.copyWorkspacePath(fs, "certificates", cert.CertificateSourceFilePath, cert.CertificateFilePath)
+		if err != nil {
+			return nil, err
+		}
+		err = l.copyWorkspacePath(fs, "private keys", cert.PrivateKeySourceFilePath, cert.PrivateKeyFilePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	command := l.Fnd.ExecCommand(l.ctx, cmd.Name, cmd.Args)

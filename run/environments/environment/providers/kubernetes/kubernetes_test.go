@@ -12,10 +12,16 @@ import (
 	"github.com/wstool/wst/mocks/authored/external"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	k8sClientMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/kubernetes/clients"
+	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
+	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
+	scriptsMocks "github.com/wstool/wst/mocks/generated/run/resources/scripts"
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
+	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
+	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,21 +36,25 @@ import (
 
 func TestCreateMaker(t *testing.T) {
 	fndMock := appMocks.NewMockFoundation(t)
+	resourcesMaker := resourcesMocks.NewMockMaker(t)
 	tests := []struct {
-		name string
-		fnd  app.Foundation
+		name           string
+		fnd            app.Foundation
+		resourcesMaker resources.Maker
 	}{
 		{
-			name: "create maker",
-			fnd:  fndMock,
+			name:           "create maker",
+			fnd:            fndMock,
+			resourcesMaker: resourcesMaker,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CreateMaker(tt.fnd)
+			got := CreateMaker(tt.fnd, resourcesMaker)
 			maker, ok := got.(*kubernetesMaker)
 			assert.True(t, ok)
 			assert.Equal(t, tt.fnd, maker.Fnd)
+			assert.Equal(t, tt.resourcesMaker, maker.ResourcesMaker)
 		})
 	}
 }
@@ -53,11 +63,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 	tests := []struct {
 		name       string
 		config     *types.KubernetesEnvironment
-		setupMocks func(*testing.T, *k8sClientMocks.MockMaker, *types.KubernetesEnvironment) (
+		setupMocks func(*testing.T, *k8sClientMocks.MockMaker, *resourcesMocks.MockMaker, *types.KubernetesEnvironment) (
 			*k8sClientMocks.MockConfigMapClient,
 			*k8sClientMocks.MockDeploymentClient,
 			*k8sClientMocks.MockPodClient,
 			*k8sClientMocks.MockServiceClient,
+			*resources.Resources,
 		)
 		getExpectedEnv func(
 			fndMock *appMocks.MockFoundation,
@@ -65,12 +76,13 @@ func Test_nativeMaker_Make(t *testing.T) {
 			deploymentClient *k8sClientMocks.MockDeploymentClient,
 			podClient *k8sClientMocks.MockPodClient,
 			serviceClient *k8sClientMocks.MockServiceClient,
+			rscs *resources.Resources,
 		) *kubernetesEnvironment
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name: "successful kubernetes environment maker creation",
+			name: "successful kubernetes environment maker creation with resources",
 			config: &types.KubernetesEnvironment{
 				Ports: types.EnvironmentPorts{
 					Start: 8000,
@@ -84,12 +96,28 @@ func Test_nativeMaker_Make(t *testing.T) {
 				},
 				Namespace:  "test",
 				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources: types.Resources{
+					Certificates: map[string]types.Certificate{
+						"k8s_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\nk8s cert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nk8s key\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"k8s_script": {
+							Content: "#!/bin/bash\necho 'Kubernetes init'",
+							Path:    "/k8s/init.sh",
+							Mode:    "0755",
+						},
+					},
+				},
 			},
-			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, config *types.KubernetesEnvironment) (
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
 				*k8sClientMocks.MockConfigMapClient,
 				*k8sClientMocks.MockDeploymentClient,
 				*k8sClientMocks.MockPodClient,
 				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
 			) {
 				cmc := k8sClientMocks.NewMockConfigMapClient(t)
 				m.On("MakeConfigMapClient", config).Return(cmc, nil)
@@ -99,7 +127,33 @@ func Test_nativeMaker_Make(t *testing.T) {
 				m.On("MakePodClient", config).Return(pc, nil)
 				sc := k8sClientMocks.NewMockServiceClient(t)
 				m.On("MakeServiceClient", config).Return(sc, nil)
-				return cmc, dc, pc, sc
+
+				expectedResources := &resources.Resources{
+					Certificates: map[string]certificates.Certificate{
+						"k8s_ssl": certificatesMocks.NewMockCertificate(t),
+					},
+					Scripts: map[string]scripts.Script{
+						"k8s_script": scriptsMocks.NewMockScript(t),
+					},
+				}
+
+				r.On("Make", types.Resources{
+					Certificates: map[string]types.Certificate{
+						"k8s_ssl": {
+							Certificate: "-----BEGIN CERTIFICATE-----\nk8s cert\n-----END CERTIFICATE-----",
+							PrivateKey:  "-----BEGIN PRIVATE KEY-----\nk8s key\n-----END PRIVATE KEY-----",
+						},
+					},
+					Scripts: map[string]types.Script{
+						"k8s_script": {
+							Content: "#!/bin/bash\necho 'Kubernetes init'",
+							Path:    "/k8s/init.sh",
+							Mode:    "0755",
+						},
+					},
+				}).Return(expectedResources, nil)
+
+				return cmc, dc, pc, sc, expectedResources
 			},
 			getExpectedEnv: func(
 				fndMock *appMocks.MockFoundation,
@@ -107,6 +161,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				deploymentClient *k8sClientMocks.MockDeploymentClient,
 				podClient *k8sClientMocks.MockPodClient,
 				serviceClient *k8sClientMocks.MockServiceClient,
+				rscs *resources.Resources,
 			) *kubernetesEnvironment {
 				return &kubernetesEnvironment{
 					ContainerEnvironment: environment.ContainerEnvironment{
@@ -118,6 +173,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 								Used:  8000,
 								End:   8500,
 							},
+							EnvResources: rscs,
 						},
 						Registry: environment.ContainerRegistry{
 							Auth: environment.ContainerRegistryAuth{
@@ -138,6 +194,137 @@ func Test_nativeMaker_Make(t *testing.T) {
 			},
 		},
 		{
+			name: "successful kubernetes environment maker creation with empty resources",
+			config: &types.KubernetesEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Registry: types.ContainerRegistry{
+					Auth: types.ContainerRegistryAuth{
+						Username: "u1",
+						Password: "p1",
+					},
+				},
+				Namespace:  "test",
+				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources:  types.Resources{},
+			},
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
+				*k8sClientMocks.MockConfigMapClient,
+				*k8sClientMocks.MockDeploymentClient,
+				*k8sClientMocks.MockPodClient,
+				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
+			) {
+				cmc := k8sClientMocks.NewMockConfigMapClient(t)
+				m.On("MakeConfigMapClient", config).Return(cmc, nil)
+				dc := k8sClientMocks.NewMockDeploymentClient(t)
+				m.On("MakeDeploymentClient", config).Return(dc, nil)
+				pc := k8sClientMocks.NewMockPodClient(t)
+				m.On("MakePodClient", config).Return(pc, nil)
+				sc := k8sClientMocks.NewMockServiceClient(t)
+				m.On("MakeServiceClient", config).Return(sc, nil)
+
+				expectedResources := &resources.Resources{}
+				r.On("Make", types.Resources{}).Return(expectedResources, nil)
+
+				return cmc, dc, pc, sc, expectedResources
+			},
+			getExpectedEnv: func(
+				fndMock *appMocks.MockFoundation,
+				configMapClient *k8sClientMocks.MockConfigMapClient,
+				deploymentClient *k8sClientMocks.MockDeploymentClient,
+				podClient *k8sClientMocks.MockPodClient,
+				serviceClient *k8sClientMocks.MockServiceClient,
+				rscs *resources.Resources,
+			) *kubernetesEnvironment {
+				return &kubernetesEnvironment{
+					ContainerEnvironment: environment.ContainerEnvironment{
+						CommonEnvironment: environment.CommonEnvironment{
+							Fnd:  fndMock,
+							Used: false,
+							Ports: environment.Ports{
+								Start: 8000,
+								Used:  8000,
+								End:   8500,
+							},
+							EnvResources: rscs,
+						},
+						Registry: environment.ContainerRegistry{
+							Auth: environment.ContainerRegistryAuth{
+								Username: "u1",
+								Password: "p1",
+							},
+						},
+					},
+					configMapClient:  configMapClient,
+					deploymentClient: deploymentClient,
+					podClient:        podClient,
+					serviceClient:    serviceClient,
+					useUniqueName:    true,
+					namespace:        "test",
+					kubeconfigPath:   "/home/kubeconfig/config.yaml",
+					tasks:            make(map[string]*kubernetesTask),
+				}
+			},
+		},
+		{
+			name: "failed kubernetes environment maker creation due to resource failure",
+			config: &types.KubernetesEnvironment{
+				Ports: types.EnvironmentPorts{
+					Start: 8000,
+					End:   8500,
+				},
+				Registry: types.ContainerRegistry{
+					Auth: types.ContainerRegistryAuth{
+						Username: "u1",
+						Password: "p1",
+					},
+				},
+				Namespace:  "test",
+				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources: types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Mode:    "invalid_mode",
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
+				*k8sClientMocks.MockConfigMapClient,
+				*k8sClientMocks.MockDeploymentClient,
+				*k8sClientMocks.MockPodClient,
+				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
+			) {
+				cmc := k8sClientMocks.NewMockConfigMapClient(t)
+				m.On("MakeConfigMapClient", config).Return(cmc, nil)
+				dc := k8sClientMocks.NewMockDeploymentClient(t)
+				m.On("MakeDeploymentClient", config).Return(dc, nil)
+				pc := k8sClientMocks.NewMockPodClient(t)
+				m.On("MakePodClient", config).Return(pc, nil)
+				sc := k8sClientMocks.NewMockServiceClient(t)
+				m.On("MakeServiceClient", config).Return(sc, nil)
+
+				r.On("Make", types.Resources{
+					Scripts: map[string]types.Script{
+						"bad_script": {
+							Content: "echo test",
+							Path:    "",
+							Mode:    "invalid_mode",
+						},
+					},
+				}).Return(nil, errors.New("resource creation failed"))
+
+				return cmc, dc, pc, sc, nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "resource creation failed",
+		},
+		{
 			name: "failed kubernetes environment maker creation due to service client failure",
 			config: &types.KubernetesEnvironment{
 				Ports: types.EnvironmentPorts{
@@ -152,12 +339,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 				},
 				Namespace:  "test",
 				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources:  types.Resources{},
 			},
-			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, config *types.KubernetesEnvironment) (
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
 				*k8sClientMocks.MockConfigMapClient,
 				*k8sClientMocks.MockDeploymentClient,
 				*k8sClientMocks.MockPodClient,
 				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
 			) {
 				cmc := k8sClientMocks.NewMockConfigMapClient(t)
 				m.On("MakeConfigMapClient", config).Return(cmc, nil)
@@ -166,7 +355,8 @@ func Test_nativeMaker_Make(t *testing.T) {
 				pc := k8sClientMocks.NewMockPodClient(t)
 				m.On("MakePodClient", config).Return(pc, nil)
 				m.On("MakeServiceClient", config).Return(nil, errors.New("failed sc"))
-				return cmc, dc, pc, nil
+				// No resource mocking needed since service client fails first
+				return cmc, dc, pc, nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create kubernetes client: failed sc",
@@ -186,19 +376,22 @@ func Test_nativeMaker_Make(t *testing.T) {
 				},
 				Namespace:  "test",
 				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources:  types.Resources{},
 			},
-			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, config *types.KubernetesEnvironment) (
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
 				*k8sClientMocks.MockConfigMapClient,
 				*k8sClientMocks.MockDeploymentClient,
 				*k8sClientMocks.MockPodClient,
 				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
 			) {
 				cmc := k8sClientMocks.NewMockConfigMapClient(t)
 				m.On("MakeConfigMapClient", config).Return(cmc, nil)
 				dc := k8sClientMocks.NewMockDeploymentClient(t)
 				m.On("MakeDeploymentClient", config).Return(dc, nil)
 				m.On("MakePodClient", config).Return(nil, errors.New("failed sc"))
-				return cmc, dc, nil, nil
+				// No resource mocking needed since pod client fails
+				return cmc, dc, nil, nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create kubernetes client: failed sc",
@@ -218,17 +411,20 @@ func Test_nativeMaker_Make(t *testing.T) {
 				},
 				Namespace:  "test",
 				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources:  types.Resources{},
 			},
-			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, config *types.KubernetesEnvironment) (
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
 				*k8sClientMocks.MockConfigMapClient,
 				*k8sClientMocks.MockDeploymentClient,
 				*k8sClientMocks.MockPodClient,
 				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
 			) {
 				cmc := k8sClientMocks.NewMockConfigMapClient(t)
 				m.On("MakeConfigMapClient", config).Return(cmc, nil)
 				m.On("MakeDeploymentClient", config).Return(nil, errors.New("failed dc"))
-				return cmc, nil, nil, nil
+				// No resource mocking needed since deployment client fails
+				return cmc, nil, nil, nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create kubernetes client: failed dc",
@@ -248,15 +444,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 				},
 				Namespace:  "test",
 				Kubeconfig: "/home/kubeconfig/config.yaml",
+				Resources:  types.Resources{},
 			},
-			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, config *types.KubernetesEnvironment) (
+			setupMocks: func(t *testing.T, m *k8sClientMocks.MockMaker, r *resourcesMocks.MockMaker, config *types.KubernetesEnvironment) (
 				*k8sClientMocks.MockConfigMapClient,
 				*k8sClientMocks.MockDeploymentClient,
 				*k8sClientMocks.MockPodClient,
 				*k8sClientMocks.MockServiceClient,
+				*resources.Resources,
 			) {
 				m.On("MakeConfigMapClient", config).Return(nil, errors.New("failed cmc"))
-				return nil, nil, nil, nil
+				// No resource mocking needed since config map client fails first
+				return nil, nil, nil, nil, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create kubernetes client: failed cmc",
@@ -266,15 +465,17 @@ func Test_nativeMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			clientsMakerMock := k8sClientMocks.NewMockMaker(t)
 			m := &kubernetesMaker{
 				CommonMaker: &environment.CommonMaker{
-					Fnd: fndMock,
+					Fnd:            fndMock,
+					ResourcesMaker: resourcesMaker,
 				},
 				clientsMaker: clientsMakerMock,
 			}
 
-			cmc, dc, pc, sc := tt.setupMocks(t, clientsMakerMock, tt.config)
+			cmc, dc, pc, sc, expectedResources := tt.setupMocks(t, clientsMakerMock, resourcesMaker, tt.config)
 
 			got, err := m.Make(tt.config)
 
@@ -287,9 +488,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 				assert.NotNil(t, got)
 				actualEnv, ok := got.(*kubernetesEnvironment)
 				assert.True(t, ok)
-				expectedEnv := tt.getExpectedEnv(fndMock, cmc, dc, pc, sc)
+				expectedEnv := tt.getExpectedEnv(fndMock, cmc, dc, pc, sc, expectedResources)
 				assert.Equal(t, expectedEnv, actualEnv)
+
+				// Assert that resources are properly set
+				assert.Equal(t, expectedResources, actualEnv.Resources())
 			}
+
+			// Only assert resource expectations if they were set up
+			if !tt.expectError || tt.expectedErrorMsg == "resource creation failed" {
+				resourcesMaker.AssertExpectations(t)
+			}
+			clientsMakerMock.AssertExpectations(t)
 		})
 	}
 }

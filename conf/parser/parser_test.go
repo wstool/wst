@@ -1662,7 +1662,6 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 		})
 	}
 }
-
 func Test_ConfigParser_ParseConfig(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1701,6 +1700,21 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								"start": 8000,
 								"end":   9000,
 							},
+							"resources": map[string]interface{}{
+								"certificates": map[string]interface{}{
+									"web_ssl": map[string]interface{}{
+										"certificate": "-----BEGIN CERTIFICATE-----\ncommon cert\n-----END CERTIFICATE-----",
+										"private_key": "-----BEGIN PRIVATE KEY-----\ncommon key\n-----END PRIVATE KEY-----",
+									},
+								},
+								"scripts": map[string]interface{}{
+									"common_init": map[string]interface{}{
+										"content": "#!/bin/bash\necho 'Common init'",
+										"path":    "/init/common.sh",
+										"mode":    "0755",
+									},
+								},
+							},
 						},
 						"docker": map[string]interface{}{
 							"registry": map[string]interface{}{
@@ -1724,6 +1738,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 						"common": map[string]interface{}{
 							"available": true,
 							"dirs": map[string]interface{}{
+								"certs":  "/etc/certs",
 								"conf":   "/etc/common",
 								"run":    "/var/run/common",
 								"script": "/usr/local/bin",
@@ -1842,6 +1857,12 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								},
 							},
 							"resources": map[string]interface{}{
+								"certificates": map[string]interface{}{
+									"api_ssl": map[string]interface{}{
+										"certificate": "/etc/ssl/api.crt",
+										"private_key": "/etc/ssl/api.key",
+									},
+								},
 								"scripts": map[string]interface{}{
 									"index_php": map[string]interface{}{
 										"content": "<?php echo 1; ?>",
@@ -1855,6 +1876,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										"name": "web_server",
 									},
 									"resources": map[string]interface{}{
+										"certificates": []interface{}{"web_ssl", "api_ssl"},
 										"scripts": []interface{}{
 											"init.sh",
 										},
@@ -1905,6 +1927,8 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 			files: map[string]string{
 				"/path/to/kubeconfig":   "kube: true",
 				"/etc/nginx/nginx.conf": "nginx on",
+				"/etc/ssl/api.crt":      "api certificate",
+				"/etc/ssl/api.key":      "api private key",
 			},
 			expectedConfig: &types.Config{
 				Version:     "0.1",
@@ -1932,6 +1956,22 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 								Start: 8000,
 								End:   9000,
 							},
+							Resources: types.Resources{
+								Certificates: map[string]types.Certificate{
+									"web_ssl": {
+										Certificate: "-----BEGIN CERTIFICATE-----\ncommon cert\n-----END CERTIFICATE-----",
+										PrivateKey:  "-----BEGIN PRIVATE KEY-----\ncommon key\n-----END PRIVATE KEY-----",
+									},
+								},
+								Scripts: map[string]types.Script{
+									"common_init": {
+										Content:    "#!/bin/bash\necho 'Common init'",
+										Path:       "/init/common.sh",
+										Mode:       "0755",
+										Parameters: nil,
+									},
+								},
+							},
 						},
 						string(types.DockerEnvironmentType): &types.DockerEnvironment{
 							Registry: types.ContainerRegistry{
@@ -1958,6 +1998,12 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 							Description: "test instance",
 							Labels:      []string{"test", "nginx"},
 							Resources: types.Resources{
+								Certificates: map[string]types.Certificate{
+									"api_ssl": {
+										Certificate: "/etc/ssl/api.crt",
+										PrivateKey:  "/etc/ssl/api.key",
+									},
+								},
 								Scripts: map[string]types.Script{
 									"index_php": {
 										Content:    "<?php echo 1; ?>",
@@ -1974,7 +2020,12 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										Sandbox: "",
 									},
 									Resources: types.ServiceResources{
-										Scripts: types.ServiceScripts{
+										Certificates: types.ServiceResource{
+											IncludeAll:  false,
+											IncludeList: []string{"web_ssl", "api_ssl"},
+										},
+										Scripts: types.ServiceResource{
+											IncludeAll:  false,
 											IncludeList: []string{"init.sh"},
 										},
 									},
@@ -2055,6 +2106,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 						"common": &types.CommonSandbox{
 							Available: true,
 							Dirs: map[string]string{
+								"certs":  "/etc/certs",
 								"conf":   "/etc/common",
 								"run":    "/var/run/common",
 								"script": "/usr/local/bin",

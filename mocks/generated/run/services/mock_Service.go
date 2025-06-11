@@ -5,8 +5,11 @@ package services
 import (
 	context "context"
 
-	environment "github.com/wstool/wst/run/environments/environment"
+	certificates "github.com/wstool/wst/run/resources/certificates"
+
 	dir "github.com/wstool/wst/run/sandboxes/dir"
+
+	environment "github.com/wstool/wst/run/environments/environment"
 
 	io "io"
 
@@ -380,6 +383,64 @@ func (_c *MockService_Executable_Call) Return(_a0 string, _a1 error) *MockServic
 }
 
 func (_c *MockService_Executable_Call) RunAndReturn(run func() (string, error)) *MockService_Executable_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindCertificate provides a mock function with given fields: name
+func (_m *MockService) FindCertificate(name string) (*certificates.RenderedCertificate, error) {
+	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindCertificate")
+	}
+
+	var r0 *certificates.RenderedCertificate
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*certificates.RenderedCertificate, error)); ok {
+		return rf(name)
+	}
+	if rf, ok := ret.Get(0).(func(string) *certificates.RenderedCertificate); ok {
+		r0 = rf(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*certificates.RenderedCertificate)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_FindCertificate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindCertificate'
+type MockService_FindCertificate_Call struct {
+	*mock.Call
+}
+
+// FindCertificate is a helper method to define mock.On call
+//   - name string
+func (_e *MockService_Expecter) FindCertificate(name interface{}) *MockService_FindCertificate_Call {
+	return &MockService_FindCertificate_Call{Call: _e.mock.On("FindCertificate", name)}
+}
+
+func (_c *MockService_FindCertificate_Call) Run(run func(name string)) *MockService_FindCertificate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_FindCertificate_Call) Return(_a0 *certificates.RenderedCertificate, _a1 error) *MockService_FindCertificate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_FindCertificate_Call) RunAndReturn(run func(string) (*certificates.RenderedCertificate, error)) *MockService_FindCertificate_Call {
 	_c.Call.Return(run)
 	return _c
 }

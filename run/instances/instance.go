@@ -28,7 +28,6 @@ import (
 	"github.com/wstool/wst/run/instances/runtime"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/resources"
-	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/servers"
 	"github.com/wstool/wst/run/services"
 	"github.com/wstool/wst/run/spec/defaults"
@@ -69,7 +68,7 @@ type nativeInstanceMaker struct {
 	actionMaker      actions.ActionMaker
 	parametersMaker  parameters.Maker
 	servicesMaker    services.Maker
-	resourceMaker    resources.Maker
+	resourcesMaker   resources.Maker
 	environmentMaker environments.Maker
 	runtimeMaker     runtime.Maker
 }
@@ -80,14 +79,14 @@ func CreateInstanceMaker(
 	parametersMaker parameters.Maker,
 ) InstanceMaker {
 	runtimeMaker := runtime.CreateMaker(fnd)
-	resourceMaker := resources.CreateMaker(fnd, parametersMaker)
+	resourcesMaker := resources.CreateMaker(fnd, parametersMaker)
 	return &nativeInstanceMaker{
 		fnd:              fnd,
 		parametersMaker:  parametersMaker,
 		actionMaker:      actions.CreateActionMaker(fnd, expectationsMaker, parametersMaker, runtimeMaker),
 		servicesMaker:    services.CreateMaker(fnd, parametersMaker),
-		resourceMaker:    resourceMaker,
-		environmentMaker: environments.CreateMaker(fnd, resourceMaker),
+		resourcesMaker:   resourcesMaker,
+		environmentMaker: environments.CreateMaker(fnd, resourcesMaker),
 		runtimeMaker:     runtimeMaker,
 	}
 }
@@ -135,7 +134,7 @@ func (m *nativeInstanceMaker) Make(
 		runtimeMaker:           m.runtimeMaker,
 		environmentMaker:       m.environmentMaker,
 		actionMaker:            m.actionMaker,
-		scriptsMaker:           m.scriptsMaker,
+		resourcesMaker:         m.resourcesMaker,
 		servicesMaker:          m.servicesMaker,
 		configActions:          instanceConfig.Actions,
 		configServices:         instanceConfig.Services,
@@ -163,7 +162,7 @@ type nativeInstance struct {
 	fnd app.Foundation
 	// Makers
 	runtimeMaker     runtime.Maker
-	scriptsMaker     scripts.Maker
+	resourcesMaker   resources.Maker
 	environmentMaker environments.Maker
 	servicesMaker    services.Maker
 	actionMaker      actions.ActionMaker
@@ -240,7 +239,8 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	}
 	// Skip if all defined
 	if len(i.configActions) > 0 && len(i.configInstanceEnvs) > 0 && len(i.configResources.Scripts) > 0 &&
-		len(i.configServices) > 0 && !i.instanceTimeoutDefault && !i.actionTimeoutDefault {
+		len(i.configResources.Certificates) > 0 && len(i.configServices) > 0 && !i.instanceTimeoutDefault &&
+		!i.actionTimeoutDefault {
 		return nil
 	}
 	// Make sure there is no circular extending
@@ -269,7 +269,11 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 	if len(i.configServices) == 0 {
 		i.configServices = extendInst.ConfigServices()
 	}
-	// Extend resource script if not already defined
+	// Extend resource certs if not already defined
+	if len(i.configResources.Certificates) == 0 {
+		i.configResources.Certificates = extendInst.ConfigResources().Certificates
+	}
+	// Extend resource scripts if not already defined
 	if len(i.configResources.Scripts) == 0 {
 		i.configResources.Scripts = extendInst.ConfigResources().Scripts
 	}
@@ -289,7 +293,7 @@ func (i *nativeInstance) Extend(instsMap map[string]Instance) error {
 }
 
 func (i *nativeInstance) Init() error {
-	scrpts, err := i.scriptsMaker.Make(i.configResources.Scripts)
+	rscrs, err := i.resourcesMaker.Make(i.configResources)
 	if err != nil {
 		return err
 	}
@@ -303,7 +307,7 @@ func (i *nativeInstance) Init() error {
 	i.envs = envs
 
 	sl, err := i.servicesMaker.Make(
-		i.configServices, i.defaults, scrpts, i.servers, envs, i.name, i.index, i.workspace, i.params)
+		i.configServices, i.defaults, rscrs, i.servers, envs, i.name, i.index, i.workspace, i.params)
 	if err != nil {
 		return err
 	}

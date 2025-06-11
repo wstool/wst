@@ -33,8 +33,10 @@ type Certificate interface {
 
 type RenderedCertificate struct {
 	Certificate
-	PrivateKeyFilePath  string
-	CertificateFilePath string
+	PrivateKeyFilePath        string
+	CertificateFilePath       string
+	PrivateKeySourceFilePath  string
+	CertificateSourceFilePath string
 }
 
 func (c Certificates) Inherit(pc Certificates) Certificates {

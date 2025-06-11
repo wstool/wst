@@ -10,6 +10,7 @@ import (
 	dockerMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/docker"
 	kubernetesMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/kubernetes"
 	localMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/local"
+	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"testing"
 )
@@ -498,10 +499,11 @@ func TestNativeMaker_Make(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			localMock := localMocks.NewMockMaker(t)
 			dockerMock := dockerMocks.NewMockMaker(t)
 			kubernetesMock := kubernetesMocks.NewMockMaker(t)
-			maker := CreateMaker(fndMock)
+			maker := CreateMaker(fndMock, resourcesMaker)
 			nm := maker.(*nativeMaker)
 			nm.localMaker = localMock
 			nm.dockerMaker = dockerMock

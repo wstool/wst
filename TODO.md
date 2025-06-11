@@ -50,10 +50,9 @@ in the future.
 #### Structure - Instances, Actions, Servers, Services
 
 - extend environment and request action to support TLS certificate
-  - common environment certificates field with map of certificates where each has type (static, file), certificate and private key
-  - some certificate abstraction that would be used for common operation that will be the same for all environments
-  - extend service to provide selector for certificate by its name so it can be used in templates
-  - extend templating to represent certificate and make it accessible
+  - fix tests for local environment and limit number of fs call (check directory existence before mkdir)
+  - fix and add unit tests for instance, resources and service
+  - test templating to represent certificate and make it accessible
   - environment publicUrl should support https - currently it is hard coded to return http so it should allow extra param to select it
   - extend request action with a protocol option to select between http and https
 - http/2 requests
@@ -111,7 +110,11 @@ in the future.
   - consider more consistent naming differentiating that service port is public and server port is private
 - add support for ephemeral port allocation that should be the default if not ports specified
   - it should be also possible to overwrite port to ephemeral selection even if specified
-- add support for more self-signed certificate type
+- consider adding support default Dirs so it is not required to specify in the config
+  - could be either the actual enum name or another tag
+- add a special resource file structure that could be used for scripts but also for certs and keys
+  - this will also allow using custom paths and mode for certs and keys
+- add support for more generating self-signed certificate
   - to allow automatic creation of certificate
   - possibly also look to what other certificate types could be useful
 - enhance parameters merging
@@ -125,6 +128,7 @@ in the future.
 - fuzzing action
 - replace environment.ServiceSettings struct with environment.Service interface
   - code clean up really with saving some calls - it just messy to pre-create this struct
+  - look into cleaner handling wp and env paths - use some struct with wp and env path rather than having 2 string maps
 
 #### Execution
 
@@ -167,6 +171,7 @@ in the future.
 - pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
 - support exec
 - implement storing and handling certificates
+  - this should go to secrets from rendered certificates
 - implement https publicUrl support
 - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
 - support and test native hook start where command is nil (set better executable - ideally configurable)
@@ -179,6 +184,7 @@ in the future.
 - pulling of image is not awaited - waiting to fully download the image does not work
 - support exec
 - implement storing and handling certificates
+  - this is currently done using bind so check if there is a better (more secure) way to do it for private keye
 - implement https publicUrl support
 - health check - waiting for container to be able to serve the traffic
 - custom docker

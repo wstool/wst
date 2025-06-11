@@ -22,6 +22,7 @@ import (
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/parameters"
 	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
 	"os"
@@ -60,6 +61,7 @@ type ServiceSettings struct {
 	EnvironmentScriptPaths map[string]string
 	WorkspaceConfigPaths   map[string]string
 	WorkspaceScriptPaths   map[string]string
+	Certificates           map[string]*certificates.RenderedCertificate
 }
 
 type Environment interface {
@@ -84,24 +86,80 @@ type Environment interface {
 }
 
 type Maker interface {
-	MakeCommonEnvironment(config *types.CommonEnvironment) *CommonEnvironment
-	MakeContainerEnvironment(config *types.ContainerEnvironment) *ContainerEnvironment
+	MakeCommonEnvironment(config *types.CommonEnvironment) (*CommonEnvironment, error)
+	MakeLocalEnvironment(config *types.LocalEnvironment) (*LocalEnvironment, error)
+	MakeContainerEnvironment(config *types.ContainerEnvironment) (*ContainerEnvironment, error)
+	MakeDockerEnvironment(config *types.DockerEnvironment) (*DockerEnvironment, error)
+	MakeKubernetesEnvironment(config *types.KubernetesEnvironment) (*KubernetesEnvironment, error)
 }
 
 type CommonMaker struct {
-	Fnd           app.Foundation
-	ResourceMaker resources.Maker
-	OutputMaker   output.Maker
+	Fnd            app.Foundation
+	ResourcesMaker resources.Maker
+	OutputMaker    output.Maker
 }
 
-func CreateCommonMaker(fnd app.Foundation, resourceMaker resources.Maker) *CommonMaker {
+func CreateCommonMaker(fnd app.Foundation, resourcesMaker resources.Maker) *CommonMaker {
 	return &CommonMaker{
-		Fnd:           fnd,
-		ResourceMaker: resourceMaker,
-		OutputMaker:   output.CreateMaker(fnd),
+		Fnd:            fnd,
+		ResourcesMaker: resourcesMaker,
+		OutputMaker:    output.CreateMaker(fnd),
 	}
 }
 
+// Merge helper functions
+func mergePorts(base, override types.EnvironmentPorts) types.EnvironmentPorts {
+	result := base
+	if override.Start != 0 {
+		result.Start = override.Start
+	}
+	if override.End != 0 {
+		result.End = override.End
+	}
+	return result
+}
+
+func mergeResources(base, override types.Resources) types.Resources {
+	result := types.Resources{
+		Certificates: make(map[string]types.Certificate),
+		Scripts:      make(map[string]types.Script),
+	}
+
+	// Copy base certificates
+	for name, cert := range base.Certificates {
+		result.Certificates[name] = cert
+	}
+
+	// Copy base scripts
+	for name, script := range base.Scripts {
+		result.Scripts[name] = script
+	}
+
+	// Override with new certificates (overwrites existing ones with same name)
+	for name, cert := range override.Certificates {
+		result.Certificates[name] = cert
+	}
+
+	// Override with new scripts (overwrites existing ones with same name)
+	for name, script := range override.Scripts {
+		result.Scripts[name] = script
+	}
+
+	return result
+}
+
+func mergeContainerRegistry(base, override types.ContainerRegistry) types.ContainerRegistry {
+	result := base
+	if override.Auth.Username != "" {
+		result.Auth.Username = override.Auth.Username
+	}
+	if override.Auth.Password != "" {
+		result.Auth.Password = override.Auth.Password
+	}
+	return result
+}
+
+// Environment implementations
 type CommonEnvironment struct {
 	Fnd          app.Foundation
 	OutputMaker  output.Maker
@@ -111,7 +169,7 @@ type CommonEnvironment struct {
 }
 
 func (m *CommonMaker) MakeCommonEnvironment(config *types.CommonEnvironment) (*CommonEnvironment, error) {
-	rscs, err := m.ResourceMaker.Make(config.Resources)
+	rscs, err := m.ResourcesMaker.Make(config.Resources)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +216,23 @@ func (e *CommonEnvironment) ContainerRegistry() *ContainerRegistry {
 	return nil
 }
 
+type LocalEnvironment struct {
+	CommonEnvironment
+}
+
+func (m *CommonMaker) MakeLocalEnvironment(config *types.LocalEnvironment) (*LocalEnvironment, error) {
+	commonEnv, err := m.MakeCommonEnvironment(&types.CommonEnvironment{
+		Ports:     config.Ports,
+		Resources: config.Resources,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &LocalEnvironment{
+		CommonEnvironment: *commonEnv,
+	}, nil
+}
+
 type ContainerEnvironment struct {
 	CommonEnvironment
 	Registry ContainerRegistry
@@ -165,7 +240,8 @@ type ContainerEnvironment struct {
 
 func (m *CommonMaker) MakeContainerEnvironment(config *types.ContainerEnvironment) (*ContainerEnvironment, error) {
 	commonEnv, err := m.MakeCommonEnvironment(&types.CommonEnvironment{
-		Ports: config.Ports,
+		Ports:     config.Ports,
+		Resources: config.Resources,
 	})
 	if err != nil {
 		return nil, err
@@ -183,4 +259,142 @@ func (m *CommonMaker) MakeContainerEnvironment(config *types.ContainerEnvironmen
 
 func (e *ContainerEnvironment) ContainerRegistry() *ContainerRegistry {
 	return &e.Registry
+}
+
+type DockerEnvironment struct {
+	ContainerEnvironment
+	NamePrefix string
+}
+
+func (m *CommonMaker) MakeDockerEnvironment(config *types.DockerEnvironment) (*DockerEnvironment, error) {
+	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:     config.Ports,
+		Resources: config.Resources,
+		Registry:  config.Registry,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &DockerEnvironment{
+		ContainerEnvironment: *containerEnv,
+		NamePrefix:           config.NamePrefix,
+	}, nil
+}
+
+type KubernetesEnvironment struct {
+	ContainerEnvironment
+	Namespace  string
+	Kubeconfig string
+}
+
+func (m *CommonMaker) MakeKubernetesEnvironment(config *types.KubernetesEnvironment) (*KubernetesEnvironment, error) {
+	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
+		Ports:     config.Ports,
+		Resources: config.Resources,
+		Registry:  config.Registry,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &KubernetesEnvironment{
+		ContainerEnvironment: *containerEnv,
+		Namespace:            config.Namespace,
+		Kubeconfig:           config.Kubeconfig,
+	}, nil
+}
+
+// Environment merging functions for inheritance
+func (m *CommonMaker) MergeCommonEnvironments(base, override *types.CommonEnvironment) *types.CommonEnvironment {
+	if base == nil {
+		return override
+	}
+	if override == nil {
+		return base
+	}
+
+	return &types.CommonEnvironment{
+		Ports:     mergePorts(base.Ports, override.Ports),
+		Resources: mergeResources(base.Resources, override.Resources),
+	}
+}
+
+func (m *CommonMaker) MergeLocalEnvironments(base, override *types.LocalEnvironment) *types.LocalEnvironment {
+	if base == nil {
+		return override
+	}
+	if override == nil {
+		return base
+	}
+
+	return &types.LocalEnvironment{
+		Ports:     mergePorts(base.Ports, override.Ports),
+		Resources: mergeResources(base.Resources, override.Resources),
+	}
+}
+
+func (m *CommonMaker) MergeContainerEnvironments(base, override *types.ContainerEnvironment) *types.ContainerEnvironment {
+	if base == nil {
+		return override
+	}
+	if override == nil {
+		return base
+	}
+
+	return &types.ContainerEnvironment{
+		Ports:     mergePorts(base.Ports, override.Ports),
+		Resources: mergeResources(base.Resources, override.Resources),
+		Registry:  mergeContainerRegistry(base.Registry, override.Registry),
+	}
+}
+
+func (m *CommonMaker) MergeDockerEnvironments(base, override *types.DockerEnvironment) *types.DockerEnvironment {
+	if base == nil {
+		return override
+	}
+	if override == nil {
+		return base
+	}
+
+	result := &types.DockerEnvironment{
+		Ports:     mergePorts(base.Ports, override.Ports),
+		Resources: mergeResources(base.Resources, override.Resources),
+		Registry:  mergeContainerRegistry(base.Registry, override.Registry),
+	}
+
+	if override.NamePrefix != "" {
+		result.NamePrefix = override.NamePrefix
+	} else {
+		result.NamePrefix = base.NamePrefix
+	}
+
+	return result
+}
+
+func (m *CommonMaker) MergeKubernetesEnvironments(base, override *types.KubernetesEnvironment) *types.KubernetesEnvironment {
+	if base == nil {
+		return override
+	}
+	if override == nil {
+		return base
+	}
+
+	result := &types.KubernetesEnvironment{
+		Ports:     mergePorts(base.Ports, override.Ports),
+		Resources: mergeResources(base.Resources, override.Resources),
+		Registry:  mergeContainerRegistry(base.Registry, override.Registry),
+	}
+
+	if override.Namespace != "" {
+		result.Namespace = override.Namespace
+	} else {
+		result.Namespace = base.Namespace
+	}
+
+	if override.Kubeconfig != "" {
+		result.Kubeconfig = override.Kubeconfig
+	} else {
+		result.Kubeconfig = base.Kubeconfig
+	}
+
+	return result
 }

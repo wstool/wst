@@ -30,6 +30,81 @@ $defs:
           - type: [ string, number, boolean ]
           - $ref: '#/$defs/parameters'
 
+  certificate:
+    title: Certificate definition
+    description: |
+      Certificate definition containing both certificate and private key data.
+    type: object
+    properties:
+      title: Certificate definition
+      description: |
+        Each certificate is identified by its key name and contains the certificate data and private key.
+        The certificate files will be created in the workspace under a certificates directory and can be
+        referenced in service configs using template variables.
+      type: object
+      properties:
+        certificate:
+          title: Certificate content or path
+          description: |
+            Certificate content or file path. The value is automatically parsed. If the value starts with 
+            "-----BEGIN", it's treated as PEM-encoded certificate content. Otherwise, it's treated as a path 
+            to a file containing the certificate. Use "file:/path/to/cert" to force file path interpretation, 
+            useful when the path starts with "--".
+          type: string
+        private_key:
+          title: Private key content or path
+          description: |
+            Private key content or file path. The value is automatically parsed. If the value starts with 
+            "-----BEGIN", it's treated as PEM-encoded private key content. Otherwise, it's treated as a path 
+            to a file containing the private key. Use "file:/path/to/key" to force file path interpretation, 
+            useful when the path starts with "--".
+          type: string
+
+    script:
+      title: Script definition
+      description: |
+        Script definition containing content, path, mode, and parameters.
+      type: [ object, string ]
+      properties:
+        content:
+          title: Script content
+          type: string
+        path:
+          title: Path to be stored
+          description: |
+            Denotes the path in the service sandbox where the script will be mounted. If not specified, the script's
+            key will be used. This property is useful for long, complex paths, or paths that require templates.
+          type: string
+        mode:
+          title: File access mode
+          description: Indicates the file's access mode, according to standard Unix permissions.
+          type: [ string, integer ]
+          default: '0644'
+        parameters:
+          $ref: '#/$defs/parameters'
+
+    resources:
+      title: Resources definition
+      description: |
+        Resources contain certificates and scripts that can be used by services. Resources defined at the environment
+        level are inherited by all instances in that environment and can be overridden at the instance level.
+      type: object
+      properties:
+        certificates:
+          title: Certificates mapping
+          description: |
+            Map of certificate definitions where the key is the certificate name and the value is the certificate data.
+          type: object
+          additionalProperties:
+            $ref: '#/$defs/certificate'
+        scripts:
+          title: Scripts mapping
+          description: |
+            Map of script definitions where the key is the script name and the value is the script data.
+          type: object
+          additionalProperties:
+            $ref: '#/$defs/script'
+
   commonEnvironment:
     title: Common environment
     description: |
@@ -46,37 +121,8 @@ $defs:
           end:
             title: Ports range end
             type: integer
-      certificates:
-        title: Environment certificates
-        description: |
-          Certificates configuration for SSL/TLS support. These certificates are rendered to the workspace
-          and can be referenced in service configuration templates using their paths.
-        type: object
-        additionalProperties:
-          title: Certificate definition
-          description: |
-            Each certificate is identified by its key name and contains the certificate data and private key.
-            The certificate files will be created in the workspace under a certificates directory and can be
-            referenced in service configs using template variables.
-          type: object
-          properties:
-            certificate:
-              title: Certificate content or path
-              description: |
-                Certificate content or file path. The value is automatically parsed. If the value starts with 
-                "-----BEGIN", it's treated as PEM-encoded certificate content. Otherwise, it's treated as a path 
-                to a file containing the certificate. Use "file:/path/to/cert" to force file path interpretation, 
-                useful when the path starts with "--".
-              type: string
-            private_key:
-              title: Private key content or path
-              description: |
-                Private key content or file path. The value is automatically parsed. If the value starts with 
-                "-----BEGIN", it's treated as PEM-encoded private key content. Otherwise, it's treated as a path 
-                to a file containing the private key. Use "file:/path/to/key" to force file path interpretation, 
-                useful when the path starts with "--".
-              type: string
-          required: [ certificate, private_key ]
+      resources:
+        $ref: '#/$defs/resources'
 
   containerEnvironment:
     title: Container environment
@@ -402,9 +448,12 @@ $defs:
           The directories for various servers and service files.
         type: object
         properties:
+          certs:
+            title: Certificates configuration directory
+            description: This is used as a base directory for all certificates and private keys.
           conf:
             title: Configuration directory
-            description: This is used as a base directory for all server configuration files. Usually /etc on Linux.
+            description: This is used as a base directory for all server configuration files.
             type: string
           run:
             title: Runtime directory
@@ -592,71 +641,117 @@ $defs:
         parameters:
           $ref: '#/$defs/parameters'
 
-  services:
-    title: Set of instance-specific services
+  serviceResource:
+    title: Service resource configuration
     description: |
-      The services represent an object of services where the key is its name and the value is a service object.
-    type: object
-    additionalProperties:
-      title: Service to run
+      Configuration for including resources (certificates or scripts) in a service. Resources are inherited from
+      the environment definition and can be filtered or extended at the service level.
+    type: [ array, boolean ]
+    items:
+      type: string
+    default: true
+
+    serviceResources:
+      title: Service resources configuration
       description: |
-        The service is a combination of a server and a sandbox with a supplied configuration.
+        Configuration for including resources in the service. Resources defined in the environment are inherited
+        and can be filtered or overridden at the instance level.
+      type: object
+      properties:
+        certificates:
+          title: Certificates included in the service
+          description: |
+            Controls which certificates from the environment and instance resources are included in the service.
+            If a boolean is provided, 'true' means all certificates are included and 'false' means none.
+            If an array is provided, only the listed certificates are included.
+          $ref: '#/$defs/serviceResource'
+        scripts:
+          title: Scripts included in the service
+          description: |
+            Controls which scripts from the environment and instance resources are included in the service.
+            If a boolean is provided, 'true' means all scripts are included and 'false' means none.
+            If an array is provided, only the listed scripts are included.
+          $ref: '#/$defs/serviceResource'
+
+    serviceConfig:
+      title: Service configuration
+      description: |
+        Configuration for a service config file.
+      type: object
+      properties:
+        include:
+          title: Service inclusion switch
+          description: Whether the server config is going to be included in the service.
+          type: boolean
+          default: true
+        parameters:
+          $ref: '#/$defs/parameters'
+
+    serviceServer:
+      title: Service server configuration
+      description: |
+        Server points to the server used by the service. As the server defines the configuration, it's important to
+        ensure that a compatible server is used. The service name is used if the value isn't specified.
+      type: object
+      properties:
+        name:
+          title: Server name
+          description: The name is used for selecting the server used by service.
+          type: string
+        tag:
+          title: Server tag
+          description: The tag is used if not part of the name as a server tag.
+          type: string
+        sandbox:
+          title: Sandbox to use
+          description: |
+            Sandbox should define the server sandbox in which to run the service.
+          type: string
+          enum: [ local, docker, kubernetes ]
+        configs:
+          title: Configuration files to include
+          description: |
+            This object defines the configuration files that will be included from the server. The key is the
+            configuration filename as defined in the server, and the value is the configuration object.
+          type: object
+          additionalProperties:
+            $ref: '#/$defs/serviceConfig'
+        parameters:
+          $ref: '#/$defs/parameters'
+
+    service:
+      title: Service definition
+      description: |
+        The service is a combination of a server and a sandbox with supplied configuration and resources.
+        Resources are inherited from the environment and can be overridden at the instance level.
       type: object
       properties:
         server:
-          title: Server to use
-          description: |
-            Server points to the server used by the service. As the server defines the configuration, it's
-            important to ensure that a compatible server is used. The service name is used if the value isn't
-            specified.
-          type: object
-          properties:
-            name:
-              title: Server name
-              description: The name is used for selecting the server used by service.
-            tag:
-              title: Server tag
-              description: The tag is used if not part of the name as a server tag.
-            sandbox:
-              title: Sandbox to use
-              description: |
-                Sandbox should define the server sandbox in which to run the service.
-              type: string
-              enum: [ local, docker, kubernetes ]
-            configs:
-              title: Configuration files to include
-              description: |
-                This object defines the configuration files that will be included from the server. The key is the
-                configuration filename as defined in the server, and the value is the configuration object.
-              type: object
-              additionalProperties:
-                type: [ object ]
-                properties:
-                  include:
-                    title: Service inclusion switch
-                    description: Whether the server config is going to be included to the service.
-                    default: true
-                  parameters:
-                    $ref: '#/$defs/parameters'
+          $ref: '#/$defs/serviceServer'
         resources:
-          title: Resource included in the service
-          description: It is container for scripts and other resources defined in the future.
-          type: object
-          properties:
-            scripts:
-              title: Scripts included in the service
-              description: |
-                The scripts can have either a boolean or array value. If a boolean is provided, then 'true' means that
-                all scripts are included in the service and 'false' means that no scripts will be included. If an array
-                is provided, then only the listed scripts are included in the service.
-              default: true
-              type: [ array, boolean ]
-              items:
-                type: string
+          $ref: '#/$defs/serviceResources'
         requires:
           title: Required services
           description: |
-            The list of services that has to be started before starting the service containing this property.  
+            The list of services that has to be started before starting the service containing this property.
+          type: array
+          items:
+            type: string
+        public:
+          title: Public service flag
+          description: |
+            Whether the service should be publicly accessible.
+          type: boolean
+          default: false
+
+    services:
+      title: Set of instance-specific services
+      description: |
+        The services represent an object of services where the key is its name and the value is a service object.
+        Services inherit resources from their environment and can override them at the instance level.
+      type: object
+      additionalProperties:
+        $ref: '#/$defs/service'
 
   customExpectation:
     title: Custom expectation
@@ -1293,13 +1388,11 @@ $defs:
       environments:
         $ref: '#/$defs/environments'
       resources:
-        title: Resource data
+        title: Instance resource data
         description: |
-          The resources are data mounted to the service.
-        type: object
-        properties:
-          scripts:
-            $ref: '#/$defs/scripts'
+          Resources defined at the instance level. These resources extend or override those defined in the environment.
+          Services inherit from both environment and instance resources, with instance resources taking precedence.
+        $ref: '#/$defs/resources'
       services:
         $ref: '#/$defs/services'
       timeouts:

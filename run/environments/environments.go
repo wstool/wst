@@ -43,12 +43,12 @@ type nativeMaker struct {
 	kubernetesMaker kubernetes.Maker
 }
 
-func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
+func CreateMaker(fnd app.Foundation, resourcesMaker resources.Maker) Maker {
 	return &nativeMaker{
 		fnd:             fnd,
-		localMaker:      local.CreateMaker(fnd, resourceMaker),
-		dockerMaker:     docker.CreateMaker(fnd, resourceMaker),
-		kubernetesMaker: kubernetes.CreateMaker(fnd, resourceMaker),
+		localMaker:      local.CreateMaker(fnd, resourcesMaker),
+		dockerMaker:     docker.CreateMaker(fnd, resourcesMaker),
+		kubernetesMaker: kubernetes.CreateMaker(fnd, resourcesMaker),
 	}
 }
 
@@ -126,7 +126,8 @@ func (m *nativeMaker) mergeContainerAndCommon(container, common types.Environmen
 	commonEnvironment := common.(*types.CommonEnvironment)
 	if container == nil {
 		return &types.ContainerEnvironment{
-			Ports: commonEnvironment.Ports,
+			Ports:     commonEnvironment.Ports,
+			Resources: commonEnvironment.Resources,
 		}
 	}
 	containerEnvironment := container.(*types.ContainerEnvironment)
@@ -139,8 +140,9 @@ func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Environmen
 	containerEnvironment := container.(*types.ContainerEnvironment)
 	if docker == nil {
 		return &types.DockerEnvironment{
-			Ports:    containerEnvironment.Ports,
-			Registry: containerEnvironment.Registry,
+			Ports:     containerEnvironment.Ports,
+			Resources: containerEnvironment.Resources,
+			Registry:  containerEnvironment.Registry,
 		}
 	}
 
@@ -155,8 +157,9 @@ func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.En
 	containerEnvironment := container.(*types.ContainerEnvironment)
 	if kubernetes == nil {
 		return &types.KubernetesEnvironment{
-			Ports:    containerEnvironment.Ports,
-			Registry: containerEnvironment.Registry,
+			Ports:     containerEnvironment.Ports,
+			Resources: containerEnvironment.Resources,
+			Registry:  containerEnvironment.Registry,
 		}
 	}
 

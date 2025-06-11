@@ -16,6 +16,8 @@ import (
 
 	output "github.com/wstool/wst/run/environments/environment/output"
 
+	resources "github.com/wstool/wst/run/resources"
+
 	task "github.com/wstool/wst/run/environments/task"
 )
 
@@ -586,6 +588,53 @@ func (_c *MockEnvironment_ReservePort_Call) Return(_a0 int32) *MockEnvironment_R
 }
 
 func (_c *MockEnvironment_ReservePort_Call) RunAndReturn(run func() int32) *MockEnvironment_ReservePort_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Resources provides a mock function with given fields:
+func (_m *MockEnvironment) Resources() *resources.Resources {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Resources")
+	}
+
+	var r0 *resources.Resources
+	if rf, ok := ret.Get(0).(func() *resources.Resources); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*resources.Resources)
+		}
+	}
+
+	return r0
+}
+
+// MockEnvironment_Resources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Resources'
+type MockEnvironment_Resources_Call struct {
+	*mock.Call
+}
+
+// Resources is a helper method to define mock.On call
+func (_e *MockEnvironment_Expecter) Resources() *MockEnvironment_Resources_Call {
+	return &MockEnvironment_Resources_Call{Call: _e.mock.On("Resources")}
+}
+
+func (_c *MockEnvironment_Resources_Call) Run(run func()) *MockEnvironment_Resources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockEnvironment_Resources_Call) Return(_a0 *resources.Resources) *MockEnvironment_Resources_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEnvironment_Resources_Call) RunAndReturn(run func() *resources.Resources) *MockEnvironment_Resources_Call {
 	_c.Call.Return(run)
 	return _c
 }

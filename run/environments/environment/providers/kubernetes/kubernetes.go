@@ -48,9 +48,9 @@ type kubernetesMaker struct {
 	clientsMaker clients.Maker
 }
 
-func CreateMaker(fnd app.Foundation, resourceMaker resources.Maker) Maker {
+func CreateMaker(fnd app.Foundation, resourcesMaker resources.Maker) Maker {
 	return &kubernetesMaker{
-		CommonMaker:  environment.CreateCommonMaker(fnd, resourceMaker),
+		CommonMaker:  environment.CreateCommonMaker(fnd, resourcesMaker),
 		clientsMaker: clients.CreateMaker(fnd),
 	}
 }
@@ -73,8 +73,9 @@ func (m *kubernetesMaker) Make(config *types.KubernetesEnvironment) (environment
 		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
 	}
 	containerEnv, err := m.MakeContainerEnvironment(&types.ContainerEnvironment{
-		Ports:    config.Ports,
-		Registry: config.Registry,
+		Ports:     config.Ports,
+		Resources: config.Resources,
+		Registry:  config.Registry,
 	})
 	if err != nil {
 		return nil, errors.Errorf("failed to create kubernetes client: %v", err)
