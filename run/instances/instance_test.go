@@ -2,6 +2,7 @@ package instances
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,7 @@ import (
 	runtimeMocks "github.com/wstool/wst/mocks/generated/run/instances/runtime"
 	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
+	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
 	scriptsMocks "github.com/wstool/wst/mocks/generated/run/resources/scripts"
 	serversMocks "github.com/wstool/wst/mocks/generated/run/servers"
 	servicesMocks "github.com/wstool/wst/mocks/generated/run/services"
@@ -23,6 +25,7 @@ import (
 	"github.com/wstool/wst/run/environments"
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/resources"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/servers"
 	"github.com/wstool/wst/run/services"
@@ -44,18 +47,20 @@ func TestCreateInstanceMaker(t *testing.T) {
 	assert.NotNil(t, actualMaker.environmentMaker)
 	assert.NotNil(t, actualMaker.actionMaker)
 	assert.Same(t, actualMaker.parametersMaker, parametersMakerMock)
-	assert.NotNil(t, actualMaker.scriptsMaker)
+	assert.NotNil(t, actualMaker.resourcesMaker)
 	assert.NotNil(t, actualMaker.servicesMaker)
 	assert.NotNil(t, actualMaker.runtimeMaker)
 }
 
 func TestNativeInstanceMaker_Make(t *testing.T) {
-	testScripts := map[string]types.Script{
-		"test-script": {
-			Content:    "test content",
-			Path:       "/path/to/script",
-			Mode:       "0644",
-			Parameters: nil,
+	testResources := types.Resources{
+		Scripts: map[string]types.Script{
+			"test-script": {
+				Content:    "test content",
+				Path:       "/path/to/script",
+				Mode:       "0644",
+				Parameters: nil,
+			},
 		},
 	}
 	testInstanceEnvironments := map[string]types.Environment{
@@ -146,9 +151,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					Action:  5000,
 					Actions: 10000,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -190,9 +193,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					Action:  0,
 					Actions: 0,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources: testResources,
 				Extends: types.InstanceExtends{
 					Name:       "test-extends",
 					Parameters: testExtendsParams,
@@ -239,9 +240,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					Action:  0,
 					Actions: 0,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources: testResources,
 				Extends: types.InstanceExtends{
 					Name:       "test-extends",
 					Parameters: testExtendsParams,
@@ -284,9 +283,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 					Action:  0,
 					Actions: 0,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources: testResources,
 				Extends: types.InstanceExtends{
 					Name:       "test-extends",
 					Parameters: testExtendsParams,
@@ -318,7 +315,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			actionMaker := actionsMocks.NewMockActionMaker(t)
 			serviceMaker := servicesMocks.NewMockMaker(t)
-			scriptsMaker := scriptsMocks.NewMockMaker(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			paramsMaker := parametersMocks.NewMockMaker(t)
 			envMaker := environmentsMocks.NewMockMaker(t)
 			runtimeMaker := runtimeMocks.NewMockMaker(t)
@@ -327,7 +324,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				fnd:              fndMock,
 				actionMaker:      actionMaker,
 				servicesMaker:    serviceMaker,
-				scriptsMaker:     scriptsMaker,
+				resourcesMaker:   resourcesMaker,
 				parametersMaker:  paramsMaker,
 				environmentMaker: envMaker,
 				runtimeMaker:     runtimeMaker,
@@ -349,7 +346,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 				expectedInstance := &nativeInstance{
 					fnd:                    fndMock,
 					runtimeMaker:           runtimeMaker,
-					scriptsMaker:           scriptsMaker,
+					resourcesMaker:         resourcesMaker,
 					environmentMaker:       envMaker,
 					servicesMaker:          serviceMaker,
 					actionMaker:            actionMaker,
@@ -384,7 +381,7 @@ func TestNativeInstanceMaker_Make(t *testing.T) {
 
 			actionMaker.AssertExpectations(t)
 			serviceMaker.AssertExpectations(t)
-			scriptsMaker.AssertExpectations(t)
+			resourcesMaker.AssertExpectations(t)
 			envMaker.AssertExpectations(t)
 		})
 	}
@@ -514,6 +511,7 @@ func Test_nativeInstance_Extend(t *testing.T) {
 	env2 := types.DockerEnvironment{Ports: types.EnvironmentPorts{Start: 20000}}
 	script1 := types.Script{Content: "test content 1"}
 	script2 := types.Script{Content: "test content 2"}
+	cert1 := types.Certificate{PrivateKey: "key1", Certificate: "cert1"}
 
 	paramParent := parameterMocks.NewMockParameter(t)
 	paramChild := parameterMocks.NewMockParameter(t)
@@ -555,6 +553,9 @@ func Test_nativeInstance_Extend(t *testing.T) {
 						"s1": script1,
 						"s2": script2,
 					},
+					Certificates: map[string]types.Certificate{
+						"c1": cert1,
+					},
 				},
 				params: parameters.Parameters{
 					"parent_key": paramParent,
@@ -568,10 +569,11 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				extendParams: parameters.Parameters{
 					"extended_key": paramExtended,
 				},
-				configActions: make([]types.Action, 0),
-				params: parameters.Parameters{
-					"child_key": paramChild,
-				},
+				configActions:          make([]types.Action, 0),
+				configInstanceEnvs:     make(map[string]types.Environment),
+				configServices:         make(map[string]types.Service),
+				configResources:        types.Resources{Scripts: make(map[string]types.Script), Certificates: make(map[string]types.Certificate)},
+				params:                 parameters.Parameters{"child_key": paramChild},
 				instanceTimeoutDefault: true,
 				actionTimeoutDefault:   true,
 			},
@@ -591,6 +593,9 @@ func Test_nativeInstance_Extend(t *testing.T) {
 				Scripts: map[string]types.Script{
 					"s1": script1,
 					"s2": script2,
+				},
+				Certificates: map[string]types.Certificate{
+					"c1": cert1,
 				},
 			},
 			expectedParams: parameters.Parameters{
@@ -629,6 +634,9 @@ func Test_nativeInstance_Extend(t *testing.T) {
 					Scripts: map[string]types.Script{
 						"s1": script1,
 					},
+					Certificates: map[string]types.Certificate{
+						"c1": cert1,
+					},
 				},
 				extendName: "parentInstance",
 				extendParams: parameters.Parameters{
@@ -654,6 +662,9 @@ func Test_nativeInstance_Extend(t *testing.T) {
 			expectedConfigResources: types.Resources{
 				Scripts: map[string]types.Script{
 					"s1": script1,
+				},
+				Certificates: map[string]types.Certificate{
+					"c1": cert1,
 				},
 			},
 			expectedParams: parameters.Parameters{
@@ -715,12 +726,14 @@ func Test_nativeInstance_Extend(t *testing.T) {
 }
 
 func Test_nativeInstance_Init(t *testing.T) {
-	testScripts := map[string]types.Script{
-		"test-script": {
-			Content:    "test content",
-			Path:       "/path/to/script",
-			Mode:       "0644",
-			Parameters: nil,
+	testResources := types.Resources{
+		Scripts: map[string]types.Script{
+			"test-script": {
+				Content:    "test content",
+				Path:       "/path/to/script",
+				Mode:       "0644",
+				Parameters: nil,
+			},
 		},
 	}
 	testInstanceEnvironments := map[string]types.Environment{
@@ -752,8 +765,10 @@ func Test_nativeInstance_Init(t *testing.T) {
 			"t2": serversMocks.NewMockServer(t),
 		},
 	}
-	testScriptResources := scripts.Scripts{
-		"test-script": scriptsMocks.NewMockScript(t),
+	testScriptResources := &resources.Resources{
+		Scripts: scripts.Scripts{
+			"test-script": scriptsMocks.NewMockScript(t),
+		},
 	}
 	testActions := []types.Action{
 		types.StartAction{
@@ -783,7 +798,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 			*testing.T,
 			*actionsMocks.MockActionMaker,
 			*servicesMocks.MockMaker,
-			*scriptsMocks.MockMaker,
+			*resourcesMocks.MockMaker,
 			*environmentsMocks.MockMaker,
 			*defaults.Defaults,
 		) []action.Action
@@ -804,11 +819,11 @@ func Test_nativeInstance_Init(t *testing.T) {
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
-				scriptMaker *scriptsMocks.MockMaker,
+				resourcesMaker *resourcesMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				dflts *defaults.Defaults,
 			) []action.Action {
-				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				resourcesMaker.On("Make", testResources).Return(testScriptResources, nil)
 				envMaker.On(
 					"Make",
 					testSpecEnvironments,
@@ -840,11 +855,9 @@ func Test_nativeInstance_Init(t *testing.T) {
 				return acts
 			},
 			instanceConfig: types.Instance{
-				Name:    "test-instance",
-				Actions: testActions,
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Name:         "test-instance",
+				Actions:      testActions,
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -863,11 +876,11 @@ func Test_nativeInstance_Init(t *testing.T) {
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
-				scriptMaker *scriptsMocks.MockMaker,
+				resourcesMaker *resourcesMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				dflts *defaults.Defaults,
 			) []action.Action {
-				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				resourcesMaker.On("Make", testResources).Return(testScriptResources, nil)
 				envMaker.On(
 					"Make",
 					testSpecEnvironments,
@@ -898,11 +911,9 @@ func Test_nativeInstance_Init(t *testing.T) {
 				return nil
 			},
 			instanceConfig: types.Instance{
-				Name:    "test-instance",
-				Actions: testActions,
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Name:         "test-instance",
+				Actions:      testActions,
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -920,11 +931,11 @@ func Test_nativeInstance_Init(t *testing.T) {
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
-				scriptMaker *scriptsMocks.MockMaker,
+				resourcesMaker *resourcesMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				dflts *defaults.Defaults,
 			) []action.Action {
-				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				resourcesMaker.On("Make", testResources).Return(testScriptResources, nil)
 				envMaker.On(
 					"Make",
 					testSpecEnvironments,
@@ -952,9 +963,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 					Action:  5000,
 					Actions: 10000,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -972,11 +981,11 @@ func Test_nativeInstance_Init(t *testing.T) {
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
-				scriptMaker *scriptsMocks.MockMaker,
+				resourcesMaker *resourcesMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				dflts *defaults.Defaults,
 			) []action.Action {
-				scriptMaker.On("Make", testScripts).Return(testScriptResources, nil)
+				resourcesMaker.On("Make", testResources).Return(testScriptResources, nil)
 				envMaker.On(
 					"Make",
 					testSpecEnvironments,
@@ -992,9 +1001,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 					Action:  5000,
 					Actions: 10000,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -1007,16 +1014,16 @@ func Test_nativeInstance_Init(t *testing.T) {
 			expectedErrorMsg:  "env fail",
 		},
 		{
-			name: "error initialization due to script fail",
+			name: "error initialization due to resource fail",
 			setupMocks: func(
 				t *testing.T,
 				actionMaker *actionsMocks.MockActionMaker,
 				serviceMaker *servicesMocks.MockMaker,
-				scriptMaker *scriptsMocks.MockMaker,
+				resourcesMaker *resourcesMocks.MockMaker,
 				envMaker *environmentsMocks.MockMaker,
 				dflts *defaults.Defaults,
 			) []action.Action {
-				scriptMaker.On("Make", testScripts).Return(nil, errors.New("script fail"))
+				resourcesMaker.On("Make", testResources).Return(nil, errors.New("resource fail"))
 				return nil
 			},
 			instanceConfig: types.Instance{
@@ -1026,9 +1033,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 					Action:  5000,
 					Actions: 10000,
 				},
-				Resources: types.Resources{
-					Scripts: testScripts,
-				},
+				Resources:    testResources,
 				Parameters:   testParams,
 				Environments: testInstanceEnvironments,
 				Services:     testServices,
@@ -1037,7 +1042,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 			srvs:              testServers,
 			instanceWorkspace: "/workspace",
 			expectError:       true,
-			expectedErrorMsg:  "script fail",
+			expectedErrorMsg:  "resource fail",
 		},
 	}
 
@@ -1046,7 +1051,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 			fndMock := appMocks.NewMockFoundation(t)
 			actionMaker := actionsMocks.NewMockActionMaker(t)
 			serviceMaker := servicesMocks.NewMockMaker(t)
-			scriptsMaker := scriptsMocks.NewMockMaker(t)
+			resourcesMaker := resourcesMocks.NewMockMaker(t)
 			envMaker := environmentsMocks.NewMockMaker(t)
 
 			dflts := &defaults.Defaults{
@@ -1067,7 +1072,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 				fnd:                fndMock,
 				actionMaker:        actionMaker,
 				servicesMaker:      serviceMaker,
-				scriptsMaker:       scriptsMaker,
+				resourcesMaker:     resourcesMaker,
 				environmentMaker:   envMaker,
 				configActions:      tt.instanceConfig.Actions,
 				configServices:     tt.instanceConfig.Services,
@@ -1084,7 +1089,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 				actionTimeout:      tt.actionTimeout,
 			}
 
-			acts := tt.setupMocks(t, actionMaker, serviceMaker, scriptsMaker, envMaker, dflts)
+			acts := tt.setupMocks(t, actionMaker, serviceMaker, resourcesMaker, envMaker, dflts)
 
 			err := inst.Init()
 
@@ -1102,7 +1107,7 @@ func Test_nativeInstance_Init(t *testing.T) {
 
 			actionMaker.AssertExpectations(t)
 			serviceMaker.AssertExpectations(t)
-			scriptsMaker.AssertExpectations(t)
+			resourcesMaker.AssertExpectations(t)
 			envMaker.AssertExpectations(t)
 		})
 	}
@@ -1928,4 +1933,117 @@ func Test_nativeInstance_Run(t *testing.T) {
 			fndMock.AssertExpectations(t)
 		})
 	}
+}
+
+func Test_skipError(t *testing.T) {
+	tests := []struct {
+		name           string
+		originalErr    error
+		expectedError  string
+		expectedUnwrap error
+	}{
+		{
+			name:           "with original error",
+			originalErr:    errors.New("database connection failed"),
+			expectedError:  "action failed, skipping remaining: database connection failed",
+			expectedUnwrap: errors.New("database connection failed"),
+		},
+		{
+			name:           "with nil original error",
+			originalErr:    nil,
+			expectedError:  "action execution failed, skipping remaining",
+			expectedUnwrap: nil,
+		},
+		{
+			name:           "with wrapped error",
+			originalErr:    fmt.Errorf("wrapped: %w", errors.New("inner error")),
+			expectedError:  "action failed, skipping remaining: wrapped: inner error",
+			expectedUnwrap: fmt.Errorf("wrapped: %w", errors.New("inner error")),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			skipErr := &skipError{
+				originalErr: tt.originalErr,
+			}
+
+			// Test Error() method
+			assert.Equal(t, tt.expectedError, skipErr.Error())
+
+			// Test Unwrap() method
+			unwrapped := skipErr.Unwrap()
+			if tt.expectedUnwrap == nil {
+				assert.Nil(t, unwrapped)
+			} else {
+				assert.Equal(t, tt.expectedUnwrap.Error(), unwrapped.Error())
+			}
+
+			// Test that it implements the error interface
+			var err error = skipErr
+			assert.NotNil(t, err)
+
+			// Test errors.Is and errors.As functionality with wrapped errors
+			if tt.originalErr != nil {
+				assert.True(t, errors.Is(skipErr, tt.originalErr))
+
+				// Test errors.As
+				var target *skipError
+				assert.True(t, errors.As(skipErr, &target))
+				assert.Equal(t, skipErr, target)
+			}
+		})
+	}
+}
+
+func Test_skipError_edge_cases(t *testing.T) {
+	t.Run("nil skipError", func(t *testing.T) {
+		var skipErr *skipError
+		// This would panic in real usage, but we test defensive programming
+		assert.Panics(t, func() {
+			_ = skipErr.Error()
+		})
+	})
+
+	t.Run("zero value skipError", func(t *testing.T) {
+		skipErr := skipError{}
+		assert.Equal(t, "action execution failed, skipping remaining", skipErr.Error())
+		assert.Nil(t, skipErr.Unwrap())
+	})
+
+	t.Run("skipError with empty string error", func(t *testing.T) {
+		emptyErr := errors.New("")
+		skipErr := &skipError{originalErr: emptyErr}
+		assert.Equal(t, "action failed, skipping remaining: ", skipErr.Error())
+		assert.Equal(t, emptyErr, skipErr.Unwrap())
+	})
+}
+
+func Test_skipError_usage_patterns(t *testing.T) {
+	t.Run("creating and using skipError", func(t *testing.T) {
+		// Test typical usage pattern
+		originalErr := errors.New("validation failed")
+		skipErr := &skipError{originalErr: originalErr}
+
+		// Test that it can be used in error handling chains
+		err := fmt.Errorf("processing failed: %w", skipErr)
+		assert.Contains(t, err.Error(), "action failed, skipping remaining: validation failed")
+
+		// Test unwrapping through the chain
+		var target *skipError
+		assert.True(t, errors.As(err, &target))
+		assert.Equal(t, originalErr, target.Unwrap())
+	})
+
+	t.Run("nil original error usage", func(t *testing.T) {
+		skipErr := &skipError{originalErr: nil}
+
+		// Test error message without original error
+		assert.Equal(t, "action execution failed, skipping remaining", skipErr.Error())
+		assert.Nil(t, skipErr.Unwrap())
+
+		// Test in error chains
+		wrappedErr := fmt.Errorf("higher level: %w", skipErr)
+		assert.Contains(t, wrappedErr.Error(), "action execution failed, skipping remaining")
+	})
 }

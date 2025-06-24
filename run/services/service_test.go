@@ -15,6 +15,7 @@ import (
 	taskMocks "github.com/wstool/wst/mocks/generated/run/environments/task"
 	parametersMocks "github.com/wstool/wst/mocks/generated/run/parameters"
 	parameterMocks "github.com/wstool/wst/mocks/generated/run/parameters/parameter"
+	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
 	scriptsMocks "github.com/wstool/wst/mocks/generated/run/resources/scripts"
 	hooksMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/hooks"
 	sandboxMocks "github.com/wstool/wst/mocks/generated/run/sandboxes/sandbox"
@@ -28,6 +29,8 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/parameters"
+	"github.com/wstool/wst/run/resources"
+	"github.com/wstool/wst/run/resources/certificates"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"github.com/wstool/wst/run/sandboxes/dir"
@@ -170,7 +173,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 			t *testing.T,
 			pm *parametersMocks.MockMaker,
 			tm *templateMocks.MockMaker,
-		) (environments.Environments, servers.Servers, scripts.Scripts, Services)
+		) (environments.Environments, servers.Servers, *resources.Resources, Services)
 		expectedService  func() *nativeService
 		expectError      bool
 		expectedErrorMsg string
@@ -205,9 +208,13 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeAll:  true,
 							IncludeList: nil,
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{"ssl-cert"},
 						},
 					},
 					Public: false,
@@ -230,7 +237,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
+							IncludeAll: true,
+						},
+						Certificates: types.ServiceResource{
 							IncludeAll: true,
 						},
 					},
@@ -247,11 +257,11 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv.On("MarkUsed").Return()
-				// in reality, it will return different values but it is fine to keep it the same for this test
+				dockerEnv.On("Resources").Return(&resources.Resources{})
 				dockerEnv.On("ReservePort").Return(int32(8500))
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
 				envs := environments.Environments{
@@ -338,6 +348,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 				scrs := scripts.Scripts{
 					"index.php": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert":  createCertificateMock(t, "ssl"),
+					"auth-cert": createCertificateMock(t, "auth"),
+				}
 				fpmTemplate := createTemplateMock(t, "fpm")
 				nginxTemplate := createTemplateMock(t, "nginx")
 				fpmSvc := &nativeService{
@@ -347,8 +361,11 @@ func Test_nativeMaker_Make(t *testing.T) {
 					uniqueName: "i1-fpm",
 					public:     false,
 					port:       int32(8500),
-					scripts:    scrs,
-					server:     fpmDebSrv,
+					certificates: certificates.Certificates{
+						"ssl-cert": createCertificateMock(t, "ssl"),
+					},
+					scripts: scrs,
+					server:  fpmDebSrv,
 					serverParameters: parameters.Parameters{
 						"tag":        createParamMock(t, "prod"),
 						"type":       createParamMock(t, "php"),
@@ -389,14 +406,15 @@ func Test_nativeMaker_Make(t *testing.T) {
 					template:               nil,
 				}
 				nginxSvc := &nativeService{
-					fnd:        fndMock,
-					name:       "nginx",
-					fullName:   "ti-nginx",
-					uniqueName: "i1-nginx",
-					public:     true,
-					port:       int32(8500),
-					scripts:    scrs,
-					server:     nginxDebSrv,
+					fnd:          fndMock,
+					name:         "nginx",
+					fullName:     "ti-nginx",
+					uniqueName:   "i1-nginx",
+					public:       true,
+					port:         int32(8500),
+					certificates: certs, // Include all certificates
+					scripts:      scrs,
+					server:       nginxDebSrv,
 					serverParameters: parameters.Parameters{
 						"tag":          createParamMock(t, "prod"),
 						"type":         createParamMock(t, "ws"),
@@ -436,7 +454,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"fpm":   &finalFpmSvc,
 					"nginx": &finalNginxSvc,
 				}
-				return envs, srvs, scrs, svcs
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, svcs
 			},
 			expectError: false,
 		},
@@ -461,8 +482,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -487,9 +512,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				localEnv.On("MarkUsed").Return()
+				localEnv.On("Resources").Return(&resources.Resources{})
 				localEnv.On("ReservePort").Return(int32(8500))
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -540,14 +566,18 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 				tmpl := templateMocks.NewMockTemplate(t)
 				svc := &nativeService{
-					fnd:        fndMock,
-					name:       "svc",
-					fullName:   "testInstance-svc",
-					uniqueName: "i2-svc",
-					public:     true,
-					port:       int32(8500),
+					fnd:          fndMock,
+					name:         "svc",
+					fullName:     "testInstance-svc",
+					uniqueName:   "i2-svc",
+					public:       true,
+					port:         int32(8500),
+					certificates: make(certificates.Certificates), // Empty certificates
 					scripts: scripts.Scripts{
 						"s1": scriptsMocks.NewMockScript(t),
 					},
@@ -587,9 +617,95 @@ func Test_nativeMaker_Make(t *testing.T) {
 				svcs := Services{
 					"svc": &finalSvc,
 				}
-				return envs, srvs, scrs, svcs
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, svcs
 			},
 			expectError: false,
+		},
+		{
+			name: "errors on certificate not found",
+			config: map[string]types.Service{
+				"svc": {
+					Server: types.ServiceServer{
+						Name:    "php/debian",
+						Sandbox: "local",
+						Configs: map[string]types.ServiceConfig{
+							"c": {
+								Parameters: types.Parameters{
+									"p0": 10,
+									"p1": 2,
+								},
+								Include: true,
+							},
+						},
+						Parameters: types.Parameters{
+							"p1": 1,
+							"p2": "data",
+						},
+					},
+					Resources: types.ServiceResources{
+						Scripts: types.ServiceResource{
+							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeList: []string{"missing-cert"},
+						},
+					},
+					Public: true,
+				},
+			},
+			instanceName: "testInstance",
+			instanceWs:   "/test/workspace",
+			instanceIdx:  1,
+			setupMocks: func(
+				t *testing.T,
+				pm *parametersMocks.MockMaker,
+				tm *templateMocks.MockMaker,
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
+				localEnv := environmentMocks.NewMockEnvironment(t)
+				localEnv.On("MarkUsed").Return()
+				localEnv.On("Resources").Return(&resources.Resources{})
+				dockerEnv := environmentMocks.NewMockEnvironment(t)
+				kubeEnv := environmentMocks.NewMockEnvironment(t)
+				envs := environments.Environments{
+					providers.LocalType:      localEnv,
+					providers.DockerType:     dockerEnv,
+					providers.KubernetesType: kubeEnv,
+				}
+				serverParams := parameters.Parameters{
+					"p1": createParamMock(t, "p1"),
+					"p2": createParamMock(t, "p2"),
+				}
+				pm.On("Make", types.Parameters{
+					"p1": 1,
+					"p2": "data",
+				}).Return(serverParams, nil)
+				sb := sandboxMocks.NewMockSandbox(t)
+				sb.On("Available").Return(true)
+				debSrv := serversMocks.NewMockServer(t)
+				debSrv.On("Sandbox", providers.LocalType).Return(sb, true)
+				debSrv.On("Parameters").Return(parameters.Parameters{})
+				srvs := servers.Servers{
+					"php": {
+						"debian": debSrv,
+					},
+				}
+				scrs := scripts.Scripts{
+					"s1": scriptsMocks.NewMockScript(t),
+				}
+				certs := certificates.Certificates{
+					"existing-cert": createCertificateMock(t, "existing"),
+				}
+
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
+			},
+			expectError:      true,
+			expectedErrorMsg: "certificate missing-cert not found for service svc",
 		},
 		{
 			name: "errors on config parameters make",
@@ -613,8 +729,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -627,7 +747,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				localEnv.On("MarkUsed").Return()
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
@@ -665,8 +785,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "config params make error",
@@ -693,8 +819,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -707,7 +837,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				localEnv.On("MarkUsed").Return()
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
@@ -740,8 +870,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "server config c not found for service svc",
@@ -768,8 +904,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -782,7 +922,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
 				envs := environments.Environments{
@@ -811,8 +951,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "environment local not found for service svc",
@@ -839,8 +985,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -853,7 +1003,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -884,8 +1034,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "sandbox local is not available for service svc",
@@ -912,8 +1068,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -926,7 +1086,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -955,8 +1115,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "sandbox local not found for service svc",
@@ -983,8 +1149,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -997,7 +1167,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -1020,8 +1190,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "server params make fail",
@@ -1048,8 +1224,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s1"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -1062,7 +1242,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -1081,8 +1261,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "server php/debian not found for service svc",
@@ -1109,8 +1295,12 @@ func Test_nativeMaker_Make(t *testing.T) {
 						},
 					},
 					Resources: types.ServiceResources{
-						Scripts: types.ServiceScripts{
+						Scripts: types.ServiceResource{
 							IncludeList: []string{"s3"},
+						},
+						Certificates: types.ServiceResource{
+							IncludeAll:  false,
+							IncludeList: []string{},
 						},
 					},
 					Public: true,
@@ -1123,7 +1313,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				t *testing.T,
 				pm *parametersMocks.MockMaker,
 				tm *templateMocks.MockMaker,
-			) (environments.Environments, servers.Servers, scripts.Scripts, Services) {
+			) (environments.Environments, servers.Servers, *resources.Resources, Services) {
 				localEnv := environmentMocks.NewMockEnvironment(t)
 				dockerEnv := environmentMocks.NewMockEnvironment(t)
 				kubeEnv := environmentMocks.NewMockEnvironment(t)
@@ -1142,8 +1332,14 @@ func Test_nativeMaker_Make(t *testing.T) {
 					"s1": scriptsMocks.NewMockScript(t),
 					"s2": scriptsMocks.NewMockScript(t),
 				}
+				certs := certificates.Certificates{
+					"ssl-cert": createCertificateMock(t, "ssl"),
+				}
 
-				return envs, srvs, scrs, nil
+				return envs, srvs, &resources.Resources{
+					Scripts:      scrs,
+					Certificates: certs,
+				}, nil
 			},
 			expectError:      true,
 			expectedErrorMsg: "script s3 not found for service svc",
@@ -1161,10 +1357,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 				templateMaker:   templateMakerMock,
 			}
 
-			envs, srvs, scrs, svcs := tt.setupMocks(t, parametersMakerMock, templateMakerMock)
+			envs, srvs, rscrs, svcs := tt.setupMocks(t, parametersMakerMock, templateMakerMock)
 
 			locator, err := maker.Make(
-				tt.config, &tt.defaults, scrs, srvs, envs, tt.instanceName, tt.instanceIdx, tt.instanceWs,
+				tt.config, &tt.defaults, rscrs, srvs, envs, tt.instanceName, tt.instanceIdx, tt.instanceWs,
 				tt.instanceParams)
 
 			if tt.expectError {
@@ -1179,6 +1375,22 @@ func Test_nativeMaker_Make(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Helper function to create certificate mocks
+func createCertificateMock(t *testing.T, name string) *certificatesMocks.MockCertificate {
+	cert := certificatesMocks.NewMockCertificate(t)
+	cert.On("CertificateName").Return(name + ".crt")
+	cert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\nMOCK_CERT_DATA\n-----END CERTIFICATE-----")
+	cert.On("PrivateKeyName").Return(name + ".key")
+	cert.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\nMOCK_KEY_DATA\n-----END PRIVATE KEY-----")
+	return cert
+}
+
+// Type definitions needed for the test (if not already defined)
+type ServiceResource struct {
+	IncludeAll  bool     `yaml:"include_all"`
+	IncludeList []string `yaml:"include_list"`
 }
 
 func testingNativeService(t *testing.T) *nativeService {

@@ -600,7 +600,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				fsMock.On("MkdirAll", "/env/path/c", os.FileMode(0755)).Return(nil)
 				fsMock.On("MkdirAll", "/env/path/s", os.FileMode(0755)).Return(nil)
 				fsMock.On("MkdirAll", "/env/path/certs", os.FileMode(0755)).Return(nil).Times(3) // 3 times: server.crt, server.key, ca.crt
-				fsMock.On("MkdirAll", ".", os.FileMode(0755)).Return(nil).Times(2)
+				fsMock.On("MkdirAll", ".", os.FileMode(0755)).Return(nil)
 
 				// Config file mocks
 				srcConfigFile := appMocks.NewMockFile(t)
@@ -920,6 +920,49 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 
 				// Certificate file fails to open
 				fsMock.On("Open", "/ws/path/certs/server.crt").Return(nil, errors.New("cert file error"))
+
+				fndMock.On("Fs").Return(fsMock)
+
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "cert file error",
+		},
+		{
+			name:      "private key copy error",
+			workspace: "/fake/path",
+			updateServiceSetting: func(ss *environment.ServiceSettings) {
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"server_cert": {
+						Certificate:               certificatesMocks.NewMockCertificate(t),
+						CertificateSourceFilePath: "/ws/path/certs/server.crt",
+						CertificateFilePath:       "/env/path/certs/server.crt",
+						PrivateKeySourceFilePath:  "/ws/path/certs/server.key",
+						PrivateKeyFilePath:        "/env/path/certs/server.key",
+					},
+				}
+			},
+			setupMocks: func(
+				t *testing.T,
+				actionCtx context.Context,
+				envCtx context.Context,
+				fndMock *appMocks.MockFoundation,
+				outMakerMock *outputMocks.MockMaker,
+			) (*appMocks.MockCommand, chan struct{}) {
+				fsMock := appMocks.NewMockFs(t)
+				fsMock.On("MkdirAll", "/fake/path", os.FileMode(0755)).Return(nil)
+				fsMock.On("MkdirAll", "/env/path/certs", os.FileMode(0755)).Return(nil).Times(2)
+
+				// Certificate file open
+				emptyFile := appMocks.NewMockFile(t)
+				emptyFile.On("Read", mock.Anything).Return(0, io.EOF)
+				emptyFile.On("Close").Return(nil)
+				emptyDstFile := appMocks.NewMockFile(t)
+				emptyDstFile.On("Close").Return(nil)
+				fsMock.On("Open", "/ws/path/certs/server.crt").Return(emptyFile, nil)
+				fsMock.On("Create", "/env/path/certs/server.crt").Return(emptyDstFile, nil)
+
+				fsMock.On("Open", "/ws/path/certs/server.key").Return(nil, errors.New("cert file error"))
 
 				fndMock.On("Fs").Return(fsMock)
 

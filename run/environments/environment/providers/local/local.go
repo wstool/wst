@@ -203,6 +203,7 @@ func (l *localEnvironment) copyWorkspacePaths(
 		}
 
 		if err := l.copyWorkspacePath(fs, configType, wsPath, envPath); err != nil {
+			return err
 		}
 	}
 	return nil

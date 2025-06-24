@@ -12,6 +12,30 @@ import (
 	"testing"
 )
 
+func Test_Scripts_Inherit(t *testing.T) {
+	child := Scripts{
+		"child":  &nativeScript{content: "child content"},
+		"shared": &nativeScript{content: "child shared"},
+	}
+	parent := Scripts{
+		"parent": &nativeScript{content: "parent content"},
+		"shared": &nativeScript{content: "parent shared"},
+	}
+
+	result := child.Inherit(parent)
+
+	// Should return same instance
+	assert.Equal(t, &child, &result)
+	assert.Len(t, result, 3)
+
+	// Child scripts unchanged
+	assert.Equal(t, "child content", result["child"].Content())
+	assert.Equal(t, "child shared", result["shared"].Content()) // child takes precedence
+
+	// Parent script inherited
+	assert.Equal(t, "parent content", result["parent"].Content())
+}
+
 func Test_nativeMaker_Make(t *testing.T) {
 	tests := []struct {
 		name               string
