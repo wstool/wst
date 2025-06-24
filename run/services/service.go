@@ -580,6 +580,12 @@ func (s *nativeService) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Render certificates
+	err = s.renderCertificates()
+	if err != nil {
+		return err
+	}
+
 	// Render scripts
 	err = s.renderScripts()
 	if err != nil {

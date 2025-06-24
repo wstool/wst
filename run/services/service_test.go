@@ -414,7 +414,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 				services := locator.Services()
 				require.Equal(t, 2, len(services))
 
-				// Verify FPM service (note: service name is "fpm", not "fmp")
+				// Verify FPM service (note: service name is "fpm", not "fpm")
 				fpmSvc, exists := services["fpm"]
 				require.True(t, exists)
 				assert.Equal(t, "fpm", fpmSvc.Name())
@@ -1993,6 +1993,8 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/fpm.conf", []byte("[global]"), 0644)
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
+
+				// Setup configs
 				fpmConfConfig := configsMocks.NewMockConfig(t)
 				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
@@ -2013,6 +2015,8 @@ func Test_nativeService_Start(t *testing.T) {
 						config:     phpIniConfig,
 					},
 				}
+
+				// Setup environment and sandbox for configs
 				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
 				sb.On("Dir", dir.ConfDirType).Return("conf", nil)
 				tmpl.On(
@@ -2030,6 +2034,34 @@ func Test_nativeService_Start(t *testing.T) {
 					os.FileMode(0644),
 				).Return(nil)
 
+				// Setup certificates
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				testCert.On("PrivateKeyName").Return("test.key")
+				testCert.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				// Setup sandbox for certificates
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.crt",
+					os.FileMode(0644),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.key",
+					os.FileMode(0600),
+				).Return(nil)
+
+				// Setup scripts
 				indexScript := scriptsMocks.NewMockScript(t)
 				indexScript.On("Path").Return("")
 				indexScript.On("Mode").Return(os.FileMode(0664))
@@ -2049,6 +2081,8 @@ func Test_nativeService_Start(t *testing.T) {
 					"/tmp/ws/svc/scr/index.php",
 					os.FileMode(0664),
 				).Return(nil)
+
+				// Setup hook execution
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
 				ss := testingServiceSettings(svc)
 				ss.EnvironmentConfigPaths = map[string]string{
@@ -2065,6 +2099,15 @@ func Test_nativeService_Start(t *testing.T) {
 				ss.WorkspaceScriptPaths = map[string]string{
 					"index.php": "/tmp/ws/svc/scr/index.php",
 				}
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"test_cert": {
+						Certificate:               testCert,
+						CertificateFilePath:       "/tmp/svc/certs/svc/test.crt",
+						CertificateSourceFilePath: "/tmp/ws/svc/certs/test.crt",
+						PrivateKeyFilePath:        "/tmp/svc/certs/svc/test.key",
+						PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/test.key",
+					},
+				}
 				tsk := taskMocks.NewMockTask(t)
 				tsk.TestData().Set("id", "task")
 				hook.On(
@@ -2078,6 +2121,124 @@ func Test_nativeService_Start(t *testing.T) {
 				return ss, tsk
 			},
 			expectError: false,
+		},
+		{
+			name: "certificate rendering error - cert file",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup minimal configs first
+				svc.configs = map[string]nativeServiceConfig{}
+
+				// Setup certificates that will fail
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.crt",
+					os.FileMode(0644),
+				).Return(errors.New("cert render fail"))
+
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "cert render fail",
+		},
+		{
+			name: "certificate rendering error - private key file",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup minimal configs first
+				svc.configs = map[string]nativeServiceConfig{}
+
+				// Setup certificates that will fail on private key
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				testCert.On("PrivateKeyName").Return("test.key")
+				testCert.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.crt",
+					os.FileMode(0644),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.key",
+					os.FileMode(0600),
+				).Return(errors.New("private key render fail"))
+
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "private key render fail",
+		},
+		{
+			name: "certificate sandbox dir error",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup minimal configs first
+				svc.configs = map[string]nativeServiceConfig{}
+
+				// Setup certificates - need to mock the methods that get called before the error
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("", errors.New("cert dir fail"))
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "cert dir fail",
 		},
 		{
 			name: "hook execution error",
@@ -2095,6 +2256,8 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/fpm.conf", []byte("[global]"), 0644)
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
+
+				// Setup configs
 				fpmConfConfig := configsMocks.NewMockConfig(t)
 				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
@@ -2132,6 +2295,10 @@ func Test_nativeService_Start(t *testing.T) {
 					os.FileMode(0644),
 				).Return(nil)
 
+				// Setup empty certificates (no certificates to render)
+				svc.certificates = certificates.Certificates{}
+
+				// Setup scripts
 				indexScript := scriptsMocks.NewMockScript(t)
 				indexScript.On("Path").Return("/app/index.php")
 				indexScript.On("Mode").Return(os.FileMode(0664))
@@ -2151,10 +2318,11 @@ func Test_nativeService_Start(t *testing.T) {
 					"/tmp/ws/svc/scr/index.php",
 					os.FileMode(0664),
 				).Return(nil)
+
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
 				ss := testingServiceSettings(svc)
 				ss.EnvironmentConfigPaths = map[string]string{
-					"fpm_conf": "/tmp/svc/conf/svc/fpm.conf",
+					"fpm_conf": "/tmp/svc/conf/svc/fpm.conf", // Fixed: was "fpm.conf", should be "fpm.conf"
 					"php_ini":  "/tmp/svc/conf/svc/php.ini",
 				}
 				ss.EnvironmentScriptPaths = map[string]string{
@@ -2167,6 +2335,7 @@ func Test_nativeService_Start(t *testing.T) {
 				ss.WorkspaceScriptPaths = map[string]string{
 					"index": "/tmp/ws/svc/scr/index.php",
 				}
+				ss.Certificates = map[string]*certificates.RenderedCertificate{}
 				hook.On(
 					"Execute",
 					ctx,
@@ -2197,6 +2366,8 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/fpm.conf", []byte("[global]"), 0644)
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
+
+				// Setup configs
 				fpmConfConfig := configsMocks.NewMockConfig(t)
 				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
@@ -2234,6 +2405,10 @@ func Test_nativeService_Start(t *testing.T) {
 					os.FileMode(0644),
 				).Return(nil)
 
+				// Setup empty certificates (no certificates to render)
+				svc.certificates = certificates.Certificates{}
+
+				// Setup scripts that will fail
 				indexScript := scriptsMocks.NewMockScript(t)
 				indexScript.On("Path").Return("/app/index.php")
 				indexScript.On("Mode").Return(os.FileMode(0664))
@@ -2276,6 +2451,8 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/fpm.conf", []byte("[global]"), 0644)
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
+
+				// Setup configs
 				fpmConfConfig := configsMocks.NewMockConfig(t)
 				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
@@ -2313,6 +2490,10 @@ func Test_nativeService_Start(t *testing.T) {
 					os.FileMode(0644),
 				).Return(nil)
 
+				// Setup empty certificates
+				svc.certificates = certificates.Certificates{}
+
+				// Setup scripts
 				indexScript := scriptsMocks.NewMockScript(t)
 				indexScript.On("Path").Return("/app/index.php")
 				svc.scripts = scripts.Scripts{
@@ -2342,6 +2523,8 @@ func Test_nativeService_Start(t *testing.T) {
 				_ = afero.WriteFile(memMapFs, "/app/fpm.conf", []byte("[global]"), 0644)
 				_ = afero.WriteFile(memMapFs, "/app/php.ini", []byte("[php]"), 0644)
 				fnd.On("Fs").Return(memMapFs)
+
+				// Setup configs
 				fpmConfConfig := configsMocks.NewMockConfig(t)
 				fpmConfConfig.On("FilePath").Return("/app/fpm.conf")
 				fpmConfConfigParams := parameters.Parameters{
@@ -2397,6 +2580,8 @@ func Test_nativeService_Start(t *testing.T) {
 				tmpl *templateMocks.MockTemplate,
 			) (*environment.ServiceSettings, *taskMocks.MockTask) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+
+				// Setup configs
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
@@ -2429,12 +2614,16 @@ func Test_nativeService_Start(t *testing.T) {
 				tmpl *templateMocks.MockTemplate,
 			) (*environment.ServiceSettings, *taskMocks.MockTask) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+
+				// Setup file system mocks that will fail on read
 				mockFile := appMocks.NewMockFile(t)
 				mockFile.On("Close").Return(nil)
 				mockFile.On("Read", mock.Anything).Return(0, errors.New("config read fail"))
 				mockFs := appMocks.NewMockFs(t)
 				mockFs.On("Open", "/app/php.ini").Return(mockFile, nil)
 				fnd.On("Fs").Return(mockFs)
+
+				// Setup configs
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
@@ -2467,9 +2656,13 @@ func Test_nativeService_Start(t *testing.T) {
 				tmpl *templateMocks.MockTemplate,
 			) (*environment.ServiceSettings, *taskMocks.MockTask) {
 				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+
+				// Setup file system mocks that will fail on open
 				mockFs := appMocks.NewMockFs(t)
 				mockFs.On("Open", "/app/php.ini").Return(nil, errors.New("config open fail"))
 				fnd.On("Fs").Return(mockFs)
+
+				// Setup configs
 				phpIniConfig := configsMocks.NewMockConfig(t)
 				phpIniConfig.On("FilePath").Return("/app/php.ini")
 				phpIniConfigParams := parameters.Parameters{
@@ -2507,6 +2700,239 @@ func Test_nativeService_Start(t *testing.T) {
 			expectError:    true,
 			expectedErrMsg: assert.AnError.Error(),
 		},
+		{
+			name: "certificate rendering error - cert file",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup minimal configs first
+				svc.configs = map[string]nativeServiceConfig{}
+
+				// Setup certificates that will fail
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.crt",
+					os.FileMode(0644),
+				).Return(errors.New("cert render fail"))
+
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "cert render fail",
+		},
+		{
+			name: "certificate rendering error - private key file",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup minimal configs first
+				svc.configs = map[string]nativeServiceConfig{}
+
+				// Setup certificates that will fail on private key
+				testCert := certificatesMocks.NewMockCertificate(t)
+				testCert.On("CertificateName").Return("test.crt")
+				testCert.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----")
+				testCert.On("PrivateKeyName").Return("test.key")
+				testCert.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----")
+				svc.certificates = certificates.Certificates{
+					"test_cert": testCert,
+				}
+
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\ntest cert data\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.crt",
+					os.FileMode(0644),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN PRIVATE KEY-----\ntest key data\n-----END PRIVATE KEY-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/test.key",
+					os.FileMode(0600),
+				).Return(errors.New("private key render fail"))
+
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				return nil, nil
+			},
+			expectError:    true,
+			expectedErrMsg: "private key render fail",
+		},
+		{
+			name: "successful start with empty resources",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup with no configs, certificates, or scripts
+				svc.configs = map[string]nativeServiceConfig{}
+				svc.certificates = certificates.Certificates{}
+				svc.scripts = scripts.Scripts{}
+
+				// Setup hook execution
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				ss := testingServiceSettings(svc)
+				ss.EnvironmentConfigPaths = map[string]string{}
+				ss.EnvironmentScriptPaths = map[string]string{}
+				ss.WorkspaceConfigPaths = map[string]string{}
+				ss.WorkspaceScriptPaths = map[string]string{}
+				ss.Certificates = map[string]*certificates.RenderedCertificate{}
+
+				tsk := taskMocks.NewMockTask(t)
+				tsk.TestData().Set("id", "task")
+				hook.On(
+					"Execute",
+					ctx,
+					ss,
+					svc.template,
+					svc.environment,
+					svc.task,
+				).Return(tsk, nil)
+				return ss, tsk
+			},
+			expectError: false,
+		},
+		{
+			name: "successful start with multiple certificates",
+			setupMocks: func(
+				t *testing.T,
+				svc *nativeService,
+				fnd *appMocks.MockFoundation,
+				env *environmentMocks.MockEnvironment,
+				sb *sandboxMocks.MockSandbox,
+				sv *serversMocks.MockServer,
+				hook *hooksMocks.MockHook,
+				tmpl *templateMocks.MockTemplate,
+			) (*environment.ServiceSettings, *taskMocks.MockTask) {
+				// Setup with no configs or scripts but multiple certificates
+				svc.configs = map[string]nativeServiceConfig{}
+				svc.scripts = scripts.Scripts{}
+
+				// Setup multiple certificates
+				cert1 := certificatesMocks.NewMockCertificate(t)
+				cert1.On("CertificateName").Return("server.crt")
+				cert1.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\nserver cert\n-----END CERTIFICATE-----")
+				cert1.On("PrivateKeyName").Return("server.key")
+				cert1.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\nserver key\n-----END PRIVATE KEY-----")
+
+				cert2 := certificatesMocks.NewMockCertificate(t)
+				cert2.On("CertificateName").Return("ca.crt")
+				cert2.On("CertificateData").Return("-----BEGIN CERTIFICATE-----\nca cert\n-----END CERTIFICATE-----")
+				cert2.On("PrivateKeyName").Return("ca.key")
+				cert2.On("PrivateKeyData").Return("-----BEGIN PRIVATE KEY-----\nca key\n-----END PRIVATE KEY-----")
+
+				svc.certificates = certificates.Certificates{
+					"server_cert": cert1,
+					"ca_cert":     cert2,
+				}
+
+				// Setup sandbox for certificates
+				env.On("RootPath", "/tmp/ws/svc").Return("/tmp/svc")
+				sb.On("Dir", dir.CertDirType).Return("certs", nil)
+
+				// Mock certificate rendering
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\nserver cert\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/server.crt",
+					os.FileMode(0644),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN PRIVATE KEY-----\nserver key\n-----END PRIVATE KEY-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/server.key",
+					os.FileMode(0600),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN CERTIFICATE-----\nca cert\n-----END CERTIFICATE-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/ca.crt",
+					os.FileMode(0644),
+				).Return(nil)
+				tmpl.On(
+					"RenderToFile",
+					"-----BEGIN PRIVATE KEY-----\nca key\n-----END PRIVATE KEY-----",
+					parameters.Parameters{},
+					"/tmp/ws/svc/certs/ca.key",
+					os.FileMode(0600),
+				).Return(nil)
+
+				// Setup hook execution
+				sb.On("Hook", hooks.StartHookType).Return(hook, nil)
+				ss := testingServiceSettings(svc)
+				ss.EnvironmentConfigPaths = map[string]string{}
+				ss.EnvironmentScriptPaths = map[string]string{}
+				ss.WorkspaceConfigPaths = map[string]string{}
+				ss.WorkspaceScriptPaths = map[string]string{}
+				ss.Certificates = map[string]*certificates.RenderedCertificate{
+					"server_cert": {
+						Certificate:               cert1,
+						CertificateFilePath:       "/tmp/svc/certs/svc/server.crt",
+						CertificateSourceFilePath: "/tmp/ws/svc/certs/server.crt",
+						PrivateKeyFilePath:        "/tmp/svc/certs/svc/server.key",
+						PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/server.key",
+					},
+					"ca_cert": {
+						Certificate:               cert2,
+						CertificateFilePath:       "/tmp/svc/certs/svc/ca.crt",
+						CertificateSourceFilePath: "/tmp/ws/svc/certs/ca.crt",
+						PrivateKeyFilePath:        "/tmp/svc/certs/svc/ca.key",
+						PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/ca.key",
+					},
+				}
+
+				tsk := taskMocks.NewMockTask(t)
+				tsk.TestData().Set("id", "task")
+				hook.On(
+					"Execute",
+					ctx,
+					ss,
+					svc.template,
+					svc.environment,
+					svc.task,
+				).Return(tsk, nil)
+				return ss, tsk
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -2516,6 +2942,8 @@ func Test_nativeService_Start(t *testing.T) {
 			svc.environmentScriptPaths = nil
 			svc.workspaceConfigPaths = nil
 			svc.workspaceScriptPaths = nil
+			svc.renderedCertificates = nil
+
 			mockFoundation := svc.fnd.(*appMocks.MockFoundation)
 			mockEnv := svc.environment.(*environmentMocks.MockEnvironment)
 			mockSandbox := svc.sandbox.(*sandboxMocks.MockSandbox)
@@ -2536,6 +2964,7 @@ func Test_nativeService_Start(t *testing.T) {
 				assert.Equal(t, ss.EnvironmentScriptPaths, svc.environmentScriptPaths)
 				assert.Equal(t, ss.WorkspaceConfigPaths, svc.workspaceConfigPaths)
 				assert.Equal(t, ss.WorkspaceScriptPaths, svc.workspaceScriptPaths)
+				assert.Equal(t, ss.Certificates, svc.renderedCertificates)
 			}
 		})
 	}
@@ -2849,4 +3278,139 @@ func Test_nativeService_Environment(t *testing.T) {
 func Test_nativeService_Task(t *testing.T) {
 	svc := testingNativeService(t)
 	assert.Equal(t, svc.task, svc.Task())
+}
+
+func Test_nativeService_FindCertificate(t *testing.T) {
+	tests := []struct {
+		name               string
+		certificateName    string
+		setupRenderedCerts func(*nativeService)
+		expectedCert       *certificates.RenderedCertificate
+		expectError        bool
+		expectedErrMsg     string
+	}{
+		{
+			name:            "certificate found",
+			certificateName: "test_cert",
+			setupRenderedCerts: func(svc *nativeService) {
+				mockCert := certificatesMocks.NewMockCertificate(t)
+				renderedCert := &certificates.RenderedCertificate{
+					Certificate:               mockCert,
+					CertificateFilePath:       "/tmp/svc/certs/test.crt",
+					CertificateSourceFilePath: "/tmp/ws/svc/certs/test.crt",
+					PrivateKeyFilePath:        "/tmp/svc/certs/test.key",
+					PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/test.key",
+				}
+				svc.renderedCertificates = map[string]*certificates.RenderedCertificate{
+					"test_cert": renderedCert,
+				}
+			},
+			expectedCert: &certificates.RenderedCertificate{
+				Certificate:               nil, // Will be set in setup
+				CertificateFilePath:       "/tmp/svc/certs/test.crt",
+				CertificateSourceFilePath: "/tmp/ws/svc/certs/test.crt",
+				PrivateKeyFilePath:        "/tmp/svc/certs/test.key",
+				PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/test.key",
+			},
+			expectError: false,
+		},
+		{
+			name:            "certificate not found",
+			certificateName: "nonexistent_cert",
+			setupRenderedCerts: func(svc *nativeService) {
+				mockCert := certificatesMocks.NewMockCertificate(t)
+				renderedCert := &certificates.RenderedCertificate{
+					Certificate:               mockCert,
+					CertificateFilePath:       "/tmp/svc/certs/test.crt",
+					CertificateSourceFilePath: "/tmp/ws/svc/certs/test.crt",
+					PrivateKeyFilePath:        "/tmp/svc/certs/test.key",
+					PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/test.key",
+				}
+				svc.renderedCertificates = map[string]*certificates.RenderedCertificate{
+					"test_cert": renderedCert,
+				}
+			},
+			expectedCert:   nil,
+			expectError:    true,
+			expectedErrMsg: "certificate nonexistent_cert not found",
+		},
+		{
+			name:            "empty rendered certificates",
+			certificateName: "any_cert",
+			setupRenderedCerts: func(svc *nativeService) {
+				svc.renderedCertificates = map[string]*certificates.RenderedCertificate{}
+			},
+			expectedCert:   nil,
+			expectError:    true,
+			expectedErrMsg: "certificate any_cert not found",
+		},
+		{
+			name:            "nil rendered certificates map",
+			certificateName: "any_cert",
+			setupRenderedCerts: func(svc *nativeService) {
+				svc.renderedCertificates = nil
+			},
+			expectedCert:   nil,
+			expectError:    true,
+			expectedErrMsg: "certificate any_cert not found",
+		},
+		{
+			name:            "multiple certificates - find specific one",
+			certificateName: "server_cert",
+			setupRenderedCerts: func(svc *nativeService) {
+				mockCert1 := certificatesMocks.NewMockCertificate(t)
+				mockCert2 := certificatesMocks.NewMockCertificate(t)
+
+				svc.renderedCertificates = map[string]*certificates.RenderedCertificate{
+					"ca_cert": {
+						Certificate:               mockCert1,
+						CertificateFilePath:       "/tmp/svc/certs/ca.crt",
+						CertificateSourceFilePath: "/tmp/ws/svc/certs/ca.crt",
+						PrivateKeyFilePath:        "/tmp/svc/certs/ca.key",
+						PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/ca.key",
+					},
+					"server_cert": {
+						Certificate:               mockCert2,
+						CertificateFilePath:       "/tmp/svc/certs/server.crt",
+						CertificateSourceFilePath: "/tmp/ws/svc/certs/server.crt",
+						PrivateKeyFilePath:        "/tmp/svc/certs/server.key",
+						PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/server.key",
+					},
+				}
+			},
+			expectedCert: &certificates.RenderedCertificate{
+				Certificate:               nil, // Will be set in setup
+				CertificateFilePath:       "/tmp/svc/certs/server.crt",
+				CertificateSourceFilePath: "/tmp/ws/svc/certs/server.crt",
+				PrivateKeyFilePath:        "/tmp/svc/certs/server.key",
+				PrivateKeySourceFilePath:  "/tmp/ws/svc/certs/server.key",
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := testingNativeService(t)
+			tt.setupRenderedCerts(svc)
+
+			result, err := svc.FindCertificate(tt.certificateName)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+
+				// Compare all fields except Certificate (since it's a mock)
+				assert.Equal(t, tt.expectedCert.CertificateFilePath, result.CertificateFilePath)
+				assert.Equal(t, tt.expectedCert.CertificateSourceFilePath, result.CertificateSourceFilePath)
+				assert.Equal(t, tt.expectedCert.PrivateKeyFilePath, result.PrivateKeyFilePath)
+				assert.Equal(t, tt.expectedCert.PrivateKeySourceFilePath, result.PrivateKeySourceFilePath)
+				assert.NotNil(t, result.Certificate) // Just verify the Certificate field is not nil
+			}
+		})
+	}
 }
