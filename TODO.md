@@ -50,8 +50,6 @@ in the future.
 #### Structure - Instances, Actions, Servers, Services
 
 - extend environment and request action to support TLS certificate
-  - fix tests for local environment and limit number of fs call (check directory existence before mkdir)
-  - fix and add unit tests for instance, resources and service
   - test templating to represent certificate and make it accessible
   - environment publicUrl should support https - currently it is hard coded to return http so it should allow extra param to select it
   - extend request action with a protocol option to select between http and https
