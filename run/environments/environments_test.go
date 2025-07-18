@@ -33,6 +33,21 @@ func TestNativeMaker_Make(t *testing.T) {
 		{
 			name: "successful merge and environment creation",
 			specConfig: map[string]types.Environment{
+				"common": &types.CommonEnvironment{
+					Resources: types.Resources{
+						Certificates: map[string]types.Certificate{
+							"local": {
+								Certificate: "cert",
+								PrivateKey:  "key",
+							},
+						},
+						Scripts: map[string]types.Script{
+							"index": {
+								Content: "<?php echo 'hello';",
+							},
+						},
+					},
+				},
 				"local": &types.LocalEnvironment{
 					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
 				},
@@ -41,6 +56,19 @@ func TestNativeMaker_Make(t *testing.T) {
 				},
 				"kubernetes": &types.KubernetesEnvironment{
 					Ports: types.EnvironmentPorts{Start: 5000, End: 6000},
+					Resources: types.Resources{
+						Certificates: map[string]types.Certificate{
+							"local": {
+								Certificate: "kube cert",
+								PrivateKey:  "kube key",
+							},
+						},
+						Scripts: map[string]types.Script{
+							"index": {
+								Content: "<?php echo 'kube';",
+							},
+						},
+					},
 				},
 			},
 			instanceConfig: map[string]types.Environment{
@@ -61,6 +89,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.LocalEnvironment{
 						Ports: types.EnvironmentPorts{Start: 1500, End: 2500},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "cert",
+									PrivateKey:  "key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'hello';",
+								},
+							},
+						},
 					},
 					"/workspace",
 				).Return(localEnv, nil)
@@ -71,6 +112,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.DockerEnvironment{
 						Ports: types.EnvironmentPorts{Start: 3000, End: 4000},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "cert",
+									PrivateKey:  "key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'hello';",
+								},
+							},
+						},
 					},
 				).Return(dockerEnv, nil)
 
@@ -80,6 +134,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.KubernetesEnvironment{
 						Ports: types.EnvironmentPorts{Start: 5000, End: 6000},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "kube cert",
+									PrivateKey:  "kube key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'kube';",
+								},
+							},
+						},
 					},
 				).Return(kubernetesEnv, nil)
 
@@ -134,6 +201,10 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.LocalEnvironment{
 						Ports: types.EnvironmentPorts{Start: 1500, End: 2500},
+						Resources: types.Resources{
+							Scripts:      map[string]types.Script{},
+							Certificates: map[string]types.Certificate{},
+						},
 					},
 					"/workspace",
 				).Return(localEnv, nil)
@@ -144,6 +215,10 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.DockerEnvironment{
 						Ports: types.EnvironmentPorts{Start: 3000, End: 4000},
+						Resources: types.Resources{
+							Scripts:      map[string]types.Script{},
+							Certificates: map[string]types.Certificate{},
+						},
 						Registry: types.ContainerRegistry{
 							Auth: types.ContainerRegistryAuth{
 								Username: "user",
@@ -159,6 +234,10 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.KubernetesEnvironment{
 						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+						Resources: types.Resources{
+							Scripts:      map[string]types.Script{},
+							Certificates: map[string]types.Certificate{},
+						},
 						Registry: types.ContainerRegistry{
 							Auth: types.ContainerRegistryAuth{
 								Username: "test",
@@ -180,6 +259,19 @@ func TestNativeMaker_Make(t *testing.T) {
 			specConfig: map[string]types.Environment{
 				"common": &types.CommonEnvironment{
 					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+					Resources: types.Resources{
+						Certificates: map[string]types.Certificate{
+							"local": {
+								Certificate: "spec cert",
+								PrivateKey:  "spec key",
+							},
+						},
+						Scripts: map[string]types.Script{
+							"index": {
+								Content: "<?php echo 'hello spec';",
+							},
+						},
+					},
 				},
 				"local": &types.LocalEnvironment{
 					Ports: types.EnvironmentPorts{Start: 500, End: 1000},
@@ -211,6 +303,19 @@ func TestNativeMaker_Make(t *testing.T) {
 			instanceConfig: map[string]types.Environment{
 				"common": &types.CommonEnvironment{
 					Ports: types.EnvironmentPorts{Start: 2000, End: 3000},
+					Resources: types.Resources{
+						Certificates: map[string]types.Certificate{
+							"local": {
+								Certificate: "inst cert",
+								PrivateKey:  "inst key",
+							},
+						},
+						Scripts: map[string]types.Script{
+							"index": {
+								Content: "<?php echo 'hello inst';",
+							},
+						},
+					},
 				},
 				"local": &types.LocalEnvironment{
 					Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
@@ -252,6 +357,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.LocalEnvironment{
 						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "inst cert",
+									PrivateKey:  "inst key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'hello inst';",
+								},
+							},
+						},
 					},
 					"/workspace",
 				).Return(localEnv, nil)
@@ -262,6 +380,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.DockerEnvironment{
 						Ports: types.EnvironmentPorts{Start: 3000, End: 4000},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "inst cert",
+									PrivateKey:  "inst key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'hello inst';",
+								},
+							},
+						},
 						Registry: types.ContainerRegistry{
 							Auth: types.ContainerRegistryAuth{
 								Username: "user",
@@ -278,6 +409,19 @@ func TestNativeMaker_Make(t *testing.T) {
 					"Make",
 					&types.KubernetesEnvironment{
 						Ports: types.EnvironmentPorts{Start: 1000, End: 2000},
+						Resources: types.Resources{
+							Certificates: map[string]types.Certificate{
+								"local": {
+									Certificate: "inst cert",
+									PrivateKey:  "inst key",
+								},
+							},
+							Scripts: map[string]types.Script{
+								"index": {
+									Content: "<?php echo 'hello inst';",
+								},
+							},
+						},
 						Registry: types.ContainerRegistry{
 							Auth: types.ContainerRegistryAuth{
 								Username: "test",
@@ -379,6 +523,10 @@ func TestNativeMaker_Make(t *testing.T) {
 				localEnv := envMocks.NewMockEnvironment(t)
 				localMock.On("Make", &types.LocalEnvironment{
 					Ports: types.EnvironmentPorts{Start: 1500, End: 2500},
+					Resources: types.Resources{
+						Certificates: map[string]types.Certificate{},
+						Scripts:      map[string]types.Script{},
+					},
 				}, "/workspace").Return(localEnv, nil)
 				return Environments{providers.LocalType: localEnv}
 			},

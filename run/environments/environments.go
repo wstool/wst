@@ -118,6 +118,7 @@ func (m *nativeMaker) mergeLocalAndCommon(local, common types.Environment) types
 	}
 	localEnvironment := local.(*types.LocalEnvironment)
 	localEnvironment.Ports = m.mergePorts(&commonEnvironment.Ports, &localEnvironment.Ports)
+	localEnvironment.Resources = m.mergeResources(&commonEnvironment.Resources, &localEnvironment.Resources)
 
 	return localEnvironment
 }
@@ -132,6 +133,7 @@ func (m *nativeMaker) mergeContainerAndCommon(container, common types.Environmen
 	}
 	containerEnvironment := container.(*types.ContainerEnvironment)
 	containerEnvironment.Ports = m.mergePorts(&commonEnvironment.Ports, &containerEnvironment.Ports)
+	containerEnvironment.Resources = m.mergeResources(&commonEnvironment.Resources, &containerEnvironment.Resources)
 
 	return containerEnvironment
 }
@@ -148,6 +150,7 @@ func (m *nativeMaker) mergeDockerAndContainer(docker, container types.Environmen
 
 	dockerEnvironment := docker.(*types.DockerEnvironment)
 	dockerEnvironment.Ports = m.mergePorts(&containerEnvironment.Ports, &dockerEnvironment.Ports)
+	dockerEnvironment.Resources = m.mergeResources(&containerEnvironment.Resources, &dockerEnvironment.Resources)
 	dockerEnvironment.Registry = m.mergeContainerRegistry(&containerEnvironment.Registry, &dockerEnvironment.Registry)
 
 	return dockerEnvironment
@@ -165,6 +168,7 @@ func (m *nativeMaker) mergeKubernetesAndContainer(kubernetes, container types.En
 
 	kubernetesEnvironment := kubernetes.(*types.KubernetesEnvironment)
 	kubernetesEnvironment.Ports = m.mergePorts(&containerEnvironment.Ports, &kubernetesEnvironment.Ports)
+	kubernetesEnvironment.Resources = m.mergeResources(&containerEnvironment.Resources, &kubernetesEnvironment.Resources)
 	kubernetesEnvironment.Registry = m.mergeContainerRegistry(
 		&containerEnvironment.Registry,
 		&kubernetesEnvironment.Registry,
@@ -221,6 +225,42 @@ func (m *nativeMaker) mergePorts(specPorts, instancePorts *types.EnvironmentPort
 	return mergedPorts
 }
 
+func (m *nativeMaker) mergeResources(specResources, instanceResources *types.Resources) types.Resources {
+	certCapacity := len(instanceResources.Certificates) + len(specResources.Certificates)
+	scriptCapacity := len(instanceResources.Scripts) + len(specResources.Scripts)
+
+	result := types.Resources{
+		Certificates: make(map[string]types.Certificate, certCapacity),
+		Scripts:      make(map[string]types.Script, scriptCapacity),
+	}
+
+	// First, copy all certificates from instanceResources (they take priority)
+	for key, cert := range instanceResources.Certificates {
+		result.Certificates[key] = cert
+	}
+
+	// Then, add certificates from specResources that are not already in instanceResources
+	for key, cert := range specResources.Certificates {
+		if _, exists := result.Certificates[key]; !exists {
+			result.Certificates[key] = cert
+		}
+	}
+
+	// First, copy all scripts from instanceResources (they take priority)
+	for key, script := range instanceResources.Scripts {
+		result.Scripts[key] = script
+	}
+
+	// Then, add scripts from specResources that are not already in instanceResources
+	for key, script := range specResources.Scripts {
+		if _, exists := result.Scripts[key]; !exists {
+			result.Scripts[key] = script
+		}
+	}
+
+	return result
+}
+
 func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (types.Environment, error) {
 	// Ensure both spec and instance are of the correct type, using type assertion to *CommonEnvironment.
 	specCommon, specOk := spec.(*types.CommonEnvironment)
@@ -231,7 +271,8 @@ func (m *nativeMaker) mergeCommonEnvironment(spec, instance types.Environment) (
 
 	// Create a new instance of CommonEnvironment for the merged result.
 	mergedCommon := &types.CommonEnvironment{
-		Ports: m.mergePorts(&specCommon.Ports, &instanceCommon.Ports),
+		Ports:     m.mergePorts(&specCommon.Ports, &instanceCommon.Ports),
+		Resources: m.mergeResources(&specCommon.Resources, &instanceCommon.Resources),
 	}
 
 	// Return the new, merged CommonEnvironment as an Environment interface.
@@ -247,7 +288,8 @@ func (m *nativeMaker) mergeLocalEnvironment(spec, instance types.Environment) (t
 	}
 
 	mergedLocal := &types.LocalEnvironment{
-		Ports: m.mergePorts(&specLocal.Ports, &instanceLocal.Ports),
+		Ports:     m.mergePorts(&specLocal.Ports, &instanceLocal.Ports),
+		Resources: m.mergeResources(&specLocal.Resources, &instanceLocal.Resources),
 	}
 
 	return mergedLocal, nil
@@ -272,8 +314,9 @@ func (m *nativeMaker) mergeContainerEnvironment(spec, instance types.Environment
 	}
 
 	mergedContainer := &types.ContainerEnvironment{
-		Ports:    m.mergePorts(&specContainer.Ports, &instanceContainer.Ports),
-		Registry: m.mergeContainerRegistry(&specContainer.Registry, &instanceContainer.Registry),
+		Ports:     m.mergePorts(&specContainer.Ports, &instanceContainer.Ports),
+		Resources: m.mergeResources(&specContainer.Resources, &instanceContainer.Resources),
+		Registry:  m.mergeContainerRegistry(&specContainer.Registry, &instanceContainer.Registry),
 	}
 
 	return mergedContainer, nil
@@ -288,6 +331,7 @@ func (m *nativeMaker) mergeDockerEnvironment(spec, instance types.Environment) (
 
 	mergedDocker := &types.DockerEnvironment{
 		Ports:      m.mergePorts(&specDocker.Ports, &instanceDocker.Ports),
+		Resources:  m.mergeResources(&specDocker.Resources, &instanceDocker.Resources),
 		Registry:   m.mergeContainerRegistry(&specDocker.Registry, &instanceDocker.Registry),
 		NamePrefix: specDocker.NamePrefix,
 	}
@@ -308,6 +352,7 @@ func (m *nativeMaker) mergeKubernetesEnvironment(spec, instance types.Environmen
 
 	mergedKubernetes := &types.KubernetesEnvironment{
 		Ports:      m.mergePorts(&specKubernetes.Ports, &instanceKubernetes.Ports),
+		Resources:  m.mergeResources(&specKubernetes.Resources, &specKubernetes.Resources),
 		Registry:   m.mergeContainerRegistry(&specKubernetes.Registry, &instanceKubernetes.Registry),
 		Namespace:  specKubernetes.Namespace,
 		Kubeconfig: specKubernetes.Kubeconfig,
