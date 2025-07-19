@@ -97,7 +97,7 @@ func (t *nativeTemplate) RenderToWriter(content string, params parameters.Parame
 	}
 	configs := t.service.EnvironmentConfigPaths()
 	if configs == nil {
-		return errors.Errorf("service configs are not set")
+		configs = make(map[string]string)
 	}
 
 	data := &Data{

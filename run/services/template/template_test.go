@@ -251,6 +251,19 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 			expected: "Hello, inc:pk:pv!",
 		},
 		{
+			name:        "Config not set default",
+			templateStr: "Hello",
+			setupFunc: func(
+				fm *appMocks.MockFoundation,
+				sm *serviceMocks.MockTemplateService,
+				st templates.Templates,
+			) (parameters.Parameters, Services) {
+				sm.On("EnvironmentConfigPaths").Return(nil)
+				return nil, nil
+			},
+			expected: "Hello",
+		},
+		{
 			name:        "Error due to service private url",
 			templateStr: "{{ .Service.PrivateUrl }};{{ .Service.Pid }}",
 			setupFunc: func(
@@ -280,20 +293,6 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 			},
 			expectErr: true,
 			errMsg:    "can't evaluate field Wrong in type *template.Data",
-		},
-		{
-			name:        "Config error",
-			templateStr: "Hello",
-			setupFunc: func(
-				fm *appMocks.MockFoundation,
-				sm *serviceMocks.MockTemplateService,
-				st templates.Templates,
-			) (parameters.Parameters, Services) {
-				sm.On("EnvironmentConfigPaths").Return(nil)
-				return nil, nil
-			},
-			expectErr: true,
-			errMsg:    "configs are not set",
 		},
 		{
 			name:        "Parsing error",

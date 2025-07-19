@@ -574,14 +574,14 @@ func (s *nativeService) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Render configs
-	err = s.renderConfigs()
+	// Render certificates
+	err = s.renderCertificates()
 	if err != nil {
 		return err
 	}
 
-	// Render certificates
-	err = s.renderCertificates()
+	// Render configs
+	err = s.renderConfigs()
 	if err != nil {
 		return err
 	}
