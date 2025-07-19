@@ -52,8 +52,8 @@ func (m *nativeMaker) MakeSandbox(config *types.CommonSandbox) (*Sandbox, error)
 	sandboxDirs := make(map[dir.DirType]string)
 	for dirTypeStr, dirPath := range config.Dirs {
 		dirType := dir.DirType(dirTypeStr)
-		if dirType != dir.ConfDirType && dirType != dir.RunDirType && dirType != dir.ScriptDirType {
-			return nil, fmt.Errorf("invalid dir type: %v", dirType)
+		if dirType != dir.CertDirType && dirType != dir.ConfDirType && dirType != dir.RunDirType && dirType != dir.ScriptDirType {
+			return nil, errors.Errorf("invalid dir type: %v", dirType)
 		}
 		sandboxDirs[dirType] = dirPath
 	}
