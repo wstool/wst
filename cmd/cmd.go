@@ -36,6 +36,7 @@ func Run() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configPaths, _ := cmd.Flags().GetStringSlice("config")
 			includeAll, _ := cmd.Flags().GetBool("all")
+			preFilter, _ := cmd.Flags().GetBool("pre-filter")
 			noEnvs, _ := cmd.Flags().GetBool("no-envs")
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 
@@ -55,6 +56,7 @@ func Run() {
 				ConfigPaths: configPaths,
 				IncludeAll:  includeAll,
 				Overwrites:  getOverwrites(overwriteValues, noEnvs, fnd),
+				PreFilter:   preFilter,
 				NoEnvs:      noEnvs,
 				Instances:   args,
 			}
@@ -74,6 +76,7 @@ func Run() {
 	runCmd.Flags().StringSliceP("config", "c", []string{}, "List of paths to configuration files")
 	runCmd.PersistentFlags().BoolP("all", "a", false, "Include additional configuration files")
 	runCmd.Flags().StringSliceVarP(&overwriteValues, "overwrite", "o", nil, "Overwrite configuration values")
+	runCmd.PersistentFlags().Bool("pre-filter", false, "Whether to filter instances in the initial phase for easier debugging")
 	runCmd.PersistentFlags().Bool("no-envs", false, "Prevent environment variables from superseding parameters")
 	runCmd.PersistentFlags().Bool("dry-run", false, "Activate dry-run mode")
 

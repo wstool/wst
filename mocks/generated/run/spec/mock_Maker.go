@@ -22,9 +22,9 @@ func (_m *MockMaker) EXPECT() *MockMaker_Expecter {
 	return &MockMaker_Expecter{mock: &_m.Mock}
 }
 
-// Make provides a mock function with given fields: config
-func (_m *MockMaker) Make(config *types.Spec) (spec.Spec, error) {
-	ret := _m.Called(config)
+// Make provides a mock function with given fields: config, filteredInstances
+func (_m *MockMaker) Make(config *types.Spec, filteredInstances []string) (spec.Spec, error) {
+	ret := _m.Called(config, filteredInstances)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Make")
@@ -32,19 +32,19 @@ func (_m *MockMaker) Make(config *types.Spec) (spec.Spec, error) {
 
 	var r0 spec.Spec
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*types.Spec) (spec.Spec, error)); ok {
-		return rf(config)
+	if rf, ok := ret.Get(0).(func(*types.Spec, []string) (spec.Spec, error)); ok {
+		return rf(config, filteredInstances)
 	}
-	if rf, ok := ret.Get(0).(func(*types.Spec) spec.Spec); ok {
-		r0 = rf(config)
+	if rf, ok := ret.Get(0).(func(*types.Spec, []string) spec.Spec); ok {
+		r0 = rf(config, filteredInstances)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spec.Spec)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*types.Spec) error); ok {
-		r1 = rf(config)
+	if rf, ok := ret.Get(1).(func(*types.Spec, []string) error); ok {
+		r1 = rf(config, filteredInstances)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -59,13 +59,14 @@ type MockMaker_Make_Call struct {
 
 // Make is a helper method to define mock.On call
 //   - config *types.Spec
-func (_e *MockMaker_Expecter) Make(config interface{}) *MockMaker_Make_Call {
-	return &MockMaker_Make_Call{Call: _e.mock.On("Make", config)}
+//   - filteredInstances []string
+func (_e *MockMaker_Expecter) Make(config interface{}, filteredInstances interface{}) *MockMaker_Make_Call {
+	return &MockMaker_Make_Call{Call: _e.mock.On("Make", config, filteredInstances)}
 }
 
-func (_c *MockMaker_Make_Call) Run(run func(config *types.Spec)) *MockMaker_Make_Call {
+func (_c *MockMaker_Make_Call) Run(run func(config *types.Spec, filteredInstances []string)) *MockMaker_Make_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.Spec))
+		run(args[0].(*types.Spec), args[1].([]string))
 	})
 	return _c
 }
@@ -75,7 +76,7 @@ func (_c *MockMaker_Make_Call) Return(_a0 spec.Spec, _a1 error) *MockMaker_Make_
 	return _c
 }
 
-func (_c *MockMaker_Make_Call) RunAndReturn(run func(*types.Spec) (spec.Spec, error)) *MockMaker_Make_Call {
+func (_c *MockMaker_Make_Call) RunAndReturn(run func(*types.Spec, []string) (spec.Spec, error)) *MockMaker_Make_Call {
 	_c.Call.Return(run)
 	return _c
 }

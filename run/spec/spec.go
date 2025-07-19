@@ -31,7 +31,7 @@ type Spec interface {
 }
 
 type Maker interface {
-	Make(config *types.Spec) (Spec, error)
+	Make(config *types.Spec, filteredInstances []string) (Spec, error)
 }
 
 type nativeMaker struct {
@@ -52,7 +52,7 @@ func CreateMaker(fnd app.Foundation) Maker {
 	}
 }
 
-func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
+func (m *nativeMaker) Make(config *types.Spec, filteredInstances []string) (Spec, error) {
 	serversMap, err := m.serversMaker.Make(config)
 	if err != nil {
 		return nil, err
@@ -70,6 +70,9 @@ func (m *nativeMaker) Make(config *types.Spec) (Spec, error) {
 		idx := i + 1
 		if configInst.Name == "" {
 			return nil, errors.Errorf("instance %d name is empty", idx)
+		}
+		if filteredInstances != nil && !isFiltered(configInst.Name, filteredInstances) {
+			continue
 		}
 		inst, err = m.instanceMaker.Make(configInst, idx, config.Environments, dflts, serversMap, config.Workspace)
 		if err != nil {

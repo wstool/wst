@@ -51,7 +51,35 @@ func TestRunner_Execute(t *testing.T) {
 					map[string]string{"key": "value"},
 				).Return(config, nil)
 
-				sm.On("Make", &config.Spec).Return(specification, nil)
+				var filteredInstances []string = nil
+				sm.On("Make", &config.Spec, filteredInstances).Return(specification, nil)
+
+				specification.On("Run", []string{"instance1", "instance2"}).Return(nil)
+			},
+			expectError: false,
+		},
+		{
+			name: "successful pre filtered execution",
+			options: &Options{
+				ConfigPaths: []string{"config1.yaml", "config2.yaml"},
+				IncludeAll:  false,
+				Overwrites:  map[string]string{"key": "value"},
+				PreFilter:   true,
+				Instances:   []string{"instance1", "instance2"},
+			},
+			setupMocks: func(fm *appMocks.MockFoundation, cm *confMocks.MockMaker, sm *specMocks.MockMaker) {
+				config := &types.Config{Spec: types.Spec{
+					Workspace: "/workspace",
+				}}
+				specification := specMocks.NewMockSpec(t)
+
+				cm.On(
+					"Make",
+					[]string{"config1.yaml", "config2.yaml"},
+					map[string]string{"key": "value"},
+				).Return(config, nil)
+
+				sm.On("Make", &config.Spec, []string{"instance1", "instance2"}).Return(specification, nil)
 
 				specification.On("Run", []string{"instance1", "instance2"}).Return(nil)
 			},
@@ -87,7 +115,8 @@ func TestRunner_Execute(t *testing.T) {
 					map[string]string{"key": "value"},
 				).Return(config, nil)
 
-				sm.On("Make", &config.Spec).Return(specification, nil)
+				var filteredInstances []string = nil
+				sm.On("Make", &config.Spec, filteredInstances).Return(specification, nil)
 
 				specification.On("Run", []string{"instance1", "instance2"}).Return(nil)
 			},
@@ -130,7 +159,8 @@ func TestRunner_Execute(t *testing.T) {
 					map[string]string{"key": "value"},
 				).Return(config, nil)
 
-				sm.On("Make", &config.Spec).Return(nil, errors.New("spec error"))
+				var filteredInstances []string = nil
+				sm.On("Make", &config.Spec, filteredInstances).Return(nil, errors.New("spec error"))
 			},
 			expectError:    true,
 			expectedErrMsg: "spec error",

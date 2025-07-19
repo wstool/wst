@@ -66,9 +66,10 @@ func Test_nativeMaker_Make(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		name       string
-		config     *types.Spec
-		setupMocks func(
+		name              string
+		config            *types.Spec
+		filteredInstances []string
+		setupMocks        func(
 			*types.Spec,
 			*defaultsMocks.MockMaker,
 			*serversMocks.MockMaker,
@@ -125,6 +126,47 @@ func Test_nativeMaker_Make(t *testing.T) {
 				im.On("Make", types.Instance{Name: "i2"}, 2, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
 				im.On("Make", types.Instance{Name: "i3"}, 3, envsConfig, dflts, srvs, "/workspace").Return(i3, nil)
 				return []instances.Instance{i1, i2}
+			},
+			expectError: false,
+		},
+		{
+			name: "filtered spec creation",
+			config: &types.Spec{
+				Instances:    []types.Instance{{Name: "i1"}, {Name: "i2"}, {Name: "i3"}},
+				Environments: envsConfig,
+				Defaults:     defaultsConfig,
+				Workspace:    "/workspace",
+			},
+			filteredInstances: []string{"i2"},
+			setupMocks: func(
+				cfg *types.Spec,
+				dm *defaultsMocks.MockMaker,
+				sm *serversMocks.MockMaker,
+				im *instancesMocks.MockInstanceMaker,
+			) []instances.Instance {
+				srvs := servers.Servers{
+					"php": {
+						"base": serversMocks.NewMockServer(t),
+					},
+				}
+				sm.On("Make", cfg).Return(srvs, nil)
+				dm.On("Make", &cfg.Defaults).Return(dflts, nil)
+				i1 := instancesMocks.NewMockInstance(t)
+				i1.TestData().Set("id", "i1")
+				i2 := instancesMocks.NewMockInstance(t)
+				i2.TestData().Set("id", "i1")
+				i2.On("Name").Return("i2")
+				i2.On("IsChild").Return(true)
+				i2.On("IsAbstract").Return(false)
+				i2.On("Init").Return(nil)
+				i3 := instancesMocks.NewMockInstance(t)
+				i3.TestData().Set("id", "i3")
+				instsMap := map[string]instances.Instance{
+					"i2": i2,
+				}
+				i2.On("Extend", instsMap).Return(nil)
+				im.On("Make", types.Instance{Name: "i2"}, 2, envsConfig, dflts, srvs, "/workspace").Return(i2, nil)
+				return []instances.Instance{i2}
 			},
 			expectError: false,
 		},
@@ -335,7 +377,7 @@ func Test_nativeMaker_Make(t *testing.T) {
 			}
 			expectedInstances := tt.setupMocks(tt.config, defaultsMaker, serverMakerMock, instanceMakerMock)
 
-			result, err := maker.Make(tt.config)
+			result, err := maker.Make(tt.config, tt.filteredInstances)
 
 			if tt.expectError {
 				assert.Error(t, err)

@@ -28,6 +28,7 @@ type Options struct {
 	IncludeAll  bool
 	Overwrites  map[string]string
 	NoEnvs      bool
+	PreFilter   bool
 	Instances   []string
 }
 
@@ -67,7 +68,11 @@ func (r *Runner) Execute(options *Options) error {
 	}
 
 	r.fnd.Logger().Debug("Creating specification")
-	specification, err := r.specMaker.Make(&config.Spec)
+	var makeFilteredInstances []string = nil
+	if options.PreFilter {
+		makeFilteredInstances = options.Instances
+	}
+	specification, err := r.specMaker.Make(&config.Spec, makeFilteredInstances)
 	if err != nil {
 		return err
 	}
