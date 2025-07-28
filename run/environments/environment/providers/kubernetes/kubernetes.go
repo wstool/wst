@@ -523,9 +523,9 @@ func (e *kubernetesEnvironment) createService(
 
 	if e.Fnd.DryRun() {
 		if ss.Public {
-			kubeTask.servicePublicUrl = "http://127.0.0.1"
+			kubeTask.servicePublicUrl = "://127.0.0.1"
 		}
-		kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.ServerPort)
+		kubeTask.servicePrivateUrl = fmt.Sprintf("://%s:%d", serviceName, ss.ServerPort)
 		return nil
 	}
 
@@ -549,9 +549,9 @@ func (e *kubernetesEnvironment) createService(
 				}
 				if ss.Public && len(svc.Status.LoadBalancer.Ingress) > 0 {
 					ip := svc.Status.LoadBalancer.Ingress[0].IP
-					kubeTask.servicePublicUrl = fmt.Sprintf("http://%s", ip)
+					kubeTask.servicePublicUrl = fmt.Sprintf("://%s", ip)
 				}
-				kubeTask.servicePrivateUrl = fmt.Sprintf("http://%s:%d", serviceName, ss.ServerPort)
+				kubeTask.servicePrivateUrl = fmt.Sprintf("://%s:%d", serviceName, ss.ServerPort)
 				return nil
 			case watch.Deleted:
 				fallthrough
@@ -684,10 +684,10 @@ func (k *kubernetesTask) Type() providers.Type {
 	return providers.KubernetesType
 }
 
-func (t *kubernetesTask) PublicUrl() string {
-	return t.servicePublicUrl
+func (t *kubernetesTask) PublicUrl(scheme string) string {
+	return scheme + t.servicePublicUrl
 }
 
-func (t *kubernetesTask) PrivateUrl() string {
-	return t.servicePrivateUrl
+func (t *kubernetesTask) PrivateUrl(scheme string) string {
+	return scheme + t.servicePrivateUrl
 }

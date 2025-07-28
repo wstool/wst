@@ -57,6 +57,7 @@ func TestActionMaker_Make(t *testing.T) {
 				OnFailure:  "fail",
 				Id:         "last",
 				Path:       "/test",
+				Scheme:     "http",
 				EncodePath: true,
 				Method:     "GET",
 				Headers: types.Headers{
@@ -77,6 +78,7 @@ func TestActionMaker_Make(t *testing.T) {
 					when:       action.OnSuccess,
 					onFailure:  action.Fail,
 					id:         "last",
+					scheme:     "http",
 					path:       "/test",
 					encodePath: true,
 					method:     "GET",
@@ -94,6 +96,7 @@ func TestActionMaker_Make(t *testing.T) {
 				When:      "on_success",
 				OnFailure: "fail",
 				Id:        "new",
+				Scheme:    "https",
 				Path:      "/t1",
 				Method:    "POST",
 				Headers: types.Headers{
@@ -114,6 +117,7 @@ func TestActionMaker_Make(t *testing.T) {
 					when:      action.OnSuccess,
 					onFailure: action.Fail,
 					id:        "new",
+					scheme:    "https",
 					path:      "/t1",
 					method:    "POST",
 					headers: types.Headers{
@@ -130,6 +134,7 @@ func TestActionMaker_Make(t *testing.T) {
 				When:      "on_success",
 				OnFailure: "fail",
 				Id:        "new",
+				Scheme:    "http",
 				Path:      "/t1",
 				Method:    "POST",
 				Headers: types.Headers{
@@ -199,6 +204,7 @@ func TestAction_Execute(t *testing.T) {
 	tests := []struct {
 		name       string
 		id         string
+		scheme     string
 		path       string
 		encodePath bool
 		method     string
@@ -218,6 +224,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "successful execution with path encoding",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
@@ -233,7 +240,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
@@ -259,6 +266,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "successful execution without path encoding",
 			id:         "r1",
+			scheme:     "http",
 			path:       "/test",
 			encodePath: false,
 			method:     "GET",
@@ -273,14 +281,14 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				publicUrl := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(publicUrl, nil)
+				publicUrl := "http://example.com/test"
+				svc.On("PublicUrl", "http", "/test").Return(publicUrl, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", publicUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
 				expectedRequest.URL = &url.URL{
-					Scheme: "https",
+					Scheme: "http",
 					Host:   "example.com",
 					Opaque: "//example.com/test",
 				}
@@ -305,6 +313,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to failed storing",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
@@ -320,7 +329,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
@@ -348,6 +357,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to failed response reading",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
@@ -363,7 +373,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
@@ -387,6 +397,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to context being done",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
@@ -402,7 +413,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
@@ -431,6 +442,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to client do failure",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
@@ -446,7 +458,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
@@ -462,6 +474,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to invalid request",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "=",
@@ -477,7 +490,7 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				url := "https://example.com/test"
-				svc.On("PublicUrl", "/test").Return(url, nil)
+				svc.On("PublicUrl", "https", "/test").Return(url, nil)
 			},
 			want:             false,
 			expectError:      true,
@@ -486,6 +499,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name:       "failed execution due to public url failing",
 			id:         "r1",
+			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
 			method:     "=",
@@ -500,7 +514,7 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				svc.On("PublicUrl", "/test").Return("", errors.New("pub url"))
+				svc.On("PublicUrl", "https", "/test").Return("", errors.New("pub url"))
 			},
 			want:             false,
 			expectError:      true,
@@ -529,6 +543,7 @@ func TestAction_Execute(t *testing.T) {
 				service:    svcMock,
 				timeout:    3000 * time.Millisecond,
 				id:         tt.id,
+				scheme:     tt.scheme,
 				path:       tt.path,
 				encodePath: tt.encodePath,
 				method:     tt.method,

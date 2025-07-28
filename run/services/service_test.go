@@ -3105,6 +3105,7 @@ func Test_nativeService_PublicUrl(t *testing.T) {
 		hasTask        bool
 		isPublic       bool
 		taskUrl        string
+		scheme         string
 		path           string
 		expectedUrl    string
 		expectError    bool
@@ -3115,6 +3116,7 @@ func Test_nativeService_PublicUrl(t *testing.T) {
 			hasTask:     true,
 			isPublic:    true,
 			taskUrl:     "http://svc",
+			scheme:      "http",
 			path:        "test",
 			expectedUrl: "http://svc/test",
 			expectError: false,
@@ -3143,10 +3145,10 @@ func Test_nativeService_PublicUrl(t *testing.T) {
 				svc.task = nil
 			}
 			if tt.taskUrl != "" {
-				svc.task.(*taskMocks.MockTask).On("PublicUrl").Return(tt.taskUrl)
+				svc.task.(*taskMocks.MockTask).On("PublicUrl", tt.scheme).Return(tt.taskUrl)
 			}
 
-			actualUrl, err := svc.PublicUrl(tt.path)
+			actualUrl, err := svc.PublicUrl(tt.scheme, tt.path)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -3163,6 +3165,7 @@ func Test_nativeService_PrivateUrl(t *testing.T) {
 	tests := []struct {
 		name           string
 		hasTask        bool
+		scheme         string
 		taskUrl        string
 		expectedUrl    string
 		expectError    bool
@@ -3171,6 +3174,7 @@ func Test_nativeService_PrivateUrl(t *testing.T) {
 		{
 			name:        "successful private URL",
 			hasTask:     true,
+			scheme:      "http",
 			taskUrl:     "http://svc",
 			expectedUrl: "http://svc",
 			expectError: false,
@@ -3190,10 +3194,10 @@ func Test_nativeService_PrivateUrl(t *testing.T) {
 				svc.task = nil
 			}
 			if tt.taskUrl != "" {
-				svc.task.(*taskMocks.MockTask).On("PrivateUrl").Return(tt.taskUrl)
+				svc.task.(*taskMocks.MockTask).On("PrivateUrl", tt.scheme).Return(tt.taskUrl)
 			}
 
-			actualUrl, err := svc.PrivateUrl()
+			actualUrl, err := svc.PrivateUrl(tt.scheme)
 
 			if tt.expectError {
 				assert.Error(t, err)

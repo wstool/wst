@@ -157,7 +157,7 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 		},
 		{
 			name: "Valid template with service values",
-			templateStr: "{{ .Service.PrivateUrl }};{{ .Service.Pid }};{{ .Service.User }};{{ .Service.Group }};" +
+			templateStr: "{{ .Service.PrivateUrl \"http\" }};{{ .Service.Pid }};{{ .Service.User }};{{ .Service.Group }};" +
 				"conf:{{ .Service.ConfDir }},run:{{ .Service.RunDir }},script:{{ .Service.ScriptDir }};" +
 				"{{ range $k, $v := .Service.EnvironmentConfigPaths }}{{ $k }}:{{ $v }},{{ end }};" +
 				"{{ range $k, $v := .Configs }}{{ $k }}:{{ $v }},{{ end }}",
@@ -166,7 +166,7 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 				sm *serviceMocks.MockTemplateService,
 				st templates.Templates,
 			) (parameters.Parameters, Services) {
-				sm.On("PrivateUrl").Return("http://svc", nil)
+				sm.On("PrivateUrl", "http").Return("http://svc", nil)
 				sm.On("Pid").Return(1234, nil)
 				sm.On("User").Return("grp")
 				sm.On("Group").Return("usr")
@@ -265,14 +265,14 @@ func Test_nativeTemplate_RenderToWriter(t *testing.T) {
 		},
 		{
 			name:        "Error due to service private url",
-			templateStr: "{{ .Service.PrivateUrl }};{{ .Service.Pid }}",
+			templateStr: "{{ .Service.PrivateUrl \"https\" }};{{ .Service.Pid }}",
 			setupFunc: func(
 				fm *appMocks.MockFoundation,
 				sm *serviceMocks.MockTemplateService,
 				st templates.Templates,
 			) (parameters.Parameters, Services) {
 				sm.On("EnvironmentConfigPaths").Return(map[string]string{"path1": "/config/path1"})
-				sm.On("PrivateUrl").Return("", errors.New("priv url err"))
+				sm.On("PrivateUrl", "https").Return("", errors.New("priv url err"))
 				return parameters.Parameters{
 					"k": parameterMocks.NewMockParameter(t),
 				}, nil

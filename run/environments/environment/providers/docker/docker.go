@@ -201,7 +201,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 				portMapName: []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: hostPort}},
 			},
 		}
-		hostUrl = "http://localhost:" + hostPort
+		hostUrl = "://localhost:" + hostPort
 	} else {
 		hostConfig = &container.HostConfig{}
 	}
@@ -270,7 +270,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		containerId:         containerId,
 		containerExecutable: cmd.Name,
 		containerPublicUrl:  hostUrl,
-		containerPrivateUrl: fmt.Sprintf("http://%s:%s", containerName, serverPort),
+		containerPrivateUrl: fmt.Sprintf("://%s:%s", containerName, serverPort),
 		containerReady:      false,
 	}
 
@@ -406,10 +406,10 @@ func (t *dockerTask) Type() providers.Type {
 	return providers.DockerType
 }
 
-func (t *dockerTask) PublicUrl() string {
-	return t.containerPublicUrl
+func (t *dockerTask) PublicUrl(scheme string) string {
+	return scheme + t.containerPublicUrl
 }
 
-func (t *dockerTask) PrivateUrl() string {
-	return t.containerPrivateUrl
+func (t *dockerTask) PrivateUrl(scheme string) string {
+	return scheme + t.containerPrivateUrl
 }

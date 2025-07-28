@@ -1410,7 +1410,7 @@ func Test_localEnvironment_RunTask(t *testing.T) {
 				assert.True(t, ok)
 				assert.Equal(t, "test-service", locTask.serviceName)
 				assert.Equal(t, "test-command", locTask.executable)
-				assert.Equal(t, fmt.Sprintf("http://localhost:%d", ss.Port), locTask.serviceUrl)
+				assert.Equal(t, fmt.Sprintf("://localhost:%d", ss.Port), locTask.serviceUrl)
 				assert.Equal(t, mockCommand, locTask.cmd)
 				assert.Equal(t, tt.uuid, locTask.id)
 
@@ -1815,7 +1815,7 @@ func getTestTask(t *testing.T) *localTask {
 		executable:  "ep",
 		cmd:         cmdMock,
 		serviceName: "lids",
-		serviceUrl:  "http://localhost:1234",
+		serviceUrl:  "://localhost:1234",
 	}
 	lt.serviceRunning.Store(true)
 	return lt
@@ -1838,11 +1838,11 @@ func Test_localTask_Pid(t *testing.T) {
 }
 
 func Test_localTask_PrivateUrl(t *testing.T) {
-	assert.Equal(t, "http://localhost:1234", getTestTask(t).PrivateUrl())
+	assert.Equal(t, "http://localhost:1234", getTestTask(t).PrivateUrl("http"))
 }
 
 func Test_localTask_PublicUrl(t *testing.T) {
-	assert.Equal(t, "http://localhost:1234", getTestTask(t).PublicUrl())
+	assert.Equal(t, "https://localhost:1234", getTestTask(t).PublicUrl("https"))
 }
 
 func Test_localTask_IsRunning(t *testing.T) {

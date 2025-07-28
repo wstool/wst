@@ -49,9 +49,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- extend environment and request action to support TLS certificate
-  - environment publicUrl should support https - currently it is hard coded to return http so it should allow extra param to select it
-  - extend request action with a protocol option to select between http and https
 - http/2 requests
   - add http_version field to the request action
   - update the client to allow using http/2
@@ -156,7 +153,6 @@ in the future.
 
 #### Local environment
 
-- implement https publicUrl support
 - look into issues with orphaned children which happen when a task main process dies suddenly
   - find a way to get them somehow killed so it doesn't require manual clean up/
 - consider reporting closing output streams in Destroy
@@ -170,7 +166,6 @@ in the future.
 - support exec
 - implement storing and handling certificates
   - this should go to secrets from rendered certificates
-- implement https publicUrl support
 - allow setting default kubeconfig to ~/.kube/config (will require home dir support)
 - support and test native hook start where command is nil (set better executable - ideally configurable)
 - add health probes setup
@@ -183,7 +178,6 @@ in the future.
 - support exec
 - implement storing and handling certificates
   - this is currently done using bind so check if there is a better (more secure) way to do it for private keye
-- implement https publicUrl support
 - health check - waiting for container to be able to serve the traffic
 - custom docker
 

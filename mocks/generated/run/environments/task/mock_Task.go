@@ -200,17 +200,17 @@ func (_c *MockTask_Pid_Call) RunAndReturn(run func() int) *MockTask_Pid_Call {
 	return _c
 }
 
-// PrivateUrl provides a mock function with given fields:
-func (_m *MockTask) PrivateUrl() string {
-	ret := _m.Called()
+// PrivateUrl provides a mock function with given fields: scheme
+func (_m *MockTask) PrivateUrl(scheme string) string {
+	ret := _m.Called(scheme)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PrivateUrl")
 	}
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(scheme)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -224,13 +224,14 @@ type MockTask_PrivateUrl_Call struct {
 }
 
 // PrivateUrl is a helper method to define mock.On call
-func (_e *MockTask_Expecter) PrivateUrl() *MockTask_PrivateUrl_Call {
-	return &MockTask_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl")}
+//   - scheme string
+func (_e *MockTask_Expecter) PrivateUrl(scheme interface{}) *MockTask_PrivateUrl_Call {
+	return &MockTask_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl", scheme)}
 }
 
-func (_c *MockTask_PrivateUrl_Call) Run(run func()) *MockTask_PrivateUrl_Call {
+func (_c *MockTask_PrivateUrl_Call) Run(run func(scheme string)) *MockTask_PrivateUrl_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -240,22 +241,22 @@ func (_c *MockTask_PrivateUrl_Call) Return(_a0 string) *MockTask_PrivateUrl_Call
 	return _c
 }
 
-func (_c *MockTask_PrivateUrl_Call) RunAndReturn(run func() string) *MockTask_PrivateUrl_Call {
+func (_c *MockTask_PrivateUrl_Call) RunAndReturn(run func(string) string) *MockTask_PrivateUrl_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// PublicUrl provides a mock function with given fields:
-func (_m *MockTask) PublicUrl() string {
-	ret := _m.Called()
+// PublicUrl provides a mock function with given fields: scheme
+func (_m *MockTask) PublicUrl(scheme string) string {
+	ret := _m.Called(scheme)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PublicUrl")
 	}
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(scheme)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -269,13 +270,14 @@ type MockTask_PublicUrl_Call struct {
 }
 
 // PublicUrl is a helper method to define mock.On call
-func (_e *MockTask_Expecter) PublicUrl() *MockTask_PublicUrl_Call {
-	return &MockTask_PublicUrl_Call{Call: _e.mock.On("PublicUrl")}
+//   - scheme string
+func (_e *MockTask_Expecter) PublicUrl(scheme interface{}) *MockTask_PublicUrl_Call {
+	return &MockTask_PublicUrl_Call{Call: _e.mock.On("PublicUrl", scheme)}
 }
 
-func (_c *MockTask_PublicUrl_Call) Run(run func()) *MockTask_PublicUrl_Call {
+func (_c *MockTask_PublicUrl_Call) Run(run func(scheme string)) *MockTask_PublicUrl_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -285,7 +287,7 @@ func (_c *MockTask_PublicUrl_Call) Return(_a0 string) *MockTask_PublicUrl_Call {
 	return _c
 }
 
-func (_c *MockTask_PublicUrl_Call) RunAndReturn(run func() string) *MockTask_PublicUrl_Call {
+func (_c *MockTask_PublicUrl_Call) RunAndReturn(run func(string) string) *MockTask_PublicUrl_Call {
 	_c.Call.Return(run)
 	return _c
 }

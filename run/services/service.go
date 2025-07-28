@@ -47,8 +47,8 @@ type Service interface {
 	LocalAddress() string
 	LocalPort() int32
 	PrivateAddress() string
-	PrivateUrl() (string, error)
-	PublicUrl(path string) (string, error)
+	PrivateUrl(scheme string) (string, error)
+	PublicUrl(scheme string, path string) (string, error)
 	UdsPath(...string) (string, error)
 	Pid() (int, error)
 	Name() string
@@ -643,7 +643,7 @@ func (s *nativeService) Executable() (string, error) {
 	return s.task.Executable(), nil
 }
 
-func (s *nativeService) PublicUrl(path string) (string, error) {
+func (s *nativeService) PublicUrl(scheme string, path string) (string, error) {
 	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return "", errors.Errorf("service has not started yet")
 	}
@@ -651,15 +651,15 @@ func (s *nativeService) PublicUrl(path string) (string, error) {
 		return "", errors.Errorf("only public service has public URL")
 	}
 
-	return url.JoinPath(s.task.PublicUrl(), path)
+	return url.JoinPath(s.task.PublicUrl(scheme), path)
 }
 
-func (s *nativeService) PrivateUrl() (string, error) {
+func (s *nativeService) PrivateUrl(scheme string) (string, error) {
 	if s.task == nil || reflect.ValueOf(s.task).IsNil() {
 		return "", errors.Errorf("service has not started yet")
 	}
 
-	return s.task.PrivateUrl(), nil
+	return s.task.PrivateUrl(scheme), nil
 }
 
 func (s *nativeService) UdsPath(args ...string) (string, error) {

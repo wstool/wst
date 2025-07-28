@@ -623,8 +623,8 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerId:         "dcid",
 				containerExecutable: "php",
 				containerReady:      true,
-				containerPublicUrl:  "http://localhost:8080",
-				containerPrivateUrl: "http://wt-svc:1234",
+				containerPublicUrl:  "://localhost:8080",
+				containerPrivateUrl: "://wt-svc:1234",
 			},
 		},
 		{
@@ -768,7 +768,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
-				containerPrivateUrl: "http://wt-svc:1234",
+				containerPrivateUrl: "://wt-svc:1234",
 			},
 		},
 
@@ -865,7 +865,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
-				containerPrivateUrl: "http://wt-svc:1234",
+				containerPrivateUrl: "://wt-svc:1234",
 			},
 		},
 		{
@@ -965,7 +965,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
-				containerPrivateUrl: "http://wt-svc:1234",
+				containerPrivateUrl: "://wt-svc:1234",
 			},
 		},
 		{
@@ -1017,7 +1017,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				containerExecutable: "php",
 				containerReady:      true,
 				containerPublicUrl:  "",
-				containerPrivateUrl: "http://wt-svc:1234",
+				containerPrivateUrl: "://wt-svc:1234",
 			},
 		},
 		{
@@ -2158,8 +2158,8 @@ func getTestTask() *dockerTask {
 		containerId:         "cid",
 		containerExecutable: "epd",
 		containerReady:      true,
-		containerPublicUrl:  "http://localhost:8080",
-		containerPrivateUrl: "http://cn:1234",
+		containerPublicUrl:  "://localhost:8080",
+		containerPrivateUrl: "://cn:1234",
 	}
 }
 
@@ -2181,11 +2181,11 @@ func Test_dockerTask_Pid(t *testing.T) {
 }
 
 func Test_dockerTask_PrivateUrl(t *testing.T) {
-	assert.Equal(t, "http://cn:1234", getTestTask().PrivateUrl())
+	assert.Equal(t, "http://cn:1234", getTestTask().PrivateUrl("http"))
 }
 
 func Test_dockerTask_PublicUrl(t *testing.T) {
-	assert.Equal(t, "http://localhost:8080", getTestTask().PublicUrl())
+	assert.Equal(t, "https://localhost:8080", getTestTask().PublicUrl("https"))
 }
 
 func Test_dockerTask_Type(t *testing.T) {

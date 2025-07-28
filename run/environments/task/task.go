@@ -22,6 +22,6 @@ type Task interface {
 	Id() string
 	Pid() int
 	Type() providers.Type
-	PrivateUrl() string
-	PublicUrl() string
+	PrivateUrl(scheme string) string
+	PublicUrl(scheme string) string
 }

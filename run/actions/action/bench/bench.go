@@ -79,6 +79,7 @@ func (m *ActionMaker) Make(
 		onFailure: action.OnFailureType(config.OnFailure),
 		freq:      config.Frequency,
 		id:        config.Id,
+		scheme:    config.Scheme,
 		path:      config.Path,
 		method:    config.Method,
 		headers:   config.Headers,
@@ -94,6 +95,7 @@ type Action struct {
 	duration  time.Duration
 	freq      int
 	id        string
+	scheme    string
 	path      string
 	method    string
 	headers   types.Headers
@@ -113,7 +115,7 @@ func (a *Action) Timeout() time.Duration {
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing bench action")
-	url, err := a.service.PublicUrl(a.path)
+	url, err := a.service.PublicUrl(a.scheme, a.path)
 	if err != nil {
 		return false, err
 	}

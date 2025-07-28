@@ -858,6 +858,14 @@ $defs:
           expectation.
         type: string
         default: last
+      scheme:
+        title: Benchmark request URL scheme
+        description: |
+          Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
+          The protocol selection affects how the request is made to the service.
+        type: string
+        default: http
+        enum: [ http, https ]
       path:
         title: Benchmark request path
         description: Request URL path used for benchmark which can also contain query parameters.
@@ -1065,12 +1073,13 @@ $defs:
         description: Identifies request which can be then used in response expectation.
         type: string
         default: last
-      protocol:
-        title: Request protocol
+      scheme:
+        title: Request URL scheme
         description: |
-          Specifies the protocol to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
+          Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
           The protocol selection affects how the request is made to the service.
         type: string
+        default: http
         enum: [ http, https ]
       path:
         title: Request path

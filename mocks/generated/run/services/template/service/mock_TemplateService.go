@@ -470,9 +470,9 @@ func (_c *MockTemplateService_PrivateAddress_Call) RunAndReturn(run func() strin
 	return _c
 }
 
-// PrivateUrl provides a mock function with given fields:
-func (_m *MockTemplateService) PrivateUrl() (string, error) {
-	ret := _m.Called()
+// PrivateUrl provides a mock function with given fields: scheme
+func (_m *MockTemplateService) PrivateUrl(scheme string) (string, error) {
+	ret := _m.Called(scheme)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PrivateUrl")
@@ -480,17 +480,17 @@ func (_m *MockTemplateService) PrivateUrl() (string, error) {
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(scheme)
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(scheme)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(scheme)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -504,13 +504,14 @@ type MockTemplateService_PrivateUrl_Call struct {
 }
 
 // PrivateUrl is a helper method to define mock.On call
-func (_e *MockTemplateService_Expecter) PrivateUrl() *MockTemplateService_PrivateUrl_Call {
-	return &MockTemplateService_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl")}
+//   - scheme string
+func (_e *MockTemplateService_Expecter) PrivateUrl(scheme interface{}) *MockTemplateService_PrivateUrl_Call {
+	return &MockTemplateService_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl", scheme)}
 }
 
-func (_c *MockTemplateService_PrivateUrl_Call) Run(run func()) *MockTemplateService_PrivateUrl_Call {
+func (_c *MockTemplateService_PrivateUrl_Call) Run(run func(scheme string)) *MockTemplateService_PrivateUrl_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -520,7 +521,7 @@ func (_c *MockTemplateService_PrivateUrl_Call) Return(_a0 string, _a1 error) *Mo
 	return _c
 }
 
-func (_c *MockTemplateService_PrivateUrl_Call) RunAndReturn(run func() (string, error)) *MockTemplateService_PrivateUrl_Call {
+func (_c *MockTemplateService_PrivateUrl_Call) RunAndReturn(run func(string) (string, error)) *MockTemplateService_PrivateUrl_Call {
 	_c.Call.Return(run)
 	return _c
 }

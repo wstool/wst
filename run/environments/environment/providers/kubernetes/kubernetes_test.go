@@ -1119,7 +1119,7 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					executable:        "php",
 					serviceName:       "i1-svc",
 					servicePublicUrl:  "",
-					servicePrivateUrl: "http://i1-svc:1234",
+					servicePrivateUrl: "://i1-svc:1234",
 					deploymentReady:   true,
 				}
 			},
@@ -1237,8 +1237,8 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					service:           s,
 					executable:        "php",
 					serviceName:       "svc",
-					servicePublicUrl:  "http://10.0.0.1",
-					servicePrivateUrl: "http://svc:1234",
+					servicePublicUrl:  "://10.0.0.1",
+					servicePrivateUrl: "://svc:1234",
 					deploymentReady:   true,
 				}
 			},
@@ -1311,8 +1311,8 @@ func Test_kubernetesEnvironment_RunTask(t *testing.T) {
 					service:           s,
 					executable:        "php",
 					serviceName:       "svc",
-					servicePublicUrl:  "http://127.0.0.1",
-					servicePrivateUrl: "http://svc:1234",
+					servicePublicUrl:  "://127.0.0.1",
+					servicePrivateUrl: "://svc:1234",
 					deploymentReady:   true,
 				}
 			},
@@ -2545,12 +2545,12 @@ func (t *invalidTask) Type() providers.Type {
 	return providers.KubernetesType
 }
 
-func (t *invalidTask) PublicUrl() string {
-	return ""
+func (t *invalidTask) PublicUrl(scheme string) string {
+	return scheme
 }
 
-func (t *invalidTask) PrivateUrl() string {
-	return ""
+func (t *invalidTask) PrivateUrl(scheme string) string {
+	return scheme
 }
 
 func Test_kubernetesEnvironment_Output(t *testing.T) {
@@ -2753,8 +2753,8 @@ func getTestTask() *kubernetesTask {
 		configMaps:        nil,
 		executable:        "epk",
 		serviceName:       "kubes",
-		servicePublicUrl:  "http://localhost:1234",
-		servicePrivateUrl: "http://kubes:8080",
+		servicePublicUrl:  "://localhost:1234",
+		servicePrivateUrl: "://kubes:8080",
 		deploymentReady:   true,
 	}
 }
@@ -2776,11 +2776,11 @@ func Test_kubernetesTask_Pid(t *testing.T) {
 }
 
 func Test_kubernetesTask_PrivateUrl(t *testing.T) {
-	assert.Equal(t, "http://kubes:8080", getTestTask().PrivateUrl())
+	assert.Equal(t, "http://kubes:8080", getTestTask().PrivateUrl("http"))
 }
 
 func Test_kubernetesTask_PublicUrl(t *testing.T) {
-	assert.Equal(t, "http://localhost:1234", getTestTask().PublicUrl())
+	assert.Equal(t, "https://localhost:1234", getTestTask().PublicUrl("https"))
 }
 
 func Test_kubernetesTask_Type(t *testing.T) {

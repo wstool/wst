@@ -2056,6 +2056,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									When:       "on_success",
 									OnFailure:  "fail",
 									Id:         "last",
+									Scheme:     "http",
 									Path:       "/api/status",
 									EncodePath: true,
 									Method:     "GET",

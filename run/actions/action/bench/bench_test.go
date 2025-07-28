@@ -54,6 +54,7 @@ func TestActionMaker_Make(t *testing.T) {
 				Duration:  3000,
 				Frequency: 1,
 				Id:        "testAction",
+				Scheme:    "http",
 				Path:      "/test",
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
@@ -69,6 +70,7 @@ func TestActionMaker_Make(t *testing.T) {
 				Duration:  6000,
 				Frequency: 1,
 				Id:        "testAction",
+				Scheme:    "http",
 				Path:      "/test",
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
@@ -85,6 +87,7 @@ func TestActionMaker_Make(t *testing.T) {
 				Timeout:   10000,
 				Frequency: 1,
 				Id:        "testAction",
+				Scheme:    "http",
 				Path:      "/test",
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
@@ -101,6 +104,7 @@ func TestActionMaker_Make(t *testing.T) {
 				Timeout:   0,
 				Frequency: 1,
 				Id:        "testAction",
+				Scheme:    "http",
 				Path:      "/test",
 				Method:    "GET",
 				Headers:   types.Headers{"Content-Type": "application/json"},
@@ -147,6 +151,7 @@ func TestActionMaker_Make(t *testing.T) {
 				assert.Equal(tt.expectedDuration, action.duration)
 				assert.Equal(tt.config.Frequency, action.freq)
 				assert.Equal(tt.config.Id, action.id)
+				assert.Equal(tt.config.Scheme, action.scheme)
 				assert.Equal(tt.config.Path, action.path)
 				assert.Equal(tt.config.Method, action.method)
 				assert.Equal(tt.config.Headers, action.headers)
@@ -213,7 +218,7 @@ func TestAction_Execute(t *testing.T) {
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
-				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
+				svc.On("PublicUrl", "http", "/test").Return("http://example.com", nil)
 				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
 					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
 				})).Return(nil)
@@ -253,7 +258,7 @@ func TestAction_Execute(t *testing.T) {
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
-				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
+				svc.On("PublicUrl", "http", "/test").Return("http://example.com", nil)
 				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
 					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
 				})).Maybe().Return(nil)
@@ -296,7 +301,7 @@ func TestAction_Execute(t *testing.T) {
 				fnd.On("VegetaAttacker").Return(vegetaAttackerMock)
 				fnd.On("VegetaMetrics").Return(vegetaMetricsMock)
 				svc.On("Name").Return(serviceName)
-				svc.On("PublicUrl", mock.Anything).Return("http://example.com", nil)
+				svc.On("PublicUrl", "http", "/test").Return("http://example.com", nil)
 				runData.On("Store", "metrics/sid", mock.MatchedBy(func(metrics *Metrics) bool {
 					return assert.Equal(t, vegetaMetricsMock, metrics.metrics)
 				})).Return(errors.New("stored failed"))
@@ -311,7 +316,7 @@ func TestAction_Execute(t *testing.T) {
 		{
 			name: "error fetching public URL",
 			setupMocks: func(t *testing.T, fnd *appMocks.MockFoundation, svc *servicesMocks.MockService, runData *runtimeMocks.MockData) {
-				svc.On("PublicUrl", mock.Anything).Return("", errors.New("public url error"))
+				svc.On("PublicUrl", "http", "/test").Return("", errors.New("public url error"))
 			},
 			contextSetup: func() context.Context {
 				return context.Background()
@@ -338,6 +343,8 @@ func TestAction_Execute(t *testing.T) {
 				service:  svcMock,
 				duration: duration,
 				id:       "sid",
+				scheme:   "http",
+				path:     "/test",
 				freq:     freq,
 			}
 

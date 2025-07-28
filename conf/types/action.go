@@ -114,6 +114,7 @@ type RequestAction struct {
 	When       string  `wst:"when,enum=always|on_success|on_failure,default=on_success"`
 	OnFailure  string  `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id         string  `wst:"id,default=last"`
+	Scheme     string  `wst:"scheme,enum=http|https,default=http"`
 	Path       string  `wst:"path"`
 	EncodePath bool    `wst:"encode_path,default=true"`
 	Method     string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
@@ -126,6 +127,7 @@ type BenchAction struct {
 	When      string  `wst:"when,enum=always|on_success|on_failure,default=on_success"`
 	OnFailure string  `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id        string  `wst:"id,default=last"`
+	Scheme    string  `wst:"scheme,enum=http|https,default=http"`
 	Path      string  `wst:"path"`
 	Method    string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
 	Headers   Headers `wst:"headers"`

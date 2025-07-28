@@ -67,6 +67,7 @@ func (m *ActionMaker) Make(
 		when:       action.When(config.When),
 		onFailure:  action.OnFailureType(config.OnFailure),
 		id:         config.Id,
+		scheme:     config.Scheme,
 		path:       config.Path,
 		encodePath: config.EncodePath,
 		method:     config.Method,
@@ -106,6 +107,7 @@ type Action struct {
 	when       action.When
 	onFailure  action.OnFailureType
 	id         string
+	scheme     string
 	path       string
 	encodePath bool
 	method     string
@@ -127,7 +129,7 @@ func (a *Action) Timeout() time.Duration {
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing request action")
 
-	publicUrl, err := a.service.PublicUrl(a.path)
+	publicUrl, err := a.service.PublicUrl(a.scheme, a.path)
 	if err != nil {
 		return false, err
 	}

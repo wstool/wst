@@ -21,7 +21,7 @@ type TemplateService interface {
 	LocalAddress() string
 	LocalPort() int32
 	PrivateAddress() string
-	PrivateUrl() (string, error)
+	PrivateUrl(scheme string) (string, error)
 	UdsPath(...string) (string, error)
 	Executable() (string, error)
 	Pid() (int, error)
