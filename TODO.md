@@ -50,7 +50,6 @@ in the future.
 #### Structure - Instances, Actions, Servers, Services
 
 - extend environment and request action to support TLS certificate
-  - test templating to represent certificate and make it accessible
   - environment publicUrl should support https - currently it is hard coded to return http so it should allow extra param to select it
   - extend request action with a protocol option to select between http and https
 - http/2 requests
@@ -157,8 +156,9 @@ in the future.
 
 #### Local environment
 
-- implement storing and handling certificates
 - implement https publicUrl support
+- look into issues with orphaned children which happen when a task main process dies suddenly
+  - find a way to get them somehow killed so it doesn't require manual clean up/
 - consider reporting closing output streams in Destroy
 - find some smarter way for ports ranges so it does not need to be in each instance
   - maybe some global ports pool
