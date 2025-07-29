@@ -49,6 +49,9 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
+- add https verification options for request and bench
+  - it should allow extending cert store with a selected cert
+  - it should also allow disabling the verification
 - http/2 requests
   - add http_version field to the request action
   - update the client to allow using http/2
