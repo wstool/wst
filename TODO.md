@@ -82,7 +82,8 @@ in the future.
   - basically if the message is not found, it waits for context timeout and not finding out that the output collector is done
   - it might need some way to unblock the scanner when there is nothing more to scan
 - implement extended output extraction and validation
-  - https://gist.github.com/bukka/6891c6d2b59ddb8a89fd991ce658695f - API details
+  - Integrate CEL expression as in https://gist.github.com/bukka/82d63d6144f4e82a3032517665af374f
+  - Or alternatively there could be YAML like syntax https://gist.github.com/bukka/6891c6d2b59ddb8a89fd991ce658695f but that's possibly too custom
 - look into default action service integration
   - it should be basically service defined in parent (e.g. sequential service) and used if no service is defined for the action
   - it could be then used in the string form like `expect//name`
