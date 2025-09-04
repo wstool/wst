@@ -47,8 +47,10 @@ func (c *RealHttpClient) Do(req *http.Request) (*http.Response, error) {
 	return c.client.Do(req)
 }
 
-func NewRealHttpClient() HttpClient {
+func NewRealHttpClient(tr *http.Transport) HttpClient {
 	return &RealHttpClient{
-		client: &http.Client{},
+		client: &http.Client{
+			Transport: tr,
+		},
 	}
 }

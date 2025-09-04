@@ -7,6 +7,8 @@ import (
 
 	app "github.com/wstool/wst/app"
 
+	http "net/http"
+
 	mock "github.com/stretchr/testify/mock"
 
 	user "os/user"
@@ -372,17 +374,17 @@ func (_c *MockFoundation_Getwd_Call) RunAndReturn(run func() (string, error)) *M
 	return _c
 }
 
-// HttpClient provides a mock function with given fields:
-func (_m *MockFoundation) HttpClient() app.HttpClient {
-	ret := _m.Called()
+// HttpClient provides a mock function with given fields: tr
+func (_m *MockFoundation) HttpClient(tr *http.Transport) app.HttpClient {
+	ret := _m.Called(tr)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HttpClient")
 	}
 
 	var r0 app.HttpClient
-	if rf, ok := ret.Get(0).(func() app.HttpClient); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(*http.Transport) app.HttpClient); ok {
+		r0 = rf(tr)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(app.HttpClient)
@@ -398,13 +400,14 @@ type MockFoundation_HttpClient_Call struct {
 }
 
 // HttpClient is a helper method to define mock.On call
-func (_e *MockFoundation_Expecter) HttpClient() *MockFoundation_HttpClient_Call {
-	return &MockFoundation_HttpClient_Call{Call: _e.mock.On("HttpClient")}
+//   - tr *http.Transport
+func (_e *MockFoundation_Expecter) HttpClient(tr interface{}) *MockFoundation_HttpClient_Call {
+	return &MockFoundation_HttpClient_Call{Call: _e.mock.On("HttpClient", tr)}
 }
 
-func (_c *MockFoundation_HttpClient_Call) Run(run func()) *MockFoundation_HttpClient_Call {
+func (_c *MockFoundation_HttpClient_Call) Run(run func(tr *http.Transport)) *MockFoundation_HttpClient_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(*http.Transport))
 	})
 	return _c
 }
@@ -414,7 +417,7 @@ func (_c *MockFoundation_HttpClient_Call) Return(_a0 app.HttpClient) *MockFounda
 	return _c
 }
 
-func (_c *MockFoundation_HttpClient_Call) RunAndReturn(run func() app.HttpClient) *MockFoundation_HttpClient_Call {
+func (_c *MockFoundation_HttpClient_Call) RunAndReturn(run func(*http.Transport) app.HttpClient) *MockFoundation_HttpClient_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -783,6 +786,53 @@ func (_c *MockFoundation_VegetaMetrics_Call) Return(_a0 app.VegetaMetrics) *Mock
 }
 
 func (_c *MockFoundation_VegetaMetrics_Call) RunAndReturn(run func() app.VegetaMetrics) *MockFoundation_VegetaMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// X509CertPool provides a mock function with given fields:
+func (_m *MockFoundation) X509CertPool() app.X509CertPool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for X509CertPool")
+	}
+
+	var r0 app.X509CertPool
+	if rf, ok := ret.Get(0).(func() app.X509CertPool); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(app.X509CertPool)
+		}
+	}
+
+	return r0
+}
+
+// MockFoundation_X509CertPool_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'X509CertPool'
+type MockFoundation_X509CertPool_Call struct {
+	*mock.Call
+}
+
+// X509CertPool is a helper method to define mock.On call
+func (_e *MockFoundation_Expecter) X509CertPool() *MockFoundation_X509CertPool_Call {
+	return &MockFoundation_X509CertPool_Call{Call: _e.mock.On("X509CertPool")}
+}
+
+func (_c *MockFoundation_X509CertPool_Call) Run(run func()) *MockFoundation_X509CertPool_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFoundation_X509CertPool_Call) Return(_a0 app.X509CertPool) *MockFoundation_X509CertPool_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFoundation_X509CertPool_Call) RunAndReturn(run func() app.X509CertPool) *MockFoundation_X509CertPool_Call {
 	_c.Call.Return(run)
 	return _c
 }

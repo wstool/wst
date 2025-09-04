@@ -2,6 +2,14 @@ package request
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"io"
+	"net/http"
+	"net/url"
+	"testing"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/wstool/wst/app"
@@ -9,14 +17,11 @@ import (
 	"github.com/wstool/wst/mocks/authored/external"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	runtimeMocks "github.com/wstool/wst/mocks/generated/run/instances/runtime"
+	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
 	servicesMocks "github.com/wstool/wst/mocks/generated/run/services"
 	"github.com/wstool/wst/run/actions/action"
+	"github.com/wstool/wst/run/resources/certificates"
 	"github.com/wstool/wst/run/services"
-	"io"
-	"net/http"
-	"net/url"
-	"testing"
-	"time"
 )
 
 func TestCreateActionMaker(t *testing.T) {
@@ -63,6 +68,10 @@ func TestActionMaker_Make(t *testing.T) {
 				Headers: types.Headers{
 					"content-type": "application/json",
 				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "",
+				},
 			},
 			defaultTimeout: 5000,
 			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
@@ -85,6 +94,10 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					tls: &types.TLSClientConfig{
+						SkipVerify: false,
+						CACert:     "",
+					},
 				}
 			},
 		},
@@ -101,6 +114,10 @@ func TestActionMaker_Make(t *testing.T) {
 				Method:    "POST",
 				Headers: types.Headers{
 					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "",
 				},
 			},
 			defaultTimeout: 5000,
@@ -123,8 +140,160 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					tls: &types.TLSClientConfig{
+						SkipVerify: false,
+						CACert:     "",
+					},
 				}
 			},
+		},
+		{
+			name: "successful https request with TLS skip verify",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "https",
+				Path:      "/t1",
+				Method:    "POST",
+				Headers: types.Headers{
+					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: true,
+					CACert:     "",
+				},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
+				return &Action{
+					fnd:       fndMock,
+					service:   svc,
+					timeout:   3000 * time.Millisecond,
+					when:      action.OnSuccess,
+					onFailure: action.Fail,
+					id:        "new",
+					scheme:    "https",
+					path:      "/t1",
+					method:    "POST",
+					headers: types.Headers{
+						"content-type": "application/json",
+					},
+					tls: &types.TLSClientConfig{
+						SkipVerify: true,
+						CACert:     "",
+					},
+				}
+			},
+		},
+		{
+			name: "successful https request with CA cert",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "https",
+				Path:      "/t1",
+				Method:    "POST",
+				Headers: types.Headers{
+					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "localhost-ca",
+				},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
+				return &Action{
+					fnd:       fndMock,
+					service:   svc,
+					timeout:   3000 * time.Millisecond,
+					when:      action.OnSuccess,
+					onFailure: action.Fail,
+					id:        "new",
+					scheme:    "https",
+					path:      "/t1",
+					method:    "POST",
+					headers: types.Headers{
+						"content-type": "application/json",
+					},
+					tls: &types.TLSClientConfig{
+						SkipVerify: false,
+						CACert:     "localhost-ca",
+					},
+				}
+			},
+		},
+		{
+			name: "failure TLS config with HTTP scheme - skip verify",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "http",
+				Path:      "/t1",
+				Method:    "POST",
+				Headers: types.Headers{
+					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: true,
+					CACert:     "",
+				},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			expectError:      true,
+			expectedErrorMsg: "TLS configuration is only valid for HTTPS requests",
+		},
+		{
+			name: "failure TLS config with HTTP scheme - CA cert",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "http",
+				Path:      "/t1",
+				Method:    "POST",
+				Headers: types.Headers{
+					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "localhost-ca",
+				},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			expectError:      true,
+			expectedErrorMsg: "TLS configuration is only valid for HTTPS requests",
 		},
 		{
 			name: "failure request action creation because service not found",
@@ -139,6 +308,10 @@ func TestActionMaker_Make(t *testing.T) {
 				Method:    "POST",
 				Headers: types.Headers{
 					"content-type": "application/json",
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "",
 				},
 			},
 			defaultTimeout: 5000,
@@ -209,6 +382,7 @@ func TestAction_Execute(t *testing.T) {
 		encodePath bool
 		method     string
 		headers    types.Headers
+		tls        *types.TLSClientConfig
 		setupMocks func(
 			t *testing.T,
 			ctx context.Context,
@@ -222,15 +396,19 @@ func TestAction_Execute(t *testing.T) {
 		expectedErrorMsg string
 	}{
 		{
-			name:       "successful execution with path encoding",
+			name:       "successful execution with path encoding - HTTP",
 			id:         "r1",
-			scheme:     "https",
+			scheme:     "http",
 			path:       "/test",
 			encodePath: true,
 			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: false,
+				CACert:     "",
 			},
 			setupMocks: func(
 				t *testing.T,
@@ -239,9 +417,9 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
-				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+				reqUrl := "http://example.com/test"
+				svc.On("PublicUrl", "http", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
@@ -254,7 +432,7 @@ func TestAction_Execute(t *testing.T) {
 					Header: header,
 				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", &http.Transport{}).Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 				rd.On("Store", "response/r1", ResponseData{
 					Body:    "test",
@@ -264,15 +442,19 @@ func TestAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
-			name:       "successful execution without path encoding",
+			name:       "successful execution with HTTPS and skip verify",
 			id:         "r1",
-			scheme:     "http",
+			scheme:     "https",
 			path:       "/test",
-			encodePath: false,
+			encodePath: true,
 			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
 			},
 			setupMocks: func(
 				t *testing.T,
@@ -281,14 +463,193 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				publicUrl := "http://example.com/test"
-				svc.On("PublicUrl", "http", "/test").Return(publicUrl, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+				assert.Nil(t, err)
+				expectedRequest.Header.Add("content-type", "application/json")
+				expectedRequest.Header.Add("user-agent", "wst")
+				body := &bodyReader{msg: "test"}
+				header := http.Header{
+					"content-type": []string{"application/json"},
+				}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", expectedRequest).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with HTTPS and CA cert",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers: types.Headers{
+				"content-type": "application/json",
+				"user-agent":   "wst",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: false,
+				CACert:     "localhost-ca",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+
+				mockCert := certificatesMocks.NewMockCertificate(t)
+				mockCert.On("CertificateData").Return("valid")
+				renderedCert := &certificates.RenderedCertificate{Certificate: mockCert}
+				svc.On("FindCertificate", "localhost-ca").Return(renderedCert, nil)
+
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+				assert.Nil(t, err)
+				expectedRequest.Header.Add("content-type", "application/json")
+				expectedRequest.Header.Add("user-agent", "wst")
+				body := &bodyReader{msg: "test"}
+				header := http.Header{
+					"content-type": []string{"application/json"},
+				}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				// Create expected certificate pool
+				certPool := &x509.CertPool{}
+				caCertPool := appMocks.NewMockX509CertPool(t)
+				caCertPool.On("AppendCertFromPEM", "valid").Return(true)
+				caCertPool.On("CertPool").Return(certPool)
+				fnd.On("X509CertPool").Return(caCertPool)
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: false,
+						RootCAs:            certPool,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", expectedRequest).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "failed execution due to CA certificate not found",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers: types.Headers{
+				"content-type": "application/json",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: false,
+				CACert:     "nonexistent-ca",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				svc.On("FindCertificate", "nonexistent-ca").Return(nil, errors.New("cert not found"))
+			},
+			want:             false,
+			expectError:      true,
+			expectedErrorMsg: "CA certificate nonexistent-ca not found",
+		},
+		{
+			name:       "failed execution due to invalid CA certificate",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers: types.Headers{
+				"content-type": "application/json",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: false,
+				CACert:     "invalid-ca",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				mockCert := certificatesMocks.NewMockCertificate(t)
+				mockCert.On("CertificateData").Return("invalid certificate data")
+				renderedCert := &certificates.RenderedCertificate{Certificate: mockCert}
+				svc.On("FindCertificate", "invalid-ca").Return(renderedCert, nil)
+
+				caCertPool := appMocks.NewMockX509CertPool(t)
+				caCertPool.On("AppendCertFromPEM", "invalid certificate data").Return(false)
+				fnd.On("X509CertPool").Return(caCertPool)
+			},
+			want:             false,
+			expectError:      true,
+			expectedErrorMsg: "failed to parse CA certificate",
+		},
+		{
+			name:       "successful execution without path encoding - HTTPS",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/test",
+			encodePath: false,
+			method:     "GET",
+			headers: types.Headers{
+				"content-type": "application/json",
+				"user-agent":   "wst",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				publicUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(publicUrl, nil)
 				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", publicUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
 				expectedRequest.URL = &url.URL{
-					Scheme: "http",
+					Scheme: "https",
 					Host:   "example.com",
 					Opaque: "//example.com/test",
 				}
@@ -300,8 +661,14 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", expectedTransport).Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 				rd.On("Store", "response/r1", ResponseData{
 					Body:    "test",
@@ -321,6 +688,10 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -328,9 +699,9 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
-				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
@@ -342,8 +713,14 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", expectedTransport).Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 				rd.On("Store", "response/r1", ResponseData{
 					Body:    "test",
@@ -365,6 +742,10 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -372,9 +753,9 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
-				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
@@ -386,8 +767,14 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", expectedTransport).Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 			},
 			want:             false,
@@ -405,6 +792,10 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -412,9 +803,9 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
-				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
@@ -426,8 +817,14 @@ func TestAction_Execute(t *testing.T) {
 					Body:   body,
 					Header: header,
 				}
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", expectedTransport).Return(client)
 				client.On("Do", expectedRequest).Return(resp, nil)
 			},
 			contextSetup: func() context.Context {
@@ -450,6 +847,10 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -457,14 +858,20 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
-				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
 				assert.Nil(t, err)
 				expectedRequest.Header.Add("content-type", "application/json")
 				expectedRequest.Header.Add("user-agent", "wst")
+
+				expectedTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
 				client := appMocks.NewMockHttpClient(t)
-				fnd.On("HttpClient").Return(client)
+				fnd.On("HttpClient", expectedTransport).Return(client)
 				client.On("Do", expectedRequest).Return(nil, errors.New("client fail"))
 			},
 			want:             false,
@@ -482,6 +889,10 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
 			setupMocks: func(
 				t *testing.T,
 				ctx context.Context,
@@ -489,8 +900,8 @@ func TestAction_Execute(t *testing.T) {
 				fnd *appMocks.MockFoundation,
 				svc *servicesMocks.MockService,
 			) {
-				url := "https://example.com/test"
-				svc.On("PublicUrl", "https", "/test").Return(url, nil)
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
 			},
 			want:             false,
 			expectError:      true,
@@ -502,10 +913,14 @@ func TestAction_Execute(t *testing.T) {
 			scheme:     "https",
 			path:       "/test",
 			encodePath: true,
-			method:     "=",
+			method:     "GET",
 			headers: types.Headers{
 				"content-type": "application/json",
 				"user-agent":   "wst",
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
 			},
 			setupMocks: func(
 				t *testing.T,
@@ -548,6 +963,7 @@ func TestAction_Execute(t *testing.T) {
 				encodePath: tt.encodePath,
 				method:     tt.method,
 				headers:    tt.headers,
+				tls:        tt.tls,
 			}
 
 			got, err := a.Execute(ctx, runDataMock)

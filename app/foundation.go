@@ -16,11 +16,13 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"os/user"
+
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
-	"os"
-	"os/user"
 )
 
 type Foundation interface {
@@ -35,7 +37,8 @@ type Foundation interface {
 	UserHomeDir() (string, error)
 	LookupEnvVar(key string) (string, bool)
 	ExecCommand(ctx context.Context, name string, args []string) Command
-	HttpClient() HttpClient
+	HttpClient(tr *http.Transport) HttpClient
+	X509CertPool() X509CertPool
 	VegetaAttacker() VegetaAttacker
 	VegetaMetrics() VegetaMetrics
 	GenerateUuid() string
@@ -112,11 +115,15 @@ func (f *DefaultFoundation) ExecCommand(ctx context.Context, name string, args [
 	return NewExecCommand(ctx, name, args)
 }
 
-func (f *DefaultFoundation) HttpClient() HttpClient {
+func (f *DefaultFoundation) HttpClient(tr *http.Transport) HttpClient {
 	if f.dryRun {
 		return NewDryRunHttpClient()
 	}
-	return NewRealHttpClient()
+	return NewRealHttpClient(tr)
+}
+
+func (f *DefaultFoundation) X509CertPool() X509CertPool {
+	return NewX509CertPool()
 }
 
 func (f *DefaultFoundation) VegetaMetrics() VegetaMetrics {

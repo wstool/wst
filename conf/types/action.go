@@ -108,17 +108,23 @@ type ExecuteAction struct {
 	Env            map[string]string `wst:"env"`
 }
 
+type TLSClientConfig struct {
+	SkipVerify bool   `wst:"skip_verify,default=false"`
+	CACert     string `wst:"ca_certificate"`
+}
+
 type RequestAction struct {
-	Service    string  `wst:"service"`
-	Timeout    int     `wst:"timeout"`
-	When       string  `wst:"when,enum=always|on_success|on_failure,default=on_success"`
-	OnFailure  string  `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
-	Id         string  `wst:"id,default=last"`
-	Scheme     string  `wst:"scheme,enum=http|https,default=http"`
-	Path       string  `wst:"path"`
-	EncodePath bool    `wst:"encode_path,default=true"`
-	Method     string  `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
-	Headers    Headers `wst:"headers"`
+	Service    string          `wst:"service"`
+	Timeout    int             `wst:"timeout"`
+	When       string          `wst:"when,enum=always|on_success|on_failure,default=on_success"`
+	OnFailure  string          `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
+	Id         string          `wst:"id,default=last"`
+	Scheme     string          `wst:"scheme,enum=http|https,default=http"`
+	Path       string          `wst:"path"`
+	EncodePath bool            `wst:"encode_path,default=true"`
+	Method     string          `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
+	Headers    Headers         `wst:"headers"`
+	TLS        TLSClientConfig `wst:"tls"`
 }
 
 type BenchAction struct {

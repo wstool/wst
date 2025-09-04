@@ -753,6 +753,21 @@ $defs:
       additionalProperties:
         $ref: '#/$defs/service'
 
+  tlsClientConfig:
+    title: TLS configuration
+    description: |
+      TLS configuration is used for configuring the TLS connection between the client and the server.
+    type: object
+    properties:
+      ca_certificate:
+        title: CA certificate name
+        description: CA certificate name for the certificate in resource certificates.
+        type: string
+      skip_verify:
+        title: Skip certificate verification
+        description: Skip TLS certificate verification. Prefer using custom CA certificate if possible.
+        type: boolean
+
   customExpectation:
     title: Custom expectation
     description: |
@@ -994,6 +1009,7 @@ $defs:
         type: string
         enum: [ fail, ignore, skip ]
         default: fail
+
   actionParallel:
     title: Parallel action
     description: |
@@ -1033,6 +1049,7 @@ $defs:
         type: string
         enum: [ fail, ignore, skip ]
         default: fail
+
   actionRequest:
     title: Request action
     description: |
@@ -1093,6 +1110,8 @@ $defs:
         default: GET
       headers:
         $ref: '#/$defs/headers'
+      tls:
+        $ref: '#/$defs/tlsClientConfig'
 
   actionRestart:
     title: Restart services

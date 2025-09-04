@@ -49,9 +49,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- add https verification options for request and bench
-  - it should allow extending cert store with a selected cert
-  - it should also allow disabling the verification
 - http/2 requests
   - add http_version field to the request action
   - update the client to allow using http/2
@@ -77,6 +74,9 @@ in the future.
 - support metrics server expectation
 - custom server actions for parallel and not action
   - this is mainly for completeness with sequential and might be also useful in some cases
+- support TLS config in bench action
+  - this will likely require using custom transport
+- extend TLS config for request and bench to support client cert
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - add execute action custom environment variables support

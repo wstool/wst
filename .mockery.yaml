@@ -11,6 +11,7 @@ packages:
       HttpClient: {}
       VegetaAttacker: {}
       VegetaMetrics: {}
+      X509CertPool: {}
   github.com/wstool/wst/conf:
     config:
       dir: mocks/generated/conf

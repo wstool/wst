@@ -16,16 +16,19 @@ package request
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/pkg/errors"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/run/actions/action"
 	"github.com/wstool/wst/run/instances/runtime"
 	"github.com/wstool/wst/run/services"
-	"io"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 type Maker interface {
@@ -60,6 +63,10 @@ func (m *ActionMaker) Make(
 		config.Timeout = defaultTimeout
 	}
 
+	if config.Scheme != "https" && (config.TLS.SkipVerify || config.TLS.CACert != "") {
+		return nil, errors.New("TLS configuration is only valid for HTTPS requests")
+	}
+
 	return &Action{
 		fnd:        m.fnd,
 		service:    svc,
@@ -72,6 +79,7 @@ func (m *ActionMaker) Make(
 		encodePath: config.EncodePath,
 		method:     config.Method,
 		headers:    config.Headers,
+		tls:        &config.TLS,
 	}, nil
 }
 
@@ -112,6 +120,7 @@ type Action struct {
 	encodePath bool
 	method     string
 	headers    types.Headers
+	tls        *types.TLSClientConfig
 }
 
 func (a *Action) When() action.When {
@@ -128,6 +137,26 @@ func (a *Action) Timeout() time.Duration {
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
 	a.fnd.Logger().Infof("Executing request action")
+
+	// Create transport.
+	tr := &http.Transport{}
+	if a.scheme == "https" {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: a.tls.SkipVerify,
+		}
+		if a.tls.CACert != "" {
+			caCert, err := a.service.FindCertificate(a.tls.CACert)
+			if err != nil {
+				return false, errors.Errorf("CA certificate %s not found", a.tls.CACert)
+			}
+			caCertPool := a.fnd.X509CertPool()
+			if !caCertPool.AppendCertFromPEM(caCert.Certificate.CertificateData()) {
+				return false, errors.New("failed to parse CA certificate")
+			}
+			tlsConfig.RootCAs = caCertPool.CertPool()
+		}
+		tr.TLSClientConfig = tlsConfig
+	}
 
 	publicUrl, err := a.service.PublicUrl(a.scheme, a.path)
 	if err != nil {
@@ -156,7 +185,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	a.fnd.Logger().Debugf("Sending request: %s", requestToString(req))
 
 	// Send the request.
-	client := a.fnd.HttpClient()
+	client := a.fnd.HttpClient(tr)
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
