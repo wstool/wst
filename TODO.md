@@ -7,8 +7,7 @@ in the future.
 
 ### Build and CI
 
-- update and re-run mockery
-- update Go to latest 1.24
+- update Go to the latest 1.25
 - update deps
 - update and re-run mockery
 - integration tests
