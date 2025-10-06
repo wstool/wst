@@ -16,6 +16,11 @@ package parser
 
 import (
 	"fmt"
+	"math"
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -28,10 +33,6 @@ import (
 	appMocks "github.com/wstool/wst/mocks/generated/app"
 	loaderMocks "github.com/wstool/wst/mocks/generated/conf/loader"
 	factoryMocks "github.com/wstool/wst/mocks/generated/conf/parser/factory"
-	"math"
-	"os"
-	"reflect"
-	"testing"
 )
 
 func Test_isValidParam(t *testing.T) {
@@ -293,18 +294,32 @@ func Test_ConfigParser_processEnumParam(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "Value found in enum list",
+			name:      "Value found in enum list for single value",
 			enums:     "enum1|enum2|enum3",
 			data:      "enum2",
 			fieldName: "field",
 			wantErr:   false, // No error because data is in enum list
 		},
 		{
-			name:      "Value not found - should trigger error",
+			name:      "Value found in enum list for multiple values",
+			enums:     "enum1|enum2|enum3",
+			data:      []string{"enum2", "enum3"},
+			fieldName: "field",
+			wantErr:   false, // No error because all data items are in enum list
+		},
+		{
+			name:      "Value not found in a single value",
 			enums:     "enum1|enum2|enum3",
 			data:      "enum4",
 			fieldName: "field",
 			wantErr:   true, // Error because data is not in enum list
+		},
+		{
+			name:      "Value not found in multiple values",
+			enums:     "enum1|enum2|enum3",
+			data:      []string{"enum2", "enum4"},
+			fieldName: "field",
+			wantErr:   true, // Error because one item in data is not in enum list
 		},
 	}
 

@@ -48,9 +48,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- http/2 requests
-  - add http_version field to the request action
-  - update the client to allow using http/2
 - extend request action to support file upload
   - it should chunked update and set option to set delay between chunks to be able to create server timeouts
   - it should also allow doing partial unfinished uploads
@@ -76,6 +73,9 @@ in the future.
 - support TLS config in bench action
   - this will likely require using custom transport
 - extend TLS config for request and bench to support client cert
+- support `protocols` field in bench action
+  - extract the common logic
+- extend protocols to support http3 in bench and request action
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - add execute action custom environment variables support

@@ -1098,6 +1098,19 @@ $defs:
         type: string
         default: http
         enum: [ http, https ]
+      protocols:
+        title: HTTP protocols
+        description: |
+          Specifies which HTTP protocols are allowed for the request. Multiple protocols can be selected, and the
+          client will negotiate the best one with the server. If empty or not specified, defaults to
+          ['http1.1', 'http2'] for HTTPS and ['http1.1'] for plain HTTP. Note that 'http2' over HTTPS uses encrypted
+          HTTP/2, while 'http2' over HTTP uses unencrypted HTTP/2 (h2c).
+        type: array
+        items:
+          type: string
+          enum: [ http1.1, http2 ]
+        uniqueItems: true
+        default: []
       path:
         title: Request path
         description: Request URL path which can also contain query parameters.

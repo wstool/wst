@@ -16,6 +16,12 @@ package parser
 
 import (
 	"fmt"
+	"math"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/wstool/wst/app"
@@ -23,11 +29,6 @@ import (
 	"github.com/wstool/wst/conf/parser/factory"
 	"github.com/wstool/wst/conf/parser/location"
 	"github.com/wstool/wst/conf/types"
-	"math"
-	"path/filepath"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 type ConfigParam string
@@ -174,13 +175,36 @@ func (p *ConfigParser) processFactoryParam(
 
 func (p *ConfigParser) processEnumParam(enums string, data interface{}, fieldName string) error {
 	enumList := strings.Split(enums, "|")
-	for _, enum := range enumList {
-		if enum == data {
-			return nil
+
+	// Check if data is a slice/array
+	dataValue := reflect.ValueOf(data)
+	if dataValue.Kind() == reflect.Slice || dataValue.Kind() == reflect.Array {
+		// Validate each element in the array
+		for i := 0; i < dataValue.Len(); i++ {
+			elem := dataValue.Index(i).Interface()
+			if !isValidEnum(elem, enumList) {
+				return errors.Errorf("value %v at index %d is not valid for field %s (valid values: %s)",
+					elem, i, fieldName, enums)
+			}
 		}
+		return nil
 	}
 
-	return errors.Errorf("values %v are not valid for field %s", enums, p.Pos())
+	// Single value validation
+	if !isValidEnum(data, enumList) {
+		return errors.Errorf("value %v is not valid for field %s (valid values: %s)",
+			data, fieldName, enums)
+	}
+	return nil
+}
+
+func isValidEnum(value interface{}, enumList []string) bool {
+	for _, enum := range enumList {
+		if enum == fmt.Sprintf("%v", value) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *ConfigParser) processKeysParam(keys string, data interface{}, fieldName string) error {

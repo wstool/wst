@@ -120,6 +120,7 @@ type RequestAction struct {
 	OnFailure  string          `wst:"on_failure,enum=fail|ignore|skip,default=fail"`
 	Id         string          `wst:"id,default=last"`
 	Scheme     string          `wst:"scheme,enum=http|https,default=http"`
+	Protocols  []string        `wst:"protocols,enum=http1.1|http2"`
 	Path       string          `wst:"path"`
 	EncodePath bool            `wst:"encode_path,default=true"`
 	Method     string          `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`

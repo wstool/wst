@@ -31,6 +31,13 @@ import (
 	"github.com/wstool/wst/run/services"
 )
 
+type Protocol string
+
+const (
+	ProtocolHTTP11 Protocol = "http1.1"
+	ProtocolHTTP2  Protocol = "http2"
+)
+
 type Maker interface {
 	Make(
 		config *types.RequestAction,
@@ -67,6 +74,28 @@ func (m *ActionMaker) Make(
 		return nil, errors.New("TLS configuration is only valid for HTTPS requests")
 	}
 
+	// Set default protocols if not specified
+	protocols := config.Protocols
+	if len(protocols) == 0 {
+		if config.Scheme == "https" {
+			// Default for HTTPS: allow both HTTP/1.1 and HTTP/2
+			protocols = []string{string(ProtocolHTTP11), string(ProtocolHTTP2)}
+		} else {
+			// Default for HTTP: only HTTP/1.1 (h2c is not commonly supported)
+			protocols = []string{string(ProtocolHTTP11)}
+		}
+	}
+
+	// Convert strings to Protocol type and validate
+	validatedProtocols := make([]Protocol, 0, len(protocols))
+	for _, protoStr := range protocols {
+		proto := Protocol(protoStr)
+		if proto == ProtocolHTTP2 && config.Scheme != "https" {
+			m.fnd.Logger().Infof("Using unencrypted HTTP/2 (h2c) over plain HTTP")
+		}
+		validatedProtocols = append(validatedProtocols, proto)
+	}
+
 	return &Action{
 		fnd:        m.fnd,
 		service:    svc,
@@ -80,6 +109,7 @@ func (m *ActionMaker) Make(
 		method:     config.Method,
 		headers:    config.Headers,
 		tls:        &config.TLS,
+		protocols:  validatedProtocols,
 	}, nil
 }
 
@@ -121,6 +151,7 @@ type Action struct {
 	method     string
 	headers    types.Headers
 	tls        *types.TLSClientConfig
+	protocols  []Protocol
 }
 
 func (a *Action) When() action.When {
@@ -136,34 +167,32 @@ func (a *Action) Timeout() time.Duration {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing request action")
+	a.fnd.Logger().Infof("Executing request action with HTTP protocols: %v", a.protocols)
 
-	// Create transport.
+	// Create transport
 	tr := &http.Transport{}
+
+	// Configure protocols using the Protocols API
+	protocolConfig := a.buildProtocolConfig()
+	tr.Protocols = protocolConfig
+
 	if a.scheme == "https" {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: a.tls.SkipVerify,
-		}
-		if a.tls.CACert != "" {
-			caCert, err := a.service.FindCertificate(a.tls.CACert)
-			if err != nil {
-				return false, errors.Errorf("CA certificate %s not found", a.tls.CACert)
-			}
-			caCertPool := a.fnd.X509CertPool()
-			if !caCertPool.AppendCertFromPEM(caCert.Certificate.CertificateData()) {
-				return false, errors.New("failed to parse CA certificate")
-			}
-			tlsConfig.RootCAs = caCertPool.CertPool()
+		tlsConfig, err := a.buildTLSConfig()
+		if err != nil {
+			return false, err
 		}
 		tr.TLSClientConfig = tlsConfig
 	}
+
+	a.fnd.Logger().Debugf("Protocol configuration: HTTP/1=%t, HTTP/2=%t, UnencryptedHTTP/2=%t",
+		protocolConfig.HTTP1(), protocolConfig.HTTP2(), protocolConfig.UnencryptedHTTP2())
 
 	publicUrl, err := a.service.PublicUrl(a.scheme, a.path)
 	if err != nil {
 		return false, err
 	}
 
-	// Create the HTTP request.
+	// Create the HTTP request
 	req, err := http.NewRequestWithContext(ctx, a.method, publicUrl, nil)
 	if err != nil {
 		return false, err
@@ -178,13 +207,13 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		}
 	}
 
-	// Add headers to the request.
+	// Add headers to the request
 	for key, value := range a.headers {
 		req.Header.Add(key, value)
 	}
 	a.fnd.Logger().Debugf("Sending request: %s", requestToString(req))
 
-	// Send the request.
+	// Send the request
 	client := a.fnd.HttpClient(tr)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -192,13 +221,13 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 	defer resp.Body.Close()
 
-	// Read the response body.
+	// Read the response body
 	body, err := readResponse(ctx, resp.Body)
 	if err != nil {
 		return false, err
 	}
 
-	// Create a ResponseData instance to hold both body and headers.
+	// Create a ResponseData instance to hold both body and headers
 	responseData := ResponseData{
 		Status:     resp.Status,
 		StatusCode: resp.StatusCode,
@@ -207,14 +236,55 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		Headers:    resp.Header,
 	}
 
-	// Store the ResponseData in runData.
+	// Store the ResponseData in runData
 	key := fmt.Sprintf("response/%s", a.id)
-	a.fnd.Logger().Debugf("Storing response %s: %s", key, responseData)
+	a.fnd.Logger().Debugf("Storing response %s: %s (protocol: %s)", key, responseData, resp.Proto)
 	if err := runData.Store(key, responseData); err != nil {
 		return false, err
 	}
 
 	return true, nil
+}
+
+func (a *Action) buildProtocolConfig() *http.Protocols {
+	config := new(http.Protocols)
+
+	for _, proto := range a.protocols {
+		switch proto {
+		case ProtocolHTTP11:
+			config.SetHTTP1(true)
+		case ProtocolHTTP2:
+			if a.scheme == "https" {
+				// HTTP/2 over TLS
+				config.SetHTTP2(true)
+			} else {
+				// HTTP/2 cleartext (h2c) over plain HTTP
+				config.SetUnencryptedHTTP2(true)
+			}
+		}
+	}
+
+	return config
+}
+
+func (a *Action) buildTLSConfig() (*tls.Config, error) {
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: a.tls.SkipVerify,
+	}
+
+	if a.tls.CACert != "" {
+		caCert, err := a.service.FindCertificate(a.tls.CACert)
+		if err != nil {
+			return nil, errors.Errorf("CA certificate %s not found", a.tls.CACert)
+		}
+		caCertPool := a.fnd.X509CertPool()
+		if !caCertPool.AppendCertFromPEM(caCert.Certificate.CertificateData()) {
+			return nil, errors.New("failed to parse CA certificate")
+		}
+		tlsConfig.RootCAs = caCertPool.CertPool()
+	}
+
+	return tlsConfig, nil
 }
 
 func requestToString(req *http.Request) string {
