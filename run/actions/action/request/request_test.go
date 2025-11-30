@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/mocks/authored/external"
@@ -95,6 +96,7 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					body: &types.RequestBody{},
 					tls: &types.TLSClientConfig{
 						SkipVerify: false,
 						CACert:     "",
@@ -143,6 +145,7 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					body: &types.RequestBody{},
 					tls: &types.TLSClientConfig{
 						SkipVerify: false,
 						CACert:     "",
@@ -191,6 +194,7 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					body: &types.RequestBody{},
 					tls: &types.TLSClientConfig{
 						SkipVerify: true,
 						CACert:     "",
@@ -239,6 +243,7 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					body: &types.RequestBody{},
 					tls: &types.TLSClientConfig{
 						SkipVerify: false,
 						CACert:     "localhost-ca",
@@ -289,11 +294,80 @@ func TestActionMaker_Make(t *testing.T) {
 					headers: types.Headers{
 						"content-type": "application/json",
 					},
+					body: &types.RequestBody{},
 					tls: &types.TLSClientConfig{
 						SkipVerify: false,
 						CACert:     "",
 					},
 					protocols: []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+				}
+			},
+		},
+		{
+			name: "successful request with body and transfer config",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "https",
+				Path:      "/upload",
+				Method:    "POST",
+				Headers: types.Headers{
+					"content-type": "application/json",
+				},
+				Body: types.RequestBody{
+					Content:        "test body content",
+					RenderTemplate: true,
+					Transfer: types.TransferConfig{
+						Encoding:      "chunked",
+						ChunkSize:     1024,
+						ChunkDelay:    100,
+						ContentLength: 0,
+					},
+				},
+				TLS: types.TLSClientConfig{
+					SkipVerify: false,
+					CACert:     "",
+				},
+				Protocols: []string{"http1.1"},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, fnd *appMocks.MockFoundation) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
+				return &Action{
+					fnd:       fndMock,
+					service:   svc,
+					timeout:   3000 * time.Millisecond,
+					when:      action.OnSuccess,
+					onFailure: action.Fail,
+					id:        "new",
+					scheme:    "https",
+					path:      "/upload",
+					method:    "POST",
+					headers: types.Headers{
+						"content-type": "application/json",
+					},
+					body: &types.RequestBody{
+						Content:        "test body content",
+						RenderTemplate: true,
+						Transfer: types.TransferConfig{
+							Encoding:      "chunked",
+							ChunkSize:     1024,
+							ChunkDelay:    100,
+							ContentLength: 0,
+						},
+					},
+					tls: &types.TLSClientConfig{
+						SkipVerify: false,
+						CACert:     "",
+					},
+					protocols: []Protocol{ProtocolHTTP11},
 				}
 			},
 		},
@@ -443,6 +517,7 @@ func TestAction_Execute(t *testing.T) {
 		encodePath bool
 		method     string
 		headers    types.Headers
+		body       *types.RequestBody
 		tls        *types.TLSClientConfig
 		protocols  []Protocol
 		setupMocks func(
@@ -468,6 +543,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "",
@@ -513,6 +589,257 @@ func TestAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
+			name:       "successful execution with body content",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers: types.Headers{
+				"content-type": "application/json",
+			},
+			body: &types.RequestBody{
+				Content:        "test body content",
+				RenderTemplate: false,
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				body := &bodyReader{msg: "ok"}
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						req.Header.Get("content-type") == "application/json" &&
+						req.ContentLength == 17 &&
+						req.Body != nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "ok",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with chunked encoding and chunk size",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers: types.Headers{
+				"content-type": "application/octet-stream",
+			},
+			body: &types.RequestBody{
+				Content:        "test chunked content",
+				RenderTemplate: true,
+				Transfer: types.TransferConfig{
+					Encoding:  "chunked",
+					ChunkSize: 10,
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				fnd.On("Sleep", ctx, mock.AnythingOfType("time.Duration")).Return(nil).Maybe()
+				body := &bodyReader{msg: "ok"}
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						req.Header.Get("content-type") == "application/octet-stream" &&
+						len(req.TransferEncoding) > 0 &&
+						req.TransferEncoding[0] == "chunked" &&
+						req.Body != nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "ok",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with content-length override",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers:    types.Headers{},
+			body: &types.RequestBody{
+				Content: "test content",
+				Transfer: types.TransferConfig{
+					Encoding:      "none",
+					ContentLength: 100,
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				body := &bodyReader{msg: "ok"}
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						req.ContentLength == 100 &&
+						req.Body != nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "ok",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with chunked encoding but no size or delay",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers:    types.Headers{},
+			body: &types.RequestBody{
+				Content: "test content",
+				Transfer: types.TransferConfig{
+					Encoding: "chunked",
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				body := &bodyReader{msg: "ok"}
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					// Verify chunked encoding is set even without size/delay
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						len(req.TransferEncoding) > 0 &&
+						req.TransferEncoding[0] == "chunked" &&
+						req.Body != nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "ok",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
 			name:       "successful execution with HTTPS and skip verify - HTTP/2",
 			id:         "r1",
 			scheme:     "https",
@@ -523,6 +850,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -581,6 +909,7 @@ func TestAction_Execute(t *testing.T) {
 			headers: types.Headers{
 				"content-type": "application/json",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -636,6 +965,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "",
@@ -689,6 +1019,7 @@ func TestAction_Execute(t *testing.T) {
 			encodePath: true,
 			method:     "PUT",
 			headers:    types.Headers{},
+			body:       &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "",
@@ -740,6 +1071,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "localhost-ca",
@@ -808,6 +1140,7 @@ func TestAction_Execute(t *testing.T) {
 			encodePath: true,
 			method:     "GET",
 			headers:    types.Headers{},
+			body:       &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "my-ca",
@@ -876,6 +1209,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -936,6 +1270,7 @@ func TestAction_Execute(t *testing.T) {
 			encodePath: false,
 			method:     "DELETE",
 			headers:    types.Headers{},
+			body:       &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "",
@@ -991,6 +1326,7 @@ func TestAction_Execute(t *testing.T) {
 			headers: types.Headers{
 				"content-type": "application/json",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "nonexistent-ca",
@@ -1019,6 +1355,7 @@ func TestAction_Execute(t *testing.T) {
 			headers: types.Headers{
 				"content-type": "application/json",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: false,
 				CACert:     "invalid-ca",
@@ -1055,6 +1392,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1115,6 +1453,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1171,6 +1510,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1232,6 +1572,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1280,6 +1621,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1310,6 +1652,7 @@ func TestAction_Execute(t *testing.T) {
 				"content-type": "application/json",
 				"user-agent":   "wst",
 			},
+			body: &types.RequestBody{},
 			tls: &types.TLSClientConfig{
 				SkipVerify: true,
 				CACert:     "",
@@ -1356,6 +1699,7 @@ func TestAction_Execute(t *testing.T) {
 				encodePath: tt.encodePath,
 				method:     tt.method,
 				headers:    tt.headers,
+				body:       tt.body,
 				tls:        tt.tls,
 				protocols:  tt.protocols,
 			}

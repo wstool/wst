@@ -1677,6 +1677,7 @@ func Test_ConfigParser_ParseStruct(t *testing.T) {
 		})
 	}
 }
+
 func Test_ConfigParser_ParseConfig(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1934,6 +1935,29 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 										},
 									},
 								},
+								map[string]interface{}{
+									"request": map[string]interface{}{
+										"service": "web_service",
+										"path":    "/upload",
+										"method":  "POST",
+										"body": map[string]interface{}{
+											"content": "test",
+											"transfer": map[string]interface{}{
+												"encoding":       "chunked",
+												"content_length": 30,
+												"chunk_size":     10,
+												"chunk_delay":    5000,
+											},
+										},
+									},
+								},
+								map[string]interface{}{
+									"expect/web_service": map[string]interface{}{
+										"response": map[string]interface{}{
+											"status": 200,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -2113,6 +2137,37 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 											Match:          "exact",
 											RenderTemplate: true,
 										},
+									},
+								},
+								&types.RequestAction{
+									Service:    "web_service",
+									Timeout:    0,
+									When:       "on_success",
+									OnFailure:  "fail",
+									Id:         "last",
+									Scheme:     "http",
+									Path:       "/upload",
+									EncodePath: true,
+									Method:     "POST",
+									Body: types.RequestBody{
+										Content:        "test",
+										RenderTemplate: true,
+										Transfer: types.TransferConfig{
+											Encoding:      "chunked",
+											ChunkSize:     10,
+											ChunkDelay:    5000,
+											ContentLength: 30,
+										},
+									},
+								},
+								&types.ResponseExpectationAction{
+									Service:   "web_service",
+									Timeout:   0,
+									When:      "on_success",
+									OnFailure: "fail",
+									Response: types.ResponseExpectation{
+										Request: "last",
+										Status:  200,
 									},
 								},
 							},

@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 	"os/user"
+	"time"
 
 	mock "github.com/stretchr/testify/mock"
 	"github.com/wstool/wst/app"
@@ -554,6 +555,63 @@ func (_c *MockFoundation_LookupEnvVar_Call) Return(s string, b bool) *MockFounda
 }
 
 func (_c *MockFoundation_LookupEnvVar_Call) RunAndReturn(run func(key string) (string, bool)) *MockFoundation_LookupEnvVar_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Sleep provides a mock function for the type MockFoundation
+func (_mock *MockFoundation) Sleep(ctx context.Context, duration time.Duration) error {
+	ret := _mock.Called(ctx, duration)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Sleep")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Duration) error); ok {
+		r0 = returnFunc(ctx, duration)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFoundation_Sleep_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Sleep'
+type MockFoundation_Sleep_Call struct {
+	*mock.Call
+}
+
+// Sleep is a helper method to define mock.On call
+//   - ctx context.Context
+//   - duration time.Duration
+func (_e *MockFoundation_Expecter) Sleep(ctx interface{}, duration interface{}) *MockFoundation_Sleep_Call {
+	return &MockFoundation_Sleep_Call{Call: _e.mock.On("Sleep", ctx, duration)}
+}
+
+func (_c *MockFoundation_Sleep_Call) Run(run func(ctx context.Context, duration time.Duration)) *MockFoundation_Sleep_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Duration
+		if args[1] != nil {
+			arg1 = args[1].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFoundation_Sleep_Call) Return(err error) *MockFoundation_Sleep_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFoundation_Sleep_Call) RunAndReturn(run func(ctx context.Context, duration time.Duration) error) *MockFoundation_Sleep_Call {
 	_c.Call.Return(run)
 	return _c
 }

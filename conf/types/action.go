@@ -113,6 +113,19 @@ type TLSClientConfig struct {
 	CACert     string `wst:"ca_certificate"`
 }
 
+type TransferConfig struct {
+	Encoding      string `wst:"encoding,enum=chunked|none,default=none"`
+	ChunkSize     int    `wst:"chunk_size"`
+	ChunkDelay    int    `wst:"chunk_delay"`
+	ContentLength int    `wst:"content_length"`
+}
+
+type RequestBody struct {
+	Content        string         `wst:"content"`
+	RenderTemplate bool           `wst:"render_template,default=true"`
+	Transfer       TransferConfig `wst:"transfer"`
+}
+
 type RequestAction struct {
 	Service    string          `wst:"service"`
 	Timeout    int             `wst:"timeout"`
@@ -125,6 +138,7 @@ type RequestAction struct {
 	EncodePath bool            `wst:"encode_path,default=true"`
 	Method     string          `wst:"method,enum=GET|HEAD|DELETE|POST|PUT|PATCH|PURGE,default=GET"`
 	Headers    Headers         `wst:"headers"`
+	Body       RequestBody     `wst:"body,string=Content"`
 	TLS        TLSClientConfig `wst:"tls"`
 }
 

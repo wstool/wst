@@ -753,6 +753,70 @@ $defs:
       additionalProperties:
         $ref: '#/$defs/service'
 
+  requestBody:
+    title: Request body
+    description: |
+      Specifies the request body content and transfer configuration. Can be specified as a simple string
+      for the content, or as an object with content and transfer fields for advanced control over how the
+      body is sent.
+    oneOf:
+      - type: string
+        description: Simple body content
+      - type: object
+        description: Body with transfer configuration
+        properties:
+          content:
+            title: Body content
+            description: The actual content to send in the request body.
+            type: string
+          render_template:
+            title: Render template
+            description: |
+              If true, the body content will be treated as a template and rendered with available variables.
+              Set to false to send the content as-is without template processing.
+            type: boolean
+            default: true
+          transfer:
+            title: Transfer configuration
+            description: |
+              Controls how the request body is transferred to the server. This allows testing various
+              transfer scenarios including chunked encoding, custom chunk sizes, delays, and content-length
+              mismatches.
+            type: object
+            properties:
+              encoding:
+                title: Transfer encoding
+                description: |
+                  The transfer encoding to use. 'none' sends the body in a single transfer. 'chunked' uses
+                  HTTP chunked transfer encoding, which allows streaming the body in multiple chunks without
+                  specifying Content-Length upfront.
+                type: string
+                enum: [ chunked, none ]
+                default: none
+              chunk_size:
+                title: Chunk size
+                description: |
+                  When using chunked encoding, this specifies the size of each chunk in bytes. If not specified
+                  or set to 0, the chunk size will be determined by the HTTP client's buffer size.
+                type: integer
+                minimum: 0
+              chunk_delay:
+                title: Chunk delay
+                description: |
+                  When using chunked encoding, this specifies the delay in milliseconds between sending each
+                  chunk. This allows testing slow upload scenarios or server timeout handling. A value of 0
+                  means no delay.
+                type: integer
+                minimum: 0
+              content_length:
+                title: Content-Length override
+                description: |
+                  Overrides the Content-Length header with a specific value. This allows testing scenarios
+                  where the declared content length doesn't match the actual body length, such as incomplete
+                  uploads or server handling of length mismatches. If set to 0, the actual body length is used.
+                type: integer
+                minimum: 0
+
   tlsClientConfig:
     title: TLS configuration
     description: |
@@ -1050,81 +1114,83 @@ $defs:
         enum: [ fail, ignore, skip ]
         default: fail
 
-  actionRequest:
-    title: Request action
-    description: |
-      The request action defines the details of the request to be sent to the service.
-    type: object
-    properties:
-      service:
-        title: Service name
-        description: The service that the request is executed on.
+actionRequest:
+  title: Request action
+  description: |
+    The request action defines the details of the request to be sent to the service.
+  type: object
+  properties:
+    service:
+      title: Service name
+      description: The service that the request is executed on.
+      type: string
+    timeout:
+      title: Action timeout
+      description: |
+        This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+        unlimited and 0 means using the default value defined in the instance action timeout.
+      type: integer
+    when:
+      title: When to run the action
+      description: |
+        This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+        if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+        at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+        of the success or failure of previous actions.
+      type: string
+      enum: [ always, on_success, on_failure ]
+      default: on_success
+    on_failure:
+      title: What to do on failure
+      description: |
+        This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+        when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+        as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+      type: string
+      enum: [ fail, ignore, skip ]
+      default: fail
+    id:
+      title: Request ID
+      description: Identifies request which can be then used in response expectation.
+      type: string
+      default: last
+    scheme:
+      title: Request URL scheme
+      description: |
+        Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
+        The protocol selection affects how the request is made to the service.
+      type: string
+      default: http
+      enum: [ http, https ]
+    protocols:
+      title: HTTP protocols
+      description: |
+        Specifies which HTTP protocols are allowed for the request. Multiple protocols can be selected, and the
+        client will negotiate the best one with the server. If empty or not specified, defaults to
+        ['http1.1', 'http2'] for HTTPS and ['http1.1'] for plain HTTP. Note that 'http2' over HTTPS uses encrypted
+        HTTP/2, while 'http2' over HTTP uses unencrypted HTTP/2 (h2c).
+      type: array
+      items:
         type: string
-      timeout:
-        title: Action timeout
-        description: |
-          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
-          unlimited and 0 means using the default value defined in the instance action timeout.
-        type: integer
-      when:
-        title: When to run the action
-        description: |
-          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
-          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
-          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
-          of the success or failure of previous actions.
-        type: string
-        enum: [ always, on_success, on_failure ]
-        default: on_success
-      on_failure:
-        title: What to do on failure
-        description: |
-          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
-          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
-          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
-        type: string
-        enum: [ fail, ignore, skip ]
-        default: fail
-      id:
-        title: Request ID
-        description: Identifies request which can be then used in response expectation.
-        type: string
-        default: last
-      scheme:
-        title: Request URL scheme
-        description: |
-          Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
-          The protocol selection affects how the request is made to the service.
-        type: string
-        default: http
-        enum: [ http, https ]
-      protocols:
-        title: HTTP protocols
-        description: |
-          Specifies which HTTP protocols are allowed for the request. Multiple protocols can be selected, and the
-          client will negotiate the best one with the server. If empty or not specified, defaults to
-          ['http1.1', 'http2'] for HTTPS and ['http1.1'] for plain HTTP. Note that 'http2' over HTTPS uses encrypted
-          HTTP/2, while 'http2' over HTTP uses unencrypted HTTP/2 (h2c).
-        type: array
-        items:
-          type: string
-          enum: [ http1.1, http2 ]
-        uniqueItems: true
-        default: []
-      path:
-        title: Request path
-        description: Request URL path which can also contain query parameters.
-        type: string
-        default: /
-      method:
-        title: Request method
-        type: string
-        enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
-        default: GET
-      headers:
-        $ref: '#/$defs/headers'
-      tls:
-        $ref: '#/$defs/tlsClientConfig'
+        enum: [ http1.1, http2 ]
+      uniqueItems: true
+      default: []
+    path:
+      title: Request path
+      description: Request URL path which can also contain query parameters.
+      type: string
+      default: /
+    method:
+      title: Request method
+      type: string
+      enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
+      default: GET
+    headers:
+      $ref: '#/$defs/headers'
+    body:
+      $ref: '#/$defs/requestBody'
+    tls:
+      $ref: '#/$defs/tlsClientConfig'
 
   actionRestart:
     title: Restart services

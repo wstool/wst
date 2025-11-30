@@ -48,11 +48,6 @@ in the future.
 
 #### Structure - Instances, Actions, Servers, Services
 
-- extend request action to support file upload
-  - it should chunked update and set option to set delay between chunks to be able to create server timeouts
-  - it should also allow doing partial unfinished uploads
-  - it is to support all requirements for testing https://github.com/php/php-src/pull/2180
-  - test exceeding LimitRequestBody
 - add typed parameters substitution for integers
   - this is to be able to, for example, parameterize status code
   - alternatively, it might be easier to allow automatic string to int conversion
@@ -76,6 +71,10 @@ in the future.
 - support `protocols` field in bench action
   - extract the common logic
 - extend protocols to support http3 in bench and request action
+- extend request body to support multipart form data
+  - it should support form fields
+  - it should support files
+- look into extending bench to support request body (see if all request action options will be possible)
 - integrate better instance action identification
   - it should introduce name for each action and also pass parent name to nested actions in `parallel` or `not`
 - add execute action custom environment variables support
@@ -107,6 +106,7 @@ in the future.
   - consider more consistent naming differentiating that service port is public and server port is private
 - add support for ephemeral port allocation that should be the default if not ports specified
   - it should be also possible to overwrite port to ephemeral selection even if specified
+- Add Temp dir support to Dirs as it might be useful, for example, for nginx temp paths
 - consider adding support default Dirs so it is not required to specify in the config
   - could be either the actual enum name or another tag
 - add a special resource file structure that could be used for scripts but also for certs and keys

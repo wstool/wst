@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -42,6 +43,7 @@ type Foundation interface {
 	VegetaAttacker() VegetaAttacker
 	VegetaMetrics() VegetaMetrics
 	GenerateUuid() string
+	Sleep(ctx context.Context, duration time.Duration) error
 }
 
 type DefaultFoundation struct {
@@ -139,4 +141,20 @@ func (f *DefaultFoundation) VegetaAttacker() VegetaAttacker {
 
 func (f *DefaultFoundation) GenerateUuid() string {
 	return uuid.New().String()
+}
+
+func (f *DefaultFoundation) Sleep(ctx context.Context, duration time.Duration) error {
+	if duration <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

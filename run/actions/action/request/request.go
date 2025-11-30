@@ -15,6 +15,7 @@
 package request
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -108,6 +109,7 @@ func (m *ActionMaker) Make(
 		encodePath: config.EncodePath,
 		method:     config.Method,
 		headers:    config.Headers,
+		body:       &config.Body,
 		tls:        &config.TLS,
 		protocols:  validatedProtocols,
 	}, nil
@@ -150,6 +152,7 @@ type Action struct {
 	encodePath bool
 	method     string
 	headers    types.Headers
+	body       *types.RequestBody
 	tls        *types.TLSClientConfig
 	protocols  []Protocol
 }
@@ -192,8 +195,14 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		return false, err
 	}
 
+	// Create a request body reader
+	var bodyReader io.Reader
+	if a.body != nil && a.body.Content != "" {
+		bodyReader = a.createBodyReader(ctx)
+	}
+
 	// Create the HTTP request
-	req, err := http.NewRequestWithContext(ctx, a.method, publicUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, a.method, publicUrl, bodyReader)
 	if err != nil {
 		return false, err
 	}
@@ -211,6 +220,12 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	for key, value := range a.headers {
 		req.Header.Add(key, value)
 	}
+
+	// Handle transfer configuration
+	if a.body != nil && a.body.Content != "" {
+		a.applyTransferConfig(req)
+	}
+
 	a.fnd.Logger().Debugf("Sending request: %s", requestToString(req))
 
 	// Send the request
@@ -244,6 +259,46 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	return true, nil
+}
+
+// createBodyReader creates an io.Reader for the request body based on transfer configuration
+func (a *Action) createBodyReader(ctx context.Context) io.Reader {
+	content := []byte(a.body.Content)
+
+	// If chunked encoding with chunk size or delay specified, use a custom reader
+	if a.body.Transfer.Encoding == "chunked" && (a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0) {
+		return &chunkControlledReader{
+			ctx:        ctx,
+			fnd:        a.fnd,
+			data:       content,
+			chunkSize:  a.body.Transfer.ChunkSize,
+			chunkDelay: time.Duration(a.body.Transfer.ChunkDelay) * time.Millisecond,
+			offset:     0,
+		}
+	}
+
+	// For normal transfers or chunked without size/delay control, use bytes.Reader
+	return bytes.NewReader(content)
+}
+
+// applyTransferConfig applies transfer configuration to the request
+func (a *Action) applyTransferConfig(req *http.Request) {
+	if a.body.Transfer.Encoding == "chunked" {
+		req.TransferEncoding = []string{"chunked"}
+		if a.body.Transfer.ChunkSize > 0 {
+			a.fnd.Logger().Debugf("Using chunked encoding with chunk size: %d", a.body.Transfer.ChunkSize)
+		}
+	}
+
+	// Override Content-Length if specified (allows mismatches for testing unfinished uploads)
+	if a.body.Transfer.ContentLength > 0 {
+		req.ContentLength = int64(a.body.Transfer.ContentLength)
+		a.fnd.Logger().Debugf("Setting Content-Length to: %d (actual body length: %d)",
+			a.body.Transfer.ContentLength, len(a.body.Content))
+	} else if a.body.Transfer.Encoding != "chunked" {
+		// Set actual content length if not chunked and not overridden
+		req.ContentLength = int64(len(a.body.Content))
+	}
 }
 
 func (a *Action) buildProtocolConfig() *http.Protocols {
