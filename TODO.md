@@ -47,7 +47,8 @@ in the future.
 ### Run
 
 #### Structure - Instances, Actions, Servers, Services
-
+- fix request body chunk delay (with encoding none and low chunk size) that is not causing delay
+- add template support to request body
 - add typed parameters substitution for integers
   - this is to be able to, for example, parameterize status code
   - alternatively, it might be easier to allow automatic string to int conversion
