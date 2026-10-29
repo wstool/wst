@@ -61,7 +61,9 @@ in the future.
 ### Run
 
 #### Structure - Instances, Actions, Servers, Services
-- fix request body chunk delay (with encoding none and low chunk size) that is not causing delay
+- support stalled request body upload for testing incomplete POST handling (PHP bug #61471)
+  - `content_length` bigger than the content currently fails in the client with a body length mismatch
+  - it should instead send the content in pieces and keep the connection open until the server responds or timeout
 - add template support to request body
 - add typed parameters substitution for integers
   - this is to be able to, for example, parameterize status code
@@ -210,6 +212,8 @@ in the future.
 
 ### Config
 
+- run command without `-c` does not use `wst.yaml` from the current directory as documented in README
+  - it currently requires `-a` or explicit `-c`, so either fix the code or the docs
 - parsing - if instance timeouts is not specified, the default action 30000 default is not applied
   - this might be a generic problem that nested struct parsing is skipped if not present
 - parsing - add logic to use file name for instance name if present

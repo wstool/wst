@@ -56,6 +56,17 @@ type ConfigLoader struct {
 func (l ConfigLoader) LoadConfig(path string) (LoadedConfig, error) {
 	fs := l.fnd.Fs()
 
+	// Make the path absolute so all paths derived from the config location (workspace, resources) are absolute
+	// as well. Relative paths would otherwise be resolved by the started services against their own base
+	// directories (for example httpd resolves relative paths against its ServerRoot).
+	if !filepath.IsAbs(path) {
+		wd, err := l.fnd.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		path = filepath.Join(wd, path)
+	}
+
 	rawData, err := afero.ReadFile(fs, path)
 	if err != nil {
 		return nil, err

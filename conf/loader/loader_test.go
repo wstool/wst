@@ -41,6 +41,7 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 	// mock app.Foundation
 	MockFnd := &appMocks.MockFoundation{}
 	MockFnd.On("Fs").Return(mockFs)
+	MockFnd.On("Getwd").Return("/", nil)
 
 	type args struct {
 		path string
@@ -71,6 +72,13 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			fnd:     MockFnd,
 			args:    args{path: "/test.toml"},
 			want:    LoadedConfigData{path: "/test.toml", data: map[string]interface{}{"key": "value"}},
+			wantErr: false,
+		},
+		{
+			name:    "Testing LoadConfig - relative path resolved against working directory",
+			fnd:     MockFnd,
+			args:    args{path: "test.yaml"},
+			want:    LoadedConfigData{path: "/test.yaml", data: map[string]interface{}{"key": "value"}},
 			wantErr: false,
 		},
 		{
@@ -122,6 +130,7 @@ func TestConfigLoader_LoadConfigs(t *testing.T) {
 	// mock app.Foundation
 	MockFnd := &appMocks.MockFoundation{}
 	MockFnd.On("Fs").Return(mockFs)
+	MockFnd.On("Getwd").Return("/", nil)
 
 	type args struct {
 		paths []string
@@ -311,6 +320,7 @@ func TestCreateLoader(t *testing.T) {
 	// mock app.Foundation
 	MockFnd := &appMocks.MockFoundation{}
 	MockFnd.On("Fs").Return(mockFs)
+	MockFnd.On("Getwd").Return("/", nil)
 
 	tests := []struct {
 		name string
