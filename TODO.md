@@ -215,6 +215,13 @@ in the future.
 
 ### Config
 
+- parameters - a parameter whose template references a parameter of the same name in a parent scope (e.g. config
+  parameter `x: '{{ .Parameters.GetString "x" }}'` resolving to itself) ends in a stack overflow
+  - it should be detected and reported as a cycle error
+- parameters - values of nested object parameters (e.g. `php_admin_values` entries) are rendered only with the object
+  itself as `.Parameters`, so they cannot reference instance or config level parameters
+- instances filtering on the command line matches by prefix (`wst run foo` also runs `foo-bar`)
+  - either document it or match exactly and add explicit prefix or glob support
 - run command without `-c` does not use `wst.yaml` from the current directory as documented in README
   - it currently requires `-a` or explicit `-c`, so either fix the code or the docs
 - parsing - if instance timeouts is not specified, the default action 30000 default is not applied
