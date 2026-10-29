@@ -18,10 +18,19 @@ func NewMockSandbox(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockSandbox {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockSandbox{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -162,7 +171,7 @@ type MockSandbox_Dir_Call struct {
 
 // Dir is a helper method to define mock.On call
 //   - dirType dir.DirType
-func (_e *MockSandbox_Expecter) Dir(dirType interface{}) *MockSandbox_Dir_Call {
+func (_e *MockSandbox_Expecter) Dir(dirType any) *MockSandbox_Dir_Call {
 	return &MockSandbox_Dir_Call{Call: _e.mock.On("Dir", dirType)}
 }
 
@@ -270,7 +279,7 @@ type MockSandbox_Hook_Call struct {
 
 // Hook is a helper method to define mock.On call
 //   - hookType hooks.HookType
-func (_e *MockSandbox_Expecter) Hook(hookType interface{}) *MockSandbox_Hook_Call {
+func (_e *MockSandbox_Expecter) Hook(hookType any) *MockSandbox_Hook_Call {
 	return &MockSandbox_Hook_Call{Call: _e.mock.On("Hook", hookType)}
 }
 
@@ -367,7 +376,7 @@ type MockSandbox_Inherit_Call struct {
 
 // Inherit is a helper method to define mock.On call
 //   - parentSandbox sandbox.Sandbox
-func (_e *MockSandbox_Expecter) Inherit(parentSandbox interface{}) *MockSandbox_Inherit_Call {
+func (_e *MockSandbox_Expecter) Inherit(parentSandbox any) *MockSandbox_Inherit_Call {
 	return &MockSandbox_Inherit_Call{Call: _e.mock.On("Inherit", parentSandbox)}
 }
 

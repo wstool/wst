@@ -15,10 +15,19 @@ func NewMockServiceLocator(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockServiceLocator {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockServiceLocator{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -71,7 +80,7 @@ type MockServiceLocator_Find_Call struct {
 
 // Find is a helper method to define mock.On call
 //   - name string
-func (_e *MockServiceLocator_Expecter) Find(name interface{}) *MockServiceLocator_Find_Call {
+func (_e *MockServiceLocator_Expecter) Find(name any) *MockServiceLocator_Find_Call {
 	return &MockServiceLocator_Find_Call{Call: _e.mock.On("Find", name)}
 }
 

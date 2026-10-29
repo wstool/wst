@@ -15,10 +15,19 @@ func NewMockTask(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockTask {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockTask{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -236,7 +245,7 @@ type MockTask_PrivateUrl_Call struct {
 
 // PrivateUrl is a helper method to define mock.On call
 //   - scheme string
-func (_e *MockTask_Expecter) PrivateUrl(scheme interface{}) *MockTask_PrivateUrl_Call {
+func (_e *MockTask_Expecter) PrivateUrl(scheme any) *MockTask_PrivateUrl_Call {
 	return &MockTask_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl", scheme)}
 }
 
@@ -287,7 +296,7 @@ type MockTask_PublicUrl_Call struct {
 
 // PublicUrl is a helper method to define mock.On call
 //   - scheme string
-func (_e *MockTask_Expecter) PublicUrl(scheme interface{}) *MockTask_PublicUrl_Call {
+func (_e *MockTask_Expecter) PublicUrl(scheme any) *MockTask_PublicUrl_Call {
 	return &MockTask_PublicUrl_Call{Call: _e.mock.On("PublicUrl", scheme)}
 }
 

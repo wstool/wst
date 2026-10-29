@@ -15,10 +15,19 @@ func NewMockVegetaMetrics(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockVegetaMetrics {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockVegetaMetrics{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -49,7 +58,7 @@ type MockVegetaMetrics_Add_Call struct {
 
 // Add is a helper method to define mock.On call
 //   - r *vegeta.Result
-func (_e *MockVegetaMetrics_Expecter) Add(r interface{}) *MockVegetaMetrics_Add_Call {
+func (_e *MockVegetaMetrics_Expecter) Add(r any) *MockVegetaMetrics_Add_Call {
 	return &MockVegetaMetrics_Add_Call{Call: _e.mock.On("Add", r)}
 }
 

@@ -18,10 +18,19 @@ func NewMockInstanceMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockInstanceMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockInstanceMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -79,7 +88,7 @@ type MockInstanceMaker_Make_Call struct {
 //   - dflts *defaults.Defaults
 //   - srvs servers.Servers
 //   - specWorkspace string
-func (_e *MockInstanceMaker_Expecter) Make(instanceConfig interface{}, instanceId interface{}, envsConfig interface{}, dflts interface{}, srvs interface{}, specWorkspace interface{}) *MockInstanceMaker_Make_Call {
+func (_e *MockInstanceMaker_Expecter) Make(instanceConfig any, instanceId any, envsConfig any, dflts any, srvs any, specWorkspace any) *MockInstanceMaker_Make_Call {
 	return &MockInstanceMaker_Make_Call{Call: _e.mock.On("Make", instanceConfig, instanceId, envsConfig, dflts, srvs, specWorkspace)}
 }
 

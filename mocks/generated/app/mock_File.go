@@ -16,10 +16,19 @@ func NewMockFile(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockFile {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockFile{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -158,7 +167,7 @@ type MockFile_Read_Call struct {
 
 // Read is a helper method to define mock.On call
 //   - p []byte
-func (_e *MockFile_Expecter) Read(p interface{}) *MockFile_Read_Call {
+func (_e *MockFile_Expecter) Read(p any) *MockFile_Read_Call {
 	return &MockFile_Read_Call{Call: _e.mock.On("Read", p)}
 }
 
@@ -219,7 +228,7 @@ type MockFile_ReadAt_Call struct {
 // ReadAt is a helper method to define mock.On call
 //   - p []byte
 //   - off int64
-func (_e *MockFile_Expecter) ReadAt(p interface{}, off interface{}) *MockFile_ReadAt_Call {
+func (_e *MockFile_Expecter) ReadAt(p any, off any) *MockFile_ReadAt_Call {
 	return &MockFile_ReadAt_Call{Call: _e.mock.On("ReadAt", p, off)}
 }
 
@@ -286,7 +295,7 @@ type MockFile_Readdir_Call struct {
 
 // Readdir is a helper method to define mock.On call
 //   - count int
-func (_e *MockFile_Expecter) Readdir(count interface{}) *MockFile_Readdir_Call {
+func (_e *MockFile_Expecter) Readdir(count any) *MockFile_Readdir_Call {
 	return &MockFile_Readdir_Call{Call: _e.mock.On("Readdir", count)}
 }
 
@@ -303,8 +312,8 @@ func (_c *MockFile_Readdir_Call) Run(run func(count int)) *MockFile_Readdir_Call
 	return _c
 }
 
-func (_c *MockFile_Readdir_Call) Return(vs []os.FileInfo, err error) *MockFile_Readdir_Call {
-	_c.Call.Return(vs, err)
+func (_c *MockFile_Readdir_Call) Return(fileInfos []os.FileInfo, err error) *MockFile_Readdir_Call {
+	_c.Call.Return(fileInfos, err)
 	return _c
 }
 
@@ -348,7 +357,7 @@ type MockFile_Readdirnames_Call struct {
 
 // Readdirnames is a helper method to define mock.On call
 //   - n int
-func (_e *MockFile_Expecter) Readdirnames(n interface{}) *MockFile_Readdirnames_Call {
+func (_e *MockFile_Expecter) Readdirnames(n any) *MockFile_Readdirnames_Call {
 	return &MockFile_Readdirnames_Call{Call: _e.mock.On("Readdirnames", n)}
 }
 
@@ -409,7 +418,7 @@ type MockFile_Seek_Call struct {
 // Seek is a helper method to define mock.On call
 //   - offset int64
 //   - whence int
-func (_e *MockFile_Expecter) Seek(offset interface{}, whence interface{}) *MockFile_Seek_Call {
+func (_e *MockFile_Expecter) Seek(offset any, whence any) *MockFile_Seek_Call {
 	return &MockFile_Seek_Call{Call: _e.mock.On("Seek", offset, whence)}
 }
 
@@ -486,8 +495,8 @@ func (_c *MockFile_Stat_Call) Run(run func()) *MockFile_Stat_Call {
 	return _c
 }
 
-func (_c *MockFile_Stat_Call) Return(v os.FileInfo, err error) *MockFile_Stat_Call {
-	_c.Call.Return(v, err)
+func (_c *MockFile_Stat_Call) Return(fileInfo os.FileInfo, err error) *MockFile_Stat_Call {
+	_c.Call.Return(fileInfo, err)
 	return _c
 }
 
@@ -564,7 +573,7 @@ type MockFile_Truncate_Call struct {
 
 // Truncate is a helper method to define mock.On call
 //   - size int64
-func (_e *MockFile_Expecter) Truncate(size interface{}) *MockFile_Truncate_Call {
+func (_e *MockFile_Expecter) Truncate(size any) *MockFile_Truncate_Call {
 	return &MockFile_Truncate_Call{Call: _e.mock.On("Truncate", size)}
 }
 
@@ -624,7 +633,7 @@ type MockFile_Write_Call struct {
 
 // Write is a helper method to define mock.On call
 //   - p []byte
-func (_e *MockFile_Expecter) Write(p interface{}) *MockFile_Write_Call {
+func (_e *MockFile_Expecter) Write(p any) *MockFile_Write_Call {
 	return &MockFile_Write_Call{Call: _e.mock.On("Write", p)}
 }
 
@@ -685,7 +694,7 @@ type MockFile_WriteAt_Call struct {
 // WriteAt is a helper method to define mock.On call
 //   - p []byte
 //   - off int64
-func (_e *MockFile_Expecter) WriteAt(p interface{}, off interface{}) *MockFile_WriteAt_Call {
+func (_e *MockFile_Expecter) WriteAt(p any, off any) *MockFile_WriteAt_Call {
 	return &MockFile_WriteAt_Call{Call: _e.mock.On("WriteAt", p, off)}
 }
 
@@ -750,7 +759,7 @@ type MockFile_WriteString_Call struct {
 
 // WriteString is a helper method to define mock.On call
 //   - s string
-func (_e *MockFile_Expecter) WriteString(s interface{}) *MockFile_WriteString_Call {
+func (_e *MockFile_Expecter) WriteString(s any) *MockFile_WriteString_Call {
 	return &MockFile_WriteString_Call{Call: _e.mock.On("WriteString", s)}
 }
 

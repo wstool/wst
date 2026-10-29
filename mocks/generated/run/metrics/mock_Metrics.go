@@ -15,10 +15,19 @@ func NewMockMetrics(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMetrics {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMetrics{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -71,7 +80,7 @@ type MockMetrics_Find_Call struct {
 
 // Find is a helper method to define mock.On call
 //   - name string
-func (_e *MockMetrics_Expecter) Find(name interface{}) *MockMetrics_Find_Call {
+func (_e *MockMetrics_Expecter) Find(name any) *MockMetrics_Find_Call {
 	return &MockMetrics_Find_Call{Call: _e.mock.On("Find", name)}
 }
 

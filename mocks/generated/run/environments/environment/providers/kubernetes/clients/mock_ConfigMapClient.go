@@ -18,10 +18,19 @@ func NewMockConfigMapClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockConfigMapClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockConfigMapClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -76,7 +85,7 @@ type MockConfigMapClient_Create_Call struct {
 //   - ctx context.Context
 //   - configMap *v1.ConfigMap
 //   - opts v10.CreateOptions
-func (_e *MockConfigMapClient_Expecter) Create(ctx interface{}, configMap interface{}, opts interface{}) *MockConfigMapClient_Create_Call {
+func (_e *MockConfigMapClient_Expecter) Create(ctx any, configMap any, opts any) *MockConfigMapClient_Create_Call {
 	return &MockConfigMapClient_Create_Call{Call: _e.mock.On("Create", ctx, configMap, opts)}
 }
 
@@ -139,7 +148,7 @@ type MockConfigMapClient_Delete_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - opts v10.DeleteOptions
-func (_e *MockConfigMapClient_Expecter) Delete(ctx interface{}, name interface{}, opts interface{}) *MockConfigMapClient_Delete_Call {
+func (_e *MockConfigMapClient_Expecter) Delete(ctx any, name any, opts any) *MockConfigMapClient_Delete_Call {
 	return &MockConfigMapClient_Delete_Call{Call: _e.mock.On("Delete", ctx, name, opts)}
 }
 

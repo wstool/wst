@@ -19,10 +19,19 @@ func NewMockPodClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockPodClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockPodClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -76,7 +85,7 @@ type MockPodClient_List_Call struct {
 // List is a helper method to define mock.On call
 //   - ctx context.Context
 //   - opts v1.ListOptions
-func (_e *MockPodClient_Expecter) List(ctx interface{}, opts interface{}) *MockPodClient_List_Call {
+func (_e *MockPodClient_Expecter) List(ctx any, opts any) *MockPodClient_List_Call {
 	return &MockPodClient_List_Call{Call: _e.mock.On("List", ctx, opts)}
 }
 
@@ -145,7 +154,7 @@ type MockPodClient_StreamLogs_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - opts *v10.PodLogOptions
-func (_e *MockPodClient_Expecter) StreamLogs(ctx interface{}, name interface{}, opts interface{}) *MockPodClient_StreamLogs_Call {
+func (_e *MockPodClient_Expecter) StreamLogs(ctx any, name any, opts any) *MockPodClient_StreamLogs_Call {
 	return &MockPodClient_StreamLogs_Call{Call: _e.mock.On("StreamLogs", ctx, name, opts)}
 }
 

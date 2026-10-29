@@ -19,10 +19,19 @@ func NewMockHook(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockHook {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockHook{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -79,7 +88,7 @@ type MockHook_Execute_Call struct {
 //   - tmpl template.Template
 //   - env environment.Environment
 //   - st task.Task
-func (_e *MockHook_Expecter) Execute(ctx interface{}, ss interface{}, tmpl interface{}, env interface{}, st interface{}) *MockHook_Execute_Call {
+func (_e *MockHook_Expecter) Execute(ctx any, ss any, tmpl any, env any, st any) *MockHook_Execute_Call {
 	return &MockHook_Execute_Call{Call: _e.mock.On("Execute", ctx, ss, tmpl, env, st)}
 }
 

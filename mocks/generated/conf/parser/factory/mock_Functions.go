@@ -15,10 +15,19 @@ func NewMockFunctions(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockFunctions {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockFunctions{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -71,7 +80,7 @@ type MockFunctions_GetFactoryFunc_Call struct {
 
 // GetFactoryFunc is a helper method to define mock.On call
 //   - funcName string
-func (_e *MockFunctions_Expecter) GetFactoryFunc(funcName interface{}) *MockFunctions_GetFactoryFunc_Call {
+func (_e *MockFunctions_Expecter) GetFactoryFunc(funcName any) *MockFunctions_GetFactoryFunc_Call {
 	return &MockFunctions_GetFactoryFunc_Call{Call: _e.mock.On("GetFactoryFunc", funcName)}
 }
 

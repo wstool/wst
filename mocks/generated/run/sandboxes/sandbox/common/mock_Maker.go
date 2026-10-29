@@ -16,10 +16,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -72,7 +81,7 @@ type MockMaker_MakeSandbox_Call struct {
 
 // MakeSandbox is a helper method to define mock.On call
 //   - config *types.CommonSandbox
-func (_e *MockMaker_Expecter) MakeSandbox(config interface{}) *MockMaker_MakeSandbox_Call {
+func (_e *MockMaker_Expecter) MakeSandbox(config any) *MockMaker_MakeSandbox_Call {
 	return &MockMaker_MakeSandbox_Call{Call: _e.mock.On("MakeSandbox", config)}
 }
 

@@ -22,10 +22,19 @@ func NewMockClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -81,7 +90,7 @@ type MockClient_ContainerCreate_Call struct {
 //   - networkingConfig *network.NetworkingConfig
 //   - platform *v1.Platform
 //   - containerName string
-func (_e *MockClient_Expecter) ContainerCreate(ctx interface{}, config interface{}, hostConfig interface{}, networkingConfig interface{}, platform interface{}, containerName interface{}) *MockClient_ContainerCreate_Call {
+func (_e *MockClient_Expecter) ContainerCreate(ctx any, config any, hostConfig any, networkingConfig any, platform any, containerName any) *MockClient_ContainerCreate_Call {
 	return &MockClient_ContainerCreate_Call{Call: _e.mock.On("ContainerCreate", ctx, config, hostConfig, networkingConfig, platform, containerName)}
 }
 
@@ -167,7 +176,7 @@ type MockClient_ContainerInspect_Call struct {
 // ContainerInspect is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-func (_e *MockClient_Expecter) ContainerInspect(ctx interface{}, containerID interface{}) *MockClient_ContainerInspect_Call {
+func (_e *MockClient_Expecter) ContainerInspect(ctx any, containerID any) *MockClient_ContainerInspect_Call {
 	return &MockClient_ContainerInspect_Call{Call: _e.mock.On("ContainerInspect", ctx, containerID)}
 }
 
@@ -189,8 +198,8 @@ func (_c *MockClient_ContainerInspect_Call) Run(run func(ctx context.Context, co
 	return _c
 }
 
-func (_c *MockClient_ContainerInspect_Call) Return(v types.ContainerJSON, err error) *MockClient_ContainerInspect_Call {
-	_c.Call.Return(v, err)
+func (_c *MockClient_ContainerInspect_Call) Return(containerJSON types.ContainerJSON, err error) *MockClient_ContainerInspect_Call {
+	_c.Call.Return(containerJSON, err)
 	return _c
 }
 
@@ -236,7 +245,7 @@ type MockClient_ContainerLogs_Call struct {
 //   - ctx context.Context
 //   - container1 string
 //   - options container.LogsOptions
-func (_e *MockClient_Expecter) ContainerLogs(ctx interface{}, container1 interface{}, options interface{}) *MockClient_ContainerLogs_Call {
+func (_e *MockClient_Expecter) ContainerLogs(ctx any, container1 any, options any) *MockClient_ContainerLogs_Call {
 	return &MockClient_ContainerLogs_Call{Call: _e.mock.On("ContainerLogs", ctx, container1, options)}
 }
 
@@ -299,7 +308,7 @@ type MockClient_ContainerRemove_Call struct {
 //   - ctx context.Context
 //   - containerID string
 //   - options container.RemoveOptions
-func (_e *MockClient_Expecter) ContainerRemove(ctx interface{}, containerID interface{}, options interface{}) *MockClient_ContainerRemove_Call {
+func (_e *MockClient_Expecter) ContainerRemove(ctx any, containerID any, options any) *MockClient_ContainerRemove_Call {
 	return &MockClient_ContainerRemove_Call{Call: _e.mock.On("ContainerRemove", ctx, containerID, options)}
 }
 
@@ -362,7 +371,7 @@ type MockClient_ContainerStart_Call struct {
 //   - ctx context.Context
 //   - containerID string
 //   - options container.StartOptions
-func (_e *MockClient_Expecter) ContainerStart(ctx interface{}, containerID interface{}, options interface{}) *MockClient_ContainerStart_Call {
+func (_e *MockClient_Expecter) ContainerStart(ctx any, containerID any, options any) *MockClient_ContainerStart_Call {
 	return &MockClient_ContainerStart_Call{Call: _e.mock.On("ContainerStart", ctx, containerID, options)}
 }
 
@@ -425,7 +434,7 @@ type MockClient_ContainerStop_Call struct {
 //   - ctx context.Context
 //   - containerID string
 //   - options container.StopOptions
-func (_e *MockClient_Expecter) ContainerStop(ctx interface{}, containerID interface{}, options interface{}) *MockClient_ContainerStop_Call {
+func (_e *MockClient_Expecter) ContainerStop(ctx any, containerID any, options any) *MockClient_ContainerStop_Call {
 	return &MockClient_ContainerStop_Call{Call: _e.mock.On("ContainerStop", ctx, containerID, options)}
 }
 
@@ -501,7 +510,7 @@ type MockClient_ContainerWait_Call struct {
 //   - ctx context.Context
 //   - containerID string
 //   - condition container.WaitCondition
-func (_e *MockClient_Expecter) ContainerWait(ctx interface{}, containerID interface{}, condition interface{}) *MockClient_ContainerWait_Call {
+func (_e *MockClient_Expecter) ContainerWait(ctx any, containerID any, condition any) *MockClient_ContainerWait_Call {
 	return &MockClient_ContainerWait_Call{Call: _e.mock.On("ContainerWait", ctx, containerID, condition)}
 }
 
@@ -575,7 +584,7 @@ type MockClient_ImagePull_Call struct {
 //   - ctx context.Context
 //   - refStr string
 //   - options image.PullOptions
-func (_e *MockClient_Expecter) ImagePull(ctx interface{}, refStr interface{}, options interface{}) *MockClient_ImagePull_Call {
+func (_e *MockClient_Expecter) ImagePull(ctx any, refStr any, options any) *MockClient_ImagePull_Call {
 	return &MockClient_ImagePull_Call{Call: _e.mock.On("ImagePull", ctx, refStr, options)}
 }
 
@@ -647,7 +656,7 @@ type MockClient_NetworkCreate_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - options network.CreateOptions
-func (_e *MockClient_Expecter) NetworkCreate(ctx interface{}, name interface{}, options interface{}) *MockClient_NetworkCreate_Call {
+func (_e *MockClient_Expecter) NetworkCreate(ctx any, name any, options any) *MockClient_NetworkCreate_Call {
 	return &MockClient_NetworkCreate_Call{Call: _e.mock.On("NetworkCreate", ctx, name, options)}
 }
 
@@ -709,7 +718,7 @@ type MockClient_NetworkRemove_Call struct {
 // NetworkRemove is a helper method to define mock.On call
 //   - ctx context.Context
 //   - networkID string
-func (_e *MockClient_Expecter) NetworkRemove(ctx interface{}, networkID interface{}) *MockClient_NetworkRemove_Call {
+func (_e *MockClient_Expecter) NetworkRemove(ctx any, networkID any) *MockClient_NetworkRemove_Call {
 	return &MockClient_NetworkRemove_Call{Call: _e.mock.On("NetworkRemove", ctx, networkID)}
 }
 

@@ -18,10 +18,19 @@ func NewMockCommand(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockCommand {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockCommand{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -151,7 +160,7 @@ type MockCommand_ProcessSignal_Call struct {
 
 // ProcessSignal is a helper method to define mock.On call
 //   - sig os.Signal
-func (_e *MockCommand_Expecter) ProcessSignal(sig interface{}) *MockCommand_ProcessSignal_Call {
+func (_e *MockCommand_Expecter) ProcessSignal(sig any) *MockCommand_ProcessSignal_Call {
 	return &MockCommand_ProcessSignal_Call{Call: _e.mock.On("ProcessSignal", sig)}
 }
 
@@ -235,7 +244,7 @@ type MockCommand_SetStderr_Call struct {
 
 // SetStderr is a helper method to define mock.On call
 //   - stdout io.Writer
-func (_e *MockCommand_Expecter) SetStderr(stdout interface{}) *MockCommand_SetStderr_Call {
+func (_e *MockCommand_Expecter) SetStderr(stdout any) *MockCommand_SetStderr_Call {
 	return &MockCommand_SetStderr_Call{Call: _e.mock.On("SetStderr", stdout)}
 }
 
@@ -275,7 +284,7 @@ type MockCommand_SetStdout_Call struct {
 
 // SetStdout is a helper method to define mock.On call
 //   - stdout io.Writer
-func (_e *MockCommand_Expecter) SetStdout(stdout interface{}) *MockCommand_SetStdout_Call {
+func (_e *MockCommand_Expecter) SetStdout(stdout any) *MockCommand_SetStdout_Call {
 	return &MockCommand_SetStdout_Call{Call: _e.mock.On("SetStdout", stdout)}
 }
 
@@ -315,7 +324,7 @@ type MockCommand_SetSysProcAttr_Call struct {
 
 // SetSysProcAttr is a helper method to define mock.On call
 //   - attr *syscall.SysProcAttr
-func (_e *MockCommand_Expecter) SetSysProcAttr(attr interface{}) *MockCommand_SetSysProcAttr_Call {
+func (_e *MockCommand_Expecter) SetSysProcAttr(attr any) *MockCommand_SetSysProcAttr_Call {
 	return &MockCommand_SetSysProcAttr_Call{Call: _e.mock.On("SetSysProcAttr", attr)}
 }
 

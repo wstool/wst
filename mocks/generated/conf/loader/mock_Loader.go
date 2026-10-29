@@ -15,10 +15,19 @@ func NewMockLoader(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockLoader {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockLoader{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -72,7 +81,7 @@ type MockLoader_GlobConfigs_Call struct {
 // GlobConfigs is a helper method to define mock.On call
 //   - pattern string
 //   - cwd string
-func (_e *MockLoader_Expecter) GlobConfigs(pattern interface{}, cwd interface{}) *MockLoader_GlobConfigs_Call {
+func (_e *MockLoader_Expecter) GlobConfigs(pattern any, cwd any) *MockLoader_GlobConfigs_Call {
 	return &MockLoader_GlobConfigs_Call{Call: _e.mock.On("GlobConfigs", pattern, cwd)}
 }
 
@@ -139,7 +148,7 @@ type MockLoader_LoadConfig_Call struct {
 
 // LoadConfig is a helper method to define mock.On call
 //   - path string
-func (_e *MockLoader_Expecter) LoadConfig(path interface{}) *MockLoader_LoadConfig_Call {
+func (_e *MockLoader_Expecter) LoadConfig(path any) *MockLoader_LoadConfig_Call {
 	return &MockLoader_LoadConfig_Call{Call: _e.mock.On("LoadConfig", path)}
 }
 
@@ -201,7 +210,7 @@ type MockLoader_LoadConfigs_Call struct {
 
 // LoadConfigs is a helper method to define mock.On call
 //   - paths []string
-func (_e *MockLoader_Expecter) LoadConfigs(paths interface{}) *MockLoader_LoadConfigs_Call {
+func (_e *MockLoader_Expecter) LoadConfigs(paths any) *MockLoader_LoadConfigs_Call {
 	return &MockLoader_LoadConfigs_Call{Call: _e.mock.On("LoadConfigs", paths)}
 }
 

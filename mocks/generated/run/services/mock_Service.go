@@ -26,10 +26,19 @@ func NewMockService(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockService {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockService{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -310,7 +319,7 @@ type MockService_ExecCommand_Call struct {
 //   - ctx context.Context
 //   - cmd *environment.Command
 //   - oc output.Collector
-func (_e *MockService_Expecter) ExecCommand(ctx interface{}, cmd interface{}, oc interface{}) *MockService_ExecCommand_Call {
+func (_e *MockService_Expecter) ExecCommand(ctx any, cmd any, oc any) *MockService_ExecCommand_Call {
 	return &MockService_ExecCommand_Call{Call: _e.mock.On("ExecCommand", ctx, cmd, oc)}
 }
 
@@ -435,7 +444,7 @@ type MockService_FindCertificate_Call struct {
 
 // FindCertificate is a helper method to define mock.On call
 //   - name string
-func (_e *MockService_Expecter) FindCertificate(name interface{}) *MockService_FindCertificate_Call {
+func (_e *MockService_Expecter) FindCertificate(name any) *MockService_FindCertificate_Call {
 	return &MockService_FindCertificate_Call{Call: _e.mock.On("FindCertificate", name)}
 }
 
@@ -762,7 +771,7 @@ type MockService_OutputReader_Call struct {
 // OutputReader is a helper method to define mock.On call
 //   - ctx context.Context
 //   - outputType output.Type
-func (_e *MockService_Expecter) OutputReader(ctx interface{}, outputType interface{}) *MockService_OutputReader_Call {
+func (_e *MockService_Expecter) OutputReader(ctx any, outputType any) *MockService_OutputReader_Call {
 	return &MockService_OutputReader_Call{Call: _e.mock.On("OutputReader", ctx, outputType)}
 }
 
@@ -968,7 +977,7 @@ type MockService_PrivateUrl_Call struct {
 
 // PrivateUrl is a helper method to define mock.On call
 //   - scheme string
-func (_e *MockService_Expecter) PrivateUrl(scheme interface{}) *MockService_PrivateUrl_Call {
+func (_e *MockService_Expecter) PrivateUrl(scheme any) *MockService_PrivateUrl_Call {
 	return &MockService_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl", scheme)}
 }
 
@@ -1029,7 +1038,7 @@ type MockService_PublicUrl_Call struct {
 // PublicUrl is a helper method to define mock.On call
 //   - scheme string
 //   - path string
-func (_e *MockService_Expecter) PublicUrl(scheme interface{}, path interface{}) *MockService_PublicUrl_Call {
+func (_e *MockService_Expecter) PublicUrl(scheme any, path any) *MockService_PublicUrl_Call {
 	return &MockService_PublicUrl_Call{Call: _e.mock.On("PublicUrl", scheme, path)}
 }
 
@@ -1085,7 +1094,7 @@ type MockService_Reload_Call struct {
 
 // Reload is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockService_Expecter) Reload(ctx interface{}) *MockService_Reload_Call {
+func (_e *MockService_Expecter) Reload(ctx any) *MockService_Reload_Call {
 	return &MockService_Reload_Call{Call: _e.mock.On("Reload", ctx)}
 }
 
@@ -1146,7 +1155,7 @@ type MockService_RenderTemplate_Call struct {
 // RenderTemplate is a helper method to define mock.On call
 //   - text string
 //   - params parameters.Parameters
-func (_e *MockService_Expecter) RenderTemplate(text interface{}, params interface{}) *MockService_RenderTemplate_Call {
+func (_e *MockService_Expecter) RenderTemplate(text any, params any) *MockService_RenderTemplate_Call {
 	return &MockService_RenderTemplate_Call{Call: _e.mock.On("RenderTemplate", text, params)}
 }
 
@@ -1202,7 +1211,7 @@ type MockService_Restart_Call struct {
 
 // Restart is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockService_Expecter) Restart(ctx interface{}) *MockService_Restart_Call {
+func (_e *MockService_Expecter) Restart(ctx any) *MockService_Restart_Call {
 	return &MockService_Restart_Call{Call: _e.mock.On("Restart", ctx)}
 }
 
@@ -1486,7 +1495,7 @@ type MockService_SetTemplate_Call struct {
 
 // SetTemplate is a helper method to define mock.On call
 //   - template1 template.Template
-func (_e *MockService_Expecter) SetTemplate(template1 interface{}) *MockService_SetTemplate_Call {
+func (_e *MockService_Expecter) SetTemplate(template1 any) *MockService_SetTemplate_Call {
 	return &MockService_SetTemplate_Call{Call: _e.mock.On("SetTemplate", template1)}
 }
 
@@ -1537,7 +1546,7 @@ type MockService_Start_Call struct {
 
 // Start is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockService_Expecter) Start(ctx interface{}) *MockService_Start_Call {
+func (_e *MockService_Expecter) Start(ctx any) *MockService_Start_Call {
 	return &MockService_Start_Call{Call: _e.mock.On("Start", ctx)}
 }
 
@@ -1588,7 +1597,7 @@ type MockService_Stop_Call struct {
 
 // Stop is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockService_Expecter) Stop(ctx interface{}) *MockService_Stop_Call {
+func (_e *MockService_Expecter) Stop(ctx any) *MockService_Stop_Call {
 	return &MockService_Stop_Call{Call: _e.mock.On("Stop", ctx)}
 }
 
@@ -1664,11 +1673,11 @@ func (_c *MockService_Task_Call) RunAndReturn(run func() task.Task) *MockService
 // UdsPath provides a mock function for the type MockService
 func (_mock *MockService) UdsPath(strings ...string) (string, error) {
 	// string
-	_va := make([]interface{}, len(strings))
+	_va := make([]any, len(strings))
 	for _i := range strings {
 		_va[_i] = strings[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	ret := _mock.Called(_ca...)
 
@@ -1701,9 +1710,9 @@ type MockService_UdsPath_Call struct {
 
 // UdsPath is a helper method to define mock.On call
 //   - strings ...string
-func (_e *MockService_Expecter) UdsPath(strings ...interface{}) *MockService_UdsPath_Call {
+func (_e *MockService_Expecter) UdsPath(strings ...any) *MockService_UdsPath_Call {
 	return &MockService_UdsPath_Call{Call: _e.mock.On("UdsPath",
-		append([]interface{}{}, strings...)...)}
+		append([]any{}, strings...)...)}
 }
 
 func (_c *MockService_UdsPath_Call) Run(run func(strings ...string)) *MockService_UdsPath_Call {

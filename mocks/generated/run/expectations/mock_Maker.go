@@ -16,10 +16,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -72,7 +81,7 @@ type MockMaker_MakeMetricsExpectation_Call struct {
 
 // MakeMetricsExpectation is a helper method to define mock.On call
 //   - config *types.MetricsExpectation
-func (_e *MockMaker_Expecter) MakeMetricsExpectation(config interface{}) *MockMaker_MakeMetricsExpectation_Call {
+func (_e *MockMaker_Expecter) MakeMetricsExpectation(config any) *MockMaker_MakeMetricsExpectation_Call {
 	return &MockMaker_MakeMetricsExpectation_Call{Call: _e.mock.On("MakeMetricsExpectation", config)}
 }
 
@@ -134,7 +143,7 @@ type MockMaker_MakeOutputExpectation_Call struct {
 
 // MakeOutputExpectation is a helper method to define mock.On call
 //   - config *types.OutputExpectation
-func (_e *MockMaker_Expecter) MakeOutputExpectation(config interface{}) *MockMaker_MakeOutputExpectation_Call {
+func (_e *MockMaker_Expecter) MakeOutputExpectation(config any) *MockMaker_MakeOutputExpectation_Call {
 	return &MockMaker_MakeOutputExpectation_Call{Call: _e.mock.On("MakeOutputExpectation", config)}
 }
 
@@ -196,7 +205,7 @@ type MockMaker_MakeResponseExpectation_Call struct {
 
 // MakeResponseExpectation is a helper method to define mock.On call
 //   - config *types.ResponseExpectation
-func (_e *MockMaker_Expecter) MakeResponseExpectation(config interface{}) *MockMaker_MakeResponseExpectation_Call {
+func (_e *MockMaker_Expecter) MakeResponseExpectation(config any) *MockMaker_MakeResponseExpectation_Call {
 	return &MockMaker_MakeResponseExpectation_Call{Call: _e.mock.On("MakeResponseExpectation", config)}
 }
 

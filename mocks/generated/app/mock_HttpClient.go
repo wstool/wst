@@ -16,10 +16,19 @@ func NewMockHttpClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockHttpClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockHttpClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -72,7 +81,7 @@ type MockHttpClient_Do_Call struct {
 
 // Do is a helper method to define mock.On call
 //   - req *http.Request
-func (_e *MockHttpClient_Expecter) Do(req interface{}) *MockHttpClient_Do_Call {
+func (_e *MockHttpClient_Expecter) Do(req any) *MockHttpClient_Do_Call {
 	return &MockHttpClient_Do_Call{Call: _e.mock.On("Do", req)}
 }
 

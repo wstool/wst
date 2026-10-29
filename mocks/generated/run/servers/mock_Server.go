@@ -20,10 +20,19 @@ func NewMockServer(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockServer {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockServer{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -76,7 +85,7 @@ type MockServer_Config_Call struct {
 
 // Config is a helper method to define mock.On call
 //   - name string
-func (_e *MockServer_Expecter) Config(name interface{}) *MockServer_Config_Call {
+func (_e *MockServer_Expecter) Config(name any) *MockServer_Config_Call {
 	return &MockServer_Config_Call{Call: _e.mock.On("Config", name)}
 }
 
@@ -184,7 +193,7 @@ type MockServer_ExpectAction_Call struct {
 
 // ExpectAction is a helper method to define mock.On call
 //   - name string
-func (_e *MockServer_Expecter) ExpectAction(name interface{}) *MockServer_ExpectAction_Call {
+func (_e *MockServer_Expecter) ExpectAction(name any) *MockServer_ExpectAction_Call {
 	return &MockServer_ExpectAction_Call{Call: _e.mock.On("ExpectAction", name)}
 }
 
@@ -380,7 +389,7 @@ type MockServer_Sandbox_Call struct {
 
 // Sandbox is a helper method to define mock.On call
 //   - name providers.Type
-func (_e *MockServer_Expecter) Sandbox(name interface{}) *MockServer_Sandbox_Call {
+func (_e *MockServer_Expecter) Sandbox(name any) *MockServer_Sandbox_Call {
 	return &MockServer_Sandbox_Call{Call: _e.mock.On("Sandbox", name)}
 }
 
@@ -442,7 +451,7 @@ type MockServer_SequentialAction_Call struct {
 
 // SequentialAction is a helper method to define mock.On call
 //   - name string
-func (_e *MockServer_Expecter) SequentialAction(name interface{}) *MockServer_SequentialAction_Call {
+func (_e *MockServer_Expecter) SequentialAction(name any) *MockServer_SequentialAction_Call {
 	return &MockServer_SequentialAction_Call{Call: _e.mock.On("SequentialAction", name)}
 }
 
@@ -504,7 +513,7 @@ type MockServer_Template_Call struct {
 
 // Template is a helper method to define mock.On call
 //   - name string
-func (_e *MockServer_Expecter) Template(name interface{}) *MockServer_Template_Call {
+func (_e *MockServer_Expecter) Template(name any) *MockServer_Template_Call {
 	return &MockServer_Template_Call{Call: _e.mock.On("Template", name)}
 }
 

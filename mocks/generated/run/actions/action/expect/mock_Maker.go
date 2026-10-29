@@ -17,10 +17,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -75,7 +84,7 @@ type MockMaker_MakeCustomAction_Call struct {
 //   - config *types.CustomExpectationAction
 //   - sl services.ServiceLocator
 //   - defaultTimeout int
-func (_e *MockMaker_Expecter) MakeCustomAction(config interface{}, sl interface{}, defaultTimeout interface{}) *MockMaker_MakeCustomAction_Call {
+func (_e *MockMaker_Expecter) MakeCustomAction(config any, sl any, defaultTimeout any) *MockMaker_MakeCustomAction_Call {
 	return &MockMaker_MakeCustomAction_Call{Call: _e.mock.On("MakeCustomAction", config, sl, defaultTimeout)}
 }
 
@@ -149,7 +158,7 @@ type MockMaker_MakeMetricsAction_Call struct {
 //   - config *types.MetricsExpectationAction
 //   - sl services.ServiceLocator
 //   - defaultTimeout int
-func (_e *MockMaker_Expecter) MakeMetricsAction(config interface{}, sl interface{}, defaultTimeout interface{}) *MockMaker_MakeMetricsAction_Call {
+func (_e *MockMaker_Expecter) MakeMetricsAction(config any, sl any, defaultTimeout any) *MockMaker_MakeMetricsAction_Call {
 	return &MockMaker_MakeMetricsAction_Call{Call: _e.mock.On("MakeMetricsAction", config, sl, defaultTimeout)}
 }
 
@@ -223,7 +232,7 @@ type MockMaker_MakeOutputAction_Call struct {
 //   - config *types.OutputExpectationAction
 //   - sl services.ServiceLocator
 //   - defaultTimeout int
-func (_e *MockMaker_Expecter) MakeOutputAction(config interface{}, sl interface{}, defaultTimeout interface{}) *MockMaker_MakeOutputAction_Call {
+func (_e *MockMaker_Expecter) MakeOutputAction(config any, sl any, defaultTimeout any) *MockMaker_MakeOutputAction_Call {
 	return &MockMaker_MakeOutputAction_Call{Call: _e.mock.On("MakeOutputAction", config, sl, defaultTimeout)}
 }
 
@@ -297,7 +306,7 @@ type MockMaker_MakeResponseAction_Call struct {
 //   - config *types.ResponseExpectationAction
 //   - sl services.ServiceLocator
 //   - defaultTimeout int
-func (_e *MockMaker_Expecter) MakeResponseAction(config interface{}, sl interface{}, defaultTimeout interface{}) *MockMaker_MakeResponseAction_Call {
+func (_e *MockMaker_Expecter) MakeResponseAction(config any, sl any, defaultTimeout any) *MockMaker_MakeResponseAction_Call {
 	return &MockMaker_MakeResponseAction_Call{Call: _e.mock.On("MakeResponseAction", config, sl, defaultTimeout)}
 }
 

@@ -21,10 +21,19 @@ func NewMockFoundation(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockFoundation {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockFoundation{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -66,7 +75,7 @@ type MockFoundation_Chdir_Call struct {
 
 // Chdir is a helper method to define mock.On call
 //   - s string
-func (_e *MockFoundation_Expecter) Chdir(s interface{}) *MockFoundation_Chdir_Call {
+func (_e *MockFoundation_Expecter) Chdir(s any) *MockFoundation_Chdir_Call {
 	return &MockFoundation_Chdir_Call{Call: _e.mock.On("Chdir", s)}
 }
 
@@ -220,7 +229,7 @@ type MockFoundation_ExecCommand_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - args []string
-func (_e *MockFoundation_Expecter) ExecCommand(ctx interface{}, name interface{}, args interface{}) *MockFoundation_ExecCommand_Call {
+func (_e *MockFoundation_Expecter) ExecCommand(ctx any, name any, args any) *MockFoundation_ExecCommand_Call {
 	return &MockFoundation_ExecCommand_Call{Call: _e.mock.On("ExecCommand", ctx, name, args)}
 }
 
@@ -426,7 +435,7 @@ type MockFoundation_HttpClient_Call struct {
 
 // HttpClient is a helper method to define mock.On call
 //   - tr *http.Transport
-func (_e *MockFoundation_Expecter) HttpClient(tr interface{}) *MockFoundation_HttpClient_Call {
+func (_e *MockFoundation_Expecter) HttpClient(tr any) *MockFoundation_HttpClient_Call {
 	return &MockFoundation_HttpClient_Call{Call: _e.mock.On("HttpClient", tr)}
 }
 
@@ -532,7 +541,7 @@ type MockFoundation_LookupEnvVar_Call struct {
 
 // LookupEnvVar is a helper method to define mock.On call
 //   - key string
-func (_e *MockFoundation_Expecter) LookupEnvVar(key interface{}) *MockFoundation_LookupEnvVar_Call {
+func (_e *MockFoundation_Expecter) LookupEnvVar(key any) *MockFoundation_LookupEnvVar_Call {
 	return &MockFoundation_LookupEnvVar_Call{Call: _e.mock.On("LookupEnvVar", key)}
 }
 
@@ -584,7 +593,7 @@ type MockFoundation_Sleep_Call struct {
 // Sleep is a helper method to define mock.On call
 //   - ctx context.Context
 //   - duration time.Duration
-func (_e *MockFoundation_Expecter) Sleep(ctx interface{}, duration interface{}) *MockFoundation_Sleep_Call {
+func (_e *MockFoundation_Expecter) Sleep(ctx any, duration any) *MockFoundation_Sleep_Call {
 	return &MockFoundation_Sleep_Call{Call: _e.mock.On("Sleep", ctx, duration)}
 }
 
@@ -651,7 +660,7 @@ type MockFoundation_User_Call struct {
 
 // User is a helper method to define mock.On call
 //   - username string
-func (_e *MockFoundation_Expecter) User(username interface{}) *MockFoundation_User_Call {
+func (_e *MockFoundation_Expecter) User(username any) *MockFoundation_User_Call {
 	return &MockFoundation_User_Call{Call: _e.mock.On("User", username)}
 }
 
@@ -713,7 +722,7 @@ type MockFoundation_UserGroup_Call struct {
 
 // UserGroup is a helper method to define mock.On call
 //   - u *user.User
-func (_e *MockFoundation_Expecter) UserGroup(u interface{}) *MockFoundation_UserGroup_Call {
+func (_e *MockFoundation_Expecter) UserGroup(u any) *MockFoundation_UserGroup_Call {
 	return &MockFoundation_UserGroup_Call{Call: _e.mock.On("UserGroup", u)}
 }
 

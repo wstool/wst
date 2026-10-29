@@ -14,10 +14,19 @@ func NewMockData(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockData {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockData{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -70,7 +79,7 @@ type MockData_Load_Call struct {
 
 // Load is a helper method to define mock.On call
 //   - key string
-func (_e *MockData_Expecter) Load(key interface{}) *MockData_Load_Call {
+func (_e *MockData_Expecter) Load(key any) *MockData_Load_Call {
 	return &MockData_Load_Call{Call: _e.mock.On("Load", key)}
 }
 
@@ -122,7 +131,7 @@ type MockData_Store_Call struct {
 // Store is a helper method to define mock.On call
 //   - key string
 //   - value interface{}
-func (_e *MockData_Expecter) Store(key interface{}, value interface{}) *MockData_Store_Call {
+func (_e *MockData_Expecter) Store(key any, value any) *MockData_Store_Call {
 	return &MockData_Store_Call{Call: _e.mock.On("Store", key, value)}
 }
 

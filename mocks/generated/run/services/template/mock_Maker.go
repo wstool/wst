@@ -17,10 +17,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -66,7 +75,7 @@ type MockMaker_Make_Call struct {
 //   - service1 service.TemplateService
 //   - services template.Services
 //   - serverTemplates templates.Templates
-func (_e *MockMaker_Expecter) Make(service1 interface{}, services interface{}, serverTemplates interface{}) *MockMaker_Make_Call {
+func (_e *MockMaker_Expecter) Make(service1 any, services any, serverTemplates any) *MockMaker_Make_Call {
 	return &MockMaker_Make_Call{Call: _e.mock.On("Make", service1, services, serverTemplates)}
 }
 

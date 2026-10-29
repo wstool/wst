@@ -18,10 +18,19 @@ func NewMockCollector(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockCollector {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockCollector{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -65,7 +74,7 @@ type MockCollector_AnyReader_Call struct {
 
 // AnyReader is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockCollector_Expecter) AnyReader(ctx interface{}) *MockCollector_AnyReader_Call {
+func (_e *MockCollector_Expecter) AnyReader(ctx any) *MockCollector_AnyReader_Call {
 	return &MockCollector_AnyReader_Call{Call: _e.mock.On("AnyReader", ctx)}
 }
 
@@ -205,7 +214,7 @@ type MockCollector_Reader_Call struct {
 // Reader is a helper method to define mock.On call
 //   - ctx context.Context
 //   - outputType output.Type
-func (_e *MockCollector_Expecter) Reader(ctx interface{}, outputType interface{}) *MockCollector_Reader_Call {
+func (_e *MockCollector_Expecter) Reader(ctx any, outputType any) *MockCollector_Reader_Call {
 	return &MockCollector_Reader_Call{Call: _e.mock.On("Reader", ctx, outputType)}
 }
 
@@ -262,7 +271,7 @@ type MockCollector_Start_Call struct {
 // Start is a helper method to define mock.On call
 //   - stdoutPipe io.ReadCloser
 //   - stderrPipe io.ReadCloser
-func (_e *MockCollector_Expecter) Start(stdoutPipe interface{}, stderrPipe interface{}) *MockCollector_Start_Call {
+func (_e *MockCollector_Expecter) Start(stdoutPipe any, stderrPipe any) *MockCollector_Start_Call {
 	return &MockCollector_Start_Call{Call: _e.mock.On("Start", stdoutPipe, stderrPipe)}
 }
 
@@ -320,7 +329,7 @@ type MockCollector_StderrReader_Call struct {
 
 // StderrReader is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockCollector_Expecter) StderrReader(ctx interface{}) *MockCollector_StderrReader_Call {
+func (_e *MockCollector_Expecter) StderrReader(ctx any) *MockCollector_StderrReader_Call {
 	return &MockCollector_StderrReader_Call{Call: _e.mock.On("StderrReader", ctx)}
 }
 
@@ -419,7 +428,7 @@ type MockCollector_StdoutReader_Call struct {
 
 // StdoutReader is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockCollector_Expecter) StdoutReader(ctx interface{}) *MockCollector_StdoutReader_Call {
+func (_e *MockCollector_Expecter) StdoutReader(ctx any) *MockCollector_StdoutReader_Call {
 	return &MockCollector_StdoutReader_Call{Call: _e.mock.On("StdoutReader", ctx)}
 }
 

@@ -17,10 +17,19 @@ func NewMockActionMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockActionMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockActionMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -75,7 +84,7 @@ type MockActionMaker_MakeAction_Call struct {
 //   - config types.Action
 //   - sl services.ServiceLocator
 //   - defaultTimeout int
-func (_e *MockActionMaker_Expecter) MakeAction(config interface{}, sl interface{}, defaultTimeout interface{}) *MockActionMaker_MakeAction_Call {
+func (_e *MockActionMaker_Expecter) MakeAction(config any, sl any, defaultTimeout any) *MockActionMaker_MakeAction_Call {
 	return &MockActionMaker_MakeAction_Call{Call: _e.mock.On("MakeAction", config, sl, defaultTimeout)}
 }
 

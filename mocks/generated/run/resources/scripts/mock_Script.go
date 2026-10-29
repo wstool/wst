@@ -17,10 +17,19 @@ func NewMockScript(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockScript {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockScript{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -116,8 +125,8 @@ func (_c *MockScript_Mode_Call) Run(run func()) *MockScript_Mode_Call {
 	return _c
 }
 
-func (_c *MockScript_Mode_Call) Return(v os.FileMode) *MockScript_Mode_Call {
-	_c.Call.Return(v)
+func (_c *MockScript_Mode_Call) Return(fileMode os.FileMode) *MockScript_Mode_Call {
+	_c.Call.Return(fileMode)
 	return _c
 }
 

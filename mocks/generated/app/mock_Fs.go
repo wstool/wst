@@ -18,10 +18,19 @@ func NewMockFs(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockFs {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockFs{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -64,7 +73,7 @@ type MockFs_Chmod_Call struct {
 // Chmod is a helper method to define mock.On call
 //   - name string
 //   - mode os.FileMode
-func (_e *MockFs_Expecter) Chmod(name interface{}, mode interface{}) *MockFs_Chmod_Call {
+func (_e *MockFs_Expecter) Chmod(name any, mode any) *MockFs_Chmod_Call {
 	return &MockFs_Chmod_Call{Call: _e.mock.On("Chmod", name, mode)}
 }
 
@@ -122,7 +131,7 @@ type MockFs_Chown_Call struct {
 //   - name string
 //   - uid int
 //   - gid int
-func (_e *MockFs_Expecter) Chown(name interface{}, uid interface{}, gid interface{}) *MockFs_Chown_Call {
+func (_e *MockFs_Expecter) Chown(name any, uid any, gid any) *MockFs_Chown_Call {
 	return &MockFs_Chown_Call{Call: _e.mock.On("Chown", name, uid, gid)}
 }
 
@@ -185,7 +194,7 @@ type MockFs_Chtimes_Call struct {
 //   - name string
 //   - atime time.Time
 //   - mtime time.Time
-func (_e *MockFs_Expecter) Chtimes(name interface{}, atime interface{}, mtime interface{}) *MockFs_Chtimes_Call {
+func (_e *MockFs_Expecter) Chtimes(name any, atime any, mtime any) *MockFs_Chtimes_Call {
 	return &MockFs_Chtimes_Call{Call: _e.mock.On("Chtimes", name, atime, mtime)}
 }
 
@@ -257,7 +266,7 @@ type MockFs_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - name string
-func (_e *MockFs_Expecter) Create(name interface{}) *MockFs_Create_Call {
+func (_e *MockFs_Expecter) Create(name any) *MockFs_Create_Call {
 	return &MockFs_Create_Call{Call: _e.mock.On("Create", name)}
 }
 
@@ -309,7 +318,7 @@ type MockFs_Mkdir_Call struct {
 // Mkdir is a helper method to define mock.On call
 //   - name string
 //   - perm os.FileMode
-func (_e *MockFs_Expecter) Mkdir(name interface{}, perm interface{}) *MockFs_Mkdir_Call {
+func (_e *MockFs_Expecter) Mkdir(name any, perm any) *MockFs_Mkdir_Call {
 	return &MockFs_Mkdir_Call{Call: _e.mock.On("Mkdir", name, perm)}
 }
 
@@ -366,7 +375,7 @@ type MockFs_MkdirAll_Call struct {
 // MkdirAll is a helper method to define mock.On call
 //   - path string
 //   - perm os.FileMode
-func (_e *MockFs_Expecter) MkdirAll(path interface{}, perm interface{}) *MockFs_MkdirAll_Call {
+func (_e *MockFs_Expecter) MkdirAll(path any, perm any) *MockFs_MkdirAll_Call {
 	return &MockFs_MkdirAll_Call{Call: _e.mock.On("MkdirAll", path, perm)}
 }
 
@@ -477,7 +486,7 @@ type MockFs_Open_Call struct {
 
 // Open is a helper method to define mock.On call
 //   - name string
-func (_e *MockFs_Expecter) Open(name interface{}) *MockFs_Open_Call {
+func (_e *MockFs_Expecter) Open(name any) *MockFs_Open_Call {
 	return &MockFs_Open_Call{Call: _e.mock.On("Open", name)}
 }
 
@@ -541,7 +550,7 @@ type MockFs_OpenFile_Call struct {
 //   - name string
 //   - flag int
 //   - perm os.FileMode
-func (_e *MockFs_Expecter) OpenFile(name interface{}, flag interface{}, perm interface{}) *MockFs_OpenFile_Call {
+func (_e *MockFs_Expecter) OpenFile(name any, flag any, perm any) *MockFs_OpenFile_Call {
 	return &MockFs_OpenFile_Call{Call: _e.mock.On("OpenFile", name, flag, perm)}
 }
 
@@ -602,7 +611,7 @@ type MockFs_Remove_Call struct {
 
 // Remove is a helper method to define mock.On call
 //   - name string
-func (_e *MockFs_Expecter) Remove(name interface{}) *MockFs_Remove_Call {
+func (_e *MockFs_Expecter) Remove(name any) *MockFs_Remove_Call {
 	return &MockFs_Remove_Call{Call: _e.mock.On("Remove", name)}
 }
 
@@ -653,7 +662,7 @@ type MockFs_RemoveAll_Call struct {
 
 // RemoveAll is a helper method to define mock.On call
 //   - path string
-func (_e *MockFs_Expecter) RemoveAll(path interface{}) *MockFs_RemoveAll_Call {
+func (_e *MockFs_Expecter) RemoveAll(path any) *MockFs_RemoveAll_Call {
 	return &MockFs_RemoveAll_Call{Call: _e.mock.On("RemoveAll", path)}
 }
 
@@ -705,7 +714,7 @@ type MockFs_Rename_Call struct {
 // Rename is a helper method to define mock.On call
 //   - oldname string
 //   - newname string
-func (_e *MockFs_Expecter) Rename(oldname interface{}, newname interface{}) *MockFs_Rename_Call {
+func (_e *MockFs_Expecter) Rename(oldname any, newname any) *MockFs_Rename_Call {
 	return &MockFs_Rename_Call{Call: _e.mock.On("Rename", oldname, newname)}
 }
 
@@ -772,7 +781,7 @@ type MockFs_Stat_Call struct {
 
 // Stat is a helper method to define mock.On call
 //   - name string
-func (_e *MockFs_Expecter) Stat(name interface{}) *MockFs_Stat_Call {
+func (_e *MockFs_Expecter) Stat(name any) *MockFs_Stat_Call {
 	return &MockFs_Stat_Call{Call: _e.mock.On("Stat", name)}
 }
 
@@ -789,8 +798,8 @@ func (_c *MockFs_Stat_Call) Run(run func(name string)) *MockFs_Stat_Call {
 	return _c
 }
 
-func (_c *MockFs_Stat_Call) Return(v os.FileInfo, err error) *MockFs_Stat_Call {
-	_c.Call.Return(v, err)
+func (_c *MockFs_Stat_Call) Return(fileInfo os.FileInfo, err error) *MockFs_Stat_Call {
+	_c.Call.Return(fileInfo, err)
 	return _c
 }
 

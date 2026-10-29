@@ -14,10 +14,19 @@ func NewMockSpec(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockSpec {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockSpec{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -59,7 +68,7 @@ type MockSpec_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - filteredInstances []string
-func (_e *MockSpec_Expecter) Run(filteredInstances interface{}) *MockSpec_Run_Call {
+func (_e *MockSpec_Expecter) Run(filteredInstances any) *MockSpec_Run_Call {
 	return &MockSpec_Run_Call{Call: _e.mock.On("Run", filteredInstances)}
 }
 

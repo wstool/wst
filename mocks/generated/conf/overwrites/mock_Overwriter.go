@@ -15,10 +15,19 @@ func NewMockOverwriter(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockOverwriter {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockOverwriter{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -61,7 +70,7 @@ type MockOverwriter_Overwrite_Call struct {
 // Overwrite is a helper method to define mock.On call
 //   - config *types.Config
 //   - overwrites map[string]string
-func (_e *MockOverwriter_Expecter) Overwrite(config interface{}, overwrites interface{}) *MockOverwriter_Overwrite_Call {
+func (_e *MockOverwriter_Expecter) Overwrite(config any, overwrites any) *MockOverwriter_Overwrite_Call {
 	return &MockOverwriter_Overwrite_Call{Call: _e.mock.On("Overwrite", config, overwrites)}
 }
 

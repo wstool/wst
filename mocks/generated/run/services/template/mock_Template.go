@@ -18,10 +18,19 @@ func NewMockTemplate(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockTemplate {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockTemplate{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -66,7 +75,7 @@ type MockTemplate_RenderToFile_Call struct {
 //   - parameters1 parameters.Parameters
 //   - filePath string
 //   - perm os.FileMode
-func (_e *MockTemplate_Expecter) RenderToFile(content interface{}, parameters1 interface{}, filePath interface{}, perm interface{}) *MockTemplate_RenderToFile_Call {
+func (_e *MockTemplate_Expecter) RenderToFile(content any, parameters1 any, filePath any, perm any) *MockTemplate_RenderToFile_Call {
 	return &MockTemplate_RenderToFile_Call{Call: _e.mock.On("RenderToFile", content, parameters1, filePath, perm)}
 }
 
@@ -142,7 +151,7 @@ type MockTemplate_RenderToString_Call struct {
 // RenderToString is a helper method to define mock.On call
 //   - content string
 //   - parameters1 parameters.Parameters
-func (_e *MockTemplate_Expecter) RenderToString(content interface{}, parameters1 interface{}) *MockTemplate_RenderToString_Call {
+func (_e *MockTemplate_Expecter) RenderToString(content any, parameters1 any) *MockTemplate_RenderToString_Call {
 	return &MockTemplate_RenderToString_Call{Call: _e.mock.On("RenderToString", content, parameters1)}
 }
 
@@ -200,7 +209,7 @@ type MockTemplate_RenderToWriter_Call struct {
 //   - content string
 //   - parameters1 parameters.Parameters
 //   - writer io.Writer
-func (_e *MockTemplate_Expecter) RenderToWriter(content interface{}, parameters1 interface{}, writer interface{}) *MockTemplate_RenderToWriter_Call {
+func (_e *MockTemplate_Expecter) RenderToWriter(content any, parameters1 any, writer any) *MockTemplate_RenderToWriter_Call {
 	return &MockTemplate_RenderToWriter_Call{Call: _e.mock.On("RenderToWriter", content, parameters1, writer)}
 }
 

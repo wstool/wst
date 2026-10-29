@@ -15,10 +15,19 @@ func NewMockMetric(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMetric {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMetric{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -70,7 +79,7 @@ type MockMetric_Compare_Call struct {
 // Compare is a helper method to define mock.On call
 //   - operator metrics.MetricOperator
 //   - value float64
-func (_e *MockMetric_Expecter) Compare(operator interface{}, value interface{}) *MockMetric_Compare_Call {
+func (_e *MockMetric_Expecter) Compare(operator any, value any) *MockMetric_Compare_Call {
 	return &MockMetric_Compare_Call{Call: _e.mock.On("Compare", operator, value)}
 }
 

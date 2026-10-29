@@ -16,10 +16,19 @@ func NewMockParser(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockParser {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockParser{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -63,7 +72,7 @@ type MockParser_ParseConfig_Call struct {
 //   - data map[string]interface{}
 //   - config *types.Config
 //   - configPath string
-func (_e *MockParser_Expecter) ParseConfig(data interface{}, config interface{}, configPath interface{}) *MockParser_ParseConfig_Call {
+func (_e *MockParser_Expecter) ParseConfig(data any, config any, configPath any) *MockParser_ParseConfig_Call {
 	return &MockParser_ParseConfig_Call{Call: _e.mock.On("ParseConfig", data, config, configPath)}
 }
 
@@ -126,7 +135,7 @@ type MockParser_ParseStruct_Call struct {
 //   - data map[string]interface{}
 //   - structure interface{}
 //   - configPath string
-func (_e *MockParser_Expecter) ParseStruct(data interface{}, structure interface{}, configPath interface{}) *MockParser_ParseStruct_Call {
+func (_e *MockParser_Expecter) ParseStruct(data any, structure any, configPath any) *MockParser_ParseStruct_Call {
 	return &MockParser_ParseStruct_Call{Call: _e.mock.On("ParseStruct", data, structure, configPath)}
 }
 
@@ -198,7 +207,7 @@ type MockParser_ParseTag_Call struct {
 
 // ParseTag is a helper method to define mock.On call
 //   - tag string
-func (_e *MockParser_Expecter) ParseTag(tag interface{}) *MockParser_ParseTag_Call {
+func (_e *MockParser_Expecter) ParseTag(tag any) *MockParser_ParseTag_Call {
 	return &MockParser_ParseTag_Call{Call: _e.mock.On("ParseTag", tag)}
 }
 

@@ -22,10 +22,19 @@ func NewMockEnvironment(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockEnvironment {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockEnvironment{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -113,7 +122,7 @@ type MockEnvironment_Destroy_Call struct {
 
 // Destroy is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockEnvironment_Expecter) Destroy(ctx interface{}) *MockEnvironment_Destroy_Call {
+func (_e *MockEnvironment_Expecter) Destroy(ctx any) *MockEnvironment_Destroy_Call {
 	return &MockEnvironment_Destroy_Call{Call: _e.mock.On("Destroy", ctx)}
 }
 
@@ -168,7 +177,7 @@ type MockEnvironment_ExecTaskCommand_Call struct {
 //   - target task.Task
 //   - cmd *environment.Command
 //   - oc output.Collector
-func (_e *MockEnvironment_Expecter) ExecTaskCommand(ctx interface{}, ss interface{}, target interface{}, cmd interface{}, oc interface{}) *MockEnvironment_ExecTaskCommand_Call {
+func (_e *MockEnvironment_Expecter) ExecTaskCommand(ctx any, ss any, target any, cmd any, oc any) *MockEnvironment_ExecTaskCommand_Call {
 	return &MockEnvironment_ExecTaskCommand_Call{Call: _e.mock.On("ExecTaskCommand", ctx, ss, target, cmd, oc)}
 }
 
@@ -242,7 +251,7 @@ type MockEnvironment_ExecTaskSignal_Call struct {
 //   - ss *environment.ServiceSettings
 //   - target task.Task
 //   - signal os.Signal
-func (_e *MockEnvironment_Expecter) ExecTaskSignal(ctx interface{}, ss interface{}, target interface{}, signal interface{}) *MockEnvironment_ExecTaskSignal_Call {
+func (_e *MockEnvironment_Expecter) ExecTaskSignal(ctx any, ss any, target any, signal any) *MockEnvironment_ExecTaskSignal_Call {
 	return &MockEnvironment_ExecTaskSignal_Call{Call: _e.mock.On("ExecTaskSignal", ctx, ss, target, signal)}
 }
 
@@ -308,7 +317,7 @@ type MockEnvironment_Init_Call struct {
 
 // Init is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockEnvironment_Expecter) Init(ctx interface{}) *MockEnvironment_Init_Call {
+func (_e *MockEnvironment_Expecter) Init(ctx any) *MockEnvironment_Init_Call {
 	return &MockEnvironment_Init_Call{Call: _e.mock.On("Init", ctx)}
 }
 
@@ -438,7 +447,7 @@ type MockEnvironment_Mkdir_Call struct {
 //   - serviceName string
 //   - path string
 //   - perm os.FileMode
-func (_e *MockEnvironment_Expecter) Mkdir(serviceName interface{}, path interface{}, perm interface{}) *MockEnvironment_Mkdir_Call {
+func (_e *MockEnvironment_Expecter) Mkdir(serviceName any, path any, perm any) *MockEnvironment_Mkdir_Call {
 	return &MockEnvironment_Mkdir_Call{Call: _e.mock.On("Mkdir", serviceName, path, perm)}
 }
 
@@ -512,7 +521,7 @@ type MockEnvironment_Output_Call struct {
 //   - ctx context.Context
 //   - target task.Task
 //   - outputType output.Type
-func (_e *MockEnvironment_Expecter) Output(ctx interface{}, target interface{}, outputType interface{}) *MockEnvironment_Output_Call {
+func (_e *MockEnvironment_Expecter) Output(ctx any, target any, outputType any) *MockEnvironment_Output_Call {
 	return &MockEnvironment_Output_Call{Call: _e.mock.On("Output", ctx, target, outputType)}
 }
 
@@ -751,7 +760,7 @@ type MockEnvironment_RootPath_Call struct {
 
 // RootPath is a helper method to define mock.On call
 //   - workspace string
-func (_e *MockEnvironment_Expecter) RootPath(workspace interface{}) *MockEnvironment_RootPath_Call {
+func (_e *MockEnvironment_Expecter) RootPath(workspace any) *MockEnvironment_RootPath_Call {
 	return &MockEnvironment_RootPath_Call{Call: _e.mock.On("RootPath", workspace)}
 }
 
@@ -815,7 +824,7 @@ type MockEnvironment_RunTask_Call struct {
 //   - ctx context.Context
 //   - ss *environment.ServiceSettings
 //   - cmd *environment.Command
-func (_e *MockEnvironment_Expecter) RunTask(ctx interface{}, ss interface{}, cmd interface{}) *MockEnvironment_RunTask_Call {
+func (_e *MockEnvironment_Expecter) RunTask(ctx any, ss any, cmd any) *MockEnvironment_RunTask_Call {
 	return &MockEnvironment_RunTask_Call{Call: _e.mock.On("RunTask", ctx, ss, cmd)}
 }
 
@@ -878,7 +887,7 @@ type MockEnvironment_ServiceLocalAddress_Call struct {
 //   - serviceName string
 //   - servicePort int32
 //   - serverPort int32
-func (_e *MockEnvironment_Expecter) ServiceLocalAddress(serviceName interface{}, servicePort interface{}, serverPort interface{}) *MockEnvironment_ServiceLocalAddress_Call {
+func (_e *MockEnvironment_Expecter) ServiceLocalAddress(serviceName any, servicePort any, serverPort any) *MockEnvironment_ServiceLocalAddress_Call {
 	return &MockEnvironment_ServiceLocalAddress_Call{Call: _e.mock.On("ServiceLocalAddress", serviceName, servicePort, serverPort)}
 }
 
@@ -940,7 +949,7 @@ type MockEnvironment_ServiceLocalPort_Call struct {
 // ServiceLocalPort is a helper method to define mock.On call
 //   - servicePort int32
 //   - serverPort int32
-func (_e *MockEnvironment_Expecter) ServiceLocalPort(servicePort interface{}, serverPort interface{}) *MockEnvironment_ServiceLocalPort_Call {
+func (_e *MockEnvironment_Expecter) ServiceLocalPort(servicePort any, serverPort any) *MockEnvironment_ServiceLocalPort_Call {
 	return &MockEnvironment_ServiceLocalPort_Call{Call: _e.mock.On("ServiceLocalPort", servicePort, serverPort)}
 }
 
@@ -998,7 +1007,7 @@ type MockEnvironment_ServicePrivateAddress_Call struct {
 //   - serviceName string
 //   - servicePort int32
 //   - serverPort int32
-func (_e *MockEnvironment_Expecter) ServicePrivateAddress(serviceName interface{}, servicePort interface{}, serverPort interface{}) *MockEnvironment_ServicePrivateAddress_Call {
+func (_e *MockEnvironment_Expecter) ServicePrivateAddress(serviceName any, servicePort any, serverPort any) *MockEnvironment_ServicePrivateAddress_Call {
 	return &MockEnvironment_ServicePrivateAddress_Call{Call: _e.mock.On("ServicePrivateAddress", serviceName, servicePort, serverPort)}
 }
 

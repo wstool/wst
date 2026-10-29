@@ -19,10 +19,19 @@ func NewMockServiceClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockServiceClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockServiceClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -77,7 +86,7 @@ type MockServiceClient_Create_Call struct {
 //   - ctx context.Context
 //   - service *v1.Service
 //   - opts v10.CreateOptions
-func (_e *MockServiceClient_Expecter) Create(ctx interface{}, service interface{}, opts interface{}) *MockServiceClient_Create_Call {
+func (_e *MockServiceClient_Expecter) Create(ctx any, service any, opts any) *MockServiceClient_Create_Call {
 	return &MockServiceClient_Create_Call{Call: _e.mock.On("Create", ctx, service, opts)}
 }
 
@@ -140,7 +149,7 @@ type MockServiceClient_Delete_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - opts v10.DeleteOptions
-func (_e *MockServiceClient_Expecter) Delete(ctx interface{}, name interface{}, opts interface{}) *MockServiceClient_Delete_Call {
+func (_e *MockServiceClient_Expecter) Delete(ctx any, name any, opts any) *MockServiceClient_Delete_Call {
 	return &MockServiceClient_Delete_Call{Call: _e.mock.On("Delete", ctx, name, opts)}
 }
 
@@ -213,7 +222,7 @@ type MockServiceClient_Watch_Call struct {
 // Watch is a helper method to define mock.On call
 //   - ctx context.Context
 //   - opts v10.ListOptions
-func (_e *MockServiceClient_Expecter) Watch(ctx interface{}, opts interface{}) *MockServiceClient_Watch_Call {
+func (_e *MockServiceClient_Expecter) Watch(ctx any, opts any) *MockServiceClient_Watch_Call {
 	return &MockServiceClient_Watch_Call{Call: _e.mock.On("Watch", ctx, opts)}
 }
 

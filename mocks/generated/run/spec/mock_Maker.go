@@ -16,10 +16,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -73,7 +82,7 @@ type MockMaker_Make_Call struct {
 // Make is a helper method to define mock.On call
 //   - config *types.Spec
 //   - filteredInstances []string
-func (_e *MockMaker_Expecter) Make(config interface{}, filteredInstances interface{}) *MockMaker_Make_Call {
+func (_e *MockMaker_Expecter) Make(config any, filteredInstances any) *MockMaker_Make_Call {
 	return &MockMaker_Make_Call{Call: _e.mock.On("Make", config, filteredInstances)}
 }
 

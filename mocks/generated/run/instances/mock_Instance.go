@@ -19,10 +19,19 @@ func NewMockInstance(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockInstance {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockInstance{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -290,7 +299,7 @@ type MockInstance_Extend_Call struct {
 
 // Extend is a helper method to define mock.On call
 //   - instsMap map[string]instances.Instance
-func (_e *MockInstance_Expecter) Extend(instsMap interface{}) *MockInstance_Extend_Call {
+func (_e *MockInstance_Expecter) Extend(instsMap any) *MockInstance_Extend_Call {
 	return &MockInstance_Extend_Call{Call: _e.mock.On("Extend", instsMap)}
 }
 

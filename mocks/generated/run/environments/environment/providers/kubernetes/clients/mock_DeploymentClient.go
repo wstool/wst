@@ -19,10 +19,19 @@ func NewMockDeploymentClient(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockDeploymentClient {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockDeploymentClient{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -77,7 +86,7 @@ type MockDeploymentClient_Create_Call struct {
 //   - ctx context.Context
 //   - deployment *v1.Deployment
 //   - opts v10.CreateOptions
-func (_e *MockDeploymentClient_Expecter) Create(ctx interface{}, deployment interface{}, opts interface{}) *MockDeploymentClient_Create_Call {
+func (_e *MockDeploymentClient_Expecter) Create(ctx any, deployment any, opts any) *MockDeploymentClient_Create_Call {
 	return &MockDeploymentClient_Create_Call{Call: _e.mock.On("Create", ctx, deployment, opts)}
 }
 
@@ -140,7 +149,7 @@ type MockDeploymentClient_Delete_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - opts v10.DeleteOptions
-func (_e *MockDeploymentClient_Expecter) Delete(ctx interface{}, name interface{}, opts interface{}) *MockDeploymentClient_Delete_Call {
+func (_e *MockDeploymentClient_Expecter) Delete(ctx any, name any, opts any) *MockDeploymentClient_Delete_Call {
 	return &MockDeploymentClient_Delete_Call{Call: _e.mock.On("Delete", ctx, name, opts)}
 }
 
@@ -213,7 +222,7 @@ type MockDeploymentClient_Watch_Call struct {
 // Watch is a helper method to define mock.On call
 //   - ctx context.Context
 //   - opts v10.ListOptions
-func (_e *MockDeploymentClient_Expecter) Watch(ctx interface{}, opts interface{}) *MockDeploymentClient_Watch_Call {
+func (_e *MockDeploymentClient_Expecter) Watch(ctx any, opts any) *MockDeploymentClient_Watch_Call {
 	return &MockDeploymentClient_Watch_Call{Call: _e.mock.On("Watch", ctx, opts)}
 }
 

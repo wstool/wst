@@ -17,10 +17,19 @@ func NewMockVegetaAttacker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockVegetaAttacker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockVegetaAttacker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -67,7 +76,7 @@ type MockVegetaAttacker_Attack_Call struct {
 //   - rate vegeta.Rate
 //   - duration time.Duration
 //   - name string
-func (_e *MockVegetaAttacker_Expecter) Attack(targeter interface{}, rate interface{}, duration interface{}, name interface{}) *MockVegetaAttacker_Attack_Call {
+func (_e *MockVegetaAttacker_Expecter) Attack(targeter any, rate any, duration any, name any) *MockVegetaAttacker_Attack_Call {
 	return &MockVegetaAttacker_Attack_Call{Call: _e.mock.On("Attack", targeter, rate, duration, name)}
 }
 

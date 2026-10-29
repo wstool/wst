@@ -16,10 +16,19 @@ func NewMockMaker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMaker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMaker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -73,7 +82,7 @@ type MockMaker_MakeHook_Call struct {
 // MakeHook is a helper method to define mock.On call
 //   - config types.SandboxHook
 //   - hookType hooks.HookType
-func (_e *MockMaker_Expecter) MakeHook(config interface{}, hookType interface{}) *MockMaker_MakeHook_Call {
+func (_e *MockMaker_Expecter) MakeHook(config any, hookType any) *MockMaker_MakeHook_Call {
 	return &MockMaker_MakeHook_Call{Call: _e.mock.On("MakeHook", config, hookType)}
 }
 
@@ -140,7 +149,7 @@ type MockMaker_MakeHooks_Call struct {
 
 // MakeHooks is a helper method to define mock.On call
 //   - config map[string]types.SandboxHook
-func (_e *MockMaker_Expecter) MakeHooks(config interface{}) *MockMaker_MakeHooks_Call {
+func (_e *MockMaker_Expecter) MakeHooks(config any) *MockMaker_MakeHooks_Call {
 	return &MockMaker_MakeHooks_Call{Call: _e.mock.On("MakeHooks", config)}
 }
 

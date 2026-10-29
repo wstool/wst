@@ -19,10 +19,19 @@ func NewMockAction(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockAction {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockAction{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -74,7 +83,7 @@ type MockAction_Execute_Call struct {
 // Execute is a helper method to define mock.On call
 //   - ctx context.Context
 //   - runData runtime.Data
-func (_e *MockAction_Expecter) Execute(ctx interface{}, runData interface{}) *MockAction_Execute_Call {
+func (_e *MockAction_Expecter) Execute(ctx any, runData any) *MockAction_Execute_Call {
 	return &MockAction_Execute_Call{Call: _e.mock.On("Execute", ctx, runData)}
 }
 

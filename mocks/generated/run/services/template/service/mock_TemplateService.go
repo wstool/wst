@@ -15,10 +15,19 @@ func NewMockTemplateService(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockTemplateService {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockTemplateService{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -223,7 +232,7 @@ type MockTemplateService_FindCertificate_Call struct {
 
 // FindCertificate is a helper method to define mock.On call
 //   - name string
-func (_e *MockTemplateService_Expecter) FindCertificate(name interface{}) *MockTemplateService_FindCertificate_Call {
+func (_e *MockTemplateService_Expecter) FindCertificate(name any) *MockTemplateService_FindCertificate_Call {
 	return &MockTemplateService_FindCertificate_Call{Call: _e.mock.On("FindCertificate", name)}
 }
 
@@ -512,7 +521,7 @@ type MockTemplateService_PrivateUrl_Call struct {
 
 // PrivateUrl is a helper method to define mock.On call
 //   - scheme string
-func (_e *MockTemplateService_Expecter) PrivateUrl(scheme interface{}) *MockTemplateService_PrivateUrl_Call {
+func (_e *MockTemplateService_Expecter) PrivateUrl(scheme any) *MockTemplateService_PrivateUrl_Call {
 	return &MockTemplateService_PrivateUrl_Call{Call: _e.mock.On("PrivateUrl", scheme)}
 }
 
@@ -648,11 +657,11 @@ func (_c *MockTemplateService_ScriptDir_Call) RunAndReturn(run func() (string, e
 // UdsPath provides a mock function for the type MockTemplateService
 func (_mock *MockTemplateService) UdsPath(strings ...string) (string, error) {
 	// string
-	_va := make([]interface{}, len(strings))
+	_va := make([]any, len(strings))
 	for _i := range strings {
 		_va[_i] = strings[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	ret := _mock.Called(_ca...)
 
@@ -685,9 +694,9 @@ type MockTemplateService_UdsPath_Call struct {
 
 // UdsPath is a helper method to define mock.On call
 //   - strings ...string
-func (_e *MockTemplateService_Expecter) UdsPath(strings ...interface{}) *MockTemplateService_UdsPath_Call {
+func (_e *MockTemplateService_Expecter) UdsPath(strings ...any) *MockTemplateService_UdsPath_Call {
 	return &MockTemplateService_UdsPath_Call{Call: _e.mock.On("UdsPath",
-		append([]interface{}{}, strings...)...)}
+		append([]any{}, strings...)...)}
 }
 
 func (_c *MockTemplateService_UdsPath_Call) Run(run func(strings ...string)) *MockTemplateService_UdsPath_Call {

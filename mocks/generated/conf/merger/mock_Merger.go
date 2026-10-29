@@ -15,10 +15,19 @@ func NewMockMerger(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMerger {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMerger{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -71,7 +80,7 @@ type MockMerger_MergeConfigs_Call struct {
 
 // MergeConfigs is a helper method to define mock.On call
 //   - configs []*types.Config
-func (_e *MockMerger_Expecter) MergeConfigs(configs interface{}) *MockMerger_MergeConfigs_Call {
+func (_e *MockMerger_Expecter) MergeConfigs(configs any) *MockMerger_MergeConfigs_Call {
 	return &MockMerger_MergeConfigs_Call{Call: _e.mock.On("MergeConfigs", configs)}
 }
 

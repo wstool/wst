@@ -16,10 +16,19 @@ func NewMockX509CertPool(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockX509CertPool {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockX509CertPool{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -61,7 +70,7 @@ type MockX509CertPool_AppendCertFromPEM_Call struct {
 
 // AppendCertFromPEM is a helper method to define mock.On call
 //   - pem string
-func (_e *MockX509CertPool_Expecter) AppendCertFromPEM(pem interface{}) *MockX509CertPool_AppendCertFromPEM_Call {
+func (_e *MockX509CertPool_Expecter) AppendCertFromPEM(pem any) *MockX509CertPool_AppendCertFromPEM_Call {
 	return &MockX509CertPool_AppendCertFromPEM_Call{Call: _e.mock.On("AppendCertFromPEM", pem)}
 }
 
