@@ -1,0 +1,83 @@
+title: Slow request body upload
+
+name: request-body-slow
+
+description: |
+  Sends request bodies in delayed pieces, both with a fixed Content-Length and with chunked transfer encoding,
+  and verifies through the echo endpoint that the pieces really arrive separately and delayed at the server.
+
+labels: [local, request, body]
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+
+actions:
+  - start
+  - expect/web/server_start
+  # Content-Length body sent in two pieces of 25 bytes with 500 ms between them.
+  - request/web:
+      path: /_/echo
+      method: POST
+      body:
+        content: '01234567890123456789012345678901234567890123456789'
+        transfer:
+          encoding: none
+          chunk_size: 25
+          chunk_delay: 500
+  - expect/web:
+      response:
+        status: 200
+        body:
+          match: infix
+          content: '"content_length": 50'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"transfer_encoding": ""'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"body_chunks": "25,25"'
+  - expect/web:
+      response:
+        body:
+          match: regexp
+          content: '"body_read_ms": ([4-9][0-9]{2}|[0-9]{4,})'
+  # Chunked body sent in three chunks with 300 ms between them.
+  - request/web:
+      path: /_/echo
+      method: POST
+      body:
+        content: '01234567890123456789012345678901234567890123456789'
+        transfer:
+          encoding: chunked
+          chunk_size: 20
+          chunk_delay: 300
+  - expect/web:
+      response:
+        status: 200
+        body:
+          match: infix
+          content: '"transfer_encoding": "chunked"'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"body_chunks": "20,20,10"'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"body_length": 50'
+  - stop:
+      when: always
+  - expect/web/server_stop:
+      when: always

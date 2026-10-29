@@ -306,16 +306,54 @@ type echoResponse struct {
 	RawQuery         string            `json:"raw_query"`
 	Headers          map[string]string `json:"headers"`
 	ContentLength    int64             `json:"content_length"`
-	TransferEncoding []string          `json:"transfer_encoding"`
+	TransferEncoding string            `json:"transfer_encoding"`
 	Body             string            `json:"body"`
 	BodyLength       int               `json:"body_length"`
+	// BodyChunks lists the sizes of the individual reads of the request body as they arrived from the network,
+	// for example "25,25" when a 50 bytes body arrived in two pieces.
+	BodyChunks string `json:"body_chunks"`
+	// BodyReadMs is the time in milliseconds between the first and the last read of the request body.
+	BodyReadMs int64 `json:"body_read_ms"`
+}
+
+// readBodyChunks reads the whole body and records the size of each read and the time it took.
+func readBodyChunks(body io.Reader) ([]byte, []int, time.Duration, error) {
+	var data []byte
+	var chunks []int
+	var start, end time.Time
+	buf := make([]byte, 64*1024)
+	for {
+		n, err := body.Read(buf)
+		if n > 0 {
+			if start.IsZero() {
+				start = time.Now()
+			}
+			end = time.Now()
+			data = append(data, buf[:n]...)
+			chunks = append(chunks, n)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return data, chunks, end.Sub(start), err
+		}
+	}
+	if start.IsZero() {
+		return data, chunks, 0, nil
+	}
+	return data, chunks, end.Sub(start), nil
 }
 
 func (s *server) handleEcho(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
+	body, chunks, readDuration, err := readBodyChunks(r.Body)
 	if err != nil {
 		writeText(w, http.StatusBadRequest, "failed to read body: %v", err)
 		return
+	}
+	chunkSizes := make([]string, len(chunks))
+	for i, n := range chunks {
+		chunkSizes[i] = strconv.Itoa(n)
 	}
 	headers := make(map[string]string, len(r.Header))
 	for name, values := range r.Header {
@@ -329,12 +367,11 @@ func (s *server) handleEcho(w http.ResponseWriter, r *http.Request) {
 		RawQuery:         r.URL.RawQuery,
 		Headers:          headers,
 		ContentLength:    r.ContentLength,
-		TransferEncoding: r.TransferEncoding,
+		TransferEncoding: strings.Join(r.TransferEncoding, ","),
 		Body:             string(body),
 		BodyLength:       len(body),
-	}
-	if resp.TransferEncoding == nil {
-		resp.TransferEncoding = []string{}
+		BodyChunks:       strings.Join(chunkSizes, ","),
+		BodyReadMs:       readDuration.Milliseconds(),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

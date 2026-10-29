@@ -265,8 +265,11 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 	content := []byte(a.body.Content)
 
-	// If chunked encoding with chunk size or delay specified, use a custom reader
-	if a.body.Transfer.Encoding == "chunked" && (a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0) {
+	// If chunk size or delay is specified, use a custom reader regardless of the encoding. For chunked encoding
+	// each read becomes a chunk on the wire. For non-chunked transfers the HTTP client flushes the headers first
+	// (the reader is not a known in-memory reader) and then copies each read straight to the connection, so
+	// the body is sent in delayed pieces with a fixed Content-Length.
+	if a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0 {
 		return &chunkControlledReader{
 			ctx:        ctx,
 			fnd:        a.fnd,
@@ -277,7 +280,7 @@ func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 		}
 	}
 
-	// For normal transfers or chunked without size/delay control, use bytes.Reader
+	// For transfers without size/delay control, use bytes.Reader
 	return bytes.NewReader(content)
 }
 
@@ -285,9 +288,10 @@ func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 func (a *Action) applyTransferConfig(req *http.Request) {
 	if a.body.Transfer.Encoding == "chunked" {
 		req.TransferEncoding = []string{"chunked"}
-		if a.body.Transfer.ChunkSize > 0 {
-			a.fnd.Logger().Debugf("Using chunked encoding with chunk size: %d", a.body.Transfer.ChunkSize)
-		}
+	}
+	if a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0 {
+		a.fnd.Logger().Debugf("Using %s encoding with chunk size %d and chunk delay %d ms",
+			a.body.Transfer.Encoding, a.body.Transfer.ChunkSize, a.body.Transfer.ChunkDelay)
 	}
 
 	// Override Content-Length if specified (allows mismatches for testing unfinished uploads)

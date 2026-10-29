@@ -778,6 +778,71 @@ func TestAction_Execute(t *testing.T) {
 			want: true,
 		},
 		{
+			name:       "successful execution with no encoding and chunk size and delay",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers:    types.Headers{},
+			body: &types.RequestBody{
+				Content: "test slow content",
+				Transfer: types.TransferConfig{
+					Encoding:   "none",
+					ChunkSize:  5,
+					ChunkDelay: 100,
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				body := &bodyReader{msg: "ok"}
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   body,
+					Header: header,
+				}
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					// The body must be the chunk controlled reader (GetBody is only set for in-memory readers)
+					// while the transfer stays non-chunked with the real content length.
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						len(req.TransferEncoding) == 0 &&
+						req.ContentLength == 17 &&
+						req.Body != nil &&
+						req.GetBody == nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "ok",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
 			name:       "successful execution with chunked encoding but no size or delay",
 			id:         "r1",
 			scheme:     "https",

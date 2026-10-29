@@ -114,6 +114,7 @@ func TestLocalInstances(t *testing.T) {
 		expectError bool
 	}{
 		{name: "basic"},
+		{name: "request-body-slow"},
 		{name: "fail-response-mismatch", expectError: true},
 		{name: "fail-start", expectError: true},
 	}
