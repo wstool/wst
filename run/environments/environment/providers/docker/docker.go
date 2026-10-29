@@ -17,10 +17,9 @@ package docker
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	moby "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/wstool/wst/app"
 	"github.com/wstool/wst/conf/types"
@@ -31,6 +30,7 @@ import (
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/resources"
 	"io"
+	"net/netip"
 	"os"
 	"strconv"
 	"sync"
@@ -99,14 +99,14 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 	for _, dockTask := range e.tasks {
 		containerId := dockTask.containerId
 		// Stop the container
-		err := e.cli.ContainerStop(ctx, containerId, container.StopOptions{})
+		_, err := e.cli.ContainerStop(ctx, containerId, moby.ContainerStopOptions{})
 		if err != nil {
 			e.Fnd.Logger().Errorf("failed to stop container %s: %v", containerId, err)
 			hasError = true
 			continue
 		}
 		// Remove the container
-		err = e.cli.ContainerRemove(ctx, containerId, container.RemoveOptions{})
+		_, err = e.cli.ContainerRemove(ctx, containerId, moby.ContainerRemoveOptions{})
 		if err != nil {
 			e.Fnd.Logger().Errorf("failed to remove container %s: %v", containerId, err)
 			hasError = true
@@ -117,7 +117,7 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 	e.tasks = make(map[string]*dockerTask)
 
 	// Delete network
-	if err := e.cli.NetworkRemove(ctx, e.networkName); err != nil {
+	if _, err := e.cli.NetworkRemove(ctx, e.networkName, moby.NetworkRemoveOptions{}); err != nil {
 		e.Fnd.Logger().Errorf("failed to remove network %s: %v", e.networkName, err)
 		hasError = true
 	}
@@ -129,12 +129,13 @@ func (e *dockerEnvironment) Destroy(ctx context.Context) error {
 }
 
 func (e *dockerEnvironment) isContainerReady(ctx context.Context, containerID string) (bool, error) {
-	resp, err := e.cli.ContainerInspect(ctx, containerID)
+	resp, err := e.cli.ContainerInspect(ctx, containerID, moby.ContainerInspectOptions{})
 	if err != nil {
 		return false, errors.Errorf("failed to inspect container: %v", err)
 	}
 
-	return resp.State.Running, nil
+	state := resp.Container.State
+	return state != nil && state.Running, nil
 }
 
 // Function to create network if it doesn't exist
@@ -147,7 +148,7 @@ func (e *dockerEnvironment) ensureNetwork(ctx context.Context, dryRun bool) erro
 	}
 	e.networkName = e.namePrefix
 	if !dryRun {
-		_, err := e.cli.NetworkCreate(ctx, e.networkName, network.CreateOptions{
+		_, err := e.cli.NetworkCreate(ctx, e.networkName, moby.NetworkCreateOptions{
 			Driver: "bridge",
 		})
 		if err != nil {
@@ -176,7 +177,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 
 	// Pull the Docker image if not already present
 	if !dryRun {
-		pullOut, err := e.cli.ImagePull(ctx, imageName, image.PullOptions{})
+		pullOut, err := e.cli.ImagePull(ctx, imageName, moby.ImagePullOptions{})
 		if err != nil {
 			return nil, errors.Errorf("failed to pull Docker image %s - %v", imageName, err)
 		}
@@ -195,10 +196,13 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	var hostConfig *container.HostConfig
 	if ss.Public {
 		hostPort := strconv.Itoa(int(ss.Port))
-		portMapName := nat.Port(serverPort + "/tcp")
+		containerPort, err := network.ParsePort(serverPort + "/tcp")
+		if err != nil {
+			return nil, errors.Errorf("invalid server port %s for service %s: %v", serverPort, ss.Name, err)
+		}
 		hostConfig = &container.HostConfig{
-			PortBindings: nat.PortMap{
-				portMapName: []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: hostPort}},
+			PortBindings: network.PortMap{
+				containerPort: []network.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: hostPort}},
 			},
 		}
 		hostUrl = "://localhost:" + hostPort
@@ -245,16 +249,21 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	containerName := fmt.Sprintf("%s-%s", e.namePrefix, ss.Name)
 	var containerId string
 	if !dryRun {
-		containerResp, err := e.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, nil, containerName)
+		containerResp, err := e.cli.ContainerCreate(ctx, moby.ContainerCreateOptions{
+			Config:           containerConfig,
+			HostConfig:       hostConfig,
+			NetworkingConfig: networkingConfig,
+			Name:             containerName,
+		})
 		if err != nil {
 			return nil, errors.Errorf("failed to create Docker container for service %s: %v", ss.Name, err)
 		}
 		containerId = containerResp.ID
 
 		// Start the Docker container
-		err = e.cli.ContainerStart(ctx, containerId, container.StartOptions{})
+		_, err = e.cli.ContainerStart(ctx, containerId, moby.ContainerStartOptions{})
 		if err != nil {
-			removeErr := e.cli.ContainerRemove(ctx, containerId, container.RemoveOptions{})
+			_, removeErr := e.cli.ContainerRemove(ctx, containerId, moby.ContainerRemoveOptions{})
 			if removeErr != nil {
 				e.Fnd.Logger().Errorf("failed to remove container %s: %v", containerId, removeErr)
 			}
@@ -281,9 +290,11 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 		return dockTask, nil
 	}
 
-	statusCh, errCh := e.cli.ContainerWait(ctx, containerId, container.WaitConditionNotRunning)
+	waitResult := e.cli.ContainerWait(ctx, containerId, moby.ContainerWaitOptions{
+		Condition: container.WaitConditionNotRunning,
+	})
 	select {
-	case err := <-errCh:
+	case err := <-waitResult.Error:
 		if err != nil {
 			return nil, errors.Errorf("failed waiting on container %s %s to run: %v",
 				containerName, containerId, err)
@@ -291,7 +302,7 @@ func (e *dockerEnvironment) RunTask(ctx context.Context, ss *environment.Service
 	case <-ctx.Done():
 		return nil, errors.Errorf("timed out waiting for container %s %s to be ready",
 			containerName, containerId)
-	case <-statusCh:
+	case <-waitResult.Result:
 		ready, err := e.isContainerReady(ctx, containerId)
 		if err != nil {
 			return nil, errors.Errorf("failed checking of container %s %s readiness: %v",
@@ -344,7 +355,7 @@ func (e *dockerEnvironment) Output(ctx context.Context, target task.Task, output
 	}
 
 	containerID := target.Id()
-	reader, err := e.cli.ContainerLogs(ctx, containerID, container.LogsOptions{
+	reader, err := e.cli.ContainerLogs(ctx, containerID, moby.ContainerLogsOptions{
 		ShowStdout: outputType == output.Stdout || outputType == output.Any,
 		ShowStderr: outputType == output.Stderr || outputType == output.Any,
 		Follow:     true,

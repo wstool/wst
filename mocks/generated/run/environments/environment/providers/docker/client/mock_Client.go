@@ -6,13 +6,8 @@ package client
 
 import (
 	"context"
-	"io"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/moby/moby/client"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -53,25 +48,25 @@ func (_m *MockClient) EXPECT() *MockClient_Expecter {
 }
 
 // ContainerCreate provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
-	ret := _mock.Called(ctx, config, hostConfig, networkingConfig, platform, containerName)
+func (_mock *MockClient) ContainerCreate(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
+	ret := _mock.Called(ctx, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerCreate")
 	}
 
-	var r0 container.CreateResponse
+	var r0 client.ContainerCreateResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *v1.Platform, string) (container.CreateResponse, error)); ok {
-		return returnFunc(ctx, config, hostConfig, networkingConfig, platform, containerName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, client.ContainerCreateOptions) (client.ContainerCreateResult, error)); ok {
+		return returnFunc(ctx, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *v1.Platform, string) container.CreateResponse); ok {
-		r0 = returnFunc(ctx, config, hostConfig, networkingConfig, platform, containerName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, client.ContainerCreateOptions) client.ContainerCreateResult); ok {
+		r0 = returnFunc(ctx, options)
 	} else {
-		r0 = ret.Get(0).(container.CreateResponse)
+		r0 = ret.Get(0).(client.ContainerCreateResult)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *v1.Platform, string) error); ok {
-		r1 = returnFunc(ctx, config, hostConfig, networkingConfig, platform, containerName)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, client.ContainerCreateOptions) error); ok {
+		r1 = returnFunc(ctx, options)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -85,83 +80,59 @@ type MockClient_ContainerCreate_Call struct {
 
 // ContainerCreate is a helper method to define mock.On call
 //   - ctx context.Context
-//   - config *container.Config
-//   - hostConfig *container.HostConfig
-//   - networkingConfig *network.NetworkingConfig
-//   - platform *v1.Platform
-//   - containerName string
-func (_e *MockClient_Expecter) ContainerCreate(ctx any, config any, hostConfig any, networkingConfig any, platform any, containerName any) *MockClient_ContainerCreate_Call {
-	return &MockClient_ContainerCreate_Call{Call: _e.mock.On("ContainerCreate", ctx, config, hostConfig, networkingConfig, platform, containerName)}
+//   - options client.ContainerCreateOptions
+func (_e *MockClient_Expecter) ContainerCreate(ctx any, options any) *MockClient_ContainerCreate_Call {
+	return &MockClient_ContainerCreate_Call{Call: _e.mock.On("ContainerCreate", ctx, options)}
 }
 
-func (_c *MockClient_ContainerCreate_Call) Run(run func(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string)) *MockClient_ContainerCreate_Call {
+func (_c *MockClient_ContainerCreate_Call) Run(run func(ctx context.Context, options client.ContainerCreateOptions)) *MockClient_ContainerCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *container.Config
+		var arg1 client.ContainerCreateOptions
 		if args[1] != nil {
-			arg1 = args[1].(*container.Config)
-		}
-		var arg2 *container.HostConfig
-		if args[2] != nil {
-			arg2 = args[2].(*container.HostConfig)
-		}
-		var arg3 *network.NetworkingConfig
-		if args[3] != nil {
-			arg3 = args[3].(*network.NetworkingConfig)
-		}
-		var arg4 *v1.Platform
-		if args[4] != nil {
-			arg4 = args[4].(*v1.Platform)
-		}
-		var arg5 string
-		if args[5] != nil {
-			arg5 = args[5].(string)
+			arg1 = args[1].(client.ContainerCreateOptions)
 		}
 		run(
 			arg0,
 			arg1,
-			arg2,
-			arg3,
-			arg4,
-			arg5,
 		)
 	})
 	return _c
 }
 
-func (_c *MockClient_ContainerCreate_Call) Return(createResponse container.CreateResponse, err error) *MockClient_ContainerCreate_Call {
-	_c.Call.Return(createResponse, err)
+func (_c *MockClient_ContainerCreate_Call) Return(containerCreateResult client.ContainerCreateResult, err error) *MockClient_ContainerCreate_Call {
+	_c.Call.Return(containerCreateResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerCreate_Call) RunAndReturn(run func(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error)) *MockClient_ContainerCreate_Call {
+func (_c *MockClient_ContainerCreate_Call) RunAndReturn(run func(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)) *MockClient_ContainerCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerInspect provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
-	ret := _mock.Called(ctx, containerID)
+func (_mock *MockClient) ContainerInspect(ctx context.Context, containerID string, options client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerInspect")
 	}
 
-	var r0 types.ContainerJSON
+	var r0 client.ContainerInspectResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (types.ContainerJSON, error)); ok {
-		return returnFunc(ctx, containerID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerInspectOptions) (client.ContainerInspectResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) types.ContainerJSON); ok {
-		r0 = returnFunc(ctx, containerID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerInspectOptions) client.ContainerInspectResult); ok {
+		r0 = returnFunc(ctx, containerID, options)
 	} else {
-		r0 = ret.Get(0).(types.ContainerJSON)
+		r0 = ret.Get(0).(client.ContainerInspectResult)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, containerID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerInspectOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -176,11 +147,12 @@ type MockClient_ContainerInspect_Call struct {
 // ContainerInspect is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-func (_e *MockClient_Expecter) ContainerInspect(ctx any, containerID any) *MockClient_ContainerInspect_Call {
-	return &MockClient_ContainerInspect_Call{Call: _e.mock.On("ContainerInspect", ctx, containerID)}
+//   - options client.ContainerInspectOptions
+func (_e *MockClient_Expecter) ContainerInspect(ctx any, containerID any, options any) *MockClient_ContainerInspect_Call {
+	return &MockClient_ContainerInspect_Call{Call: _e.mock.On("ContainerInspect", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerInspect_Call) Run(run func(ctx context.Context, containerID string)) *MockClient_ContainerInspect_Call {
+func (_c *MockClient_ContainerInspect_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerInspectOptions)) *MockClient_ContainerInspect_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -190,46 +162,51 @@ func (_c *MockClient_ContainerInspect_Call) Run(run func(ctx context.Context, co
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 client.ContainerInspectOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.ContainerInspectOptions)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
 }
 
-func (_c *MockClient_ContainerInspect_Call) Return(containerJSON types.ContainerJSON, err error) *MockClient_ContainerInspect_Call {
-	_c.Call.Return(containerJSON, err)
+func (_c *MockClient_ContainerInspect_Call) Return(containerInspectResult client.ContainerInspectResult, err error) *MockClient_ContainerInspect_Call {
+	_c.Call.Return(containerInspectResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerInspect_Call) RunAndReturn(run func(ctx context.Context, containerID string) (types.ContainerJSON, error)) *MockClient_ContainerInspect_Call {
+func (_c *MockClient_ContainerInspect_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerInspectOptions) (client.ContainerInspectResult, error)) *MockClient_ContainerInspect_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerLogs provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerLogs(ctx context.Context, container1 string, options container.LogsOptions) (io.ReadCloser, error) {
-	ret := _mock.Called(ctx, container1, options)
+func (_mock *MockClient) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerLogs")
 	}
 
-	var r0 io.ReadCloser
+	var r0 client.ContainerLogsResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.LogsOptions) (io.ReadCloser, error)); ok {
-		return returnFunc(ctx, container1, options)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerLogsOptions) (client.ContainerLogsResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.LogsOptions) io.ReadCloser); ok {
-		r0 = returnFunc(ctx, container1, options)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerLogsOptions) client.ContainerLogsResult); ok {
+		r0 = returnFunc(ctx, containerID, options)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(io.ReadCloser)
+			r0 = ret.Get(0).(client.ContainerLogsResult)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, container.LogsOptions) error); ok {
-		r1 = returnFunc(ctx, container1, options)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerLogsOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -243,13 +220,13 @@ type MockClient_ContainerLogs_Call struct {
 
 // ContainerLogs is a helper method to define mock.On call
 //   - ctx context.Context
-//   - container1 string
-//   - options container.LogsOptions
-func (_e *MockClient_Expecter) ContainerLogs(ctx any, container1 any, options any) *MockClient_ContainerLogs_Call {
-	return &MockClient_ContainerLogs_Call{Call: _e.mock.On("ContainerLogs", ctx, container1, options)}
+//   - containerID string
+//   - options client.ContainerLogsOptions
+func (_e *MockClient_Expecter) ContainerLogs(ctx any, containerID any, options any) *MockClient_ContainerLogs_Call {
+	return &MockClient_ContainerLogs_Call{Call: _e.mock.On("ContainerLogs", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerLogs_Call) Run(run func(ctx context.Context, container1 string, options container.LogsOptions)) *MockClient_ContainerLogs_Call {
+func (_c *MockClient_ContainerLogs_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerLogsOptions)) *MockClient_ContainerLogs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -259,9 +236,9 @@ func (_c *MockClient_ContainerLogs_Call) Run(run func(ctx context.Context, conta
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 container.LogsOptions
+		var arg2 client.ContainerLogsOptions
 		if args[2] != nil {
-			arg2 = args[2].(container.LogsOptions)
+			arg2 = args[2].(client.ContainerLogsOptions)
 		}
 		run(
 			arg0,
@@ -272,31 +249,40 @@ func (_c *MockClient_ContainerLogs_Call) Run(run func(ctx context.Context, conta
 	return _c
 }
 
-func (_c *MockClient_ContainerLogs_Call) Return(readCloser io.ReadCloser, err error) *MockClient_ContainerLogs_Call {
-	_c.Call.Return(readCloser, err)
+func (_c *MockClient_ContainerLogs_Call) Return(containerLogsResult client.ContainerLogsResult, err error) *MockClient_ContainerLogs_Call {
+	_c.Call.Return(containerLogsResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerLogs_Call) RunAndReturn(run func(ctx context.Context, container1 string, options container.LogsOptions) (io.ReadCloser, error)) *MockClient_ContainerLogs_Call {
+func (_c *MockClient_ContainerLogs_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error)) *MockClient_ContainerLogs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerRemove provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
+func (_mock *MockClient) ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
 	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerRemove")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.RemoveOptions) error); ok {
+	var r0 client.ContainerRemoveResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerRemoveOptions) client.ContainerRemoveResult); ok {
 		r0 = returnFunc(ctx, containerID, options)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(client.ContainerRemoveResult)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerRemoveOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockClient_ContainerRemove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerRemove'
@@ -307,12 +293,12 @@ type MockClient_ContainerRemove_Call struct {
 // ContainerRemove is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-//   - options container.RemoveOptions
+//   - options client.ContainerRemoveOptions
 func (_e *MockClient_Expecter) ContainerRemove(ctx any, containerID any, options any) *MockClient_ContainerRemove_Call {
 	return &MockClient_ContainerRemove_Call{Call: _e.mock.On("ContainerRemove", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerRemove_Call) Run(run func(ctx context.Context, containerID string, options container.RemoveOptions)) *MockClient_ContainerRemove_Call {
+func (_c *MockClient_ContainerRemove_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerRemoveOptions)) *MockClient_ContainerRemove_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -322,9 +308,9 @@ func (_c *MockClient_ContainerRemove_Call) Run(run func(ctx context.Context, con
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 container.RemoveOptions
+		var arg2 client.ContainerRemoveOptions
 		if args[2] != nil {
-			arg2 = args[2].(container.RemoveOptions)
+			arg2 = args[2].(client.ContainerRemoveOptions)
 		}
 		run(
 			arg0,
@@ -335,31 +321,40 @@ func (_c *MockClient_ContainerRemove_Call) Run(run func(ctx context.Context, con
 	return _c
 }
 
-func (_c *MockClient_ContainerRemove_Call) Return(err error) *MockClient_ContainerRemove_Call {
-	_c.Call.Return(err)
+func (_c *MockClient_ContainerRemove_Call) Return(containerRemoveResult client.ContainerRemoveResult, err error) *MockClient_ContainerRemove_Call {
+	_c.Call.Return(containerRemoveResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerRemove_Call) RunAndReturn(run func(ctx context.Context, containerID string, options container.RemoveOptions) error) *MockClient_ContainerRemove_Call {
+func (_c *MockClient_ContainerRemove_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)) *MockClient_ContainerRemove_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerStart provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
+func (_mock *MockClient) ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error) {
 	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerStart")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.StartOptions) error); ok {
+	var r0 client.ContainerStartResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerStartOptions) (client.ContainerStartResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerStartOptions) client.ContainerStartResult); ok {
 		r0 = returnFunc(ctx, containerID, options)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(client.ContainerStartResult)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerStartOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockClient_ContainerStart_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerStart'
@@ -370,12 +365,12 @@ type MockClient_ContainerStart_Call struct {
 // ContainerStart is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-//   - options container.StartOptions
+//   - options client.ContainerStartOptions
 func (_e *MockClient_Expecter) ContainerStart(ctx any, containerID any, options any) *MockClient_ContainerStart_Call {
 	return &MockClient_ContainerStart_Call{Call: _e.mock.On("ContainerStart", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerStart_Call) Run(run func(ctx context.Context, containerID string, options container.StartOptions)) *MockClient_ContainerStart_Call {
+func (_c *MockClient_ContainerStart_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerStartOptions)) *MockClient_ContainerStart_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -385,9 +380,9 @@ func (_c *MockClient_ContainerStart_Call) Run(run func(ctx context.Context, cont
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 container.StartOptions
+		var arg2 client.ContainerStartOptions
 		if args[2] != nil {
-			arg2 = args[2].(container.StartOptions)
+			arg2 = args[2].(client.ContainerStartOptions)
 		}
 		run(
 			arg0,
@@ -398,31 +393,40 @@ func (_c *MockClient_ContainerStart_Call) Run(run func(ctx context.Context, cont
 	return _c
 }
 
-func (_c *MockClient_ContainerStart_Call) Return(err error) *MockClient_ContainerStart_Call {
-	_c.Call.Return(err)
+func (_c *MockClient_ContainerStart_Call) Return(containerStartResult client.ContainerStartResult, err error) *MockClient_ContainerStart_Call {
+	_c.Call.Return(containerStartResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerStart_Call) RunAndReturn(run func(ctx context.Context, containerID string, options container.StartOptions) error) *MockClient_ContainerStart_Call {
+func (_c *MockClient_ContainerStart_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error)) *MockClient_ContainerStart_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerStop provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+func (_mock *MockClient) ContainerStop(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error) {
 	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerStop")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.StopOptions) error); ok {
+	var r0 client.ContainerStopResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerStopOptions) (client.ContainerStopResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerStopOptions) client.ContainerStopResult); ok {
 		r0 = returnFunc(ctx, containerID, options)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(client.ContainerStopResult)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerStopOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockClient_ContainerStop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerStop'
@@ -433,12 +437,12 @@ type MockClient_ContainerStop_Call struct {
 // ContainerStop is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-//   - options container.StopOptions
+//   - options client.ContainerStopOptions
 func (_e *MockClient_Expecter) ContainerStop(ctx any, containerID any, options any) *MockClient_ContainerStop_Call {
 	return &MockClient_ContainerStop_Call{Call: _e.mock.On("ContainerStop", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerStop_Call) Run(run func(ctx context.Context, containerID string, options container.StopOptions)) *MockClient_ContainerStop_Call {
+func (_c *MockClient_ContainerStop_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerStopOptions)) *MockClient_ContainerStop_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -448,9 +452,9 @@ func (_c *MockClient_ContainerStop_Call) Run(run func(ctx context.Context, conta
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 container.StopOptions
+		var arg2 client.ContainerStopOptions
 		if args[2] != nil {
-			arg2 = args[2].(container.StopOptions)
+			arg2 = args[2].(client.ContainerStopOptions)
 		}
 		run(
 			arg0,
@@ -461,44 +465,31 @@ func (_c *MockClient_ContainerStop_Call) Run(run func(ctx context.Context, conta
 	return _c
 }
 
-func (_c *MockClient_ContainerStop_Call) Return(err error) *MockClient_ContainerStop_Call {
-	_c.Call.Return(err)
+func (_c *MockClient_ContainerStop_Call) Return(containerStopResult client.ContainerStopResult, err error) *MockClient_ContainerStop_Call {
+	_c.Call.Return(containerStopResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerStop_Call) RunAndReturn(run func(ctx context.Context, containerID string, options container.StopOptions) error) *MockClient_ContainerStop_Call {
+func (_c *MockClient_ContainerStop_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error)) *MockClient_ContainerStop_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ContainerWait provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
-	ret := _mock.Called(ctx, containerID, condition)
+func (_mock *MockClient) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
+	ret := _mock.Called(ctx, containerID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ContainerWait")
 	}
 
-	var r0 <-chan container.WaitResponse
-	var r1 <-chan error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.WaitCondition) (<-chan container.WaitResponse, <-chan error)); ok {
-		return returnFunc(ctx, containerID, condition)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, container.WaitCondition) <-chan container.WaitResponse); ok {
-		r0 = returnFunc(ctx, containerID, condition)
+	var r0 client.ContainerWaitResult
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerWaitOptions) client.ContainerWaitResult); ok {
+		r0 = returnFunc(ctx, containerID, options)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan container.WaitResponse)
-		}
+		r0 = ret.Get(0).(client.ContainerWaitResult)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, container.WaitCondition) <-chan error); ok {
-		r1 = returnFunc(ctx, containerID, condition)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(<-chan error)
-		}
-	}
-	return r0, r1
+	return r0
 }
 
 // MockClient_ContainerWait_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerWait'
@@ -509,12 +500,12 @@ type MockClient_ContainerWait_Call struct {
 // ContainerWait is a helper method to define mock.On call
 //   - ctx context.Context
 //   - containerID string
-//   - condition container.WaitCondition
-func (_e *MockClient_Expecter) ContainerWait(ctx any, containerID any, condition any) *MockClient_ContainerWait_Call {
-	return &MockClient_ContainerWait_Call{Call: _e.mock.On("ContainerWait", ctx, containerID, condition)}
+//   - options client.ContainerWaitOptions
+func (_e *MockClient_Expecter) ContainerWait(ctx any, containerID any, options any) *MockClient_ContainerWait_Call {
+	return &MockClient_ContainerWait_Call{Call: _e.mock.On("ContainerWait", ctx, containerID, options)}
 }
 
-func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, containerID string, condition container.WaitCondition)) *MockClient_ContainerWait_Call {
+func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerWaitOptions)) *MockClient_ContainerWait_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -524,9 +515,9 @@ func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, conta
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 container.WaitCondition
+		var arg2 client.ContainerWaitOptions
 		if args[2] != nil {
-			arg2 = args[2].(container.WaitCondition)
+			arg2 = args[2].(client.ContainerWaitOptions)
 		}
 		run(
 			arg0,
@@ -537,37 +528,37 @@ func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, conta
 	return _c
 }
 
-func (_c *MockClient_ContainerWait_Call) Return(waitResponseCh <-chan container.WaitResponse, errCh <-chan error) *MockClient_ContainerWait_Call {
-	_c.Call.Return(waitResponseCh, errCh)
+func (_c *MockClient_ContainerWait_Call) Return(containerWaitResult client.ContainerWaitResult) *MockClient_ContainerWait_Call {
+	_c.Call.Return(containerWaitResult)
 	return _c
 }
 
-func (_c *MockClient_ContainerWait_Call) RunAndReturn(run func(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)) *MockClient_ContainerWait_Call {
+func (_c *MockClient_ContainerWait_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult) *MockClient_ContainerWait_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ImagePull provides a mock function for the type MockClient
-func (_mock *MockClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
+func (_mock *MockClient) ImagePull(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error) {
 	ret := _mock.Called(ctx, refStr, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ImagePull")
 	}
 
-	var r0 io.ReadCloser
+	var r0 client.ImagePullResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, image.PullOptions) (io.ReadCloser, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ImagePullOptions) (client.ImagePullResponse, error)); ok {
 		return returnFunc(ctx, refStr, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, image.PullOptions) io.ReadCloser); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ImagePullOptions) client.ImagePullResponse); ok {
 		r0 = returnFunc(ctx, refStr, options)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(io.ReadCloser)
+			r0 = ret.Get(0).(client.ImagePullResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, image.PullOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ImagePullOptions) error); ok {
 		r1 = returnFunc(ctx, refStr, options)
 	} else {
 		r1 = ret.Error(1)
@@ -583,12 +574,12 @@ type MockClient_ImagePull_Call struct {
 // ImagePull is a helper method to define mock.On call
 //   - ctx context.Context
 //   - refStr string
-//   - options image.PullOptions
+//   - options client.ImagePullOptions
 func (_e *MockClient_Expecter) ImagePull(ctx any, refStr any, options any) *MockClient_ImagePull_Call {
 	return &MockClient_ImagePull_Call{Call: _e.mock.On("ImagePull", ctx, refStr, options)}
 }
 
-func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr string, options image.PullOptions)) *MockClient_ImagePull_Call {
+func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr string, options client.ImagePullOptions)) *MockClient_ImagePull_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -598,9 +589,9 @@ func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr st
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 image.PullOptions
+		var arg2 client.ImagePullOptions
 		if args[2] != nil {
-			arg2 = args[2].(image.PullOptions)
+			arg2 = args[2].(client.ImagePullOptions)
 		}
 		run(
 			arg0,
@@ -611,35 +602,35 @@ func (_c *MockClient_ImagePull_Call) Run(run func(ctx context.Context, refStr st
 	return _c
 }
 
-func (_c *MockClient_ImagePull_Call) Return(readCloser io.ReadCloser, err error) *MockClient_ImagePull_Call {
-	_c.Call.Return(readCloser, err)
+func (_c *MockClient_ImagePull_Call) Return(imagePullResponse client.ImagePullResponse, err error) *MockClient_ImagePull_Call {
+	_c.Call.Return(imagePullResponse, err)
 	return _c
 }
 
-func (_c *MockClient_ImagePull_Call) RunAndReturn(run func(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error)) *MockClient_ImagePull_Call {
+func (_c *MockClient_ImagePull_Call) RunAndReturn(run func(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error)) *MockClient_ImagePull_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NetworkCreate provides a mock function for the type MockClient
-func (_mock *MockClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
+func (_mock *MockClient) NetworkCreate(ctx context.Context, name string, options client.NetworkCreateOptions) (client.NetworkCreateResult, error) {
 	ret := _mock.Called(ctx, name, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NetworkCreate")
 	}
 
-	var r0 network.CreateResponse
+	var r0 client.NetworkCreateResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, network.CreateOptions) (network.CreateResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.NetworkCreateOptions) (client.NetworkCreateResult, error)); ok {
 		return returnFunc(ctx, name, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, network.CreateOptions) network.CreateResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.NetworkCreateOptions) client.NetworkCreateResult); ok {
 		r0 = returnFunc(ctx, name, options)
 	} else {
-		r0 = ret.Get(0).(network.CreateResponse)
+		r0 = ret.Get(0).(client.NetworkCreateResult)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, network.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.NetworkCreateOptions) error); ok {
 		r1 = returnFunc(ctx, name, options)
 	} else {
 		r1 = ret.Error(1)
@@ -655,12 +646,12 @@ type MockClient_NetworkCreate_Call struct {
 // NetworkCreate is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - options network.CreateOptions
+//   - options client.NetworkCreateOptions
 func (_e *MockClient_Expecter) NetworkCreate(ctx any, name any, options any) *MockClient_NetworkCreate_Call {
 	return &MockClient_NetworkCreate_Call{Call: _e.mock.On("NetworkCreate", ctx, name, options)}
 }
 
-func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name string, options network.CreateOptions)) *MockClient_NetworkCreate_Call {
+func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name string, options client.NetworkCreateOptions)) *MockClient_NetworkCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -670,9 +661,9 @@ func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name 
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 network.CreateOptions
+		var arg2 client.NetworkCreateOptions
 		if args[2] != nil {
-			arg2 = args[2].(network.CreateOptions)
+			arg2 = args[2].(client.NetworkCreateOptions)
 		}
 		run(
 			arg0,
@@ -683,31 +674,40 @@ func (_c *MockClient_NetworkCreate_Call) Run(run func(ctx context.Context, name 
 	return _c
 }
 
-func (_c *MockClient_NetworkCreate_Call) Return(createResponse network.CreateResponse, err error) *MockClient_NetworkCreate_Call {
-	_c.Call.Return(createResponse, err)
+func (_c *MockClient_NetworkCreate_Call) Return(networkCreateResult client.NetworkCreateResult, err error) *MockClient_NetworkCreate_Call {
+	_c.Call.Return(networkCreateResult, err)
 	return _c
 }
 
-func (_c *MockClient_NetworkCreate_Call) RunAndReturn(run func(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error)) *MockClient_NetworkCreate_Call {
+func (_c *MockClient_NetworkCreate_Call) RunAndReturn(run func(ctx context.Context, name string, options client.NetworkCreateOptions) (client.NetworkCreateResult, error)) *MockClient_NetworkCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NetworkRemove provides a mock function for the type MockClient
-func (_mock *MockClient) NetworkRemove(ctx context.Context, networkID string) error {
-	ret := _mock.Called(ctx, networkID)
+func (_mock *MockClient) NetworkRemove(ctx context.Context, networkID string, options client.NetworkRemoveOptions) (client.NetworkRemoveResult, error) {
+	ret := _mock.Called(ctx, networkID, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NetworkRemove")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = returnFunc(ctx, networkID)
-	} else {
-		r0 = ret.Error(0)
+	var r0 client.NetworkRemoveResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.NetworkRemoveOptions) (client.NetworkRemoveResult, error)); ok {
+		return returnFunc(ctx, networkID, options)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.NetworkRemoveOptions) client.NetworkRemoveResult); ok {
+		r0 = returnFunc(ctx, networkID, options)
+	} else {
+		r0 = ret.Get(0).(client.NetworkRemoveResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.NetworkRemoveOptions) error); ok {
+		r1 = returnFunc(ctx, networkID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockClient_NetworkRemove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NetworkRemove'
@@ -718,11 +718,12 @@ type MockClient_NetworkRemove_Call struct {
 // NetworkRemove is a helper method to define mock.On call
 //   - ctx context.Context
 //   - networkID string
-func (_e *MockClient_Expecter) NetworkRemove(ctx any, networkID any) *MockClient_NetworkRemove_Call {
-	return &MockClient_NetworkRemove_Call{Call: _e.mock.On("NetworkRemove", ctx, networkID)}
+//   - options client.NetworkRemoveOptions
+func (_e *MockClient_Expecter) NetworkRemove(ctx any, networkID any, options any) *MockClient_NetworkRemove_Call {
+	return &MockClient_NetworkRemove_Call{Call: _e.mock.On("NetworkRemove", ctx, networkID, options)}
 }
 
-func (_c *MockClient_NetworkRemove_Call) Run(run func(ctx context.Context, networkID string)) *MockClient_NetworkRemove_Call {
+func (_c *MockClient_NetworkRemove_Call) Run(run func(ctx context.Context, networkID string, options client.NetworkRemoveOptions)) *MockClient_NetworkRemove_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -732,20 +733,25 @@ func (_c *MockClient_NetworkRemove_Call) Run(run func(ctx context.Context, netwo
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 client.NetworkRemoveOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.NetworkRemoveOptions)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
 }
 
-func (_c *MockClient_NetworkRemove_Call) Return(err error) *MockClient_NetworkRemove_Call {
-	_c.Call.Return(err)
+func (_c *MockClient_NetworkRemove_Call) Return(networkRemoveResult client.NetworkRemoveResult, err error) *MockClient_NetworkRemove_Call {
+	_c.Call.Return(networkRemoveResult, err)
 	return _c
 }
 
-func (_c *MockClient_NetworkRemove_Call) RunAndReturn(run func(ctx context.Context, networkID string) error) *MockClient_NetworkRemove_Call {
+func (_c *MockClient_NetworkRemove_Call) RunAndReturn(run func(ctx context.Context, networkID string, options client.NetworkRemoveOptions) (client.NetworkRemoveResult, error)) *MockClient_NetworkRemove_Call {
 	_c.Call.Return(run)
 	return _c
 }

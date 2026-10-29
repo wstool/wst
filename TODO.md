@@ -7,7 +7,6 @@ in the future.
 
 ### Build and CI
 
-- migrate from github.com/docker/docker (frozen at v28.5.x +incompatible) to github.com/moby/moby/client
 - integration tests
 
 ### Docs

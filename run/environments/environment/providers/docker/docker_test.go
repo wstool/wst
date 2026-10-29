@@ -2,12 +2,10 @@ package docker
 
 import (
 	"context"
-	apitypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/go-connections/nat"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/jsonstream"
+	"github.com/moby/moby/api/types/network"
+	moby "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -27,6 +25,8 @@ import (
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/containers"
 	"io"
+	"iter"
+	"net/netip"
 	"os"
 	"testing"
 	"time"
@@ -366,11 +366,11 @@ func Test_dockerEnvironment_Destroy(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerStop", ctx, "cid1", container.StopOptions{}).Return(nil)
-				cli.On("ContainerRemove", ctx, "cid1", container.RemoveOptions{}).Return(nil)
-				cli.On("ContainerStop", ctx, "cid2", container.StopOptions{}).Return(nil)
-				cli.On("ContainerRemove", ctx, "cid2", container.RemoveOptions{}).Return(nil)
-				cli.On("NetworkRemove", ctx, "net1").Return(nil)
+				cli.On("ContainerStop", ctx, "cid1", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, nil)
+				cli.On("ContainerRemove", ctx, "cid1", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, nil)
+				cli.On("ContainerStop", ctx, "cid2", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, nil)
+				cli.On("ContainerRemove", ctx, "cid2", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, nil)
+				cli.On("NetworkRemove", ctx, "net1", moby.NetworkRemoveOptions{}).Return(moby.NetworkRemoveResult{}, nil)
 			},
 		},
 		{
@@ -415,11 +415,11 @@ func Test_dockerEnvironment_Destroy(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerStop", ctx, "cid1", container.StopOptions{}).Return(nil)
-				cli.On("ContainerRemove", ctx, "cid1", container.RemoveOptions{}).Return(nil)
-				cli.On("ContainerStop", ctx, "cid2", container.StopOptions{}).Return(nil)
-				cli.On("ContainerRemove", ctx, "cid2", container.RemoveOptions{}).Return(nil)
-				cli.On("NetworkRemove", ctx, "net1").Return(errors.New("failed net"))
+				cli.On("ContainerStop", ctx, "cid1", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, nil)
+				cli.On("ContainerRemove", ctx, "cid1", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, nil)
+				cli.On("ContainerStop", ctx, "cid2", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, nil)
+				cli.On("ContainerRemove", ctx, "cid2", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, nil)
+				cli.On("NetworkRemove", ctx, "net1", moby.NetworkRemoveOptions{}).Return(moby.NetworkRemoveResult{}, errors.New("failed net"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "Destroying docker environment failed",
@@ -444,10 +444,10 @@ func Test_dockerEnvironment_Destroy(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerStop", ctx, "cid1", container.StopOptions{}).Return(errors.New("cs1"))
-				cli.On("ContainerStop", ctx, "cid2", container.StopOptions{}).Return(nil)
-				cli.On("ContainerRemove", ctx, "cid2", container.RemoveOptions{}).Return(errors.New("cr2"))
-				cli.On("NetworkRemove", ctx, "net1").Return(errors.New("failed net"))
+				cli.On("ContainerStop", ctx, "cid1", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, errors.New("cs1"))
+				cli.On("ContainerStop", ctx, "cid2", moby.ContainerStopOptions{}).Return(moby.ContainerStopResult{}, nil)
+				cli.On("ContainerRemove", ctx, "cid2", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, errors.New("cr2"))
+				cli.On("NetworkRemove", ctx, "net1", moby.NetworkRemoveOptions{}).Return(moby.NetworkRemoveResult{}, errors.New("failed net"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "Destroying docker environment failed",
@@ -502,6 +502,14 @@ func (b *pullReaderCloser) Read(p []byte) (n int, err error) {
 		return n, nil
 	}
 	return 0, io.EOF
+}
+
+func (b *pullReaderCloser) JSONMessages(ctx context.Context) iter.Seq2[jsonstream.Message, error] {
+	return func(yield func(jsonstream.Message, error) bool) {}
+}
+
+func (b *pullReaderCloser) Wait(ctx context.Context) error {
+	return nil
 }
 
 func (b *pullReaderCloser) Close() error {
@@ -570,34 +578,34 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
+				cli.On("NetworkCreate", ctx, "wt", moby.NetworkCreateOptions{
 					Driver: "bridge",
-				}).Return(network.CreateResponse{}, nil)
+				}).Return(moby.NetworkCreateResult{}, nil)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-						PortBindings: nat.PortMap{
-							"1234/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "8080"}},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+							PortBindings: network.PortMap{
+								network.MustParsePort("1234/tcp"): []network.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: "8080"}},
+							},
 						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -606,13 +614,12 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: true,
 						},
 					},
@@ -695,53 +702,65 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					mock.MatchedBy(func(hostConfig *container.HostConfig) bool {
-						expectedBinds := []string{
-							"/tmp/wst/main.conf:/etc/main.conf",
-							"/tmp/wst/test.php:/www/test.php",
-							"/tmp/wst/ssl/server.crt:/etc/ssl/server.crt",
-							"/tmp/wst/ssl/server.key:/etc/ssl/server.key",
-							"/tmp/wst/ssl/ca.crt:/etc/ssl/ca.crt",
-							"/tmp/wst/ssl/client.key:/etc/ssl/client.key",
+					mock.MatchedBy(func(options moby.ContainerCreateOptions) bool {
+						expectedConfig := &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						}
-
-						// Check if all expected binds are present
-						if len(hostConfig.Binds) != len(expectedBinds) {
+						if !assert.ObjectsAreEqual(expectedConfig, options.Config) {
 							return false
 						}
-
-						// Convert to maps for easy comparison
-						actualBindsMap := make(map[string]bool)
-						for _, bind := range hostConfig.Binds {
-							actualBindsMap[bind] = true
+						expectedNetworkingConfig := &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
 						}
+						if !assert.ObjectsAreEqual(expectedNetworkingConfig, options.NetworkingConfig) {
+							return false
+						}
+						if options.Name != "wt-svc" {
+							return false
+						}
+						hostConfig := options.HostConfig
+						if hostConfig == nil {
+							return false
+						}
+						{
+							expectedBinds := []string{
+								"/tmp/wst/main.conf:/etc/main.conf",
+								"/tmp/wst/test.php:/www/test.php",
+								"/tmp/wst/ssl/server.crt:/etc/ssl/server.crt",
+								"/tmp/wst/ssl/server.key:/etc/ssl/server.key",
+								"/tmp/wst/ssl/ca.crt:/etc/ssl/ca.crt",
+								"/tmp/wst/ssl/client.key:/etc/ssl/client.key",
+							}
 
-						for _, expectedBind := range expectedBinds {
-							if !actualBindsMap[expectedBind] {
+							// Check if all expected binds are present
+							if len(hostConfig.Binds) != len(expectedBinds) {
 								return false
 							}
-						}
 
-						return true
+							// Convert to maps for easy comparison
+							actualBindsMap := make(map[string]bool)
+							for _, bind := range hostConfig.Binds {
+								actualBindsMap[bind] = true
+							}
+
+							for _, expectedBind := range expectedBinds {
+								if !actualBindsMap[expectedBind] {
+									return false
+								}
+							}
+
+							return true
+						}
 					}),
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
-						},
-					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -750,13 +769,12 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: true,
 						},
 					},
@@ -818,27 +836,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{}, // Empty binds since all certificate paths are empty
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{}, // Empty binds since all certificate paths are empty
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -847,13 +865,12 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: true,
 						},
 					},
@@ -911,27 +928,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -940,20 +957,19 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: false,
 						},
 					},
 				}, nil).Once()
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: true,
 						},
 					},
@@ -1063,27 +1079,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -1092,18 +1108,17 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: false,
 						},
 					},
 				}, nil).Once()
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{}, errors.New("ci2"))
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{}, errors.New("ci2"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed checking of container wt-svc dcid readiness: failed to inspect container: ci2",
@@ -1151,27 +1166,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -1180,21 +1195,20 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{
-					ContainerJSONBase: &apitypes.ContainerJSONBase{
-						State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{
+					Container: container.InspectResponse{
+						State: &container.State{
 							Running: false,
 						},
 					},
 				}, nil).Once()
-				cli.On("ContainerInspect", ctx, "dcid").Return(
-					apitypes.ContainerJSON{
-						ContainerJSONBase: &apitypes.ContainerJSONBase{
-							State: &apitypes.ContainerState{
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(
+					moby.ContainerInspectResult{
+						Container: container.InspectResponse{
+							State: &container.State{
 								Running: false,
 							},
 						},
@@ -1250,27 +1264,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				waitResp := container.WaitResponse{}
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
@@ -1279,11 +1293,10 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					statusCh <- waitResp
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
-				cli.On("ContainerInspect", ctx, "dcid").Return(apitypes.ContainerJSON{}, errors.New("ci2"))
+				cli.On("ContainerInspect", ctx, "dcid", moby.ContainerInspectOptions{}).Return(moby.ContainerInspectResult{}, errors.New("ci2"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed checking of container wt-svc dcid readiness: failed to inspect container: ci2",
@@ -1331,33 +1344,32 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
 				cancel()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
 			},
 			expectError:      true,
@@ -1406,27 +1418,27 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, nil)
 				statusCh := make(chan container.WaitResponse)
 				errCh := make(chan error)
 				go func() {
@@ -1434,9 +1446,8 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 					defer close(errCh)
 					errCh <- errors.New("wait err")
 				}()
-				cli.On("ContainerWait", ctx, "dcid", container.WaitConditionNotRunning).Return(
-					(<-chan container.WaitResponse)(statusCh),
-					(<-chan error)(errCh),
+				cli.On("ContainerWait", ctx, "dcid", moby.ContainerWaitOptions{Condition: container.WaitConditionNotRunning}).Return(
+					moby.ContainerWaitResult{Result: statusCh, Error: errCh},
 				)
 			},
 			expectError:      true,
@@ -1485,28 +1496,28 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(errors.New("start err"))
-				cli.On("ContainerRemove", ctx, "dcid", container.RemoveOptions{}).Return(nil)
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, errors.New("start err"))
+				cli.On("ContainerRemove", ctx, "dcid", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to start Docker container wt-svc dcid: start err",
@@ -1554,28 +1565,28 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{ID: "dcid"}, nil)
-				cli.On("ContainerStart", ctx, "dcid", container.StartOptions{}).Return(errors.New("start err"))
-				cli.On("ContainerRemove", ctx, "dcid", container.RemoveOptions{}).Return(errors.New("failed rem"))
+				).Return(moby.ContainerCreateResult{ID: "dcid"}, nil)
+				cli.On("ContainerStart", ctx, "dcid", moby.ContainerStartOptions{}).Return(moby.ContainerStartResult{}, errors.New("start err"))
+				cli.On("ContainerRemove", ctx, "dcid", moby.ContainerRemoveOptions{}).Return(moby.ContainerRemoveResult{}, errors.New("failed rem"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to start Docker container wt-svc dcid: start err",
@@ -1623,26 +1634,26 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
-				var platform *v1.Platform = nil
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 				cli.On(
 					"ContainerCreate",
 					ctx,
-					&container.Config{
-						Image: "wst:test",
-						Cmd:   []string{"php", "test.php", "run"},
-					},
-					&container.HostConfig{
-						Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
-					},
-					&network.NetworkingConfig{
-						EndpointsConfig: map[string]*network.EndpointSettings{
-							"wt": {},
+					moby.ContainerCreateOptions{
+						Config: &container.Config{
+							Image: "wst:test",
+							Cmd:   []string{"php", "test.php", "run"},
 						},
+						HostConfig: &container.HostConfig{
+							Binds: []string{"/tmp/wst/main.conf:/etc/main.conf", "/tmp/wst/test.php:/www/test.php"},
+						},
+						NetworkingConfig: &network.NetworkingConfig{
+							EndpointsConfig: map[string]*network.EndpointSettings{
+								"wt": {},
+							},
+						},
+						Name: "wt-svc",
 					},
-					platform,
-					"wt-svc",
-				).Return(container.CreateResponse{}, errors.New("create err"))
+				).Return(moby.ContainerCreateResult{}, errors.New("create err"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create Docker container for service svc: create err",
@@ -1690,7 +1701,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to bind script test_php for service svc",
@@ -1738,7 +1749,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 			) {
 				fnd.On("DryRun").Return(false)
 				pullOut := &pullReaderCloser{}
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(pullOut, nil)
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(pullOut, nil)
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to bind config main_conf for service svc",
@@ -1785,7 +1796,7 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("ImagePull", ctx, "wst:test", image.PullOptions{}).Return(nil, errors.New("pull err"))
+				cli.On("ImagePull", ctx, "wst:test", moby.ImagePullOptions{}).Return(nil, errors.New("pull err"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to pull Docker image wst:test - pull err",
@@ -1832,9 +1843,9 @@ func Test_dockerEnvironment_RunTask(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) {
 				fnd.On("DryRun").Return(false)
-				cli.On("NetworkCreate", ctx, "wt", network.CreateOptions{
+				cli.On("NetworkCreate", ctx, "wt", moby.NetworkCreateOptions{
 					Driver: "bridge",
-				}).Return(network.CreateResponse{}, errors.New("net create err"))
+				}).Return(moby.NetworkCreateResult{}, errors.New("net create err"))
 			},
 			expectError:      true,
 			expectedErrorMsg: "failed to create network wt - net create err",
@@ -1994,7 +2005,7 @@ func Test_dockerEnvironment_Output(t *testing.T) {
 					msg: "data",
 				}
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerLogs", ctx, "cid1", container.LogsOptions{
+				cli.On("ContainerLogs", ctx, "cid1", moby.ContainerLogsOptions{
 					ShowStdout: true,
 					ShowStderr: true,
 					Follow:     true,
@@ -2019,7 +2030,7 @@ func Test_dockerEnvironment_Output(t *testing.T) {
 					msg: "data",
 				}
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerLogs", ctx, "cid1", container.LogsOptions{
+				cli.On("ContainerLogs", ctx, "cid1", moby.ContainerLogsOptions{
 					ShowStdout: true,
 					ShowStderr: false,
 					Follow:     true,
@@ -2044,7 +2055,7 @@ func Test_dockerEnvironment_Output(t *testing.T) {
 					msg: "data",
 				}
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerLogs", ctx, "cid1", container.LogsOptions{
+				cli.On("ContainerLogs", ctx, "cid1", moby.ContainerLogsOptions{
 					ShowStdout: false,
 					ShowStderr: true,
 					Follow:     true,
@@ -2084,7 +2095,7 @@ func Test_dockerEnvironment_Output(t *testing.T) {
 				cli *dockerClientMocks.MockClient,
 			) io.Reader {
 				fnd.On("DryRun").Return(false)
-				cli.On("ContainerLogs", ctx, "cid1", container.LogsOptions{
+				cli.On("ContainerLogs", ctx, "cid1", moby.ContainerLogsOptions{
 					ShowStdout: false,
 					ShowStderr: true,
 					Follow:     true,

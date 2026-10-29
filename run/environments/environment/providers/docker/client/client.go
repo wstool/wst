@@ -17,38 +17,45 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	moby "github.com/moby/moby/client"
 	"github.com/wstool/wst/app"
-	"io"
 )
 
 type Client interface {
-	ContainerCreate(
-		ctx context.Context,
-		config *container.Config,
-		hostConfig *container.HostConfig,
-		networkingConfig *network.NetworkingConfig,
-		platform *ocispec.Platform,
-		containerName string,
-	) (container.CreateResponse, error)
-	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
-	ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error)
-	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
-	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
-	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
-	ContainerWait(
+	ContainerCreate(ctx context.Context, options moby.ContainerCreateOptions) (moby.ContainerCreateResult, error)
+	ContainerInspect(
 		ctx context.Context,
 		containerID string,
-		condition container.WaitCondition,
-	) (<-chan container.WaitResponse, <-chan error)
-	ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error)
-	NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error)
-	NetworkRemove(ctx context.Context, networkID string) error
+		options moby.ContainerInspectOptions,
+	) (moby.ContainerInspectResult, error)
+	ContainerLogs(
+		ctx context.Context,
+		containerID string,
+		options moby.ContainerLogsOptions,
+	) (moby.ContainerLogsResult, error)
+	ContainerRemove(
+		ctx context.Context,
+		containerID string,
+		options moby.ContainerRemoveOptions,
+	) (moby.ContainerRemoveResult, error)
+	ContainerStart(
+		ctx context.Context,
+		containerID string,
+		options moby.ContainerStartOptions,
+	) (moby.ContainerStartResult, error)
+	ContainerStop(
+		ctx context.Context,
+		containerID string,
+		options moby.ContainerStopOptions,
+	) (moby.ContainerStopResult, error)
+	ContainerWait(ctx context.Context, containerID string, options moby.ContainerWaitOptions) moby.ContainerWaitResult
+	ImagePull(ctx context.Context, refStr string, options moby.ImagePullOptions) (moby.ImagePullResponse, error)
+	NetworkCreate(ctx context.Context, name string, options moby.NetworkCreateOptions) (moby.NetworkCreateResult, error)
+	NetworkRemove(
+		ctx context.Context,
+		networkID string,
+		options moby.NetworkRemoveOptions,
+	) (moby.NetworkRemoveResult, error)
 }
 
 type Maker interface {
@@ -64,7 +71,7 @@ type nativeMaker struct {
 }
 
 func (m *nativeMaker) Make() (Client, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := moby.New(moby.FromEnv, moby.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
@@ -75,55 +82,55 @@ func (m *nativeMaker) Make() (Client, error) {
 }
 
 type dockerClient struct {
-	cli *client.Client
+	cli *moby.Client
 }
 
 // ContainerCreate creates a new Docker container based on the specified options.
-func (d dockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error) {
-	return d.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, containerName)
+func (d dockerClient) ContainerCreate(ctx context.Context, options moby.ContainerCreateOptions) (moby.ContainerCreateResult, error) {
+	return d.cli.ContainerCreate(ctx, options)
 }
 
 // ContainerInspect returns detailed information about the specified container.
-func (d dockerClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
-	return d.cli.ContainerInspect(ctx, containerID)
+func (d dockerClient) ContainerInspect(ctx context.Context, containerID string, options moby.ContainerInspectOptions) (moby.ContainerInspectResult, error) {
+	return d.cli.ContainerInspect(ctx, containerID, options)
 }
 
 // ContainerLogs fetches the logs of a container.
-func (d dockerClient) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
-	return d.cli.ContainerLogs(ctx, container, options)
+func (d dockerClient) ContainerLogs(ctx context.Context, containerID string, options moby.ContainerLogsOptions) (moby.ContainerLogsResult, error) {
+	return d.cli.ContainerLogs(ctx, containerID, options)
 }
 
 // ContainerRemove removes a container specified by the container ID.
-func (d dockerClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
+func (d dockerClient) ContainerRemove(ctx context.Context, containerID string, options moby.ContainerRemoveOptions) (moby.ContainerRemoveResult, error) {
 	return d.cli.ContainerRemove(ctx, containerID, options)
 }
 
 // ContainerStart starts a container specified by the container ID.
-func (d dockerClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
+func (d dockerClient) ContainerStart(ctx context.Context, containerID string, options moby.ContainerStartOptions) (moby.ContainerStartResult, error) {
 	return d.cli.ContainerStart(ctx, containerID, options)
 }
 
 // ContainerStop stops a running container with a specified timeout.
-func (d dockerClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+func (d dockerClient) ContainerStop(ctx context.Context, containerID string, options moby.ContainerStopOptions) (moby.ContainerStopResult, error) {
 	return d.cli.ContainerStop(ctx, containerID, options)
 }
 
 // ContainerWait waits for a container to reach a certain condition.
-func (d dockerClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
-	return d.cli.ContainerWait(ctx, containerID, condition)
+func (d dockerClient) ContainerWait(ctx context.Context, containerID string, options moby.ContainerWaitOptions) moby.ContainerWaitResult {
+	return d.cli.ContainerWait(ctx, containerID, options)
 }
 
 // ImagePull pulls an image from a docker registry.
-func (d dockerClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
+func (d dockerClient) ImagePull(ctx context.Context, refStr string, options moby.ImagePullOptions) (moby.ImagePullResponse, error) {
 	return d.cli.ImagePull(ctx, refStr, options)
 }
 
 // NetworkCreate creates a new network with the specified options.
-func (d dockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
+func (d dockerClient) NetworkCreate(ctx context.Context, name string, options moby.NetworkCreateOptions) (moby.NetworkCreateResult, error) {
 	return d.cli.NetworkCreate(ctx, name, options)
 }
 
 // NetworkRemove removes a network by a network ID.
-func (d dockerClient) NetworkRemove(ctx context.Context, networkID string) error {
-	return d.cli.NetworkRemove(ctx, networkID)
+func (d dockerClient) NetworkRemove(ctx context.Context, networkID string, options moby.NetworkRemoveOptions) (moby.NetworkRemoveResult, error) {
+	return d.cli.NetworkRemove(ctx, networkID, options)
 }
