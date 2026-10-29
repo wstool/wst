@@ -7,9 +7,7 @@ in the future.
 
 ### Build and CI
 
-- update Go to the latest 1.25
-- update deps
-- update and re-run mockery
+- migrate from github.com/docker/docker (frozen at v28.5.x +incompatible) to github.com/moby/moby/client
 - integration tests
 
 ### Docs
