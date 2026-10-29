@@ -1,0 +1,20 @@
+version: "0.1"
+name: WST integration
+description: Integration test project running the wst-testsrv test server through WST
+spec:
+  environments: environments.yaml
+  instances: spec/instances/*.yaml
+  sandboxes: sandboxes.yaml
+  servers: servers/*/*/server.yaml
+  workspace: workspace/
+  defaults:
+    service:
+      sandbox: local
+      server:
+        tag: default
+    timeouts:
+      action: 10000
+      actions: 60000
+    parameters:
+      # Path to the wst-testsrv binary; the integration tests overwrite it with a freshly built one.
+      testsrv_binary: wst-testsrv

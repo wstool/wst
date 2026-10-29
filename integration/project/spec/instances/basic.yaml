@@ -1,0 +1,68 @@
+title: Basic lifecycle
+
+name: basic
+
+description: |
+  Starts the test server, verifies its start output, serves a script file, echoes a POST request, checks the
+  access log and verifies a clean stop.
+
+labels: [local, basic]
+
+resources:
+  scripts:
+    index.txt: hello from script
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+    resources:
+      scripts: true
+
+actions:
+  - start
+  - expect/web/server_start
+  - request/web:
+      path: /index.txt
+  - expect/web:
+      response:
+        status: 200
+        body: hello from script
+  - expect/web/access_log:
+      path: /index.txt
+  - request/web:
+      path: /_/echo?a=1&b=2
+      encode_path: false
+      method: POST
+      headers:
+        X-Test: wst
+      body: ping
+  - expect/web:
+      response:
+        status: 200
+        body:
+          match: regexp
+          content: '"method": "POST"'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"raw_query": "a=1&b=2"'
+  - expect/web:
+      response:
+        body:
+          match: infix
+          content: '"body": "ping"'
+  - request/web:
+      path: /_/status/404
+  - expect/web:
+      response:
+        status: 404
+  - stop:
+      when: always
+  - expect/web/server_stop:
+      when: always

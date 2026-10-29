@@ -1,0 +1,38 @@
+title: Failing response expectation
+
+name: fail-response-mismatch
+
+description: |
+  Negative instance: the response body expectation does not match, so the instance must fail. The integration
+  tests use it to verify that WST actually reports failures.
+
+labels: [local, negative]
+
+resources:
+  scripts:
+    index.txt: hello from script
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+    resources:
+      scripts: true
+
+actions:
+  - start
+  - expect/web/server_start
+  - request/web:
+      path: /index.txt
+  - expect/web:
+      response:
+        status: 200
+        body: this is not what the server returns
+  - stop:
+      when: always
+  - expect/web/server_stop:
+      when: always

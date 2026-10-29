@@ -1,0 +1,26 @@
+title: Failing server start
+
+name: fail-start
+
+description: |
+  Negative instance: the server is configured to fail on start, so the start output expectation must fail.
+
+labels: [local, negative]
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+          parameters:
+            fail_start: "true"
+
+actions:
+  - start
+  - expect/web/server_start:
+      timeout: 3000
+  - stop:
+      when: always

@@ -1,0 +1,13 @@
+common:
+  ports:
+    start: 8700
+    end: 8799
+
+local: {}
+
+container: {}
+
+docker: {}
+
+kubernetes:
+  namespace: default

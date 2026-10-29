@@ -1,0 +1,6 @@
+common:
+  dirs:
+    conf: /etc
+    cert: /etc
+    script: /var/www
+    run: /run

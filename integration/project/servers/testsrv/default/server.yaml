@@ -1,0 +1,61 @@
+name: testsrv
+
+port: 8080
+
+configs:
+  testsrv_conf:
+    file: config/testsrv.json
+    parameters:
+      access_log: stdout
+      startup_delay_ms: "0"
+      fail_start: "false"
+      ignore_sigterm: "false"
+      shutdown_timeout_ms: "5000"
+
+sandboxes:
+  common:
+    hooks:
+      start:
+        command:
+          executable: '{{ .Parameters.GetString "testsrv_binary" }}'
+          args: ['-c', '{{ .Configs.testsrv_conf }}']
+      stop:
+        signal: SIGTERM
+      reload:
+        signal: SIGUSR2
+  container:
+    image: 'wst-testsrv:local'
+
+actions:
+  expect:
+    server_start:
+      output:
+        order: fixed
+        match: regexp
+        messages:
+          - '\[.*\] NOTICE: starting, pid {{ .Service.Pid }}'
+          - '\[.*\] NOTICE: ready to handle connections'
+    server_stop:
+      output:
+        order: fixed
+        match: regexp
+        messages:
+          - '\[.*\] NOTICE: terminating \(terminated\) \.\.\.'
+          - '\[.*\] NOTICE: exiting, bye-bye!'
+    server_reload:
+      output:
+        order: fixed
+        match: regexp
+        messages:
+          - '\[.*\] NOTICE: reloading \(user defined signal 2\)'
+          - '\[.*\] NOTICE: reload done'
+    access_log:
+      parameters:
+        method: GET
+        path: /
+        status: 200
+      output:
+        type: stdout
+        match: exact
+        messages:
+          - '"{{ .Parameters.GetString "method" }} {{ .Parameters.GetString "path" }}" {{ .Parameters.GetString "status" }}'

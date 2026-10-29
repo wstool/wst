@@ -1,0 +1,9 @@
+{
+  "listen": "{{ .Service.LocalAddress }}",
+  "script_dir": "{{ .Service.ScriptDir }}",
+  "access_log": "{{ .Parameters.GetString "access_log" }}",
+  "startup_delay_ms": "{{ .Parameters.GetString "startup_delay_ms" }}",
+  "fail_start": "{{ .Parameters.GetString "fail_start" }}",
+  "ignore_sigterm": "{{ .Parameters.GetString "ignore_sigterm" }}",
+  "shutdown_timeout_ms": "{{ .Parameters.GetString "shutdown_timeout_ms" }}"
+}

@@ -7,7 +7,24 @@ in the future.
 
 ### Build and CI
 
-- integration tests
+- integration tests (see `integration/` - run with `go test -tags integration ./integration/...`)
+  - extend `wst-testsrv` and instances to cover more features
+    - reload action (SIGUSR2 is already logged by the server)
+    - UDS listening (`unix:` listen address is supported by the server) including the too long path case
+    - TLS with certificate resources (`tls_cert` and `tls_key` config values)
+    - request body transfer modes and chunked streaming (`/_/stream` endpoint)
+    - metrics and bench actions against `/_/stats`
+    - output limits and long running output (new endpoint that writes many lines)
+    - orphaned children (new endpoint that forks a child process)
+    - timeouts using `/_/delay` and `ignore_sigterm`
+    - multi service instances using a reverse proxy mode in `wst-testsrv`
+  - run the same instances in Docker
+    - build `wst-testsrv:local` image from scratch with the static binary in the test setup
+    - skip when Docker daemon is not available
+  - run the same instances in Kubernetes
+    - use kind in CI, load the image and point the environment to its kubeconfig
+  - add a flag or env var to keep the workspace after a failed instance for debugging
+  - consider running wst-php-fpm and wst-php-apache2handler as a manual acceptance tier (e.g. workflow_dispatch)
 
 ### Docs
 
@@ -144,6 +161,8 @@ in the future.
 
 #### Monitoring and debugging
 
+- fix misleading `Failed to run action: <nil>` log when an action returns no success without error
+  - found by the integration tests - instance.go logs the error even if only success is false
 - extend and improve debug logging
   - pattern matching does not need to repeat pattern for each match
     - or maybe put line first
