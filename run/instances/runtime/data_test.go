@@ -8,7 +8,7 @@ import (
 )
 
 func TestSyncData_StoreAndLoad(t *testing.T) {
-	data := syncData{
+	data := &syncData{
 		fnd: appMocks.NewMockFoundation(t),
 	}
 	require.NotNil(t, data, "Data instance should not be nil")
