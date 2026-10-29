@@ -115,6 +115,7 @@ func TestLocalInstances(t *testing.T) {
 	}{
 		{name: "basic"},
 		{name: "request-body-slow"},
+		{name: "request-body-incomplete"},
 		{name: "fail-response-mismatch", expectError: true},
 		{name: "fail-start", expectError: true},
 	}

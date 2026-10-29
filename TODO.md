@@ -61,9 +61,12 @@ in the future.
 ### Run
 
 #### Structure - Instances, Actions, Servers, Services
-- support stalled request body upload for testing incomplete POST handling (PHP bug #61471)
-  - `content_length` bigger than the content currently fails in the client with a body length mismatch
-  - it should instead send the content in pieces and keep the connection open until the server responds or timeout
+- support connection reuse across request actions (keep-alive)
+  - each request action creates a new client so a connection left in a bad state by an incomplete upload cannot
+    be observed by a follow up request on the same connection
+- support closing the connection after a complete body before reading the response
+  - currently `close` and `stall` require an incomplete body (chunked or `content_length` above the content)
+    because the HTTP client gives no deterministic point to act after a complete Content-Length body
 - add template support to request body
 - add typed parameters substitution for integers
   - this is to be able to, for example, parameterize status code

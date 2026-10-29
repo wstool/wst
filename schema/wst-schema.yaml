@@ -816,6 +816,27 @@ $defs:
                   uploads or server handling of length mismatches. If set to 0, the actual body length is used.
                 type: integer
                 minimum: 0
+              stall:
+                title: Stall after sending the content
+                description: |
+                  After the body content has been sent, keeps the connection open without sending any more data
+                  for this many milliseconds and then closes it. This simulates a client that stops in the middle
+                  of an upload. If the server responds during the stall (for example with 408 Request Timeout),
+                  the response is stored as the result of the request. The body must be incomplete, which means
+                  either chunked encoding (the terminating chunk is never sent) or content_length greater than
+                  the actual content length. A value of 0 disables the stall.
+                type: integer
+                minimum: 0
+              close:
+                title: Close the connection after sending the content
+                description: |
+                  Closes the connection right after the body content has been sent without completing the
+                  request, or after the stall if it is set. This simulates a client that disconnects in the
+                  middle of an upload. The same incomplete body requirement as for stall applies. The request
+                  action succeeds without a response unless the server responded before the connection was
+                  closed.
+                type: boolean
+                default: false
 
   tlsClientConfig:
     title: TLS configuration

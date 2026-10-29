@@ -401,6 +401,36 @@ func TestActionMaker_Make(t *testing.T) {
 			expectedErrorMsg: "TLS configuration is only valid for HTTPS requests",
 		},
 		{
+			name: "failure stall and close with a complete body",
+			config: &types.RequestAction{
+				Service:   "validService",
+				Timeout:   3000,
+				When:      "on_success",
+				OnFailure: "fail",
+				Id:        "new",
+				Scheme:    "http",
+				Path:      "/upload",
+				Method:    "POST",
+				Headers:   types.Headers{},
+				Body: types.RequestBody{
+					Content: "foo=bar",
+					Transfer: types.TransferConfig{
+						Encoding: "none",
+						Close:    true,
+					},
+				},
+				Protocols: []string{},
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, fnd *appMocks.MockFoundation) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			expectError:      true,
+			expectedErrorMsg: "transfer stall and close require an incomplete body",
+		},
+		{
 			name: "failure TLS config with HTTP scheme - CA cert",
 			config: &types.RequestAction{
 				Service:   "validService",
@@ -838,6 +868,128 @@ func TestAction_Execute(t *testing.T) {
 				rd.On("Store", "response/r1", ResponseData{
 					Body:    "ok",
 					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with close after incomplete content and no response",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers:    types.Headers{},
+			body: &types.RequestBody{
+				Content: "foo=bar",
+				Transfer: types.TransferConfig{
+					Encoding:      "none",
+					ContentLength: 1755,
+					Close:         true,
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					if req.Method != "POST" || req.URL.String() != reqUrl || req.ContentLength != 1755 {
+						return false
+					}
+					// Simulate the transport consuming the body: the content is followed by the abort
+					content, err := io.ReadAll(req.Body)
+					return string(content) == "foo=bar" && errors.Is(err, errUploadAborted)
+				})).Return(nil, errors.New("write error: connection closed"))
+				rd.On("Store", "response/r1", ResponseData{}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with stall and early response",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/upload",
+			encodePath: true,
+			method:     "POST",
+			headers:    types.Headers{},
+			body: &types.RequestBody{
+				Content: "0123456789",
+				Transfer: types.TransferConfig{
+					Encoding:  "chunked",
+					ChunkSize: 5,
+					Stall:     3000,
+				},
+			},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+				CACert:     "",
+			},
+			protocols: []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/upload"
+				svc.On("PublicUrl", "https", "/upload").Return(reqUrl, nil)
+				fnd.On("Sleep", mock.Anything, 3*time.Second).Return(context.Canceled).Maybe()
+				body := &bodyReader{msg: "timeout"}
+				header := http.Header{}
+				resp := &http.Response{
+					Status:     "408 Request Timeout",
+					StatusCode: 408,
+					Body:       body,
+					Header:     header,
+				}
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					// The server responds before the body is fully read
+					return req.Method == "POST" &&
+						req.URL.String() == reqUrl &&
+						len(req.TransferEncoding) > 0 &&
+						req.TransferEncoding[0] == "chunked" &&
+						req.Body != nil
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Status:     "408 Request Timeout",
+					StatusCode: 408,
+					Body:       "timeout",
+					Headers:    header,
 				}).Return(nil)
 			},
 			want: true,

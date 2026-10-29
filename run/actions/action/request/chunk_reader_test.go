@@ -284,3 +284,93 @@ func TestChunkControlledReader_SmallBuffer(t *testing.T) {
 		})
 	}
 }
+
+func TestChunkControlledReader_Abort(t *testing.T) {
+	tests := []struct {
+		name           string
+		content        string
+		chunkSize      int
+		stall          time.Duration
+		setupMocks     func(*testing.T, context.Context, *appMocks.MockFoundation)
+		expectedChunks []string
+	}{
+		{
+			name:      "abort right after the content when there is no stall",
+			content:   "foo=bar",
+			chunkSize: 0,
+			stall:     0,
+			setupMocks: func(t *testing.T, ctx context.Context, fnd *appMocks.MockFoundation) {
+				// No sleep expected
+			},
+			expectedChunks: []string{"foo=bar"},
+		},
+		{
+			name:      "abort after the stall following the last chunk",
+			content:   "0123456789",
+			chunkSize: 5,
+			stall:     200 * time.Millisecond,
+			setupMocks: func(t *testing.T, ctx context.Context, fnd *appMocks.MockFoundation) {
+				fnd.On("Sleep", ctx, 200*time.Millisecond).Return(nil).Once()
+			},
+			expectedChunks: []string{"01234", "56789"},
+		},
+		{
+			name:      "abort even if the stall is cut short by the context",
+			content:   "abc",
+			chunkSize: 0,
+			stall:     time.Second,
+			setupMocks: func(t *testing.T, ctx context.Context, fnd *appMocks.MockFoundation) {
+				fnd.On("Sleep", ctx, time.Second).Return(context.Canceled).Once()
+			},
+			expectedChunks: []string{"abc"},
+		},
+		{
+			name:      "abort immediately for an empty content",
+			content:   "",
+			chunkSize: 0,
+			stall:     0,
+			setupMocks: func(t *testing.T, ctx context.Context, fnd *appMocks.MockFoundation) {
+				// No sleep expected
+			},
+			expectedChunks: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fndMock := appMocks.NewMockFoundation(t)
+			ctx := context.Background()
+			tt.setupMocks(t, ctx, fndMock)
+
+			reader := &chunkControlledReader{
+				ctx:        ctx,
+				fnd:        fndMock,
+				data:       []byte(tt.content),
+				chunkSize:  tt.chunkSize,
+				incomplete: true,
+				stall:      tt.stall,
+			}
+			assert.False(t, reader.Aborted())
+
+			var chunks []string
+			buf := make([]byte, 1024)
+			var err error
+			for err == nil {
+				var n int
+				n, err = reader.Read(buf)
+				if n > 0 {
+					chunks = append(chunks, string(buf[:n]))
+				}
+			}
+
+			assert.ErrorIs(t, err, errUploadAborted)
+			assert.True(t, reader.Aborted())
+			assert.Equal(t, tt.expectedChunks, chunks)
+
+			// Further reads keep aborting without stalling again
+			n, err := reader.Read(buf)
+			assert.Equal(t, 0, n)
+			assert.ErrorIs(t, err, errUploadAborted)
+		})
+	}
+}

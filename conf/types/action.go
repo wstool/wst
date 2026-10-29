@@ -118,6 +118,8 @@ type TransferConfig struct {
 	ChunkSize     int    `wst:"chunk_size"`
 	ChunkDelay    int    `wst:"chunk_delay"`
 	ContentLength int    `wst:"content_length"`
+	Stall         int    `wst:"stall"`
+	Close         bool   `wst:"close"`
 }
 
 type RequestBody struct {

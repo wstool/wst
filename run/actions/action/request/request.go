@@ -88,6 +88,14 @@ func (m *ActionMaker) Make(
 	}
 
 	// Convert strings to Protocol type and validate
+	if config.Body.Transfer.Stall < 0 {
+		return nil, errors.New("transfer stall cannot be negative")
+	}
+	if (config.Body.Transfer.Stall > 0 || config.Body.Transfer.Close) && !isIncompleteBody(&config.Body) {
+		return nil, errors.New("transfer stall and close require an incomplete body: " +
+			"either chunked encoding or content_length greater than the content length")
+	}
+
 	validatedProtocols := make([]Protocol, 0, len(protocols))
 	for _, protoStr := range protocols {
 		proto := Protocol(protoStr)
@@ -196,9 +204,15 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	// Create a request body reader
+	// The body reader gets its own context so a stalled upload can be stopped once the response is received
+	bodyCtx, cancelBody := context.WithCancel(ctx)
+	defer cancelBody()
+
 	var bodyReader io.Reader
-	if a.body != nil && a.body.Content != "" {
-		bodyReader = a.createBodyReader(ctx)
+	var controlledReader *chunkControlledReader
+	if a.hasBody() {
+		bodyReader = a.createBodyReader(bodyCtx)
+		controlledReader, _ = bodyReader.(*chunkControlledReader)
 	}
 
 	// Create the HTTP request
@@ -222,7 +236,7 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	// Handle transfer configuration
-	if a.body != nil && a.body.Content != "" {
+	if a.hasBody() {
 		a.applyTransferConfig(req)
 	}
 
@@ -231,7 +245,19 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	// Send the request
 	client := a.fnd.HttpClient(tr)
 	resp, err := client.Do(req)
+	// Stop a possibly still stalled upload now that the request is done
+	cancelBody()
 	if err != nil {
+		if controlledReader != nil && controlledReader.Aborted() {
+			// The connection was closed by the client as requested by the transfer configuration before the
+			// server responded, so the request is successful but there is no response to store.
+			a.fnd.Logger().Infof("Request body upload aborted by client as configured, no response received")
+			key := fmt.Sprintf("response/%s", a.id)
+			if err := runData.Store(key, ResponseData{}); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -261,6 +287,26 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	return true, nil
 }
 
+// isIncompleteBody reports whether the body is never completed on the wire, which is the case for chunked
+// encoding (the terminating chunk is not sent) or a declared content length greater than the actual content.
+func isIncompleteBody(body *types.RequestBody) bool {
+	return body.Transfer.Encoding == "chunked" || body.Transfer.ContentLength > len(body.Content)
+}
+
+// isAbortedUpload reports whether the upload should be aborted after the content has been sent.
+func (a *Action) isAbortedUpload() bool {
+	return a.body != nil && (a.body.Transfer.Stall > 0 || a.body.Transfer.Close)
+}
+
+// hasBody reports whether the request has a body. An aborted upload has a body even with empty content as the
+// declared content length or chunked encoding announces one.
+func (a *Action) hasBody() bool {
+	if a.body == nil {
+		return false
+	}
+	return a.body.Content != "" || a.isAbortedUpload()
+}
+
 // createBodyReader creates an io.Reader for the request body based on transfer configuration
 func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 	content := []byte(a.body.Content)
@@ -268,8 +314,9 @@ func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 	// If chunk size or delay is specified, use a custom reader regardless of the encoding. For chunked encoding
 	// each read becomes a chunk on the wire. For non-chunked transfers the HTTP client flushes the headers first
 	// (the reader is not a known in-memory reader) and then copies each read straight to the connection, so
-	// the body is sent in delayed pieces with a fixed Content-Length.
-	if a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0 {
+	// the body is sent in delayed pieces with a fixed Content-Length. The custom reader is also needed for
+	// aborted uploads (stall or close) because it never completes the body.
+	if a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0 || a.isAbortedUpload() {
 		return &chunkControlledReader{
 			ctx:        ctx,
 			fnd:        a.fnd,
@@ -277,6 +324,8 @@ func (a *Action) createBodyReader(ctx context.Context) io.Reader {
 			chunkSize:  a.body.Transfer.ChunkSize,
 			chunkDelay: time.Duration(a.body.Transfer.ChunkDelay) * time.Millisecond,
 			offset:     0,
+			incomplete: a.isAbortedUpload(),
+			stall:      time.Duration(a.body.Transfer.Stall) * time.Millisecond,
 		}
 	}
 
@@ -292,6 +341,10 @@ func (a *Action) applyTransferConfig(req *http.Request) {
 	if a.body.Transfer.ChunkSize > 0 || a.body.Transfer.ChunkDelay > 0 {
 		a.fnd.Logger().Debugf("Using %s encoding with chunk size %d and chunk delay %d ms",
 			a.body.Transfer.Encoding, a.body.Transfer.ChunkSize, a.body.Transfer.ChunkDelay)
+	}
+	if a.isAbortedUpload() {
+		a.fnd.Logger().Debugf("Aborting upload after sending the content with stall %d ms and close %t",
+			a.body.Transfer.Stall, a.body.Transfer.Close)
 	}
 
 	// Override Content-Length if specified (allows mismatches for testing unfinished uploads)

@@ -1,0 +1,98 @@
+title: Incomplete request body upload
+
+name: request-body-incomplete
+
+description: |
+  Simulates clients that do not finish their upload. The upload endpoint of the test server times out when no
+  body data arrives for a while and fails when the connection is closed. The instance covers a stalled
+  Content-Length upload that receives the early 408 response, a closed Content-Length upload, and the same two
+  cases with chunked encoding.
+
+labels: [local, request, body]
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+
+actions:
+  - start
+  - expect/web/server_start
+  # Content-Length says 1755 bytes but only 7 are sent, then the client stalls. The server times out after
+  # 500 ms and the 408 response is received during the stall.
+  - request/web:
+      path: /_/upload?timeout_ms=500
+      encode_path: false
+      method: POST
+      body:
+        content: foo=bar
+        transfer:
+          content_length: 1755
+          stall: 5000
+  - expect/web:
+      response:
+        status: 408
+        body: request body timeout after 7 bytes
+  - expect/web/access_log:
+      method: POST
+      path: /_/upload?timeout_ms=500
+      status: 408
+  # Content-Length says 1755 bytes but only 7 are sent and the connection is closed right away. There is no
+  # response, the server sees a body read error.
+  - request/web:
+      path: /_/upload?timeout_ms=2000
+      encode_path: false
+      method: POST
+      body:
+        content: foo=bar
+        transfer:
+          content_length: 1755
+          close: true
+  - expect/web/access_log:
+      method: POST
+      path: /_/upload?timeout_ms=2000
+      status: 400
+  # Chunked upload that sends two chunks and then stalls without the terminating chunk.
+  - request/web:
+      path: /_/upload?timeout_ms=500&chunked=stall
+      encode_path: false
+      method: POST
+      body:
+        content: '0123456789'
+        transfer:
+          encoding: chunked
+          chunk_size: 5
+          stall: 5000
+  - expect/web:
+      response:
+        status: 408
+        body: request body timeout after 10 bytes
+  # Chunked upload that closes the connection without the terminating chunk.
+  - request/web:
+      path: /_/upload?timeout_ms=2000&chunked=close
+      encode_path: false
+      method: POST
+      body:
+        content: '0123456789'
+        transfer:
+          encoding: chunked
+          close: true
+  - expect/web/access_log:
+      method: POST
+      path: /_/upload?timeout_ms=2000&chunked=close
+      status: 400
+  # The server is still healthy afterwards.
+  - request/web:
+      path: /_/ping
+  - expect/web:
+      response:
+        status: 200
+        body: pong
+  - stop:
+      when: always
+  - expect/web/server_stop:
+      when: always

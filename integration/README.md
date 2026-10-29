@@ -23,5 +23,7 @@ go run ./cmd/wst-testsrv -c config.json
 ```
 
 where the configuration is a JSON file with the keys documented in `cmd/wst-testsrv/main.go`. Special endpoints are
-available under the `/_/` prefix (`ping`, `echo`, `status/<code>`, `delay`, `stream`, `stats`, `exit`); all other
-paths are served from the configured script directory.
+available under the `/_/` prefix (`ping`, `echo`, `status/<code>`, `delay`, `stream`, `upload`, `stats`, `exit`);
+all other paths are served from the configured script directory. The `echo` endpoint reports how the request body
+arrived (`body_chunks`, `body_read_ms`) and the `upload` endpoint behaves like a server with a request body timeout
+(`timeout_ms`), responding with 408 when the body stalls and 400 when the client disconnects.

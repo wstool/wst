@@ -266,6 +266,11 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
+// Unwrap exposes the underlying ResponseWriter so http.ResponseController can reach its optional interfaces.
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
 func (r *statusRecorder) Flush() {
 	if f, ok := r.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
@@ -279,6 +284,7 @@ func (s *server) handler() http.Handler {
 	mux.HandleFunc("/_/status/", s.handleStatus)
 	mux.HandleFunc("/_/delay", s.handleDelay)
 	mux.HandleFunc("/_/stream", s.handleStream)
+	mux.HandleFunc("/_/upload", s.handleUpload)
 	mux.HandleFunc("/_/stats", s.handleStats)
 	mux.HandleFunc("/_/exit", s.handleExit)
 	mux.HandleFunc("/", s.handleFile)
@@ -435,6 +441,78 @@ func (s *server) handleStream(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%d:%s\n", i, chunk)
 		if flusher != nil {
 			flusher.Flush()
+		}
+	}
+}
+
+// handleUpload reads the request body like a server with a body read timeout would. If no body data arrives for
+// timeout_ms milliseconds (default 1000), it responds with 408 Request Timeout without waiting for the rest of
+// the body. If the body ends with an error (for example the client closed the connection), it responds with
+// 400 Bad Request. Otherwise it responds with 200 OK and the number of bytes received.
+func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
+	timeout, err := queryInt(r, "timeout_ms", 1000)
+	if err != nil {
+		writeText(w, http.StatusBadRequest, "%v", err)
+		return
+	}
+	// By default the Go server drains the unread request body before writing the response headers, which
+	// would block on a stalled client. Full duplex allows responding while the body is still unread, like a
+	// server with a request body timeout does.
+	if err := http.NewResponseController(w).EnableFullDuplex(); err != nil {
+		errorLog("failed to enable full duplex for upload: %v", err)
+	}
+
+	type readResult struct {
+		n   int
+		err error
+	}
+	results := make(chan readResult)
+	go func() {
+		defer close(results)
+		buf := make([]byte, 64*1024)
+		for {
+			n, err := r.Body.Read(buf)
+			results <- readResult{n: n, err: err}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	received := 0
+	timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+	defer timer.Stop()
+	for {
+		select {
+		case res, ok := <-results:
+			if !ok {
+				writeText(w, http.StatusOK, "received %d bytes", received)
+				return
+			}
+			received += res.n
+			if res.err == io.EOF {
+				writeText(w, http.StatusOK, "received %d bytes", received)
+				return
+			}
+			if res.err != nil {
+				notice("upload failed after %d bytes: %v", received, res.err)
+				writeText(w, http.StatusBadRequest, "request body error after %d bytes: %v", received, res.err)
+				return
+			}
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(time.Duration(timeout) * time.Millisecond)
+		case <-timer.C:
+			notice("upload timed out after %d bytes", received)
+			writeText(w, http.StatusRequestTimeout, "request body timeout after %d bytes", received)
+			return
+		case <-r.Context().Done():
+			// The client went away (the server cancels the request context when the connection is closed).
+			// The response cannot be delivered but the status is still recorded in the access log.
+			notice("upload aborted by client after %d bytes", received)
+			writeText(w, http.StatusBadRequest, "request body aborted after %d bytes", received)
+			return
 		}
 	}
 }
