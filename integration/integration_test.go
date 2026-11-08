@@ -22,6 +22,7 @@
 //
 // The local instances always run. The container tiers are opt-in through environment variables:
 //
+//	WST_INTEGRATION_DOCKER=1          run the instances in Docker as well
 //	WST_INTEGRATION_KUBERNETES=1      run the instances in Kubernetes as well
 //	WST_INTEGRATION_KUBECONFIG=<path> kubeconfig to use (defaults to $KUBECONFIG or ~/.kube/config)
 //	WST_INTEGRATION_NAMESPACE=<ns>    Kubernetes namespace to use (defaults to "default")
@@ -103,10 +104,12 @@ func setupAndRun(m *testing.M) (int, error) {
 		return 1, fmt.Errorf("building wst-testsrv: %w", err)
 	}
 
-	if kubernetesEnabled() {
+	if dockerEnabled() || kubernetesEnabled() {
 		if err := buildContainerImage(binDir); err != nil {
 			return 1, err
 		}
+	}
+	if kubernetesEnabled() {
 		if err := loadContainerImage(); err != nil {
 			return 1, err
 		}
@@ -152,6 +155,10 @@ func loadContainerImage() error {
 		return fmt.Errorf("loading %s image with %s: %w", testsrvImage, loader, err)
 	}
 	return nil
+}
+
+func dockerEnabled() bool {
+	return os.Getenv("WST_INTEGRATION_DOCKER") != ""
 }
 
 func kubernetesEnabled() bool {
@@ -221,6 +228,17 @@ func runInstances(t *testing.T, overwrites map[string]string) {
 func TestLocalInstances(t *testing.T) {
 	runInstances(t, map[string]string{
 		"spec.defaults.parameters.testsrv_binary": testsrvBinary,
+	})
+}
+
+func TestDockerInstances(t *testing.T) {
+	if !dockerEnabled() {
+		t.Skip("set WST_INTEGRATION_DOCKER=1 to run the Docker integration tests")
+	}
+	runInstances(t, map[string]string{
+		"spec.defaults.parameters.testsrv_binary": testsrvContainerBinary,
+		"spec.defaults.service.sandbox":           "docker",
+		"spec.environments.docker.name_prefix":    "wst-integration",
 	})
 }
 

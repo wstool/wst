@@ -18,13 +18,10 @@ in the future.
     - orphaned children (new endpoint that forks a child process)
     - timeouts using `/_/delay` and `ignore_sigterm`
     - multi service instances using a reverse proxy mode in `wst-testsrv`
-  - run the same instances in Docker
-    - reuse the `wst-testsrv:local` image built by the Kubernetes tier (see `cmd/wst-testsrv/Dockerfile`)
-    - skip when Docker daemon is not available
-    - requires fixing the image pull for local only images (see Docker environment)
-  - extend the Kubernetes tier (`WST_INTEGRATION_KUBERNETES=1`)
-    - add instances covering exec and reload (signal sent with `kill` in the container) in Kubernetes
+  - extend the Docker (`WST_INTEGRATION_DOCKER=1`) and Kubernetes (`WST_INTEGRATION_KUBERNETES=1`) tiers
+    - add instances covering exec and reload (signal sent with `kill` in the Kubernetes container)
     - verify the kind based CI job once it runs in GitHub Actions
+    - consider auto-detecting the Docker daemon instead of the explicit opt-in
   - add a flag or env var to keep the workspace after a failed instance for debugging
   - consider running wst-php-fpm and wst-php-apache2handler as a manual acceptance tier (e.g. workflow_dispatch)
 
@@ -208,12 +205,11 @@ in the future.
 
 #### Docker environment
 
-- image pull fails for images that exist only locally (e.g. `wst-testsrv:local` built by the integration tests)
-  - check whether the image exists locally first and pull only if it is missing
-- container create fails if container already exist - remove the container like cli `docker container create --rm`
-- container wait does not finish even if the container is running - wait condition does not work
-- pulling of image is not awaited - waiting to fully download the image does not work
-- support exec
+- container names use the service name only so two instances with the same service name cannot run in parallel
+  - consider using the unique service name like the Kubernetes environment does
+- the stop (`ContainerStop`) in Destroy uses the default 10s timeout before SIGKILL
+  - consider making it configurable
+- image pull does not use the registry auth from the environment config
 - implement storing and handling certificates
   - this is currently done using bind so check if there is a better (more secure) way to do it for private keye
 - health check - waiting for container to be able to serve the traffic

@@ -28,6 +28,11 @@ type Client interface {
 		containerID string,
 		options moby.ContainerInspectOptions,
 	) (moby.ContainerInspectResult, error)
+	ContainerKill(
+		ctx context.Context,
+		containerID string,
+		options moby.ContainerKillOptions,
+	) (moby.ContainerKillResult, error)
 	ContainerLogs(
 		ctx context.Context,
 		containerID string,
@@ -48,7 +53,10 @@ type Client interface {
 		containerID string,
 		options moby.ContainerStopOptions,
 	) (moby.ContainerStopResult, error)
-	ContainerWait(ctx context.Context, containerID string, options moby.ContainerWaitOptions) moby.ContainerWaitResult
+	ExecCreate(ctx context.Context, containerID string, options moby.ExecCreateOptions) (moby.ExecCreateResult, error)
+	ExecAttach(ctx context.Context, execID string, options moby.ExecAttachOptions) (moby.ExecAttachResult, error)
+	ExecInspect(ctx context.Context, execID string, options moby.ExecInspectOptions) (moby.ExecInspectResult, error)
+	ImageInspect(ctx context.Context, imageID string) (moby.ImageInspectResult, error)
 	ImagePull(ctx context.Context, refStr string, options moby.ImagePullOptions) (moby.ImagePullResponse, error)
 	NetworkCreate(ctx context.Context, name string, options moby.NetworkCreateOptions) (moby.NetworkCreateResult, error)
 	NetworkRemove(
@@ -95,6 +103,11 @@ func (d dockerClient) ContainerInspect(ctx context.Context, containerID string, 
 	return d.cli.ContainerInspect(ctx, containerID, options)
 }
 
+// ContainerKill sends a signal to the main process of the container.
+func (d dockerClient) ContainerKill(ctx context.Context, containerID string, options moby.ContainerKillOptions) (moby.ContainerKillResult, error) {
+	return d.cli.ContainerKill(ctx, containerID, options)
+}
+
 // ContainerLogs fetches the logs of a container.
 func (d dockerClient) ContainerLogs(ctx context.Context, containerID string, options moby.ContainerLogsOptions) (moby.ContainerLogsResult, error) {
 	return d.cli.ContainerLogs(ctx, containerID, options)
@@ -115,9 +128,24 @@ func (d dockerClient) ContainerStop(ctx context.Context, containerID string, opt
 	return d.cli.ContainerStop(ctx, containerID, options)
 }
 
-// ContainerWait waits for a container to reach a certain condition.
-func (d dockerClient) ContainerWait(ctx context.Context, containerID string, options moby.ContainerWaitOptions) moby.ContainerWaitResult {
-	return d.cli.ContainerWait(ctx, containerID, options)
+// ExecCreate creates a new exec instance in the container.
+func (d dockerClient) ExecCreate(ctx context.Context, containerID string, options moby.ExecCreateOptions) (moby.ExecCreateResult, error) {
+	return d.cli.ExecCreate(ctx, containerID, options)
+}
+
+// ExecAttach starts the exec instance and attaches to its output streams.
+func (d dockerClient) ExecAttach(ctx context.Context, execID string, options moby.ExecAttachOptions) (moby.ExecAttachResult, error) {
+	return d.cli.ExecAttach(ctx, execID, options)
+}
+
+// ExecInspect returns the state of the exec instance including its exit code.
+func (d dockerClient) ExecInspect(ctx context.Context, execID string, options moby.ExecInspectOptions) (moby.ExecInspectResult, error) {
+	return d.cli.ExecInspect(ctx, execID, options)
+}
+
+// ImageInspect returns information about a local image.
+func (d dockerClient) ImageInspect(ctx context.Context, imageID string) (moby.ImageInspectResult, error) {
+	return d.cli.ImageInspect(ctx, imageID)
 }
 
 // ImagePull pulls an image from a docker registry.

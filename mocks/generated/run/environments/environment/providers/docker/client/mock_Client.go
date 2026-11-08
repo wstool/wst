@@ -185,6 +185,78 @@ func (_c *MockClient_ContainerInspect_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
+// ContainerKill provides a mock function for the type MockClient
+func (_mock *MockClient) ContainerKill(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error) {
+	ret := _mock.Called(ctx, containerID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContainerKill")
+	}
+
+	var r0 client.ContainerKillResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerKillOptions) (client.ContainerKillResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerKillOptions) client.ContainerKillResult); ok {
+		r0 = returnFunc(ctx, containerID, options)
+	} else {
+		r0 = ret.Get(0).(client.ContainerKillResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ContainerKillOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ContainerKill_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerKill'
+type MockClient_ContainerKill_Call struct {
+	*mock.Call
+}
+
+// ContainerKill is a helper method to define mock.On call
+//   - ctx context.Context
+//   - containerID string
+//   - options client.ContainerKillOptions
+func (_e *MockClient_Expecter) ContainerKill(ctx any, containerID any, options any) *MockClient_ContainerKill_Call {
+	return &MockClient_ContainerKill_Call{Call: _e.mock.On("ContainerKill", ctx, containerID, options)}
+}
+
+func (_c *MockClient_ContainerKill_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerKillOptions)) *MockClient_ContainerKill_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 client.ContainerKillOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.ContainerKillOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ContainerKill_Call) Return(containerKillResult client.ContainerKillResult, err error) *MockClient_ContainerKill_Call {
+	_c.Call.Return(containerKillResult, err)
+	return _c
+}
+
+func (_c *MockClient_ContainerKill_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error)) *MockClient_ContainerKill_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ContainerLogs provides a mock function for the type MockClient
 func (_mock *MockClient) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	ret := _mock.Called(ctx, containerID, options)
@@ -475,37 +547,46 @@ func (_c *MockClient_ContainerStop_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
-// ContainerWait provides a mock function for the type MockClient
-func (_mock *MockClient) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
-	ret := _mock.Called(ctx, containerID, options)
+// ExecAttach provides a mock function for the type MockClient
+func (_mock *MockClient) ExecAttach(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error) {
+	ret := _mock.Called(ctx, execID, options)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ContainerWait")
+		panic("no return value specified for ExecAttach")
 	}
 
-	var r0 client.ContainerWaitResult
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ContainerWaitOptions) client.ContainerWaitResult); ok {
-		r0 = returnFunc(ctx, containerID, options)
-	} else {
-		r0 = ret.Get(0).(client.ContainerWaitResult)
+	var r0 client.ExecAttachResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecAttachOptions) (client.ExecAttachResult, error)); ok {
+		return returnFunc(ctx, execID, options)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecAttachOptions) client.ExecAttachResult); ok {
+		r0 = returnFunc(ctx, execID, options)
+	} else {
+		r0 = ret.Get(0).(client.ExecAttachResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ExecAttachOptions) error); ok {
+		r1 = returnFunc(ctx, execID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
-// MockClient_ContainerWait_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerWait'
-type MockClient_ContainerWait_Call struct {
+// MockClient_ExecAttach_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecAttach'
+type MockClient_ExecAttach_Call struct {
 	*mock.Call
 }
 
-// ContainerWait is a helper method to define mock.On call
+// ExecAttach is a helper method to define mock.On call
 //   - ctx context.Context
-//   - containerID string
-//   - options client.ContainerWaitOptions
-func (_e *MockClient_Expecter) ContainerWait(ctx any, containerID any, options any) *MockClient_ContainerWait_Call {
-	return &MockClient_ContainerWait_Call{Call: _e.mock.On("ContainerWait", ctx, containerID, options)}
+//   - execID string
+//   - options client.ExecAttachOptions
+func (_e *MockClient_Expecter) ExecAttach(ctx any, execID any, options any) *MockClient_ExecAttach_Call {
+	return &MockClient_ExecAttach_Call{Call: _e.mock.On("ExecAttach", ctx, execID, options)}
 }
 
-func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, containerID string, options client.ContainerWaitOptions)) *MockClient_ContainerWait_Call {
+func (_c *MockClient_ExecAttach_Call) Run(run func(ctx context.Context, execID string, options client.ExecAttachOptions)) *MockClient_ExecAttach_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -515,9 +596,9 @@ func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, conta
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 client.ContainerWaitOptions
+		var arg2 client.ExecAttachOptions
 		if args[2] != nil {
-			arg2 = args[2].(client.ContainerWaitOptions)
+			arg2 = args[2].(client.ExecAttachOptions)
 		}
 		run(
 			arg0,
@@ -528,12 +609,222 @@ func (_c *MockClient_ContainerWait_Call) Run(run func(ctx context.Context, conta
 	return _c
 }
 
-func (_c *MockClient_ContainerWait_Call) Return(containerWaitResult client.ContainerWaitResult) *MockClient_ContainerWait_Call {
-	_c.Call.Return(containerWaitResult)
+func (_c *MockClient_ExecAttach_Call) Return(execAttachResult client.ExecAttachResult, err error) *MockClient_ExecAttach_Call {
+	_c.Call.Return(execAttachResult, err)
 	return _c
 }
 
-func (_c *MockClient_ContainerWait_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult) *MockClient_ContainerWait_Call {
+func (_c *MockClient_ExecAttach_Call) RunAndReturn(run func(ctx context.Context, execID string, options client.ExecAttachOptions) (client.ExecAttachResult, error)) *MockClient_ExecAttach_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ExecCreate provides a mock function for the type MockClient
+func (_mock *MockClient) ExecCreate(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error) {
+	ret := _mock.Called(ctx, containerID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecCreate")
+	}
+
+	var r0 client.ExecCreateResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecCreateOptions) (client.ExecCreateResult, error)); ok {
+		return returnFunc(ctx, containerID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecCreateOptions) client.ExecCreateResult); ok {
+		r0 = returnFunc(ctx, containerID, options)
+	} else {
+		r0 = ret.Get(0).(client.ExecCreateResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ExecCreateOptions) error); ok {
+		r1 = returnFunc(ctx, containerID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ExecCreate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecCreate'
+type MockClient_ExecCreate_Call struct {
+	*mock.Call
+}
+
+// ExecCreate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - containerID string
+//   - options client.ExecCreateOptions
+func (_e *MockClient_Expecter) ExecCreate(ctx any, containerID any, options any) *MockClient_ExecCreate_Call {
+	return &MockClient_ExecCreate_Call{Call: _e.mock.On("ExecCreate", ctx, containerID, options)}
+}
+
+func (_c *MockClient_ExecCreate_Call) Run(run func(ctx context.Context, containerID string, options client.ExecCreateOptions)) *MockClient_ExecCreate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 client.ExecCreateOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.ExecCreateOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ExecCreate_Call) Return(execCreateResult client.ExecCreateResult, err error) *MockClient_ExecCreate_Call {
+	_c.Call.Return(execCreateResult, err)
+	return _c
+}
+
+func (_c *MockClient_ExecCreate_Call) RunAndReturn(run func(ctx context.Context, containerID string, options client.ExecCreateOptions) (client.ExecCreateResult, error)) *MockClient_ExecCreate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ExecInspect provides a mock function for the type MockClient
+func (_mock *MockClient) ExecInspect(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error) {
+	ret := _mock.Called(ctx, execID, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecInspect")
+	}
+
+	var r0 client.ExecInspectResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecInspectOptions) (client.ExecInspectResult, error)); ok {
+		return returnFunc(ctx, execID, options)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.ExecInspectOptions) client.ExecInspectResult); ok {
+		r0 = returnFunc(ctx, execID, options)
+	} else {
+		r0 = ret.Get(0).(client.ExecInspectResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.ExecInspectOptions) error); ok {
+		r1 = returnFunc(ctx, execID, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ExecInspect_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecInspect'
+type MockClient_ExecInspect_Call struct {
+	*mock.Call
+}
+
+// ExecInspect is a helper method to define mock.On call
+//   - ctx context.Context
+//   - execID string
+//   - options client.ExecInspectOptions
+func (_e *MockClient_Expecter) ExecInspect(ctx any, execID any, options any) *MockClient_ExecInspect_Call {
+	return &MockClient_ExecInspect_Call{Call: _e.mock.On("ExecInspect", ctx, execID, options)}
+}
+
+func (_c *MockClient_ExecInspect_Call) Run(run func(ctx context.Context, execID string, options client.ExecInspectOptions)) *MockClient_ExecInspect_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 client.ExecInspectOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.ExecInspectOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ExecInspect_Call) Return(execInspectResult client.ExecInspectResult, err error) *MockClient_ExecInspect_Call {
+	_c.Call.Return(execInspectResult, err)
+	return _c
+}
+
+func (_c *MockClient_ExecInspect_Call) RunAndReturn(run func(ctx context.Context, execID string, options client.ExecInspectOptions) (client.ExecInspectResult, error)) *MockClient_ExecInspect_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ImageInspect provides a mock function for the type MockClient
+func (_mock *MockClient) ImageInspect(ctx context.Context, imageID string) (client.ImageInspectResult, error) {
+	ret := _mock.Called(ctx, imageID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ImageInspect")
+	}
+
+	var r0 client.ImageInspectResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (client.ImageInspectResult, error)); ok {
+		return returnFunc(ctx, imageID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) client.ImageInspectResult); ok {
+		r0 = returnFunc(ctx, imageID)
+	} else {
+		r0 = ret.Get(0).(client.ImageInspectResult)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, imageID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ImageInspect_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ImageInspect'
+type MockClient_ImageInspect_Call struct {
+	*mock.Call
+}
+
+// ImageInspect is a helper method to define mock.On call
+//   - ctx context.Context
+//   - imageID string
+func (_e *MockClient_Expecter) ImageInspect(ctx any, imageID any) *MockClient_ImageInspect_Call {
+	return &MockClient_ImageInspect_Call{Call: _e.mock.On("ImageInspect", ctx, imageID)}
+}
+
+func (_c *MockClient_ImageInspect_Call) Run(run func(ctx context.Context, imageID string)) *MockClient_ImageInspect_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ImageInspect_Call) Return(imageInspectResult client.ImageInspectResult, err error) *MockClient_ImageInspect_Call {
+	_c.Call.Return(imageInspectResult, err)
+	return _c
+}
+
+func (_c *MockClient_ImageInspect_Call) RunAndReturn(run func(ctx context.Context, imageID string) (client.ImageInspectResult, error)) *MockClient_ImageInspect_Call {
 	_c.Call.Return(run)
 	return _c
 }

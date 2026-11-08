@@ -776,15 +776,6 @@ func (e *kubernetesEnvironment) ExecTaskCommand(
 	return nil
 }
 
-// signalNames maps the supported signals to the names understood by the kill command in the container.
-var signalNames = map[os.Signal]string{
-	syscall.SIGHUP:  "HUP",
-	syscall.SIGINT:  "INT",
-	syscall.SIGQUIT: "QUIT",
-	syscall.SIGUSR1: "USR1",
-	syscall.SIGUSR2: "USR2",
-}
-
 // terminateTask stops the task by deleting its deployment. The pods are then terminated by Kubernetes which sends
 // SIGTERM to the containers. When gracePeriod is set, the pod is deleted directly with that grace period so that
 // zero can be used to kill the container immediately.
@@ -825,7 +816,7 @@ func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, ss *environm
 		return e.terminateTask(ctx, kubeTask, int64Ptr(0))
 	}
 
-	signalName, ok := signalNames[signal]
+	signalName, ok := environment.SignalName(signal)
 	if !ok {
 		return errors.Errorf("signal %v is not supported in Kubernetes environment", signal)
 	}
