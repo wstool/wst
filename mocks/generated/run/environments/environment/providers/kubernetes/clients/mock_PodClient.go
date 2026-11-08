@@ -9,6 +9,7 @@ import (
 	"io"
 
 	mock "github.com/stretchr/testify/mock"
+	"github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
 	v10 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -47,6 +48,132 @@ type MockPodClient_Expecter struct {
 
 func (_m *MockPodClient) EXPECT() *MockPodClient_Expecter {
 	return &MockPodClient_Expecter{mock: &_m.Mock}
+}
+
+// Delete provides a mock function for the type MockPodClient
+func (_mock *MockPodClient) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	ret := _mock.Called(ctx, name, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.DeleteOptions) error); ok {
+		r0 = returnFunc(ctx, name, opts)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockPodClient_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type MockPodClient_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - opts v1.DeleteOptions
+func (_e *MockPodClient_Expecter) Delete(ctx any, name any, opts any) *MockPodClient_Delete_Call {
+	return &MockPodClient_Delete_Call{Call: _e.mock.On("Delete", ctx, name, opts)}
+}
+
+func (_c *MockPodClient_Delete_Call) Run(run func(ctx context.Context, name string, opts v1.DeleteOptions)) *MockPodClient_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 v1.DeleteOptions
+		if args[2] != nil {
+			arg2 = args[2].(v1.DeleteOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPodClient_Delete_Call) Return(err error) *MockPodClient_Delete_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockPodClient_Delete_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.DeleteOptions) error) *MockPodClient_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Exec provides a mock function for the type MockPodClient
+func (_mock *MockPodClient) Exec(ctx context.Context, name string, opts *clients.ExecOptions) error {
+	ret := _mock.Called(ctx, name, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Exec")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *clients.ExecOptions) error); ok {
+		r0 = returnFunc(ctx, name, opts)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockPodClient_Exec_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exec'
+type MockPodClient_Exec_Call struct {
+	*mock.Call
+}
+
+// Exec is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - opts *clients.ExecOptions
+func (_e *MockPodClient_Expecter) Exec(ctx any, name any, opts any) *MockPodClient_Exec_Call {
+	return &MockPodClient_Exec_Call{Call: _e.mock.On("Exec", ctx, name, opts)}
+}
+
+func (_c *MockPodClient_Exec_Call) Run(run func(ctx context.Context, name string, opts *clients.ExecOptions)) *MockPodClient_Exec_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *clients.ExecOptions
+		if args[2] != nil {
+			arg2 = args[2].(*clients.ExecOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPodClient_Exec_Call) Return(err error) *MockPodClient_Exec_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockPodClient_Exec_Call) RunAndReturn(run func(ctx context.Context, name string, opts *clients.ExecOptions) error) *MockPodClient_Exec_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // List provides a mock function for the type MockPodClient
@@ -113,6 +240,86 @@ func (_c *MockPodClient_List_Call) Return(podList *v10.PodList, err error) *Mock
 }
 
 func (_c *MockPodClient_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v10.PodList, error)) *MockPodClient_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PortForward provides a mock function for the type MockPodClient
+func (_mock *MockPodClient) PortForward(ctx context.Context, name string, localPort int32, podPort int32) (io.Closer, error) {
+	ret := _mock.Called(ctx, name, localPort, podPort)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PortForward")
+	}
+
+	var r0 io.Closer
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int32, int32) (io.Closer, error)); ok {
+		return returnFunc(ctx, name, localPort, podPort)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int32, int32) io.Closer); ok {
+		r0 = returnFunc(ctx, name, localPort, podPort)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Closer)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, int32, int32) error); ok {
+		r1 = returnFunc(ctx, name, localPort, podPort)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockPodClient_PortForward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PortForward'
+type MockPodClient_PortForward_Call struct {
+	*mock.Call
+}
+
+// PortForward is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - localPort int32
+//   - podPort int32
+func (_e *MockPodClient_Expecter) PortForward(ctx any, name any, localPort any, podPort any) *MockPodClient_PortForward_Call {
+	return &MockPodClient_PortForward_Call{Call: _e.mock.On("PortForward", ctx, name, localPort, podPort)}
+}
+
+func (_c *MockPodClient_PortForward_Call) Run(run func(ctx context.Context, name string, localPort int32, podPort int32)) *MockPodClient_PortForward_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 int32
+		if args[2] != nil {
+			arg2 = args[2].(int32)
+		}
+		var arg3 int32
+		if args[3] != nil {
+			arg3 = args[3].(int32)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPodClient_PortForward_Call) Return(closer io.Closer, err error) *MockPodClient_PortForward_Call {
+	_c.Call.Return(closer, err)
+	return _c
+}
+
+func (_c *MockPodClient_PortForward_Call) RunAndReturn(run func(ctx context.Context, name string, localPort int32, podPort int32) (io.Closer, error)) *MockPodClient_PortForward_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -187,6 +394,74 @@ func (_c *MockPodClient_StreamLogs_Call) Return(readCloser io.ReadCloser, err er
 }
 
 func (_c *MockPodClient_StreamLogs_Call) RunAndReturn(run func(ctx context.Context, name string, opts *v10.PodLogOptions) (io.ReadCloser, error)) *MockPodClient_StreamLogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Watch provides a mock function for the type MockPodClient
+func (_mock *MockPodClient) Watch(ctx context.Context, opts v1.ListOptions) (clients.WatchResult, error) {
+	ret := _mock.Called(ctx, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Watch")
+	}
+
+	var r0 clients.WatchResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (clients.WatchResult, error)); ok {
+		return returnFunc(ctx, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) clients.WatchResult); ok {
+		r0 = returnFunc(ctx, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(clients.WatchResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ListOptions) error); ok {
+		r1 = returnFunc(ctx, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockPodClient_Watch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Watch'
+type MockPodClient_Watch_Call struct {
+	*mock.Call
+}
+
+// Watch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - opts v1.ListOptions
+func (_e *MockPodClient_Expecter) Watch(ctx any, opts any) *MockPodClient_Watch_Call {
+	return &MockPodClient_Watch_Call{Call: _e.mock.On("Watch", ctx, opts)}
+}
+
+func (_c *MockPodClient_Watch_Call) Run(run func(ctx context.Context, opts v1.ListOptions)) *MockPodClient_Watch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 v1.ListOptions
+		if args[1] != nil {
+			arg1 = args[1].(v1.ListOptions)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPodClient_Watch_Call) Return(watchResult clients.WatchResult, err error) *MockPodClient_Watch_Call {
+	_c.Call.Return(watchResult, err)
+	return _c
+}
+
+func (_c *MockPodClient_Watch_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (clients.WatchResult, error)) *MockPodClient_Watch_Call {
 	_c.Call.Return(run)
 	return _c
 }

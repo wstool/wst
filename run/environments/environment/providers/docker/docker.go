@@ -377,7 +377,8 @@ func (e *dockerEnvironment) Mkdir(serviceName string, path string, perm os.FileM
 }
 
 func (e *dockerEnvironment) ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string {
-	return fmt.Sprintf("127.0.0.1:%d", serverPort)
+	// The server has to listen on all interfaces so that it is reachable through the published port.
+	return fmt.Sprintf("0.0.0.0:%d", serverPort)
 }
 
 func (e *dockerEnvironment) ServiceLocalPort(servicePort, serverPort int32) int32 {

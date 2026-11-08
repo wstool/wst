@@ -19,10 +19,12 @@ in the future.
     - timeouts using `/_/delay` and `ignore_sigterm`
     - multi service instances using a reverse proxy mode in `wst-testsrv`
   - run the same instances in Docker
-    - build `wst-testsrv:local` image from scratch with the static binary in the test setup
+    - reuse the `wst-testsrv:local` image built by the Kubernetes tier (see `cmd/wst-testsrv/Dockerfile`)
     - skip when Docker daemon is not available
-  - run the same instances in Kubernetes
-    - use kind in CI, load the image and point the environment to its kubeconfig
+    - requires fixing the image pull for local only images (see Docker environment)
+  - extend the Kubernetes tier (`WST_INTEGRATION_KUBERNETES=1`)
+    - add instances covering exec and reload (signal sent with `kill` in the container) in Kubernetes
+    - verify the kind based CI job once it runs in GitHub Actions
   - add a flag or env var to keep the workspace after a failed instance for debugging
   - consider running wst-php-fpm and wst-php-apache2handler as a manual acceptance tier (e.g. workflow_dispatch)
 
@@ -166,8 +168,6 @@ in the future.
 
 #### Monitoring and debugging
 
-- fix misleading `Failed to run action: <nil>` log when an action returns no success without error
-  - found by the integration tests - instance.go logs the error even if only success is false
 - extend and improve debug logging
   - pattern matching does not need to repeat pattern for each match
     - or maybe put line first
@@ -187,16 +187,29 @@ in the future.
 
 #### Kubernetes environment
 
-- pods watching after deployment to identify that pod is running and catch CrashLoopBackOff and Error
-- support exec
+- public services are exposed through port forwarding of the pod to the environment port on 127.0.0.1
+  - add an option to use `LoadBalancer` or `NodePort` service type instead (e.g. for remote clusters or load tests
+    where the API server proxying is too slow)
+  - port forwarding is bound to a single pod so it does not survive pod rescheduling
+- stop (SIGTERM / SIGKILL) deletes the deployment so the service cannot be started again in the same instance
+  - consider scaling to zero or re-creating the deployment to support restart in Kubernetes
+- other signals are sent by executing `kill -s <SIG> 1` in the container which requires `kill` in the image
+  - consider documenting it in the sandbox docs or finding a native alternative
+- pod logs do not separate stdout and stderr so output expectations with `type: stdout` or `stderr` use the
+  combined output
+  - consider failing or warning when the type is not `any`
+- log the pod logs and events when the deployment fails to become ready to simplify debugging
 - implement storing and handling certificates
   - this should go to secrets from rendered certificates
-- allow setting default kubeconfig to ~/.kube/config (will require home dir support)
 - support and test native hook start where command is nil (set better executable - ideally configurable)
 - add health probes setup
+- consider making the termination grace period configurable (default 30s) as it defines how long a stop with
+  `ignore_sigterm` like servers takes
 
 #### Docker environment
 
+- image pull fails for images that exist only locally (e.g. `wst-testsrv:local` built by the integration tests)
+  - check whether the image exists locally first and pull only if it is missing
 - container create fails if container already exist - remove the container like cli `docker container create --rm`
 - container wait does not finish even if the container is running - wait condition does not work
 - pulling of image is not awaited - waiting to fully download the image does not work

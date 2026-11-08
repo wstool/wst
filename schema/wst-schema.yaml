@@ -164,6 +164,9 @@ $defs:
             type: string
           kubeconfig:
             title: Kubernetes config file path
+            description: |
+              Path to the kubeconfig file. If not set, the KUBECONFIG environment variable or ~/.kube/config is
+              used and when neither is available, the in-cluster configuration is tried.
             type: string
 
   environments:

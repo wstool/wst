@@ -17,6 +17,15 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+	"syscall"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/wstool/wst/app"
@@ -27,16 +36,12 @@ import (
 	"github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/resources"
-	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 type Maker interface {
@@ -117,6 +122,11 @@ func (e *kubernetesEnvironment) Init(ctx context.Context) error {
 	return nil
 }
 
+// isNotFound reports whether the delete error can be ignored because the object is already gone.
+func isNotFound(err error) bool {
+	return apierrors.IsNotFound(err)
+}
+
 func (e *kubernetesEnvironment) destroyConfigMaps(
 	ctx context.Context,
 	configMaps []*corev1.ConfigMap,
@@ -124,7 +134,7 @@ func (e *kubernetesEnvironment) destroyConfigMaps(
 ) error {
 	hasError := false
 	for _, configMap := range configMaps {
-		if err := e.configMapClient.Delete(ctx, configMap.Name, opts); err != nil {
+		if err := e.configMapClient.Delete(ctx, configMap.Name, opts); err != nil && !isNotFound(err) {
 			e.Fnd.Logger().Errorf("Failed to remove config map %s: %v", configMap.Name, err)
 			hasError = true
 		}
@@ -142,7 +152,7 @@ func (e *kubernetesEnvironment) destroyDeployment(
 ) error {
 	if deployment != nil {
 		err := e.deploymentClient.Delete(ctx, deployment.Name, opts)
-		if err != nil {
+		if err != nil && !isNotFound(err) {
 			e.Fnd.Logger().Errorf("Failed to delete deployment %s: %v", deployment.Name, err)
 			return errors.Errorf("failed to delete deployment")
 		}
@@ -157,10 +167,38 @@ func (e *kubernetesEnvironment) destroyService(
 ) error {
 	if service != nil {
 		err := e.serviceClient.Delete(ctx, service.Name, opts)
-		if err != nil {
+		if err != nil && !isNotFound(err) {
 			e.Fnd.Logger().Errorf("Failed to delete service %s: %v", service.Name, err)
 			return errors.Errorf("failed to delete service")
 		}
+	}
+	return nil
+}
+
+// closePortForward stops the public port forwarding of the task if it is active.
+func (e *kubernetesEnvironment) closePortForward(kubeTask *kubernetesTask) error {
+	if kubeTask.portForward == nil {
+		return nil
+	}
+	err := kubeTask.portForward.Close()
+	kubeTask.portForward = nil
+	if err != nil {
+		e.Fnd.Logger().Errorf("Failed to stop port forwarding for task %s: %v", kubeTask.serviceName, err)
+		return errors.Errorf("failed to stop port forwarding")
+	}
+	return nil
+}
+
+// closeOutput stops the log collection of the task if it is active.
+func (e *kubernetesEnvironment) closeOutput(kubeTask *kubernetesTask) error {
+	if kubeTask.outputCollector == nil {
+		return nil
+	}
+	err := kubeTask.outputCollector.Close()
+	kubeTask.outputCollector = nil
+	if err != nil {
+		e.Fnd.Logger().Errorf("Failed to close output for task %s: %v", kubeTask.serviceName, err)
+		return errors.Errorf("failed to close output")
 	}
 	return nil
 }
@@ -171,24 +209,29 @@ func (e *kubernetesEnvironment) destroyTask(
 	deleteOptions metav1.DeleteOptions,
 ) error {
 	hasError := false
-	var err error
+
+	// Stop the port forwarding
+	if e.closePortForward(kubeTask) != nil {
+		hasError = true
+	}
+
 	// Close output
-	if kubeTask.outputReader != nil && kubeTask.outputReader.Close() != nil {
+	if e.closeOutput(kubeTask) != nil {
 		hasError = true
 	}
 
 	// Delete the service
-	if err = e.destroyService(ctx, kubeTask.service, deleteOptions); err != nil {
+	if e.destroyService(ctx, kubeTask.service, deleteOptions) != nil {
 		hasError = true
 	}
 
 	// Delete the deployment
-	if err = e.destroyDeployment(ctx, kubeTask.deployment, deleteOptions); err != nil {
+	if e.destroyDeployment(ctx, kubeTask.deployment, deleteOptions) != nil {
 		hasError = true
 	}
 
 	// Delete config maps
-	if err = e.destroyConfigMaps(ctx, kubeTask.configMaps, deleteOptions); err != nil {
+	if e.destroyConfigMaps(ctx, kubeTask.configMaps, deleteOptions) != nil {
 		hasError = true
 	}
 
@@ -200,14 +243,12 @@ func (e *kubernetesEnvironment) destroyTask(
 }
 
 func (e *kubernetesEnvironment) Destroy(ctx context.Context) error {
-	var err error
-
 	deleteOptions := metav1.DeleteOptions{DryRun: e.dryRunOption()}
 	hasError := false
 	// Iterate over all tasks to delete services and deployments
 	for _, kubeTask := range e.tasks {
 		// Delete the tasks
-		if err = e.destroyTask(ctx, kubeTask, deleteOptions); err != nil {
+		if err := e.destroyTask(ctx, kubeTask, deleteOptions); err != nil {
 			hasError = true
 		}
 	}
@@ -222,6 +263,10 @@ func (e *kubernetesEnvironment) Destroy(ctx context.Context) error {
 }
 
 func int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func int64Ptr(i int64) *int64 {
 	return &i
 }
 
@@ -339,6 +384,126 @@ func (e *kubernetesEnvironment) processWorkspacePaths(
 	return configMaps, nil
 }
 
+// waitingFailureReasons lists the container waiting reasons that mean the container will not start.
+var waitingFailureReasons = map[string]bool{
+	"CrashLoopBackOff":           true,
+	"ErrImagePull":               true,
+	"ImagePullBackOff":           true,
+	"ErrImageNeverPull":          true,
+	"InvalidImageName":           true,
+	"CreateContainerConfigError": true,
+	"CreateContainerError":       true,
+	"RunContainerError":          true,
+}
+
+// podFailure returns an error if the pod status shows that the pod cannot become ready.
+func podFailure(pod *corev1.Pod) error {
+	if pod.Status.Phase == corev1.PodFailed {
+		return errors.Errorf("pod failed: %s %s", pod.Status.Reason, pod.Status.Message)
+	}
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.State.Waiting != nil && waitingFailureReasons[cs.State.Waiting.Reason] {
+			return errors.Errorf("container %s is waiting: %s: %s",
+				cs.Name, cs.State.Waiting.Reason, cs.State.Waiting.Message)
+		}
+		if cs.State.Terminated != nil {
+			return errors.Errorf("container %s terminated with exit code %d: %s: %s",
+				cs.Name, cs.State.Terminated.ExitCode, cs.State.Terminated.Reason, cs.State.Terminated.Message)
+		}
+		if cs.RestartCount > 0 && cs.LastTerminationState.Terminated != nil {
+			return errors.Errorf("container %s restarted after termination with exit code %d: %s: %s",
+				cs.Name, cs.LastTerminationState.Terminated.ExitCode, cs.LastTerminationState.Terminated.Reason,
+				cs.LastTerminationState.Terminated.Message)
+		}
+	}
+	return nil
+}
+
+// isPodReady reports whether the pod is running and ready.
+func isPodReady(pod *corev1.Pod) bool {
+	if pod.Status.Phase != corev1.PodRunning {
+		return false
+	}
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// waitForDeployment watches the deployment and its pods until the deployment is ready and a ready pod is known
+// or until a pod failure is detected.
+func (e *kubernetesEnvironment) waitForDeployment(ctx context.Context, kubeTask *kubernetesTask) error {
+	serviceName := kubeTask.serviceName
+	deploymentWatcher, err := e.deploymentClient.Watch(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("metadata.name=%s", serviceName),
+	})
+	if err != nil {
+		return errors.Errorf("failed to watch deployment %s: %v", serviceName, err)
+	}
+	defer deploymentWatcher.Stop()
+
+	podWatcher, err := e.podClient.Watch(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", serviceName),
+	})
+	if err != nil {
+		return errors.Errorf("failed to watch pods of deployment %s: %v", serviceName, err)
+	}
+	defer podWatcher.Stop()
+
+	// Listen for events and handle context cancellation or timeout
+	for {
+		select {
+		case event, ok := <-deploymentWatcher.ResultChan():
+			if !ok {
+				return errors.Errorf("watching deployment %s ended unexpectedly", serviceName)
+			}
+			switch event.Type {
+			case watch.Added, watch.Modified:
+				deployment, ok := event.Object.(*appsv1.Deployment)
+				if !ok {
+					return errors.Errorf("expected Deployment object, but got something else")
+				}
+				if deployment.Spec.Replicas != nil && deployment.Status.ReadyReplicas >= *deployment.Spec.Replicas {
+					kubeTask.deploymentReady = true
+				}
+			case watch.Deleted, watch.Error:
+				return errors.New("watching deployment did not result to addition and modification")
+			}
+		case event, ok := <-podWatcher.ResultChan():
+			if !ok {
+				return errors.Errorf("watching pods of deployment %s ended unexpectedly", serviceName)
+			}
+			switch event.Type {
+			case watch.Added, watch.Modified:
+				pod, ok := event.Object.(*corev1.Pod)
+				if !ok {
+					return errors.Errorf("expected Pod object, but got something else")
+				}
+				if err := podFailure(pod); err != nil {
+					return errors.Errorf("pod %s of deployment %s failed: %v", pod.Name, serviceName, err)
+				}
+				if isPodReady(pod) {
+					kubeTask.podName = pod.Name
+				}
+			case watch.Deleted:
+				pod, ok := event.Object.(*corev1.Pod)
+				if ok && pod.Name == kubeTask.podName {
+					kubeTask.podName = ""
+				}
+			case watch.Error:
+				return errors.Errorf("watching pods of deployment %s resulted in error", serviceName)
+			}
+		case <-ctx.Done():
+			return errors.Errorf("context canceled or timed out when waiting on deployment to be ready")
+		}
+		if kubeTask.deploymentReady && kubeTask.podName != "" {
+			return nil
+		}
+	}
+}
+
 func (e *kubernetesEnvironment) createDeployment(
 	ctx context.Context,
 	serviceName string,
@@ -399,7 +564,7 @@ func (e *kubernetesEnvironment) createDeployment(
 			Name: serviceName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(2), // Specify the number of replicas
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": serviceName,
@@ -443,44 +608,20 @@ func (e *kubernetesEnvironment) createDeployment(
 		deployment:  result,
 		executable:  executable,
 	}
+	// Register the task before waiting so that it is cleaned up by Destroy even if the waiting fails.
 	e.tasks[serviceName] = kubeTask
 
 	if e.Fnd.DryRun() {
 		kubeTask.deploymentReady = true
+		kubeTask.podName = serviceName
 		return kubeTask, nil
 	}
 
-	watcher, err := e.deploymentClient.Watch(ctx, metav1.ListOptions{
-		FieldSelector: fmt.Sprintf("metadata.name=%s", serviceName),
-	})
-	if err != nil {
+	if err = e.waitForDeployment(ctx, kubeTask); err != nil {
 		return nil, err
 	}
-	defer watcher.Stop()
 
-	// Listen for events and handle context cancellation or timeout
-	for {
-		select {
-		case event := <-watcher.ResultChan():
-			switch event.Type {
-			case watch.Added, watch.Modified:
-				deployment, ok := event.Object.(*appsv1.Deployment)
-				if !ok {
-					return nil, errors.Errorf("expected Deployment object, but got something else")
-				}
-				if deployment.Status.ReadyReplicas == *deployment.Spec.Replicas {
-					kubeTask.deploymentReady = true
-					return kubeTask, nil
-				}
-			case watch.Deleted:
-				fallthrough
-			case watch.Error:
-				return nil, errors.New("watching deployment did not result to addition and modification")
-			}
-		case <-ctx.Done():
-			return nil, errors.Errorf("context canceled or timed out when waiting on deployment to be ready")
-		}
-	}
+	return kubeTask, nil
 }
 
 func (e *kubernetesEnvironment) createService(
@@ -489,18 +630,12 @@ func (e *kubernetesEnvironment) createService(
 	serviceName string,
 	ss *environment.ServiceSettings,
 ) error {
-	var kubeServiceType corev1.ServiceType
-	if ss.Public {
-		kubeServiceType = corev1.ServiceTypeLoadBalancer
-	} else {
-		kubeServiceType = corev1.ServiceTypeClusterIP
-	}
 	kubeServiceSpec := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 		},
 		Spec: corev1.ServiceSpec{
-			Type: kubeServiceType,
+			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Port:       ss.ServerPort,
@@ -520,48 +655,55 @@ func (e *kubernetesEnvironment) createService(
 	}
 
 	kubeTask.service = kubeService
+	kubeTask.servicePrivateUrl = fmt.Sprintf("://%s:%d", serviceName, ss.ServerPort)
 
+	return nil
+}
+
+// startOutput opens the pod log stream and collects it for the whole life of the task. The stream is not bound
+// to the action context because the output is read by later actions.
+func (e *kubernetesEnvironment) startOutput(ctx context.Context, kubeTask *kubernetesTask) error {
 	if e.Fnd.DryRun() {
-		if ss.Public {
-			kubeTask.servicePublicUrl = "://127.0.0.1"
-		}
-		kubeTask.servicePrivateUrl = fmt.Sprintf("://%s:%d", serviceName, ss.ServerPort)
 		return nil
 	}
-
-	watcher, err := e.serviceClient.Watch(ctx, metav1.ListOptions{
-		FieldSelector: fmt.Sprintf("metadata.name=%s", serviceName),
-	})
+	logs, err := e.podClient.StreamLogs(
+		context.WithoutCancel(ctx),
+		kubeTask.podName,
+		&corev1.PodLogOptions{Follow: true},
+	)
 	if err != nil {
-		return err
+		return errors.Errorf("failed to open log stream of pod %s: %v", kubeTask.podName, err)
 	}
-	defer watcher.Stop()
+	collector := e.OutputMaker.MakeCollector(kubeTask.serviceName)
+	if err = collector.Start(logs, &app.DummyReaderCloser{}); err != nil {
+		_ = logs.Close()
+		return errors.Errorf("failed to start output collection of pod %s: %v", kubeTask.podName, err)
+	}
+	kubeTask.outputCollector = collector
+	return nil
+}
 
-	// Listen for events and handle context cancellation or timeout
-	for {
-		select {
-		case event := <-watcher.ResultChan():
-			switch event.Type {
-			case watch.Added, watch.Modified:
-				svc, ok := event.Object.(*corev1.Service)
-				if !ok {
-					return errors.Errorf("expected Service object, but got something else")
-				}
-				if ss.Public && len(svc.Status.LoadBalancer.Ingress) > 0 {
-					ip := svc.Status.LoadBalancer.Ingress[0].IP
-					kubeTask.servicePublicUrl = fmt.Sprintf("://%s", ip)
-				}
-				kubeTask.servicePrivateUrl = fmt.Sprintf("://%s:%d", serviceName, ss.ServerPort)
-				return nil
-			case watch.Deleted:
-				fallthrough
-			case watch.Error:
-				return errors.Errorf("watching service did not result to addition and modification")
-			}
-		case <-ctx.Done():
-			return errors.Errorf("context canceled or timed out when waiting on service IP")
-		}
+// forwardPublicPort makes a public service reachable on the local host by forwarding the service port reserved
+// in the environment to the pod server port.
+func (e *kubernetesEnvironment) forwardPublicPort(
+	ctx context.Context,
+	kubeTask *kubernetesTask,
+	ss *environment.ServiceSettings,
+) error {
+	if !ss.Public {
+		return nil
 	}
+	kubeTask.servicePublicUrl = fmt.Sprintf("://127.0.0.1:%d", ss.Port)
+	if e.Fnd.DryRun() {
+		return nil
+	}
+	portForward, err := e.podClient.PortForward(ctx, kubeTask.podName, ss.Port, ss.ServerPort)
+	if err != nil {
+		return errors.Errorf("failed to forward port %d to pod %s port %d: %v",
+			ss.Port, kubeTask.podName, ss.ServerPort, err)
+	}
+	kubeTask.portForward = portForward
+	return nil
 }
 
 func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.ServiceSettings, cmd *environment.Command) (task.Task, error) {
@@ -570,12 +712,40 @@ func (e *kubernetesEnvironment) RunTask(ctx context.Context, ss *environment.Ser
 	if err != nil {
 		return nil, err
 	}
-	err = e.createService(ctx, kubeTask, serviceName, ss)
-	if err != nil {
+	if err = e.createService(ctx, kubeTask, serviceName, ss); err != nil {
+		return nil, err
+	}
+	if err = e.startOutput(ctx, kubeTask); err != nil {
+		return nil, err
+	}
+	if err = e.forwardPublicPort(ctx, kubeTask, ss); err != nil {
 		return nil, err
 	}
 
 	return kubeTask, nil
+}
+
+func convertTask(target task.Task) (*kubernetesTask, error) {
+	kubeTask, ok := target.(*kubernetesTask)
+	if !ok || kubeTask == nil {
+		return nil, errors.Errorf("task in not a Kubernetes task")
+	}
+	return kubeTask, nil
+}
+
+func (e *kubernetesEnvironment) exec(
+	ctx context.Context,
+	kubeTask *kubernetesTask,
+	command []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) error {
+	return e.podClient.Exec(ctx, kubeTask.podName, &clients.ExecOptions{
+		Container: kubeTask.serviceName,
+		Command:   command,
+		Stdout:    stdout,
+		Stderr:    stderr,
+	})
 }
 
 func (e *kubernetesEnvironment) ExecTaskCommand(
@@ -585,50 +755,108 @@ func (e *kubernetesEnvironment) ExecTaskCommand(
 	cmd *environment.Command,
 	oc output.Collector,
 ) error {
-	return errors.Errorf("executing command is not currently supported in Kubernetes environment")
+	kubeTask, err := convertTask(target)
+	if err != nil {
+		return err
+	}
+	if e.Fnd.DryRun() {
+		return nil
+	}
+
+	var stdout, stderr io.Writer = io.Discard, io.Discard
+	if oc != nil && !reflect.ValueOf(oc).IsNil() {
+		stdout = oc.StdoutWriter()
+		stderr = oc.StderrWriter()
+	}
+
+	command := append([]string{cmd.Name}, cmd.Args...)
+	if err = e.exec(ctx, kubeTask, command, stdout, stderr); err != nil {
+		return errors.Errorf("failed to execute command %s in pod %s: %v", cmd.Name, kubeTask.podName, err)
+	}
+	return nil
+}
+
+// signalNames maps the supported signals to the names understood by the kill command in the container.
+var signalNames = map[os.Signal]string{
+	syscall.SIGHUP:  "HUP",
+	syscall.SIGINT:  "INT",
+	syscall.SIGQUIT: "QUIT",
+	syscall.SIGUSR1: "USR1",
+	syscall.SIGUSR2: "USR2",
+}
+
+// terminateTask stops the task by deleting its deployment. The pods are then terminated by Kubernetes which sends
+// SIGTERM to the containers. When gracePeriod is set, the pod is deleted directly with that grace period so that
+// zero can be used to kill the container immediately.
+func (e *kubernetesEnvironment) terminateTask(ctx context.Context, kubeTask *kubernetesTask, gracePeriod *int64) error {
+	if kubeTask.deployment == nil {
+		return errors.Errorf("task %s has already been terminated", kubeTask.serviceName)
+	}
+	// The pod is going away so the forwarding is stopped first.
+	if err := e.closePortForward(kubeTask); err != nil {
+		return err
+	}
+	if err := e.destroyDeployment(ctx, kubeTask.deployment, metav1.DeleteOptions{DryRun: e.dryRunOption()}); err != nil {
+		return err
+	}
+	kubeTask.deployment = nil
+	if gracePeriod != nil && kubeTask.podName != "" {
+		err := e.podClient.Delete(ctx, kubeTask.podName, metav1.DeleteOptions{
+			DryRun:             e.dryRunOption(),
+			GracePeriodSeconds: gracePeriod,
+		})
+		if err != nil && !isNotFound(err) {
+			return errors.Errorf("failed to delete pod %s: %v", kubeTask.podName, err)
+		}
+	}
+	return nil
 }
 
 func (e *kubernetesEnvironment) ExecTaskSignal(ctx context.Context, ss *environment.ServiceSettings, target task.Task, signal os.Signal) error {
-	return errors.Errorf("executing signal is not currently supported in Kubernetes environment")
+	kubeTask, err := convertTask(target)
+	if err != nil {
+		return err
+	}
+
+	switch signal {
+	case syscall.SIGTERM:
+		return e.terminateTask(ctx, kubeTask, nil)
+	case syscall.SIGKILL:
+		return e.terminateTask(ctx, kubeTask, int64Ptr(0))
+	}
+
+	signalName, ok := signalNames[signal]
+	if !ok {
+		return errors.Errorf("signal %v is not supported in Kubernetes environment", signal)
+	}
+	if e.Fnd.DryRun() {
+		return nil
+	}
+	command := []string{"kill", "-s", signalName, strconv.Itoa(kubeTask.Pid())}
+	if err = e.exec(ctx, kubeTask, command, io.Discard, io.Discard); err != nil {
+		return errors.Errorf("failed to send signal %s to pod %s: %v", signalName, kubeTask.podName, err)
+	}
+	return nil
 }
 
 func (e *kubernetesEnvironment) Output(ctx context.Context, target task.Task, outputType output.Type) (io.Reader, error) {
-	if outputType != output.Any {
-		return nil, errors.Errorf("only any output type is supported by Kubernetes environment")
-	}
-	kubeTask, ok := target.(*kubernetesTask)
-	if !ok {
-		return nil, errors.Errorf("task in not a Kubernetes task")
-	}
-	if kubeTask.outputReader != nil {
-		return kubeTask.outputReader, nil
-	}
-
-	if e.Fnd.DryRun() {
-		kubeTask.outputReader = &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}}
-		return kubeTask.outputReader, nil
-	}
-
-	pods, err := e.podClient.List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("app=%s", kubeTask.Name()),
-	})
+	kubeTask, err := convertTask(target)
 	if err != nil {
-		return nil, errors.Errorf("failed to list pods: %v", err)
+		return nil, err
 	}
-
-	readers := make([]io.ReadCloser, 0, len(pods.Items))
-	combinedReader := &CombinedReader{readers: readers}
-	for _, pod := range pods.Items {
-		podLogs, err := e.podClient.StreamLogs(ctx, pod.Name, &corev1.PodLogOptions{})
-		if err != nil {
-			combinedReader.Close()
-			return nil, errors.Errorf("error in opening stream: %v", err)
-		}
-		combinedReader.readers = append(combinedReader.readers, podLogs)
+	if e.Fnd.DryRun() {
+		return &app.DummyReaderCloser{}, nil
 	}
-
-	kubeTask.outputReader = combinedReader
-	return combinedReader, nil
+	if kubeTask.outputCollector == nil {
+		return nil, errors.Errorf("output of task %s is not available", kubeTask.serviceName)
+	}
+	if outputType != output.Any {
+		e.Fnd.Logger().Debugf(
+			"Kubernetes pod logs do not separate stdout and stderr so the combined output is used for task %s",
+			kubeTask.serviceName,
+		)
+	}
+	return kubeTask.outputCollector.AnyReader(ctx), nil
 }
 
 func (e *kubernetesEnvironment) RootPath(workspace string) string {
@@ -641,7 +869,8 @@ func (e *kubernetesEnvironment) Mkdir(serviceName string, path string, perm os.F
 }
 
 func (e *kubernetesEnvironment) ServiceLocalAddress(serviceName string, servicePort, serverPort int32) string {
-	return fmt.Sprintf("127.0.0.1:%d", serverPort)
+	// The server has to listen on all interfaces so that it is reachable through the Kubernetes service.
+	return fmt.Sprintf("0.0.0.0:%d", serverPort)
 }
 
 func (e *kubernetesEnvironment) ServiceLocalPort(servicePort, serverPort int32) int32 {
@@ -656,7 +885,9 @@ type kubernetesTask struct {
 	deployment        *appsv1.Deployment
 	service           *corev1.Service
 	configMaps        []*corev1.ConfigMap
-	outputReader      *CombinedReader
+	outputCollector   output.Collector
+	portForward       io.Closer
+	podName           string
 	executable        string
 	serviceName       string
 	servicePublicUrl  string

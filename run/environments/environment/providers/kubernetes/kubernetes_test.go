@@ -1,7 +1,30 @@
+// Copyright 2024 Jakub Zelenka and The WST Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package kubernetes
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"os"
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -11,6 +34,7 @@ import (
 	"github.com/wstool/wst/conf/types"
 	"github.com/wstool/wst/mocks/authored/external"
 	appMocks "github.com/wstool/wst/mocks/generated/app"
+	outputMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/output"
 	k8sClientMocks "github.com/wstool/wst/mocks/generated/run/environments/environment/providers/kubernetes/clients"
 	resourcesMocks "github.com/wstool/wst/mocks/generated/run/resources"
 	certificatesMocks "github.com/wstool/wst/mocks/generated/run/resources/certificates"
@@ -18,20 +42,20 @@ import (
 	"github.com/wstool/wst/run/environments/environment"
 	"github.com/wstool/wst/run/environments/environment/output"
 	"github.com/wstool/wst/run/environments/environment/providers"
+	"github.com/wstool/wst/run/environments/environment/providers/kubernetes/clients"
 	"github.com/wstool/wst/run/environments/task"
 	"github.com/wstool/wst/run/resources"
 	"github.com/wstool/wst/run/resources/certificates"
 	"github.com/wstool/wst/run/resources/scripts"
 	"github.com/wstool/wst/run/sandboxes/containers"
-	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
-	"os"
-	"strings"
-	"testing"
 )
 
 func TestCreateMaker(t *testing.T) {
@@ -510,363 +534,207 @@ func Test_kubernetesEnvironment_Init(t *testing.T) {
 	assert.Nil(t, env.Init(ctx))
 }
 
-func Test_kubernetesEnvironment_Destroy(t *testing.T) {
-	tests := []struct {
-		name       string
-		tasks      map[string]*kubernetesTask
-		setupMocks func(
-			*testing.T,
-			context.Context,
-			*appMocks.MockFoundation,
-			*k8sClientMocks.MockConfigMapClient,
-			*k8sClientMocks.MockDeploymentClient,
-			*k8sClientMocks.MockServiceClient,
-		)
-		expectError      bool
-		expectedErrorMsg string
-	}{
-		{
-			name: "successful kubernetes env destroying",
-			tasks: map[string]*kubernetesTask{
-				"t1": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c11",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c12",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d1",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s1",
-						},
-					},
-					outputReader: &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}},
-				},
-				"t2": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c21",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c22",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d2",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s2",
-						},
-					},
-				},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) {
-				fnd.On("DryRun").Return(false)
-				opts := metav1.DeleteOptions{}
-				cmc.On("Delete", ctx, "c11", opts).Return(nil)
-				cmc.On("Delete", ctx, "c12", opts).Return(nil)
-				cmc.On("Delete", ctx, "c21", opts).Return(nil)
-				cmc.On("Delete", ctx, "c22", opts).Return(nil)
-				dc.On("Delete", ctx, "d1", opts).Return(nil)
-				dc.On("Delete", ctx, "d2", opts).Return(nil)
-				sc.On("Delete", ctx, "s1", opts).Return(nil)
-				sc.On("Delete", ctx, "s2", opts).Return(nil)
-			},
-		},
-		{
-			name: "successful kubernetes env destroying",
-			tasks: map[string]*kubernetesTask{
-				"t1": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c11",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c12",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d1",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s1",
-						},
-					},
-				},
-				"t2": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c21",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c22",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d2",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s2",
-						},
-					},
-				},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) {
-				fnd.On("DryRun").Return(true)
-				opts := metav1.DeleteOptions{DryRun: []string{metav1.DryRunAll}}
-				cmc.On("Delete", ctx, "c11", opts).Return(nil)
-				cmc.On("Delete", ctx, "c12", opts).Return(nil)
-				cmc.On("Delete", ctx, "c21", opts).Return(nil)
-				cmc.On("Delete", ctx, "c22", opts).Return(nil)
-				dc.On("Delete", ctx, "d1", opts).Return(nil)
-				dc.On("Delete", ctx, "d2", opts).Return(nil)
-				sc.On("Delete", ctx, "s1", opts).Return(nil)
-				sc.On("Delete", ctx, "s2", opts).Return(nil)
-			},
-		},
-		{
-			name: "failed kubernetes env destroying with single error",
-			tasks: map[string]*kubernetesTask{
-				"t1": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c11",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c12",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d1",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s1",
-						},
-					},
-				},
-				"t2": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c21",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c22",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d2",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s2",
-						},
-					},
-				},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) {
-				fnd.On("DryRun").Return(true)
-				opts := metav1.DeleteOptions{DryRun: []string{metav1.DryRunAll}}
-				cmc.On("Delete", ctx, "c11", opts).Return(errors.New("c11 fail"))
-				cmc.On("Delete", ctx, "c12", opts).Return(nil)
-				cmc.On("Delete", ctx, "c21", opts).Return(nil)
-				cmc.On("Delete", ctx, "c22", opts).Return(nil)
-				dc.On("Delete", ctx, "d1", opts).Return(nil)
-				dc.On("Delete", ctx, "d2", opts).Return(nil)
-				sc.On("Delete", ctx, "s1", opts).Return(nil)
-				sc.On("Delete", ctx, "s2", opts).Return(nil)
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to destroy kubernetes environment",
-		},
-		{
-			name: "failed kubernetes env destroying with multiple errors",
-			tasks: map[string]*kubernetesTask{
-				"t1": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c11",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c12",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d1",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s1",
-						},
-					},
-					outputReader: &CombinedReader{readers: []io.ReadCloser{&failingReader{}}},
-				},
-				"t2": {
-					configMaps: []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c21",
-							},
-						},
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "c22",
-							},
-						},
-					},
-					deployment: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "d2",
-						},
-					},
-					service: &corev1.Service{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "s2",
-						},
-					},
-				},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) {
-				fnd.On("DryRun").Return(true)
-				opts := metav1.DeleteOptions{DryRun: []string{metav1.DryRunAll}}
-				cmc.On("Delete", ctx, "c11", opts).Return(errors.New("c11 fail"))
-				cmc.On("Delete", ctx, "c12", opts).Return(nil)
-				cmc.On("Delete", ctx, "c21", opts).Return(errors.New("c21 fail"))
-				cmc.On("Delete", ctx, "c22", opts).Return(nil)
-				dc.On("Delete", ctx, "d1", opts).Return(errors.New("d1 fail"))
-				dc.On("Delete", ctx, "d2", opts).Return(nil)
-				sc.On("Delete", ctx, "s1", opts).Return(errors.New("s1 fail"))
-				sc.On("Delete", ctx, "s2", opts).Return(nil)
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to destroy kubernetes environment",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fndMock := appMocks.NewMockFoundation(t)
-			mockLogger := external.NewMockLogger()
-			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
-			cmc := k8sClientMocks.NewMockConfigMapClient(t)
-			dc := k8sClientMocks.NewMockDeploymentClient(t)
-			sc := k8sClientMocks.NewMockServiceClient(t)
-			ctx := context.Background()
-			e := &kubernetesEnvironment{
-				ContainerEnvironment: environment.ContainerEnvironment{
-					CommonEnvironment: environment.CommonEnvironment{
-						Fnd: fndMock,
-					},
-					Registry: environment.ContainerRegistry{},
-				},
-				configMapClient:  cmc,
-				deploymentClient: dc,
-				serviceClient:    sc,
-				tasks:            tt.tasks,
-			}
-
-			tt.setupMocks(t, ctx, fndMock, cmc, dc, sc)
-
-			err := e.Destroy(ctx)
-
-			if tt.expectError {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
+// MockWatchResult is a watch result backed by a channel pre-filled with events.
+type MockWatchResult struct {
+	Events   chan watch.Event
+	stopOnce sync.Once
+	Stopped  bool
 }
 
-type MockWatchResult struct {
-	Events chan watch.Event
+func newMockWatchResult(events ...watch.Event) *MockWatchResult {
+	ch := make(chan watch.Event, len(events)+8)
+	for _, event := range events {
+		ch <- event
+	}
+	return &MockWatchResult{Events: ch}
+}
+
+func newClosedMockWatchResult() *MockWatchResult {
+	ch := make(chan watch.Event)
+	close(ch)
+	return &MockWatchResult{Events: ch}
 }
 
 func (m *MockWatchResult) Stop() {
-	close(m.Events)
+	m.stopOnce.Do(func() {
+		m.Stopped = true
+	})
 }
 
 func (m *MockWatchResult) ResultChan() <-chan watch.Event {
 	return m.Events
+}
+
+type fakeCloser struct {
+	err    error
+	closed int
+}
+
+func (c *fakeCloser) Close() error {
+	c.closed++
+	return c.err
+}
+
+type pullReaderCloser struct {
+	msg    string
+	err    string
+	closed int
+}
+
+func (b *pullReaderCloser) Read(p []byte) (n int, err error) {
+	if len(b.err) > 0 {
+		return 0, errors.New(b.err)
+	}
+	if len(b.msg) > 0 {
+		n = copy(p, b.msg)
+		b.msg = b.msg[n:]
+		return n, nil
+	}
+	return 0, io.EOF
+}
+
+func (b *pullReaderCloser) Close() error {
+	b.closed++
+	return nil
+}
+
+type invalidTask struct{}
+
+func (t *invalidTask) Pid() int {
+	return 1
+}
+
+func (t *invalidTask) Id() string {
+	return ""
+}
+
+func (t *invalidTask) Executable() string {
+	return ""
+}
+
+func (t *invalidTask) Name() string {
+	return ""
+}
+
+func (t *invalidTask) Type() providers.Type {
+	return providers.KubernetesType
+}
+
+func (t *invalidTask) PublicUrl(scheme string) string {
+	return scheme
+}
+
+func (t *invalidTask) PrivateUrl(scheme string) string {
+	return scheme
+}
+
+func notFoundError() error {
+	return apierrors.NewNotFound(schema.GroupResource{Resource: "tests"}, "name")
+}
+
+func deploymentEvent(eventType watch.EventType, name string, ready int32) watch.Event {
+	return watch.Event{
+		Type: eventType,
+		Object: &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec:       appsv1.DeploymentSpec{Replicas: int32Ptr(1)},
+			Status:     appsv1.DeploymentStatus{ReadyReplicas: ready},
+		},
+	}
+}
+
+func podEvent(eventType watch.EventType, pod *corev1.Pod) watch.Event {
+	return watch.Event{Type: eventType, Object: pod}
+}
+
+func runningPod(name string, ready bool) *corev1.Pod {
+	readyStatus := corev1.ConditionFalse
+	if ready {
+		readyStatus = corev1.ConditionTrue
+	}
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{Type: corev1.PodScheduled, Status: corev1.ConditionTrue},
+				{Type: corev1.PodReady, Status: readyStatus},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{Name: "c", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}},
+			},
+		},
+	}
+}
+
+func pendingPod(name string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{Name: "c", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}},
+			},
+		},
+	}
+}
+
+func terminatedPod(name string, exitCode int32) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "c",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: exitCode, Reason: "Error", Message: "boom"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func waitingPod(name string, reason string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "c",
+					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: reason, Message: "msg"}},
+				},
+			},
+		},
+	}
+}
+
+func restartedPod(name string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:         "c",
+					RestartCount: 1,
+					State:        corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+					LastTerminationState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: 2, Reason: "Error", Message: "died"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func failedPod(name string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Status:     corev1.PodStatus{Phase: corev1.PodFailed, Reason: "Evicted", Message: "no memory"},
+	}
 }
 
 func getTestingConfigMaps(serviceName string) []*corev1.ConfigMap {
@@ -890,13 +758,13 @@ func getTestingConfigMaps(serviceName string) []*corev1.ConfigMap {
 	}
 }
 
-func getTestingDeployment(serviceName string) *appsv1.Deployment {
+func getTestingDeployment(serviceName string, command []string, args []string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(2),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": serviceName,
@@ -913,8 +781,8 @@ func getTestingDeployment(serviceName string) *appsv1.Deployment {
 						{
 							Name:    serviceName,
 							Image:   "wst:test",
-							Command: []string{"php"},
-							Args:    []string{"test.php", "run"},
+							Command: command,
+							Args:    args,
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 1234,
@@ -960,13 +828,13 @@ func getTestingDeployment(serviceName string) *appsv1.Deployment {
 	}
 }
 
-func getTestingService(serviceType corev1.ServiceType, serviceName string, port int32) *corev1.Service {
+func getTestingService(serviceName string, port int32) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 		},
 		Spec: corev1.ServiceSpec{
-			Type: serviceType,
+			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Port:       port,
@@ -981,1744 +849,1252 @@ func getTestingService(serviceType corev1.ServiceType, serviceName string, port 
 	}
 }
 
-func Test_kubernetesEnvironment_RunTask(t *testing.T) {
+func getTestingServiceSettings(public bool) *environment.ServiceSettings {
+	return &environment.ServiceSettings{
+		Name:       "svc",
+		FullName:   "mysvc",
+		UniqueName: "i1-svc",
+		Port:       8080,
+		ServerPort: 1234,
+		Public:     public,
+		ContainerConfig: &containers.ContainerConfig{
+			ImageName:        "wst",
+			ImageTag:         "test",
+			RegistryUsername: "u1",
+			RegistryPassword: "p1",
+		},
+		EnvironmentConfigPaths: map[string]string{
+			"main_conf": "/etc/main.conf",
+		},
+		EnvironmentScriptPaths: map[string]string{
+			"test_php": "/www/test.php",
+		},
+		WorkspaceConfigPaths: map[string]string{
+			"main_conf": "/tmp/wst/main.conf",
+		},
+		WorkspaceScriptPaths: map[string]string{
+			"test_php": "/tmp/wst/my_test.php",
+		},
+	}
+}
+
+var testingFs = map[string]string{
+	"/tmp/wst/main.conf":   "main: data",
+	"/tmp/wst/my_test.php": "<?php echo 1; ?>",
+}
+
+// testEnv groups the environment under test with all its mocks.
+type testEnv struct {
+	env *kubernetesEnvironment
+	fnd *appMocks.MockFoundation
+	cmc *k8sClientMocks.MockConfigMapClient
+	dc  *k8sClientMocks.MockDeploymentClient
+	pc  *k8sClientMocks.MockPodClient
+	sc  *k8sClientMocks.MockServiceClient
+	om  *outputMocks.MockMaker
+}
+
+func newTestEnv(t *testing.T, fs map[string]string, tasks map[string]*kubernetesTask) *testEnv {
+	fndMock := appMocks.NewMockFoundation(t)
+	mockLogger := external.NewMockLogger()
+	fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
+	if fs != nil {
+		mockFs := afero.NewMemMapFs()
+		for fn, fd := range fs {
+			err := afero.WriteFile(mockFs, fn, []byte(fd), 0644)
+			assert.NoError(t, err)
+		}
+		fndMock.On("Fs").Maybe().Return(mockFs)
+	}
+	te := &testEnv{
+		fnd: fndMock,
+		cmc: k8sClientMocks.NewMockConfigMapClient(t),
+		dc:  k8sClientMocks.NewMockDeploymentClient(t),
+		pc:  k8sClientMocks.NewMockPodClient(t),
+		sc:  k8sClientMocks.NewMockServiceClient(t),
+		om:  outputMocks.NewMockMaker(t),
+	}
+	if tasks == nil {
+		tasks = make(map[string]*kubernetesTask)
+	}
+	te.env = &kubernetesEnvironment{
+		ContainerEnvironment: environment.ContainerEnvironment{
+			CommonEnvironment: environment.CommonEnvironment{
+				Fnd:         fndMock,
+				OutputMaker: te.om,
+				Ports: environment.Ports{
+					Start: 8080,
+					Used:  8080,
+					End:   8180,
+				},
+			},
+			Registry: environment.ContainerRegistry{},
+		},
+		kubeconfigPath:   "/home/kubeconfig/config.yml",
+		namespace:        "wt",
+		useUniqueName:    true,
+		deploymentClient: te.dc,
+		configMapClient:  te.cmc,
+		podClient:        te.pc,
+		serviceClient:    te.sc,
+		tasks:            tasks,
+	}
+	return te
+}
+
+func Test_kubernetesEnvironment_Destroy(t *testing.T) {
+	deleteOpts := metav1.DeleteOptions{}
+	dryRunDeleteOpts := metav1.DeleteOptions{DryRun: []string{metav1.DryRunAll}}
+	makeTask := func(id string, collector output.Collector, portForward io.Closer) *kubernetesTask {
+		return &kubernetesTask{
+			serviceName: "t" + id,
+			configMaps: []*corev1.ConfigMap{
+				{ObjectMeta: metav1.ObjectMeta{Name: "c" + id + "1"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "c" + id + "2"}},
+			},
+			deployment:      &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "d" + id}},
+			service:         &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "s" + id}},
+			outputCollector: collector,
+			portForward:     portForward,
+		}
+	}
 	tests := []struct {
-		name           string
-		namespace      string
-		kubeconfigPath string
-		useUniqueName  bool
-		envStartPort   int32
-		fs             map[string]string
-		ss             *environment.ServiceSettings
-		cmd            *environment.Command
-		setupMocks     func(
-			*testing.T,
-			context.Context,
-			context.CancelFunc,
-			*appMocks.MockFoundation,
-			*k8sClientMocks.MockConfigMapClient,
-			*k8sClientMocks.MockDeploymentClient,
-			*k8sClientMocks.MockServiceClient,
-		) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service)
-		contextSetup     func() (context.Context, context.CancelFunc)
-		getExpectedTask  func([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) *kubernetesTask
+		name             string
+		dryRun           bool
+		setupMocks       func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name:           "successful kubernetes private run",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  true,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     false,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("i1-svc")
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil).Once()
-				d := getTestingDeployment("i1-svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=i1-svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "i1-svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeClusterIP, "i1-svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
-
-				mockServiceWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event, 1),
-				}
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=i1-svc",
-				}).Return(mockServiceWatchResult, nil)
-				go func() {
-					mockServiceWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &corev1.Service{
-							ObjectMeta: metav1.ObjectMeta{Name: "mysvc"},
-							Status: corev1.ServiceStatus{
-								LoadBalancer: corev1.LoadBalancerStatus{
-									Ingress: []corev1.LoadBalancerIngress{
-										{
-											IP: "10.0.0.1",
-										},
-									},
-								},
-							},
-						},
-					}
-				}()
-
-				return cm, d, s
-			},
-			getExpectedTask: func(cm []*corev1.ConfigMap, d *appsv1.Deployment, s *corev1.Service) *kubernetesTask {
-				return &kubernetesTask{
-					configMaps:        cm,
-					deployment:        d,
-					service:           s,
-					executable:        "php",
-					serviceName:       "i1-svc",
-					servicePublicUrl:  "",
-					servicePrivateUrl: "://i1-svc:1234",
-					deploymentReady:   true,
+			name: "successful kubernetes env destroying",
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask {
+				collector := outputMocks.NewMockCollector(t)
+				collector.On("Close").Return(nil)
+				closer := &fakeCloser{}
+				te.cmc.On("Delete", ctx, "c11", deleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "c12", deleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "c21", deleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "c22", deleteOpts).Return(nil)
+				te.dc.On("Delete", ctx, "d1", deleteOpts).Return(nil)
+				te.sc.On("Delete", ctx, "s1", deleteOpts).Return(nil)
+				t2 := makeTask("2", nil, nil)
+				t2.deployment = nil
+				t2.service = nil
+				return map[string]*kubernetesTask{
+					"t1": makeTask("1", collector, closer),
+					"t2": t2,
 				}
 			},
 		},
 		{
-			name:           "successful kubernetes public run",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
-
-				mockServiceWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event, 1),
-				}
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockServiceWatchResult, nil)
-				go func() {
-					mockServiceWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &corev1.Service{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: corev1.ServiceStatus{
-								LoadBalancer: corev1.LoadBalancerStatus{
-									Ingress: []corev1.LoadBalancerIngress{
-										{
-											IP: "10.0.0.1",
-										},
-									},
-								},
-							},
-						},
-					}
-				}()
-
-				return cm, d, s
-			},
-			getExpectedTask: func(cm []*corev1.ConfigMap, d *appsv1.Deployment, s *corev1.Service) *kubernetesTask {
-				return &kubernetesTask{
-					configMaps:        cm,
-					deployment:        d,
-					service:           s,
-					executable:        "php",
-					serviceName:       "svc",
-					servicePublicUrl:  "://10.0.0.1",
-					servicePrivateUrl: "://svc:1234",
-					deploymentReady:   true,
-				}
+			name:   "successful kubernetes env destroying in dry run",
+			dryRun: true,
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask {
+				te.cmc.On("Delete", ctx, "c11", dryRunDeleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "c12", dryRunDeleteOpts).Return(nil)
+				te.dc.On("Delete", ctx, "d1", dryRunDeleteOpts).Return(nil)
+				te.sc.On("Delete", ctx, "s1", dryRunDeleteOpts).Return(nil)
+				return map[string]*kubernetesTask{"t1": makeTask("1", nil, nil)}
 			},
 		},
 		{
-			name:           "successful kubernetes public dry run",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(true)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}).Return(d, nil)
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}).Return(s, nil)
-
-				return cm, d, s
-			},
-			getExpectedTask: func(cm []*corev1.ConfigMap, d *appsv1.Deployment, s *corev1.Service) *kubernetesTask {
-				return &kubernetesTask{
-					configMaps:        cm,
-					deployment:        d,
-					service:           s,
-					executable:        "php",
-					serviceName:       "svc",
-					servicePublicUrl:  "://127.0.0.1",
-					servicePrivateUrl: "://svc:1234",
-					deploymentReady:   true,
-				}
+			name: "successful kubernetes env destroying when objects are already gone",
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask {
+				te.cmc.On("Delete", ctx, "c11", deleteOpts).Return(notFoundError())
+				te.cmc.On("Delete", ctx, "c12", deleteOpts).Return(nil)
+				te.dc.On("Delete", ctx, "d1", deleteOpts).Return(notFoundError())
+				te.sc.On("Delete", ctx, "s1", deleteOpts).Return(notFoundError())
+				return map[string]*kubernetesTask{"t1": makeTask("1", nil, nil)}
 			},
 		},
 		{
-			name:           "failed run due to service watch result object not being Service",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
-
-				mockServiceWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event, 1),
-				}
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockServiceWatchResult, nil)
-				go func() {
-					mockServiceWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-						},
-					}
-				}()
-
-				return cm, d, s
+			name: "failed kubernetes env destroying due to all delete errors",
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask {
+				collector := outputMocks.NewMockCollector(t)
+				collector.On("Close").Return(errors.New("close err"))
+				closer := &fakeCloser{err: errors.New("pf err")}
+				te.cmc.On("Delete", ctx, "c11", deleteOpts).Return(errors.New("cm err"))
+				te.cmc.On("Delete", ctx, "c12", deleteOpts).Return(nil)
+				te.dc.On("Delete", ctx, "d1", deleteOpts).Return(errors.New("dep err"))
+				te.sc.On("Delete", ctx, "s1", deleteOpts).Return(errors.New("svc err"))
+				return map[string]*kubernetesTask{"t1": makeTask("1", collector, closer)}
 			},
 			expectError:      true,
-			expectedErrorMsg: "expected Service object, but got something else",
+			expectedErrorMsg: "failed to destroy kubernetes environment",
 		},
 		{
-			name:           "failed run due to service watch resulted in deleted event",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil)
-
-				mockServiceWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event, 1),
-				}
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockServiceWatchResult, nil)
-				go func() {
-					mockServiceWatchResult.Events <- watch.Event{
-						Type: watch.Deleted,
-					}
-				}()
-
-				return cm, d, s
+			name: "failed kubernetes env destroying due to config map delete error",
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) map[string]*kubernetesTask {
+				te.cmc.On("Delete", ctx, "c11", deleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "c12", deleteOpts).Return(errors.New("cm err"))
+				te.dc.On("Delete", ctx, "d1", deleteOpts).Return(nil)
+				te.sc.On("Delete", ctx, "s1", deleteOpts).Return(nil)
+				return map[string]*kubernetesTask{"t1": makeTask("1", nil, nil)}
 			},
 			expectError:      true,
-			expectedErrorMsg: "watching service did not result to addition and modification",
-		},
-		{
-			name:           "failed run due to context being cancelled before service watch",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil).Run(func(args mock.Arguments) {
-					cancel()
-				})
-
-				mockServiceWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event, 1),
-				}
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockServiceWatchResult, nil)
-
-				return cm, d, s
-			},
-			expectError:      true,
-			expectedErrorMsg: "context canceled or timed out when waiting on service IP",
-		},
-		{
-			name:           "failed due to service create error",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(nil, errors.New("service create fail"))
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "service create fail",
-		},
-		{
-			name:           "failed due to service watch error",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &appsv1.Deployment{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-							Status: appsv1.DeploymentStatus{
-								ReadyReplicas: 3,
-							},
-							Spec: appsv1.DeploymentSpec{
-								Replicas: int32Ptr(3),
-							},
-						},
-					}
-				}()
-
-				s := getTestingService(corev1.ServiceTypeLoadBalancer, "svc", 1234)
-				sc.On("Create", ctx, s, metav1.CreateOptions{}).Return(s, nil).Run(func(args mock.Arguments) {
-					cancel()
-				})
-
-				sc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(nil, errors.New("service watch fail"))
-
-				return cm, d, s
-			},
-			expectError:      true,
-			expectedErrorMsg: "service watch fail",
-		},
-		{
-			name:           "failed due to deployment added object not being Deployment",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Added,
-						Object: &corev1.Service{
-							ObjectMeta: metav1.ObjectMeta{Name: "svc"},
-						},
-					}
-				}()
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "expected Deployment object, but got something else",
-		},
-		{
-			name:           "failed due to deployment watch deleted event",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil)
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-				go func() {
-					mockDeploymentWatchResult.Events <- watch.Event{
-						Type: watch.Deleted,
-					}
-				}()
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "watching deployment did not result to addition and modification",
-		},
-		{
-			name:           "failed due to context being done during deployment watching",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil).Run(func(args mock.Arguments) {
-					cancel()
-				})
-
-				mockDeploymentWatchResult := &MockWatchResult{
-					Events: make(chan watch.Event),
-				}
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(mockDeploymentWatchResult, nil)
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "context canceled or timed out when waiting on deployment to be ready",
-		},
-		{
-			name:           "failed due to deployment watching failures",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(d, nil).Run(func(args mock.Arguments) {
-					cancel()
-				})
-
-				dc.On("Watch", ctx, metav1.ListOptions{
-					FieldSelector: "metadata.name=svc",
-				}).Return(nil, errors.New("deployment watch fail"))
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "deployment watch fail",
-		},
-		{
-			name:           "failed due to deployment creation failures",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], nil)
-				d := getTestingDeployment("svc")
-				dc.On("Create", ctx, d, metav1.CreateOptions{}).Return(nil, errors.New("dc fail"))
-				cmc.On("Delete", ctx, "svc-configs-1", metav1.DeleteOptions{}).Return(nil)
-				cmc.On("Delete", ctx, "svc-scripts-1", metav1.DeleteOptions{}).Return(nil)
-
-				return cm, d, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "dc fail",
-		},
-		{
-			name:           "failed due to second config map creation failures",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := getTestingConfigMaps("svc")
-				cmc.On("Create", ctx, cm[0], metav1.CreateOptions{}).Return(cm[0], nil)
-				cmc.On("Create", ctx, cm[1], metav1.CreateOptions{}).Return(cm[1], errors.New("cm1 fail"))
-				cmc.On("Delete", ctx, "svc-configs-1", metav1.DeleteOptions{}).Return(nil)
-
-				return cm, nil, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to create configMap svc-scripts-1: cm1 fail",
-		},
-		{
-			name:           "failed due to first config map creation failures",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/main.conf":   "main: data",
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       strings.Repeat("test012345", 26),
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					strings.Repeat("test012345", 26): "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					strings.Repeat("test012345", 26): "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				cm := &corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345tes",
-					},
-					Data: map[string]string{
-						"main.conf": "main: data",
-					},
-				}
-				cmc.On("Create", ctx, cm, metav1.CreateOptions{}).Return(cm, errors.New("cm0 fail"))
-				return nil, nil, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to create configMap test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345test012345tes: cm0 fail",
-		},
-		{
-			name:           "failed due to not found first conf",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			fs: map[string]string{
-				"/tmp/wst/my_test.php": "<?php echo 1; ?>",
-			},
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				return nil, nil, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to read file at /tmp/wst/main.conf: open /tmp/wst/main.conf: file does not exist",
-		},
-		{
-			name:           "failed due to env and workspace maps mismatch",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  false,
-			envStartPort:   8080,
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   "mysvc",
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				ContainerConfig: &containers.ContainerConfig{
-					ImageName:        "wst",
-					ImageTag:         "test",
-					RegistryUsername: "u1",
-					RegistryPassword: "p1",
-				},
-				EnvironmentConfigPaths: map[string]string{
-					"my_main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				fnd.On("DryRun").Return(false)
-				return nil, nil, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "environment path not found for main_conf",
-		},
-		{
-			name:           "failed due to missing container config",
-			namespace:      "wt",
-			kubeconfigPath: "/home/kubeconfig/config.yml",
-			useUniqueName:  true,
-			envStartPort:   8080,
-			ss: &environment.ServiceSettings{
-				Name:       "svc",
-				FullName:   strings.Repeat("a", 260),
-				UniqueName: "i1-svc",
-				Port:       8080,
-				ServerPort: 1234,
-				Public:     true,
-				EnvironmentConfigPaths: map[string]string{
-					"my_main_conf": "/etc/main.conf",
-				},
-				EnvironmentScriptPaths: map[string]string{
-					"test_php": "/www/test.php",
-				},
-				WorkspaceConfigPaths: map[string]string{
-					"main_conf": "/tmp/wst/main.conf",
-				},
-				WorkspaceScriptPaths: map[string]string{
-					"test_php": "/tmp/wst/my_test.php",
-				},
-			},
-			cmd: &environment.Command{
-				Name: "php",
-				Args: []string{"test.php", "run"},
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				cancel context.CancelFunc,
-				fnd *appMocks.MockFoundation,
-				cmc *k8sClientMocks.MockConfigMapClient,
-				dc *k8sClientMocks.MockDeploymentClient,
-				sc *k8sClientMocks.MockServiceClient,
-			) ([]*corev1.ConfigMap, *appsv1.Deployment, *corev1.Service) {
-				return nil, nil, nil
-			},
-			expectError:      true,
-			expectedErrorMsg: "container config is not set",
+			expectedErrorMsg: "failed to destroy kubernetes environment",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fndMock := appMocks.NewMockFoundation(t)
-			mockLogger := external.NewMockLogger()
-			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
-			if tt.fs != nil {
-				mockFs := afero.NewMemMapFs()
-				for fn, fd := range tt.fs {
-					err := afero.WriteFile(mockFs, fn, []byte(fd), 0644)
-					assert.NoError(t, err)
-				}
-				fndMock.On("Fs").Return(mockFs)
-			}
-			cmc := k8sClientMocks.NewMockConfigMapClient(t)
-			dc := k8sClientMocks.NewMockDeploymentClient(t)
-			sc := k8sClientMocks.NewMockServiceClient(t)
-			var ctx context.Context
-			var cancel context.CancelFunc
-			if tt.contextSetup == nil {
-				ctx, cancel = context.WithCancel(context.Background())
-			} else {
-				ctx, cancel = tt.contextSetup()
-			}
-			e := &kubernetesEnvironment{
-				ContainerEnvironment: environment.ContainerEnvironment{
-					CommonEnvironment: environment.CommonEnvironment{
-						Fnd: fndMock,
-						Ports: environment.Ports{
-							Start: tt.envStartPort,
-							Used:  tt.envStartPort,
-							End:   tt.envStartPort + 100,
-						},
-					},
-					Registry: environment.ContainerRegistry{},
-				},
-				kubeconfigPath:   tt.kubeconfigPath,
-				namespace:        tt.namespace,
-				useUniqueName:    tt.useUniqueName,
-				deploymentClient: dc,
-				configMapClient:  cmc,
-				serviceClient:    sc,
-				tasks:            make(map[string]*kubernetesTask),
-			}
-
-			cm, d, s := tt.setupMocks(t, ctx, cancel, fndMock, cmc, dc, sc)
-
-			got, err := e.RunTask(ctx, tt.ss, tt.cmd)
-
-			if tt.expectError {
-				require.Nil(t, got)
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
-			} else {
-				assert.NoError(t, err)
-				actualTask, ok := got.(*kubernetesTask)
-				require.True(t, ok)
-				assert.Equal(t, tt.getExpectedTask(cm, d, s), actualTask)
-			}
-		})
-	}
-}
-
-func Test_kubernetesEnvironment_ExecTaskCommand(t *testing.T) {
-	env := &kubernetesEnvironment{}
-	ctx := context.Background()
-	ss := &environment.ServiceSettings{
-		Name:       "svc",
-		FullName:   "mysvc",
-		Port:       8080,
-		ServerPort: 1234,
-	}
-	cmd := &environment.Command{Name: "test"}
-	tsk := &kubernetesTask{}
-	oc := &output.BufferedCollector{}
-	err := env.ExecTaskCommand(ctx, ss, tsk, cmd, oc)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "executing command is not currently supported in Kubernetes environment")
-}
-
-func Test_kubernetesEnvironment_ExecTaskSignal(t *testing.T) {
-	env := &kubernetesEnvironment{}
-	ctx := context.Background()
-	ss := &environment.ServiceSettings{
-		Name:       "svc",
-		FullName:   "mysvc",
-		Port:       8080,
-		ServerPort: 1234,
-	}
-	tsk := &kubernetesTask{}
-	err := env.ExecTaskSignal(ctx, ss, tsk, os.Interrupt)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "executing signal is not currently supported in Kubernetes environment")
-}
-
-type pullReaderCloser struct {
-	msg string
-	err string
-}
-
-func (b *pullReaderCloser) Read(p []byte) (n int, err error) {
-	if len(b.err) > 0 {
-		return 0, errors.New(b.err)
-	}
-	if len(b.msg) > 0 {
-		n = copy(p, b.msg)
-		b.msg = b.msg[n:]
-		return n, nil
-	}
-	return 0, io.EOF
-}
-
-func (b *pullReaderCloser) Close() error {
-	return nil
-}
-
-type invalidTask struct{}
-
-func (t *invalidTask) Pid() int {
-	return 1
-}
-
-func (t *invalidTask) Id() string {
-	return ""
-}
-
-func (t *invalidTask) Executable() string {
-	return ""
-}
-
-func (t *invalidTask) Name() string {
-	return ""
-}
-
-func (t *invalidTask) Type() providers.Type {
-	return providers.KubernetesType
-}
-
-func (t *invalidTask) PublicUrl(scheme string) string {
-	return scheme
-}
-
-func (t *invalidTask) PrivateUrl(scheme string) string {
-	return scheme
-}
-
-func Test_kubernetesEnvironment_Output(t *testing.T) {
-	tests := []struct {
-		name       string
-		outputType output.Type
-		target     task.Task
-		setupMocks func(
-			*testing.T,
-			context.Context,
-			*appMocks.MockFoundation,
-			*k8sClientMocks.MockPodClient,
-		)
-		expectedLogData  string
-		expectError      bool
-		expectedErrorMsg string
-	}{
-		{
-			name:       "successful output for any type",
-			outputType: output.Any,
-			target: &kubernetesTask{
-				serviceName: "sn1",
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				pc *k8sClientMocks.MockPodClient,
-			) {
-				fnd.On("DryRun").Return(false)
-				p := corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "p1",
-					},
-				}
-				pl := &corev1.PodList{Items: []corev1.Pod{p}}
-				reader := &pullReaderCloser{
-					msg: "data",
-				}
-				pc.On("List", ctx, metav1.ListOptions{
-					LabelSelector: "app=sn1",
-				}).Return(pl, nil)
-				pc.On("StreamLogs", ctx, "p1", &corev1.PodLogOptions{}).Return(reader, nil)
-			},
-			expectedLogData: "data",
-		},
-		{
-			name:       "successful output for dry run",
-			outputType: output.Any,
-			target: &kubernetesTask{
-				serviceName: "sn1",
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				pc *k8sClientMocks.MockPodClient,
-			) {
-				fnd.On("DryRun").Return(true)
-			},
-			expectedLogData: "",
-		},
-		{
-			name:       "successful output when combined reader already set",
-			outputType: output.Any,
-			target: &kubernetesTask{
-				serviceName:  "sn1",
-				outputReader: &CombinedReader{readers: []io.ReadCloser{&app.DummyReaderCloser{}}},
-			},
-			expectedLogData: "",
-		},
-		{
-			name:       "failed output due to failed log streaming",
-			outputType: output.Any,
-			target: &kubernetesTask{
-				serviceName: "sn1",
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				pc *k8sClientMocks.MockPodClient,
-			) {
-				fnd.On("DryRun").Return(false)
-				p := corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "p1",
-					},
-				}
-				pl := &corev1.PodList{Items: []corev1.Pod{p}}
-				pc.On("List", ctx, metav1.ListOptions{
-					LabelSelector: "app=sn1",
-				}).Return(pl, nil)
-				pc.On("StreamLogs", ctx, "p1", &corev1.PodLogOptions{}).Return(nil, errors.New("stream fail"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "error in opening stream: stream fail",
-		},
-		{
-			name:       "failed output due to failed listing of pods",
-			outputType: output.Any,
-			target: &kubernetesTask{
-				serviceName: "sn1",
-			},
-			setupMocks: func(
-				t *testing.T,
-				ctx context.Context,
-				fnd *appMocks.MockFoundation,
-				pc *k8sClientMocks.MockPodClient,
-			) {
-				fnd.On("DryRun").Return(false)
-				pc.On("List", ctx, metav1.ListOptions{
-					LabelSelector: "app=sn1",
-				}).Return(nil, errors.New("pod listing fail"))
-			},
-			expectError:      true,
-			expectedErrorMsg: "failed to list pods: pod listing fail",
-		},
-		{
-			name:             "failed output due to invalid task type",
-			outputType:       output.Any,
-			target:           &invalidTask{},
-			expectError:      true,
-			expectedErrorMsg: "task in not a Kubernetes task",
-		},
-		{
-			name:             "failed output due to unsupported output type",
-			outputType:       output.Stderr,
-			target:           &invalidTask{},
-			expectError:      true,
-			expectedErrorMsg: "only any output type is supported by Kubernetes environment",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fndMock := appMocks.NewMockFoundation(t)
-			mockLogger := external.NewMockLogger()
-			fndMock.On("Logger").Maybe().Return(mockLogger.SugaredLogger)
-			podClientMock := k8sClientMocks.NewMockPodClient(t)
 			ctx := context.Background()
-			e := &kubernetesEnvironment{
-				ContainerEnvironment: environment.ContainerEnvironment{
-					CommonEnvironment: environment.CommonEnvironment{
-						Fnd: fndMock,
-					},
-					Registry: environment.ContainerRegistry{},
-				},
-				podClient: podClientMock,
-			}
+			te := newTestEnv(t, nil, nil)
+			te.fnd.On("DryRun").Return(tt.dryRun)
+			tasks := tt.setupMocks(t, ctx, te)
+			te.env.tasks = tasks
 
-			if tt.setupMocks != nil {
-				tt.setupMocks(t, ctx, fndMock, podClientMock)
-			}
-			actualReader, err := e.Output(ctx, tt.target, tt.outputType)
+			err := te.env.Destroy(ctx)
 
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
 			} else {
 				assert.NoError(t, err)
-				buf := new(strings.Builder)
-				_, err := io.Copy(buf, actualReader)
-				require.Nil(t, err)
-				assert.Equal(t, tt.expectedLogData, buf.String())
+			}
+			assert.Empty(t, te.env.tasks)
+			for _, tsk := range tasks {
+				assert.Nil(t, tsk.outputCollector)
+				assert.Nil(t, tsk.portForward)
 			}
 		})
 	}
+}
+
+func Test_kubernetesEnvironment_RunTask(t *testing.T) {
+	createOpts := metav1.CreateOptions{}
+	deleteOpts := metav1.DeleteOptions{}
+	dryRunCreateOpts := metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}
+	phpCmd := &environment.Command{Name: "php", Args: []string{"test.php", "run"}}
+	logOpts := &corev1.PodLogOptions{Follow: true}
+	deploymentListOpts := metav1.ListOptions{FieldSelector: "metadata.name=i1-svc"}
+	podListOpts := metav1.ListOptions{LabelSelector: "app=i1-svc"}
+
+	// expectConfigMaps sets up the successful creation of the testing config maps.
+	expectConfigMaps := func(ctx context.Context, te *testEnv, opts metav1.CreateOptions) []*corev1.ConfigMap {
+		cm := getTestingConfigMaps("i1-svc")
+		te.cmc.On("Create", ctx, cm[0], opts).Return(cm[0], nil)
+		te.cmc.On("Create", ctx, cm[1], opts).Return(cm[1], nil)
+		return cm
+	}
+	// expectDeployment sets up the successful creation of the testing deployment.
+	expectDeployment := func(ctx context.Context, te *testEnv, opts metav1.CreateOptions, cmd *environment.Command) *appsv1.Deployment {
+		var command, args []string
+		if cmd != nil {
+			command = []string{cmd.Name}
+			args = cmd.Args
+		}
+		d := getTestingDeployment("i1-svc", command, args)
+		te.dc.On("Create", ctx, d, opts).Return(d, nil)
+		return d
+	}
+	// expectWatches sets up the deployment and pod watches with the given events.
+	expectWatches := func(ctx context.Context, te *testEnv, dw, pw *MockWatchResult) {
+		te.dc.On("Watch", ctx, deploymentListOpts).Return(dw, nil)
+		te.pc.On("Watch", ctx, podListOpts).Return(pw, nil)
+	}
+	expectReadyWatches := func(ctx context.Context, te *testEnv) {
+		expectWatches(ctx, te,
+			newMockWatchResult(deploymentEvent(watch.Added, "i1-svc", 1)),
+			newMockWatchResult(podEvent(watch.Added, runningPod("p1", true))),
+		)
+	}
+	expectService := func(ctx context.Context, te *testEnv, opts metav1.CreateOptions) *corev1.Service {
+		s := getTestingService("i1-svc", 1234)
+		te.sc.On("Create", ctx, s, opts).Return(s, nil)
+		return s
+	}
+	expectOutput := func(t *testing.T, te *testEnv) (*outputMocks.MockCollector, *pullReaderCloser) {
+		logs := &pullReaderCloser{msg: "data"}
+		te.pc.On("StreamLogs", mock.Anything, "p1", logOpts).Return(logs, nil)
+		collector := outputMocks.NewMockCollector(t)
+		collector.On("Start", logs, &app.DummyReaderCloser{}).Return(nil)
+		te.om.On("MakeCollector", "i1-svc").Return(collector)
+		return collector, logs
+	}
+
+	tests := []struct {
+		name            string
+		dryRun          bool
+		fs              map[string]string
+		ss              *environment.ServiceSettings
+		cmd             *environment.Command
+		setupMocks      func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask
+		expectError     bool
+		expectedErrMsg  string
+		expectTaskSaved bool
+	}{
+		{
+			name: "successful private run",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, createOpts)
+				d := expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				s := expectService(ctx, te, createOpts)
+				collector, _ := expectOutput(t, te)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					outputCollector:   collector,
+					podName:           "p1",
+					executable:        "php",
+					serviceName:       "i1-svc",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name: "successful public run with port forwarding",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(true),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, createOpts)
+				d := expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				s := expectService(ctx, te, createOpts)
+				collector, _ := expectOutput(t, te)
+				closer := &fakeCloser{}
+				te.pc.On("PortForward", ctx, "p1", int32(8080), int32(1234)).Return(closer, nil)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					outputCollector:   collector,
+					portForward:       closer,
+					podName:           "p1",
+					executable:        "php",
+					serviceName:       "i1-svc",
+					servicePublicUrl:  "://127.0.0.1:8080",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name:   "successful public dry run",
+			dryRun: true,
+			fs:     testingFs,
+			ss:     getTestingServiceSettings(true),
+			cmd:    phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, dryRunCreateOpts)
+				d := expectDeployment(ctx, te, dryRunCreateOpts, phpCmd)
+				s := expectService(ctx, te, dryRunCreateOpts)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					podName:           "i1-svc",
+					executable:        "php",
+					serviceName:       "i1-svc",
+					servicePublicUrl:  "://127.0.0.1:8080",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name: "successful run without command uses service name as executable",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  nil,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, createOpts)
+				d := expectDeployment(ctx, te, createOpts, nil)
+				expectReadyWatches(ctx, te)
+				s := expectService(ctx, te, createOpts)
+				collector, _ := expectOutput(t, te)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					outputCollector:   collector,
+					podName:           "p1",
+					executable:        "svc",
+					serviceName:       "i1-svc",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name: "successful run with gradual readiness and ignored events",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, createOpts)
+				d := expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(
+						deploymentEvent(watch.Added, "i1-svc", 0),
+						watch.Event{Type: watch.Bookmark, Object: &appsv1.Deployment{}},
+						deploymentEvent(watch.Modified, "i1-svc", 1),
+					),
+					newMockWatchResult(
+						podEvent(watch.Added, pendingPod("p1")),
+						podEvent(watch.Modified, runningPod("p1", false)),
+						watch.Event{Type: watch.Bookmark, Object: &corev1.Pod{}},
+						watch.Event{Type: watch.Deleted, Object: &runtime.Unknown{}},
+						podEvent(watch.Modified, runningPod("p1", true)),
+					),
+				)
+				s := expectService(ctx, te, createOpts)
+				collector, _ := expectOutput(t, te)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					outputCollector:   collector,
+					podName:           "p1",
+					executable:        "php",
+					serviceName:       "i1-svc",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name: "successful run when ready pod is replaced",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := expectConfigMaps(ctx, te, createOpts)
+				d := expectDeployment(ctx, te, createOpts, phpCmd)
+				pw := newMockWatchResult(
+					podEvent(watch.Added, runningPod("p1", true)),
+					podEvent(watch.Deleted, runningPod("p1", true)),
+					podEvent(watch.Deleted, runningPod("other", true)),
+					podEvent(watch.Added, runningPod("p2", true)),
+				)
+				dw := newMockWatchResult()
+				// The deployment becomes ready only after all pod events are processed.
+				go func() {
+					for len(pw.Events) > 0 {
+						time.Sleep(time.Millisecond)
+					}
+					dw.Events <- deploymentEvent(watch.Added, "i1-svc", 1)
+				}()
+				expectWatches(ctx, te, dw, pw)
+				s := expectService(ctx, te, createOpts)
+				logs := &pullReaderCloser{msg: "data"}
+				te.pc.On("StreamLogs", mock.Anything, "p2", logOpts).Return(logs, nil)
+				collector := outputMocks.NewMockCollector(t)
+				collector.On("Start", logs, &app.DummyReaderCloser{}).Return(nil)
+				te.om.On("MakeCollector", "i1-svc").Return(collector)
+				return &kubernetesTask{
+					configMaps:        cm,
+					deployment:        d,
+					service:           s,
+					outputCollector:   collector,
+					podName:           "p2",
+					executable:        "php",
+					serviceName:       "i1-svc",
+					servicePrivateUrl: "://i1-svc:1234",
+					deploymentReady:   true,
+				}
+			},
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to missing container config",
+			fs:   testingFs,
+			ss: func() *environment.ServiceSettings {
+				ss := getTestingServiceSettings(false)
+				ss.ContainerConfig = nil
+				return ss
+			}(),
+			cmd: phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "container config is not set",
+		},
+		{
+			name: "failed run due to missing config environment path",
+			fs:   testingFs,
+			ss: func() *environment.ServiceSettings {
+				ss := getTestingServiceSettings(false)
+				ss.EnvironmentConfigPaths = map[string]string{}
+				return ss
+			}(),
+			cmd: phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "environment path not found for main_conf",
+		},
+		{
+			name: "failed run due to unreadable config file",
+			fs:   map[string]string{},
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to read file at /tmp/wst/main.conf",
+		},
+		{
+			name: "failed run due to missing script environment path removes config maps",
+			fs:   testingFs,
+			ss: func() *environment.ServiceSettings {
+				ss := getTestingServiceSettings(false)
+				ss.EnvironmentScriptPaths = map[string]string{}
+				return ss
+			}(),
+			cmd: phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := getTestingConfigMaps("i1-svc")
+				te.cmc.On("Create", ctx, cm[0], createOpts).Return(cm[0], nil)
+				te.cmc.On("Delete", ctx, "i1-svc-configs-1", deleteOpts).Return(nil)
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "environment path not found for test_php",
+		},
+		{
+			name: "failed run due to config map creation error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				cm := getTestingConfigMaps("i1-svc")
+				te.cmc.On("Create", ctx, cm[0], createOpts).Return(nil, errors.New("cm err"))
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to create configMap i1-svc-configs-1: cm err",
+		},
+		{
+			name: "failed run due to deployment creation error removes config maps",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				d := getTestingDeployment("i1-svc", []string{"php"}, []string{"test.php", "run"})
+				te.dc.On("Create", ctx, d, createOpts).Return(nil, errors.New("dep err"))
+				te.cmc.On("Delete", ctx, "i1-svc-configs-1", deleteOpts).Return(nil)
+				te.cmc.On("Delete", ctx, "i1-svc-scripts-1", deleteOpts).Return(nil)
+				return nil
+			},
+			expectError:    true,
+			expectedErrMsg: "dep err",
+		},
+		{
+			name: "failed run due to deployment watch error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				te.dc.On("Watch", ctx, deploymentListOpts).Return(nil, errors.New("watch err"))
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to watch deployment i1-svc: watch err",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to pod watch error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				dw := newMockWatchResult()
+				te.dc.On("Watch", ctx, deploymentListOpts).Return(dw, nil)
+				te.pc.On("Watch", ctx, podListOpts).Return(nil, errors.New("pod watch err"))
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to watch pods of deployment i1-svc: pod watch err",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to closed deployment watch",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te, newClosedMockWatchResult(), newMockWatchResult())
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "watching deployment i1-svc ended unexpectedly",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to closed pod watch",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te, newMockWatchResult(), newClosedMockWatchResult())
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "watching pods of deployment i1-svc ended unexpectedly",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to invalid deployment event object",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(watch.Event{Type: watch.Added, Object: &corev1.Pod{}}),
+					newMockWatchResult(),
+				)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "expected Deployment object, but got something else",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to deleted deployment",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(deploymentEvent(watch.Deleted, "i1-svc", 0)),
+					newMockWatchResult(),
+				)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "watching deployment did not result to addition and modification",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to invalid pod event object",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(),
+					newMockWatchResult(watch.Event{Type: watch.Added, Object: &appsv1.Deployment{}}),
+				)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "expected Pod object, but got something else",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to terminated container",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(),
+					newMockWatchResult(podEvent(watch.Modified, terminatedPod("p1", 1))),
+				)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "pod p1 of deployment i1-svc failed: container c terminated with exit code 1: Error: boom",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to pod watch error event",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te,
+					newMockWatchResult(),
+					newMockWatchResult(watch.Event{Type: watch.Error, Object: &metav1.Status{}}),
+				)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "watching pods of deployment i1-svc resulted in error",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to context cancellation",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectWatches(ctx, te, newMockWatchResult(), newMockWatchResult())
+				cancel()
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "context canceled or timed out when waiting on deployment to be ready",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to service creation error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				s := getTestingService("i1-svc", 1234)
+				te.sc.On("Create", ctx, s, createOpts).Return(nil, errors.New("svc err"))
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to create service: svc err",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to log stream error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				expectService(ctx, te, createOpts)
+				te.pc.On("StreamLogs", mock.Anything, "p1", logOpts).Return(nil, errors.New("logs err"))
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to open log stream of pod p1: logs err",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to output collector start error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(false),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				expectService(ctx, te, createOpts)
+				logs := &pullReaderCloser{msg: "data"}
+				te.pc.On("StreamLogs", mock.Anything, "p1", logOpts).Return(logs, nil)
+				collector := outputMocks.NewMockCollector(t)
+				collector.On("Start", logs, &app.DummyReaderCloser{}).Return(errors.New("start err")).Run(
+					func(args mock.Arguments) {
+						t.Cleanup(func() {
+							assert.Equal(t, 1, logs.closed)
+						})
+					})
+				te.om.On("MakeCollector", "i1-svc").Return(collector)
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to start output collection of pod p1: start err",
+			expectTaskSaved: true,
+		},
+		{
+			name: "failed run due to port forwarding error",
+			fs:   testingFs,
+			ss:   getTestingServiceSettings(true),
+			cmd:  phpCmd,
+			setupMocks: func(t *testing.T, ctx context.Context, cancel context.CancelFunc, te *testEnv) *kubernetesTask {
+				expectConfigMaps(ctx, te, createOpts)
+				expectDeployment(ctx, te, createOpts, phpCmd)
+				expectReadyWatches(ctx, te)
+				expectService(ctx, te, createOpts)
+				expectOutput(t, te)
+				te.pc.On("PortForward", ctx, "p1", int32(8080), int32(1234)).Return(nil, errors.New("pf err"))
+				return nil
+			},
+			expectError:     true,
+			expectedErrMsg:  "failed to forward port 8080 to pod p1 port 1234: pf err",
+			expectTaskSaved: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			te := newTestEnv(t, tt.fs, nil)
+			te.fnd.On("DryRun").Maybe().Return(tt.dryRun)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			expectedTask := tt.setupMocks(t, ctx, cancel, te)
+
+			got, err := te.env.RunTask(ctx, tt.ss, tt.cmd)
+
+			if tt.expectError {
+				require.Nil(t, got)
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				actualTask, ok := got.(*kubernetesTask)
+				require.True(t, ok)
+				assert.Equal(t, expectedTask, actualTask)
+			}
+			if tt.expectTaskSaved {
+				assert.Contains(t, te.env.tasks, "i1-svc")
+			} else {
+				assert.Empty(t, te.env.tasks)
+			}
+		})
+	}
+}
+
+func Test_kubernetesEnvironment_ExecTaskCommand(t *testing.T) {
+	ss := getTestingServiceSettings(false)
+	cmd := &environment.Command{Name: "php", Args: []string{"-v"}}
+	tests := []struct {
+		name           string
+		dryRun         bool
+		target         task.Task
+		withCollector  bool
+		setupMocks     func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector)
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name:          "successful command execution with collector",
+			target:        &kubernetesTask{serviceName: "i1-svc", podName: "p1"},
+			withCollector: true,
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) {
+				stdout := &bytes.Buffer{}
+				stderr := &bytes.Buffer{}
+				oc.On("StdoutWriter").Return(stdout)
+				oc.On("StderrWriter").Return(stderr)
+				te.pc.On("Exec", ctx, "p1", &clients.ExecOptions{
+					Container: "i1-svc",
+					Command:   []string{"php", "-v"},
+					Stdout:    stdout,
+					Stderr:    stderr,
+				}).Return(nil)
+			},
+		},
+		{
+			name:   "successful command execution without collector",
+			target: &kubernetesTask{serviceName: "i1-svc", podName: "p1"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) {
+				te.pc.On("Exec", ctx, "p1", &clients.ExecOptions{
+					Container: "i1-svc",
+					Command:   []string{"php", "-v"},
+					Stdout:    io.Discard,
+					Stderr:    io.Discard,
+				}).Return(nil)
+			},
+		},
+		{
+			name:       "successful command execution in dry run",
+			dryRun:     true,
+			target:     &kubernetesTask{serviceName: "i1-svc", podName: "p1"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) {},
+		},
+		{
+			name:   "failed command execution due to exec error",
+			target: &kubernetesTask{serviceName: "i1-svc", podName: "p1"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) {
+				te.pc.On("Exec", ctx, "p1", mock.Anything).Return(errors.New("exec err"))
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to execute command php in pod p1: exec err",
+		},
+		{
+			name:           "failed command execution due to invalid task",
+			target:         &invalidTask{},
+			setupMocks:     func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) {},
+			expectError:    true,
+			expectedErrMsg: "task in not a Kubernetes task",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			te := newTestEnv(t, nil, nil)
+			te.fnd.On("DryRun").Maybe().Return(tt.dryRun)
+			ctx := context.Background()
+			var oc output.Collector
+			var ocMock *outputMocks.MockCollector
+			if tt.withCollector {
+				ocMock = outputMocks.NewMockCollector(t)
+				oc = ocMock
+			}
+			tt.setupMocks(t, ctx, te, ocMock)
+
+			err := te.env.ExecTaskCommand(ctx, ss, tt.target, cmd, oc)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_kubernetesEnvironment_ExecTaskSignal(t *testing.T) {
+	ss := getTestingServiceSettings(false)
+	deleteOpts := metav1.DeleteOptions{}
+	killOpts := metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(0)}
+	makeTask := func(portForward io.Closer) *kubernetesTask {
+		return &kubernetesTask{
+			serviceName: "i1-svc",
+			podName:     "p1",
+			deployment:  &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "i1-svc"}},
+			portForward: portForward,
+		}
+	}
+	tests := []struct {
+		name               string
+		dryRun             bool
+		signal             os.Signal
+		target             task.Task
+		setupMocks         func(t *testing.T, ctx context.Context, te *testEnv)
+		expectError        bool
+		expectedErrMsg     string
+		expectDeployment   bool
+		expectPortForward  bool
+		expectClosedClosed int
+	}{
+		{
+			name:   "successful SIGTERM deletes deployment and stops forwarding",
+			signal: syscall.SIGTERM,
+			target: makeTask(&fakeCloser{}),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(nil)
+			},
+		},
+		{
+			name:   "successful SIGTERM without port forwarding",
+			signal: syscall.SIGTERM,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(nil)
+			},
+		},
+		{
+			name:   "successful SIGKILL deletes deployment and pod immediately",
+			signal: syscall.SIGKILL,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(nil)
+				te.pc.On("Delete", ctx, "p1", killOpts).Return(nil)
+			},
+		},
+		{
+			name:   "successful SIGKILL when pod is already gone",
+			signal: syscall.SIGKILL,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(nil)
+				te.pc.On("Delete", ctx, "p1", killOpts).Return(notFoundError())
+			},
+		},
+		{
+			name:   "successful SIGKILL in dry run",
+			dryRun: true,
+			signal: syscall.SIGKILL,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				dryRun := []string{metav1.DryRunAll}
+				te.dc.On("Delete", ctx, "i1-svc", metav1.DeleteOptions{DryRun: dryRun}).Return(nil)
+				te.pc.On("Delete", ctx, "p1", metav1.DeleteOptions{DryRun: dryRun, GracePeriodSeconds: int64Ptr(0)}).Return(nil)
+			},
+		},
+		{
+			name:   "successful SIGUSR2 executes kill in the container",
+			signal: syscall.SIGUSR2,
+			target: makeTask(&fakeCloser{}),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.pc.On("Exec", ctx, "p1", &clients.ExecOptions{
+					Container: "i1-svc",
+					Command:   []string{"kill", "-s", "USR2", "1"},
+					Stdout:    io.Discard,
+					Stderr:    io.Discard,
+				}).Return(nil)
+			},
+			expectDeployment:  true,
+			expectPortForward: true,
+		},
+		{
+			name:              "successful SIGHUP in dry run",
+			dryRun:            true,
+			signal:            syscall.SIGHUP,
+			target:            makeTask(nil),
+			setupMocks:        func(t *testing.T, ctx context.Context, te *testEnv) {},
+			expectDeployment:  true,
+			expectPortForward: false,
+		},
+		{
+			name:   "failed SIGINT due to exec error",
+			signal: syscall.SIGINT,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.pc.On("Exec", ctx, "p1", mock.Anything).Return(errors.New("exec err"))
+			},
+			expectError:      true,
+			expectedErrMsg:   "failed to send signal INT to pod p1: exec err",
+			expectDeployment: true,
+		},
+		{
+			name:             "failed signal due to unsupported signal",
+			signal:           syscall.SIGALRM,
+			target:           makeTask(nil),
+			setupMocks:       func(t *testing.T, ctx context.Context, te *testEnv) {},
+			expectError:      true,
+			expectedErrMsg:   "signal alarm clock is not supported in Kubernetes environment",
+			expectDeployment: true,
+		},
+		{
+			name:   "failed SIGTERM due to port forward close error",
+			signal: syscall.SIGTERM,
+			target: makeTask(&fakeCloser{err: errors.New("pf err")}),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+			},
+			expectError:      true,
+			expectedErrMsg:   "failed to stop port forwarding",
+			expectDeployment: true,
+		},
+		{
+			name:   "failed SIGTERM due to deployment delete error",
+			signal: syscall.SIGTERM,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(errors.New("dep err"))
+			},
+			expectError:      true,
+			expectedErrMsg:   "failed to delete deployment",
+			expectDeployment: true,
+		},
+		{
+			name:   "failed SIGKILL due to pod delete error",
+			signal: syscall.SIGKILL,
+			target: makeTask(nil),
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv) {
+				te.dc.On("Delete", ctx, "i1-svc", deleteOpts).Return(nil)
+				te.pc.On("Delete", ctx, "p1", killOpts).Return(errors.New("pod err"))
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to delete pod p1: pod err",
+		},
+		{
+			name:           "failed SIGTERM due to already terminated task",
+			signal:         syscall.SIGTERM,
+			target:         &kubernetesTask{serviceName: "i1-svc", podName: "p1"},
+			setupMocks:     func(t *testing.T, ctx context.Context, te *testEnv) {},
+			expectError:    true,
+			expectedErrMsg: "task i1-svc has already been terminated",
+		},
+		{
+			name:           "failed signal due to invalid task",
+			signal:         syscall.SIGTERM,
+			target:         &invalidTask{},
+			setupMocks:     func(t *testing.T, ctx context.Context, te *testEnv) {},
+			expectError:    true,
+			expectedErrMsg: "task in not a Kubernetes task",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			te := newTestEnv(t, nil, nil)
+			te.fnd.On("DryRun").Maybe().Return(tt.dryRun)
+			ctx := context.Background()
+			tt.setupMocks(t, ctx, te)
+
+			err := te.env.ExecTaskSignal(ctx, ss, tt.target, tt.signal)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+			if kubeTask, ok := tt.target.(*kubernetesTask); ok {
+				if tt.expectDeployment {
+					assert.NotNil(t, kubeTask.deployment)
+				} else {
+					assert.Nil(t, kubeTask.deployment)
+				}
+				if tt.expectPortForward {
+					assert.NotNil(t, kubeTask.portForward)
+				} else {
+					assert.Nil(t, kubeTask.portForward)
+				}
+			}
+		})
+	}
+}
+
+func Test_kubernetesEnvironment_Output(t *testing.T) {
+	tests := []struct {
+		name           string
+		dryRun         bool
+		outputType     output.Type
+		target         task.Task
+		setupMocks     func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) io.Reader
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name:       "successful output for any type",
+			outputType: output.Any,
+			target:     &kubernetesTask{serviceName: "i1-svc"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) io.Reader {
+				reader := strings.NewReader("data")
+				oc.On("AnyReader", ctx).Return(reader)
+				return reader
+			},
+		},
+		{
+			name:       "successful output for stdout type uses combined logs",
+			outputType: output.Stdout,
+			target:     &kubernetesTask{serviceName: "i1-svc"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) io.Reader {
+				reader := strings.NewReader("data")
+				oc.On("AnyReader", ctx).Return(reader)
+				return reader
+			},
+		},
+		{
+			name:       "successful output for dry run",
+			dryRun:     true,
+			outputType: output.Any,
+			target:     &kubernetesTask{serviceName: "i1-svc"},
+			setupMocks: func(t *testing.T, ctx context.Context, te *testEnv, oc *outputMocks.MockCollector) io.Reader {
+				return &app.DummyReaderCloser{}
+			},
+		},
+		{
+			name:           "failed output due to missing collector",
+			outputType:     output.Any,
+			target:         &kubernetesTask{serviceName: "i1-svc"},
+			expectError:    true,
+			expectedErrMsg: "output of task i1-svc is not available",
+		},
+		{
+			name:           "failed output due to invalid task",
+			outputType:     output.Any,
+			target:         &invalidTask{},
+			expectError:    true,
+			expectedErrMsg: "task in not a Kubernetes task",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			te := newTestEnv(t, nil, nil)
+			te.fnd.On("DryRun").Maybe().Return(tt.dryRun)
+			ctx := context.Background()
+			var expectedReader io.Reader
+			if tt.setupMocks != nil {
+				oc := outputMocks.NewMockCollector(t)
+				if kubeTask, ok := tt.target.(*kubernetesTask); ok && !tt.dryRun {
+					kubeTask.outputCollector = oc
+				}
+				expectedReader = tt.setupMocks(t, ctx, te, oc)
+			}
+
+			reader, err := te.env.Output(ctx, tt.target, tt.outputType)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Nil(t, reader)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, expectedReader, reader)
+			}
+		})
+	}
+}
+
+func Test_podFailure(t *testing.T) {
+	tests := []struct {
+		name           string
+		pod            *corev1.Pod
+		expectedErrMsg string
+	}{
+		{name: "running pod", pod: runningPod("p", true)},
+		{name: "pending pod with non failure waiting reason", pod: pendingPod("p")},
+		{name: "failed pod phase", pod: failedPod("p"), expectedErrMsg: "pod failed: Evicted no memory"},
+		{
+			name:           "waiting container with crash loop back off",
+			pod:            waitingPod("p", "CrashLoopBackOff"),
+			expectedErrMsg: "container c is waiting: CrashLoopBackOff: msg",
+		},
+		{
+			name:           "waiting container with image pull error",
+			pod:            waitingPod("p", "ErrImagePull"),
+			expectedErrMsg: "container c is waiting: ErrImagePull: msg",
+		},
+		{
+			name:           "terminated container",
+			pod:            terminatedPod("p", 3),
+			expectedErrMsg: "container c terminated with exit code 3: Error: boom",
+		},
+		{
+			name:           "restarted container",
+			pod:            restartedPod("p"),
+			expectedErrMsg: "container c restarted after termination with exit code 2: Error: died",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := podFailure(tt.pod)
+			if tt.expectedErrMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Equal(t, tt.expectedErrMsg, err.Error())
+			}
+		})
+	}
+}
+
+func Test_isPodReady(t *testing.T) {
+	assert.True(t, isPodReady(runningPod("p", true)))
+	assert.False(t, isPodReady(runningPod("p", false)))
+	assert.False(t, isPodReady(pendingPod("p")))
+	assert.False(t, isPodReady(&corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodRunning}}))
+}
+
+func Test_sanitizeName(t *testing.T) {
+	assert.Equal(t, "my-svc-configs-1", sanitizeName("My_svc.configs/1"))
+	long := strings.Repeat("a", 300)
+	assert.Equal(t, strings.Repeat("a", 253), sanitizeName(long))
 }
 
 func Test_kubernetesEnvironment_RootPath(t *testing.T) {
@@ -2733,7 +2109,7 @@ func Test_kubernetesEnvironment_Mkdir(t *testing.T) {
 
 func Test_kubernetesEnvironment_ServiceLocalAddress(t *testing.T) {
 	env := &kubernetesEnvironment{}
-	assert.Equal(t, "127.0.0.1:80", env.ServiceLocalAddress("svc", 1234, 80))
+	assert.Equal(t, "0.0.0.0:80", env.ServiceLocalAddress("svc", 1234, 80))
 }
 
 func Test_kubernetesEnvironment_ServiceLocalPort(t *testing.T) {
@@ -2785,4 +2161,10 @@ func Test_kubernetesTask_PublicUrl(t *testing.T) {
 
 func Test_kubernetesTask_Type(t *testing.T) {
 	assert.Equal(t, providers.KubernetesType, getTestTask().Type())
+}
+
+func Test_kubernetesEnvironment_serviceName(t *testing.T) {
+	ss := getTestingServiceSettings(false)
+	assert.Equal(t, "i1-svc", (&kubernetesEnvironment{useUniqueName: true}).serviceName(ss))
+	assert.Equal(t, "svc", (&kubernetesEnvironment{useUniqueName: false}).serviceName(ss))
 }

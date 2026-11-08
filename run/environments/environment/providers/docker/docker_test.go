@@ -2150,7 +2150,7 @@ func Test_dockerEnvironment_Mkdir(t *testing.T) {
 
 func Test_dockerEnvironment_ServiceLocalAddress(t *testing.T) {
 	env := &dockerEnvironment{}
-	assert.Equal(t, "127.0.0.1:80", env.ServiceLocalAddress("svc", 1234, 80))
+	assert.Equal(t, "0.0.0.0:80", env.ServiceLocalAddress("svc", 1234, 80))
 }
 
 func Test_dockerEnvironment_ServiceLocalPort(t *testing.T) {

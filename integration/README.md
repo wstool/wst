@@ -16,6 +16,38 @@ go test -tags integration ./integration/...
 
 Set `WST_INTEGRATION_DEBUG=1` to get the full WST debug log.
 
+## Kubernetes
+
+The same instances can be run with the `kubernetes` sandbox. The test setup builds a static `wst-testsrv` binary,
+creates the `wst-testsrv:local` image from `cmd/wst-testsrv/Dockerfile` and optionally loads it to the cluster. The
+Kubernetes tier is opt-in and configured with environment variables:
+
+| Variable                       | Description                                                                                                                                                                |
+|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `WST_INTEGRATION_KUBERNETES`   | Set to `1` to run the Kubernetes instances.                                                                                                                                |
+| `WST_INTEGRATION_KUBECONFIG`   | Kubeconfig path. Defaults to `$KUBECONFIG` or `~/.kube/config`.                                                                                                            |
+| `WST_INTEGRATION_NAMESPACE`    | Namespace for the created objects. Defaults to `default`.                                                                                                                  |
+| `WST_INTEGRATION_IMAGE_LOADER` | How to make the image available in the cluster: `minikube` (`minikube image load`), `kind` (`kind load docker-image`) or empty when the cluster already sees local images. |
+
+For example with minikube:
+
+```shell
+minikube start
+WST_INTEGRATION_KUBERNETES=1 WST_INTEGRATION_IMAGE_LOADER=minikube go test -tags integration ./integration/...
+```
+
+and with kind:
+
+```shell
+kind create cluster
+WST_INTEGRATION_KUBERNETES=1 WST_INTEGRATION_IMAGE_LOADER=kind go test -tags integration ./integration/...
+```
+
+Public services are reached through a port forward from the environment port on `127.0.0.1` to the pod, so no
+load balancer or node port access is needed.
+
+## Test server
+
 The test server can be used manually as well:
 
 ```shell

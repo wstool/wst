@@ -421,7 +421,11 @@ func (i *nativeInstance) executeAction(actionsCtx context.Context, act action.Ac
 			return &skipError{originalErr: err}
 		case action.Fail:
 			// Report failure and return the error
-			i.fnd.Logger().Errorf("Failed to run action: %v", err)
+			if err != nil {
+				i.fnd.Logger().Errorf("Failed to run action: %v", err)
+			} else {
+				i.fnd.Logger().Errorf("Failed to run action: action did not succeed")
+			}
 			if actErr != nil {
 				return actErr
 			}
