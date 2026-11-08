@@ -63,3 +63,19 @@ func TestSyncData_StoreAndLoad(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncData_LoadOrStore(t *testing.T) {
+	data := &syncData{}
+
+	stored, loaded := data.LoadOrStore("key1", "value1")
+	assert.False(t, loaded, "First LoadOrStore should store the value")
+	assert.Equal(t, "value1", stored, "Stored value should be returned")
+
+	stored, loaded = data.LoadOrStore("key1", "value2")
+	assert.True(t, loaded, "Second LoadOrStore should load the existing value")
+	assert.Equal(t, "value1", stored, "Existing value should be returned")
+
+	result, found := data.Load("key1")
+	assert.True(t, found, "Expected to find the stored value")
+	assert.Equal(t, "value1", result, "Loaded value should match the first stored value")
+}

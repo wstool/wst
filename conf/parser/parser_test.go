@@ -2099,6 +2099,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 									Path:       "/api/status",
 									EncodePath: true,
 									Method:     "GET",
+									Connection: "keep_alive",
 								},
 								&types.CustomExpectationAction{
 									Service:   "web_service",
@@ -2159,6 +2160,7 @@ func Test_ConfigParser_ParseConfig(t *testing.T) {
 											ContentLength: 30,
 										},
 									},
+									Connection: "keep_alive",
 								},
 								&types.ResponseExpectationAction{
 									Service:   "web_service",

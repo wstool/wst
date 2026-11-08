@@ -65,4 +65,6 @@ where the configuration is a JSON file with the keys documented in `cmd/wst-test
 available under the `/_/` prefix (`ping`, `echo`, `status/<code>`, `delay`, `stream`, `upload`, `stats`, `exit`);
 all other paths are served from the configured script directory. The `echo` endpoint reports how the request body
 arrived (`body_chunks`, `body_read_ms`) and the `upload` endpoint behaves like a server with a request body timeout
-(`timeout_ms`), responding with 408 when the body stalls and 400 when the client disconnects.
+(`timeout_ms`), responding with 408 when the body stalls and 400 when the client disconnects. Every response carries
+the `X-Conn-Id` header with the sequential ID of the server connection that the request arrived on, which makes
+connection reuse (keep-alive) observable.

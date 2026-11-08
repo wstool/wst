@@ -106,6 +106,74 @@ func (_c *MockData_Load_Call) RunAndReturn(run func(key string) (interface{}, bo
 	return _c
 }
 
+// LoadOrStore provides a mock function for the type MockData
+func (_mock *MockData) LoadOrStore(key string, value interface{}) (interface{}, bool) {
+	ret := _mock.Called(key, value)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadOrStore")
+	}
+
+	var r0 interface{}
+	var r1 bool
+	if returnFunc, ok := ret.Get(0).(func(string, interface{}) (interface{}, bool)); ok {
+		return returnFunc(key, value)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
+		r0 = returnFunc(key, value)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, interface{}) bool); ok {
+		r1 = returnFunc(key, value)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+	return r0, r1
+}
+
+// MockData_LoadOrStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadOrStore'
+type MockData_LoadOrStore_Call struct {
+	*mock.Call
+}
+
+// LoadOrStore is a helper method to define mock.On call
+//   - key string
+//   - value interface{}
+func (_e *MockData_Expecter) LoadOrStore(key any, value any) *MockData_LoadOrStore_Call {
+	return &MockData_LoadOrStore_Call{Call: _e.mock.On("LoadOrStore", key, value)}
+}
+
+func (_c *MockData_LoadOrStore_Call) Run(run func(key string, value interface{})) *MockData_LoadOrStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 interface{}
+		if args[1] != nil {
+			arg1 = args[1].(interface{})
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockData_LoadOrStore_Call) Return(ifaceVal interface{}, b bool) *MockData_LoadOrStore_Call {
+	_c.Call.Return(ifaceVal, b)
+	return _c
+}
+
+func (_c *MockData_LoadOrStore_Call) RunAndReturn(run func(key string, value interface{}) (interface{}, bool)) *MockData_LoadOrStore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Store provides a mock function for the type MockData
 func (_mock *MockData) Store(key string, value interface{}) error {
 	ret := _mock.Called(key, value)

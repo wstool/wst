@@ -1,0 +1,92 @@
+title: Connection reuse across requests
+
+name: request-keep-alive
+
+description: |
+  Checks how request actions share connections. The test server reports the ID of the connection that served the
+  request in the X-Conn-Id header. Requests reuse the kept alive connection by default, a request with
+  connection close makes the server close the connection so the next request opens a new one, and a connection
+  broken by a stalled upload is not reused.
+
+labels: [local, request, connection]
+
+services:
+  web:
+    public: true
+    server:
+      name: testsrv
+      configs:
+        testsrv_conf:
+          include: true
+
+actions:
+  - start
+  - expect/web/server_start
+  # The first request opens the first connection.
+  - request/web:
+      path: /_/ping
+  - expect/web:
+      response:
+        status: 200
+        headers:
+          X-Conn-Id: "1"
+        body: pong
+  # The second request reuses the kept alive connection.
+  - request/web:
+      path: /_/ping
+  - expect/web:
+      response:
+        status: 200
+        headers:
+          X-Conn-Id: "1"
+        body: pong
+  # A request with connection close is still sent on the kept alive connection but the server closes it after
+  # the response.
+  - request/web:
+      path: /_/ping
+      connection: close
+  - expect/web:
+      response:
+        status: 200
+        headers:
+          X-Conn-Id: "1"
+        body: pong
+  # The next request has to open a new connection.
+  - request/web:
+      path: /_/ping
+  - expect/web:
+      response:
+        status: 200
+        headers:
+          X-Conn-Id: "2"
+        body: pong
+  # A stalled upload reuses the kept alive connection and gets the early 408 response. The connection is then
+  # broken because the upload never completes.
+  - request/web:
+      path: /_/upload?timeout_ms=500
+      encode_path: false
+      method: POST
+      body:
+        content: foo=bar
+        transfer:
+          content_length: 1755
+          stall: 5000
+  - expect/web:
+      response:
+        status: 408
+        headers:
+          X-Conn-Id: "2"
+        body: request body timeout after 7 bytes
+  # The broken connection is not reused so the follow up request opens a new one.
+  - request/web:
+      path: /_/ping
+  - expect/web:
+      response:
+        status: 200
+        headers:
+          X-Conn-Id: "3"
+        body: pong
+  - stop:
+      when: always
+  - expect/web/server_stop:
+      when: always

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,7 +102,8 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: false,
 						CACert:     "",
 					},
-					protocols: []Protocol{ProtocolHTTP11},
+					protocols:  []Protocol{ProtocolHTTP11},
+					connection: ConnectionKeepAlive,
 				}
 			},
 		},
@@ -150,7 +152,8 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: false,
 						CACert:     "",
 					},
-					protocols: []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					protocols:  []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					connection: ConnectionKeepAlive,
 				}
 			},
 		},
@@ -199,7 +202,8 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: true,
 						CACert:     "",
 					},
-					protocols: []Protocol{ProtocolHTTP11},
+					protocols:  []Protocol{ProtocolHTTP11},
+					connection: ConnectionKeepAlive,
 				}
 			},
 		},
@@ -248,7 +252,8 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: false,
 						CACert:     "localhost-ca",
 					},
-					protocols: []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					protocols:  []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					connection: ConnectionKeepAlive,
 				}
 			},
 		},
@@ -299,7 +304,8 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: false,
 						CACert:     "",
 					},
-					protocols: []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					protocols:  []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+					connection: ConnectionKeepAlive,
 				}
 			},
 		},
@@ -367,9 +373,70 @@ func TestActionMaker_Make(t *testing.T) {
 						SkipVerify: false,
 						CACert:     "",
 					},
-					protocols: []Protocol{ProtocolHTTP11},
+					protocols:  []Protocol{ProtocolHTTP11},
+					connection: ConnectionKeepAlive,
 				}
 			},
+		},
+		{
+			name: "successful request action creation with connection close",
+			config: &types.RequestAction{
+				Service:    "validService",
+				Timeout:    0,
+				When:       "on_success",
+				OnFailure:  "fail",
+				Id:         "last",
+				Path:       "/test",
+				Scheme:     "http",
+				EncodePath: true,
+				Method:     "GET",
+				Headers:    types.Headers{},
+				Protocols:  []string{},
+				Connection: "close",
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, fnd *appMocks.MockFoundation) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			getExpectedAction: func(fndMock *appMocks.MockFoundation, svc services.Service) *Action {
+				return &Action{
+					fnd:        fndMock,
+					service:    svc,
+					timeout:    5000 * time.Millisecond,
+					when:       action.OnSuccess,
+					onFailure:  action.Fail,
+					id:         "last",
+					scheme:     "http",
+					path:       "/test",
+					encodePath: true,
+					method:     "GET",
+					headers:    types.Headers{},
+					body:       &types.RequestBody{},
+					tls:        &types.TLSClientConfig{},
+					protocols:  []Protocol{ProtocolHTTP11},
+					connection: ConnectionClose,
+				}
+			},
+		},
+		{
+			name: "failure unsupported connection value",
+			config: &types.RequestAction{
+				Service:    "validService",
+				Path:       "/test",
+				Scheme:     "http",
+				Method:     "GET",
+				Connection: "reset",
+			},
+			defaultTimeout: 5000,
+			setupMocks: func(t *testing.T, sl *servicesMocks.MockServiceLocator, fnd *appMocks.MockFoundation) services.Service {
+				svc := servicesMocks.NewMockService(t)
+				sl.On("Find", "validService").Return(svc, nil)
+				return svc
+			},
+			expectError:      true,
+			expectedErrorMsg: "unsupported connection value reset",
 		},
 		{
 			name: "failure TLS config with HTTP scheme - skip verify",
@@ -517,6 +584,11 @@ func TestActionMaker_Make(t *testing.T) {
 	}
 }
 
+// isClientKey reports whether the runtime data key is used for the shared HTTP client.
+func isClientKey(key string) bool {
+	return strings.HasPrefix(key, "request/client/")
+}
+
 type bodyReader struct {
 	msg string
 	err string
@@ -550,6 +622,7 @@ func TestAction_Execute(t *testing.T) {
 		body       *types.RequestBody
 		tls        *types.TLSClientConfig
 		protocols  []Protocol
+		connection Connection
 		setupMocks func(
 			t *testing.T,
 			ctx context.Context,
@@ -1853,6 +1926,7 @@ func TestAction_Execute(t *testing.T) {
 			) {
 				reqUrl := "https://example.com/test"
 				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				fnd.On("HttpClient", mock.Anything).Return(appMocks.NewMockHttpClient(t))
 			},
 			want:             false,
 			expectError:      true,
@@ -1883,10 +1957,211 @@ func TestAction_Execute(t *testing.T) {
 				svc *servicesMocks.MockService,
 			) {
 				svc.On("PublicUrl", "https", "/test").Return("", errors.New("pub url"))
+				fnd.On("HttpClient", mock.Anything).Return(appMocks.NewMockHttpClient(t))
 			},
 			want:             false,
 			expectError:      true,
 			expectedErrorMsg: "pub url",
+		},
+		{
+			name:       "successful execution with connection close",
+			id:         "r1",
+			scheme:     "http",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers:    types.Headers{},
+			body:       &types.RequestBody{},
+			tls:        &types.TLSClientConfig{},
+			protocols:  []Protocol{ProtocolHTTP11},
+			connection: ConnectionClose,
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "http://example.com/test"
+				svc.On("PublicUrl", "http", "/test").Return(reqUrl, nil)
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   &bodyReader{msg: "test"},
+					Header: header,
+				}
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				client.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					// The request asks the server to close the connection after the response
+					return req.Method == "GET" && req.URL.String() == reqUrl && req.Close
+				})).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with client stored in runtime data",
+			id:         "r1",
+			scheme:     "http",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers:    types.Headers{},
+			body:       &types.RequestBody{},
+			tls:        &types.TLSClientConfig{},
+			protocols:  []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "http://example.com/test"
+				svc.On("PublicUrl", "http", "/test").Return(reqUrl, nil)
+				svc.On("Name").Return("web")
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+				assert.Nil(t, err)
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   &bodyReader{msg: "test"},
+					Header: header,
+				}
+				// The stored client is used and no new client is created
+				client := appMocks.NewMockHttpClient(t)
+				rd.On("Load", "request/client/web/http/[http1.1]/false/").Return(client, true)
+				client.On("Do", expectedRequest).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "successful execution with client stored by a parallel request",
+			id:         "r1",
+			scheme:     "https",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers:    types.Headers{},
+			body:       &types.RequestBody{},
+			tls: &types.TLSClientConfig{
+				SkipVerify: true,
+			},
+			protocols: []Protocol{ProtocolHTTP11, ProtocolHTTP2},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				reqUrl := "https://example.com/test"
+				svc.On("PublicUrl", "https", "/test").Return(reqUrl, nil)
+				svc.On("Name").Return("web")
+				expectedRequest, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+				assert.Nil(t, err)
+				header := http.Header{}
+				resp := &http.Response{
+					Body:   &bodyReader{msg: "test"},
+					Header: header,
+				}
+				key := "request/client/web/https/[http1.1 http2]/true/"
+				rd.On("Load", key).Return(nil, false)
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						p.SetHTTP2(true)
+						return p
+					}(),
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+				createdClient := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(createdClient)
+				// A parallel request stored its client in the meantime so that one is used
+				storedClient := appMocks.NewMockHttpClient(t)
+				rd.On("LoadOrStore", key, createdClient).Return(storedClient, true)
+				storedClient.On("Do", expectedRequest).Return(resp, nil)
+				rd.On("Store", "response/r1", ResponseData{
+					Body:    "test",
+					Headers: header,
+				}).Return(nil)
+			},
+			want: true,
+		},
+		{
+			name:       "failed execution due to invalid client stored in runtime data",
+			id:         "r1",
+			scheme:     "http",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers:    types.Headers{},
+			body:       &types.RequestBody{},
+			tls:        &types.TLSClientConfig{},
+			protocols:  []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				svc.On("Name").Return("web")
+				rd.On("Load", "request/client/web/http/[http1.1]/false/").Return("invalid", true)
+			},
+			expectError:      true,
+			expectedErrorMsg: "invalid HTTP client stored under request/client/web/http/[http1.1]/false/",
+		},
+		{
+			name:       "failed execution due to invalid client stored by a parallel request",
+			id:         "r1",
+			scheme:     "http",
+			path:       "/test",
+			encodePath: true,
+			method:     "GET",
+			headers:    types.Headers{},
+			body:       &types.RequestBody{},
+			tls:        &types.TLSClientConfig{},
+			protocols:  []Protocol{ProtocolHTTP11},
+			setupMocks: func(
+				t *testing.T,
+				ctx context.Context,
+				rd *runtimeMocks.MockData,
+				fnd *appMocks.MockFoundation,
+				svc *servicesMocks.MockService,
+			) {
+				svc.On("Name").Return("web")
+				key := "request/client/web/http/[http1.1]/false/"
+				rd.On("Load", key).Return(nil, false)
+				expectedTransport := &http.Transport{
+					Protocols: func() *http.Protocols {
+						p := new(http.Protocols)
+						p.SetHTTP1(true)
+						return p
+					}(),
+				}
+				client := appMocks.NewMockHttpClient(t)
+				fnd.On("HttpClient", expectedTransport).Return(client)
+				rd.On("LoadOrStore", key, client).Return("invalid", true)
+			},
+			expectError:      true,
+			expectedErrorMsg: "invalid HTTP client stored under request/client/web/http/[http1.1]/false/",
 		},
 	}
 
@@ -1905,7 +2180,17 @@ func TestAction_Execute(t *testing.T) {
 			}
 
 			tt.setupMocks(t, ctx, runDataMock, fndMock, svcMock)
+			// The HTTP client is shared through the runtime data. By default, no client is stored yet and the
+			// created client gets stored. Test cases override this by setting their own expectations first.
+			svcMock.On("Name").Return("svc").Maybe()
+			runDataMock.On("Load", mock.MatchedBy(isClientKey)).Return(nil, false).Maybe()
+			runDataMock.On("LoadOrStore", mock.MatchedBy(isClientKey), mock.Anything).Return(
+				func(_ string, value interface{}) interface{} { return value }, false).Maybe()
 
+			connection := tt.connection
+			if connection == "" {
+				connection = ConnectionKeepAlive
+			}
 			a := &Action{
 				fnd:        fndMock,
 				service:    svcMock,
@@ -1919,6 +2204,7 @@ func TestAction_Execute(t *testing.T) {
 				body:       tt.body,
 				tls:        tt.tls,
 				protocols:  tt.protocols,
+				connection: connection,
 			}
 
 			got, err := a.Execute(ctx, runDataMock)

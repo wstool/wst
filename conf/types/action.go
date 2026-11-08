@@ -142,6 +142,7 @@ type RequestAction struct {
 	Headers    Headers         `wst:"headers"`
 	Body       RequestBody     `wst:"body,string=Content"`
 	TLS        TLSClientConfig `wst:"tls"`
+	Connection string          `wst:"connection,enum=keep_alive|close,default=keep_alive"`
 }
 
 type BenchAction struct {

@@ -83,12 +83,22 @@ func (c *config) boolValue(raw string, name string) (bool, error) {
 }
 
 type server struct {
-	cfg        *config
-	accessLog  io.Writer
-	requests   atomic.Int64
-	reloads    atomic.Int64
-	startedAt  time.Time
-	httpServer *http.Server
+	cfg         *config
+	accessLog   io.Writer
+	requests    atomic.Int64
+	reloads     atomic.Int64
+	connections atomic.Int64
+	startedAt   time.Time
+	httpServer  *http.Server
+}
+
+// connIDKey is the context key under which the connection ID is stored in the request context.
+type connIDKey struct{}
+
+// connContext assigns a sequential ID to every accepted connection. The ID is reported in the X-Conn-Id response
+// header so that the tests can observe which requests share a connection (keep-alive) and which open a new one.
+func (s *server) connContext(ctx context.Context, _ net.Conn) context.Context {
+	return context.WithValue(ctx, connIDKey{}, s.connections.Add(1))
 }
 
 func notice(format string, args ...any) {
@@ -185,7 +195,7 @@ func run(cfg *config) error {
 	}
 	notice("listening on %s", cfg.Listen)
 
-	srv.httpServer = &http.Server{Handler: srv.handler()}
+	srv.httpServer = &http.Server{Handler: srv.handler(), ConnContext: srv.connContext}
 	serveErr := make(chan error, 1)
 	go func() {
 		var err error
@@ -291,6 +301,9 @@ func (s *server) handler() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.requests.Add(1)
+		if connID, ok := r.Context().Value(connIDKey{}).(int64); ok {
+			w.Header().Set("X-Conn-Id", strconv.FormatInt(connID, 10))
+		}
 		rec := &statusRecorder{ResponseWriter: w}
 		mux.ServeHTTP(rec, r)
 		if rec.status == 0 {

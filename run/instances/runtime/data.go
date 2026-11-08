@@ -23,6 +23,7 @@ import (
 type Data interface {
 	Store(key string, value interface{}) error
 	Load(key string) (interface{}, bool)
+	LoadOrStore(key string, value interface{}) (interface{}, bool)
 }
 
 // runtimeDataImpl is an implementation of the RuntimeData interface.
@@ -40,4 +41,10 @@ func (rt *syncData) Store(key string, value interface{}) error {
 // Load loads the value for a key.
 func (rt *syncData) Load(key string) (interface{}, bool) {
 	return rt.data.Load(key)
+}
+
+// LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns the given value.
+// The loaded result is true if the value was loaded, false if stored.
+func (rt *syncData) LoadOrStore(key string, value interface{}) (interface{}, bool) {
+	return rt.data.LoadOrStore(key, value)
 }

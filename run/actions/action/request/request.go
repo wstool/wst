@@ -39,6 +39,16 @@ const (
 	ProtocolHTTP2  Protocol = "http2"
 )
 
+// Connection controls what happens with the connection after the response.
+type Connection string
+
+const (
+	// ConnectionKeepAlive keeps the connection open for the following request actions of the instance.
+	ConnectionKeepAlive Connection = "keep_alive"
+	// ConnectionClose asks the server to close the connection after the response.
+	ConnectionClose Connection = "close"
+)
+
 type Maker interface {
 	Make(
 		config *types.RequestAction,
@@ -105,6 +115,15 @@ func (m *ActionMaker) Make(
 		validatedProtocols = append(validatedProtocols, proto)
 	}
 
+	connection := Connection(config.Connection)
+	switch connection {
+	case "":
+		connection = ConnectionKeepAlive
+	case ConnectionKeepAlive, ConnectionClose:
+	default:
+		return nil, errors.Errorf("unsupported connection value %s", config.Connection)
+	}
+
 	return &Action{
 		fnd:        m.fnd,
 		service:    svc,
@@ -120,6 +139,7 @@ func (m *ActionMaker) Make(
 		body:       &config.Body,
 		tls:        &config.TLS,
 		protocols:  validatedProtocols,
+		connection: connection,
 	}, nil
 }
 
@@ -163,6 +183,7 @@ type Action struct {
 	body       *types.RequestBody
 	tls        *types.TLSClientConfig
 	protocols  []Protocol
+	connection Connection
 }
 
 func (a *Action) When() action.When {
@@ -178,25 +199,13 @@ func (a *Action) Timeout() time.Duration {
 }
 
 func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error) {
-	a.fnd.Logger().Infof("Executing request action with HTTP protocols: %v", a.protocols)
+	a.fnd.Logger().Infof("Executing request action with HTTP protocols: %v and connection %s", a.protocols, a.connection)
 
-	// Create transport
-	tr := &http.Transport{}
-
-	// Configure protocols using the Protocols API
-	protocolConfig := a.buildProtocolConfig()
-	tr.Protocols = protocolConfig
-
-	if a.scheme == "https" {
-		tlsConfig, err := a.buildTLSConfig()
-		if err != nil {
-			return false, err
-		}
-		tr.TLSClientConfig = tlsConfig
+	// Get the HTTP client shared with the other request actions so the connections can be reused
+	client, err := a.httpClient(runData)
+	if err != nil {
+		return false, err
 	}
-
-	a.fnd.Logger().Debugf("Protocol configuration: HTTP/1=%t, HTTP/2=%t, UnencryptedHTTP/2=%t",
-		protocolConfig.HTTP1(), protocolConfig.HTTP2(), protocolConfig.UnencryptedHTTP2())
 
 	publicUrl, err := a.service.PublicUrl(a.scheme, a.path)
 	if err != nil {
@@ -240,10 +249,15 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 		a.applyTransferConfig(req)
 	}
 
+	// Ask the server to close the connection after the response if requested. Otherwise, the connection is kept
+	// alive by the shared client and reused by the following request actions.
+	if a.connection == ConnectionClose {
+		req.Close = true
+	}
+
 	a.fnd.Logger().Debugf("Sending request: %s", requestToString(req))
 
 	// Send the request
-	client := a.fnd.HttpClient(tr)
 	resp, err := client.Do(req)
 	// Stop a possibly still stalled upload now that the request is done
 	cancelBody()
@@ -285,6 +299,61 @@ func (a *Action) Execute(ctx context.Context, runData runtime.Data) (bool, error
 	}
 
 	return true, nil
+}
+
+// clientKey returns the runtime data key under which the HTTP client for this request configuration is shared
+// between the request actions of the instance. Connections can be reused only by requests with the same transport
+// settings, so the key covers the service, scheme, protocols and TLS configuration.
+func (a *Action) clientKey() string {
+	return fmt.Sprintf("request/client/%s/%s/%v/%t/%s",
+		a.service.Name(), a.scheme, a.protocols, a.tls.SkipVerify, a.tls.CACert)
+}
+
+// httpClient returns the HTTP client shared by the request actions with the same transport settings. The client is
+// created on the first use and stored in the runtime data, so the connections it keeps alive are reused by the
+// following request actions of the instance.
+func (a *Action) httpClient(runData runtime.Data) (app.HttpClient, error) {
+	key := a.clientKey()
+	if stored, ok := runData.Load(key); ok {
+		client, ok := stored.(app.HttpClient)
+		if !ok {
+			return nil, errors.Errorf("invalid HTTP client stored under %s", key)
+		}
+		a.fnd.Logger().Debugf("Reusing HTTP client %s", key)
+		return client, nil
+	}
+
+	// Create transport
+	tr := &http.Transport{}
+
+	// Configure protocols using the Protocols API
+	protocolConfig := a.buildProtocolConfig()
+	tr.Protocols = protocolConfig
+
+	if a.scheme == "https" {
+		tlsConfig, err := a.buildTLSConfig()
+		if err != nil {
+			return nil, err
+		}
+		tr.TLSClientConfig = tlsConfig
+	}
+
+	a.fnd.Logger().Debugf("Protocol configuration: HTTP/1=%t, HTTP/2=%t, UnencryptedHTTP/2=%t",
+		protocolConfig.HTTP1(), protocolConfig.HTTP2(), protocolConfig.UnencryptedHTTP2())
+
+	// A request action running in parallel might have stored its client in the meantime. That client is used
+	// instead so that all the requests share the same connections.
+	stored, loaded := runData.LoadOrStore(key, a.fnd.HttpClient(tr))
+	client, ok := stored.(app.HttpClient)
+	if !ok {
+		return nil, errors.Errorf("invalid HTTP client stored under %s", key)
+	}
+	if loaded {
+		a.fnd.Logger().Debugf("Reusing HTTP client %s created by a parallel request", key)
+	} else {
+		a.fnd.Logger().Debugf("Created HTTP client %s", key)
+	}
+	return client, nil
 }
 
 // isIncompleteBody reports whether the body is never completed on the wire, which is the case for chunked

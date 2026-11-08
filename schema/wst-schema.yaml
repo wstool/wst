@@ -1138,83 +1138,102 @@ $defs:
         enum: [ fail, ignore, skip ]
         default: fail
 
-actionRequest:
-  title: Request action
-  description: |
-    The request action defines the details of the request to be sent to the service.
-  type: object
-  properties:
-    service:
-      title: Service name
-      description: The service that the request is executed on.
-      type: string
-    timeout:
-      title: Action timeout
-      description: |
-        This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
-        unlimited and 0 means using the default value defined in the instance action timeout.
-      type: integer
-    when:
-      title: When to run the action
-      description: |
-        This field specifies when the action should be executed. If `on_success` is selected, the action runs only
-        if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
-        at least one of the previous actions has failed. If `always` is selected, the action will run regardless
-        of the success or failure of previous actions.
-      type: string
-      enum: [ always, on_success, on_failure ]
-      default: on_success
-    on_failure:
-      title: What to do on failure
-      description: |
-        This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
-        when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
-        as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
-      type: string
-      enum: [ fail, ignore, skip ]
-      default: fail
-    id:
-      title: Request ID
-      description: Identifies request which can be then used in response expectation.
-      type: string
-      default: last
-    scheme:
-      title: Request URL scheme
-      description: |
-        Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
-        The protocol selection affects how the request is made to the service.
-      type: string
-      default: http
-      enum: [ http, https ]
-    protocols:
-      title: HTTP protocols
-      description: |
-        Specifies which HTTP protocols are allowed for the request. Multiple protocols can be selected, and the
-        client will negotiate the best one with the server. If empty or not specified, defaults to
-        ['http1.1', 'http2'] for HTTPS and ['http1.1'] for plain HTTP. Note that 'http2' over HTTPS uses encrypted
-        HTTP/2, while 'http2' over HTTP uses unencrypted HTTP/2 (h2c).
-      type: array
-      items:
+  actionRequest:
+    title: Request action
+    description: |
+      The request action defines the details of the request to be sent to the service.
+    type: object
+    properties:
+      service:
+        title: Service name
+        description: The service that the request is executed on.
         type: string
-        enum: [ http1.1, http2 ]
-      uniqueItems: true
-      default: []
-    path:
-      title: Request path
-      description: Request URL path which can also contain query parameters.
-      type: string
-      default: /
-    method:
-      title: Request method
-      type: string
-      enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
-      default: GET
-    headers:
-      $ref: '#/$defs/headers'
-    body:
-      $ref: '#/$defs/requestBody'
-    tls:
-      $ref: '#/$defs/tlsClientConfig'
+      timeout:
+        title: Action timeout
+        description: |
+          This sets the action timeout in milliseconds and overwritten the default timeout. Negative value means
+          unlimited and 0 means using the default value defined in the instance action timeout.
+        type: integer
+      when:
+        title: When to run the action
+        description: |
+          This field specifies when the action should be executed. If `on_success` is selected, the action runs only
+          if all previous actions have completed successfully. If `on_failure` is selected, the action runs only if
+          at least one of the previous actions has failed. If `always` is selected, the action will run regardless
+          of the success or failure of previous actions.
+        type: string
+        enum: [ always, on_success, on_failure ]
+        default: on_success
+      on_failure:
+        title: What to do on failure
+        description: |
+          This field specifies how to handle action failure. If `fail` is selected (default), the instance fails 
+          when this action fails. If `ignore` is selected, the action failure is ignored and execution continues 
+          as if it succeeded. If `skip` is selected, remaining actions are skipped (except those with when=always).
+        type: string
+        enum: [ fail, ignore, skip ]
+        default: fail
+      id:
+        title: Request ID
+        description: Identifies request which can be then used in response expectation.
+        type: string
+        default: last
+      scheme:
+        title: Request URL scheme
+        description: |
+          Specifies the URL scheme to use for the request. 'http' uses plain HTTP, 'https' uses HTTP over TLS/SSL.
+          The protocol selection affects how the request is made to the service.
+        type: string
+        default: http
+        enum: [ http, https ]
+      protocols:
+        title: HTTP protocols
+        description: |
+          Specifies which HTTP protocols are allowed for the request. Multiple protocols can be selected, and the
+          client will negotiate the best one with the server. If empty or not specified, defaults to
+          ['http1.1', 'http2'] for HTTPS and ['http1.1'] for plain HTTP. Note that 'http2' over HTTPS uses encrypted
+          HTTP/2, while 'http2' over HTTP uses unencrypted HTTP/2 (h2c).
+        type: array
+        items:
+          type: string
+          enum: [ http1.1, http2 ]
+        uniqueItems: true
+        default: []
+      connection:
+        title: Connection handling
+        description: |
+          Controls what happens with the connection after the response. If `keep_alive` is selected (default), the
+          connection is kept open and reused by the following request actions of the instance that use the same
+          service, scheme, protocols and TLS configuration, like a browser or any other keep-alive client would do.
+          If `close` is selected, the request is sent with the `Connection: close` header so the connection is
+          closed after the response and the next request opens a new connection. A request with `close` can still
+          be sent on a connection kept alive by a previous request. A connection left in a bad state (for example
+          by an incomplete upload) is never reused by the client.
+        type: string
+        enum: [ keep_alive, close ]
+        default: keep_alive
+      path:
+        title: Request path
+        description: Request URL path which can also contain query parameters.
+        type: string
+        default: /
+      encode_path:
+        title: Whether the path should be URL encoded
+        description: |
+          There are test cases when it is convenient to pass not URL encoded path and this is the option to disabled it.
+        type: boolean
+        default: true
+      method:
+        title: Request method
+        type: string
+        enum: [ GET, HEAD, POST, PUT, PATCH, DELETE, PURGE ]
+        default: GET
+      headers:
+        $ref: '#/$defs/headers'
+      body:
+        $ref: '#/$defs/requestBody'
+      tls:
+        $ref: '#/$defs/tlsClientConfig'
 
   actionRestart:
     title: Restart services

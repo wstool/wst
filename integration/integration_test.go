@@ -68,6 +68,7 @@ var (
 		{name: "basic"},
 		{name: "request-body-slow"},
 		{name: "request-body-incomplete"},
+		{name: "request-keep-alive"},
 		{name: "fail-response-mismatch", expectError: true},
 		{name: "fail-start", expectError: true},
 	}
