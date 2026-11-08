@@ -60,12 +60,31 @@ in the future.
 ### Run
 
 #### Structure - Instances, Actions, Servers, Services
-- support connection reuse across request actions (keep-alive)
-  - each request action creates a new client so a connection left in a bad state by an incomplete upload cannot
-    be observed by a follow up request on the same connection
+- support sending malformed request body framing in the request action
+  - for example an invalid chunk size so the server body read fails partway through
+  - this extends the existing incomplete and chunked transfer options
+- add a delay action, or a `delay` option on every action
+  - this allows a request to run while other requests are still in flight inside a `parallel` block
+  - it is needed whenever an assertion has to be taken at a specific point during concurrent load
+- support selecting a virtual host independently of the service address in the request action
+  - override the TLS SNI and the `Host` header so several virtual hosts on one listener can be targeted
+  - this is needed to send correlated requests to different virtual hosts on the same endpoint
 - support closing the connection after a complete body before reading the response
   - currently `close` and `stall` require an incomplete body (chunked or `content_length` above the content)
     because the HTTP client gives no deterministic point to act after a complete Content-Length body
+- report connection reuse in the request response data
+  - store whether the connection was reused (`httptrace` `GotConnInfo.Reused`) and whether the server asked to
+    close it (`Response.Close` as the Go client strips the `Connection: close` header) so expectations can check
+    keep-alive handling against any server and not just the test server `X-Conn-Id` header
+- close idle connections of the shared HTTP client when the instance run finishes
+  - currently the connections are closed only by the server shutdown and the restart or reload actions leave
+    stale pooled connections that the Go client has to detect and retry
+- add `new` connection mode to the request action
+  - it should open a new connection and leave the kept alive one idle in the pool which is useful for testing
+    server connection limits and parallel connection handling
+- make the idle connection pool size of the shared HTTP client configurable
+  - the Go transport keeps at most two idle connections per host so parallel request actions open more
+    connections than are reused later
 - add template support to request body
 - add typed parameters substitution for integers
   - this is to be able to, for example, parameterize status code
